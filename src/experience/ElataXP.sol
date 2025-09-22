@@ -216,6 +216,74 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl {
     }
 
     /**
+     * @notice Gets comprehensive XP information for a user
+     * @param user User address
+     * @return currentBalance Current XP balance
+     * @return currentEffectiveBalance Effective XP after decay
+     * @return decayRate Current decay rate (basis points)
+     * @return nextDecayAmount Amount that will decay next
+     * @return timeToFullDecay Time until oldest XP fully decays
+     */
+    function getUserXPSummary(address user) external view returns (
+        uint256 currentBalance,
+        uint256 currentEffectiveBalance,
+        uint256 decayRate,
+        uint256 nextDecayAmount,
+        uint256 timeToFullDecay
+    ) {
+        currentBalance = balanceOf(user);
+        currentEffectiveBalance = _calculateEffectiveBalance(user);
+        
+        if (currentBalance > 0) {
+            decayRate = ((currentBalance - currentEffectiveBalance) * 10000) / currentBalance;
+        } else {
+            decayRate = 0;
+        }
+        
+        nextDecayAmount = currentBalance - currentEffectiveBalance;
+        timeToFullDecay = _calculateTimeToFullDecay(user);
+    }
+
+    /**
+     * @notice Gets XP decay projection for a user
+     * @param user User address
+     * @param futureTimestamp Future timestamp to project to
+     * @return projectedBalance Projected XP balance at future time
+     */
+    function getXPProjection(address user, uint256 futureTimestamp) external view returns (uint256 projectedBalance) {
+        if (futureTimestamp <= block.timestamp) {
+            return _calculateEffectiveBalance(user);
+        }
+        
+        XPEntry[] storage entries = userXPEntries[user];
+        projectedBalance = 0;
+        
+        for (uint256 i = 0; i < entries.length; i++) {
+            XPEntry storage entry = entries[i];
+            uint256 age = futureTimestamp - entry.timestamp;
+            
+            if (age < DECAY_WINDOW) {
+                uint256 decayFactor = DECAY_WINDOW - age;
+                projectedBalance += (entry.amount * decayFactor) / DECAY_WINDOW;
+            }
+        }
+    }
+
+    /**
+     * @notice Checks if user needs decay update (for frontend warnings)
+     * @param user User address
+     * @return needsUpdate Whether user should update decay
+     * @return decayAmount Amount that would be decayed
+     */
+    function checkDecayStatus(address user) external view returns (bool needsUpdate, uint256 decayAmount) {
+        uint256 currentBalance = balanceOf(user);
+        uint256 currentEffectiveBalance = _calculateEffectiveBalance(user);
+        
+        needsUpdate = currentBalance > currentEffectiveBalance;
+        decayAmount = needsUpdate ? currentBalance - currentEffectiveBalance : 0;
+    }
+
+    /**
      * @dev Updates decay for a user and burns decayed XP
      * @param user User address
      * @return Amount of XP decayed
@@ -296,6 +364,28 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl {
         while (entries.length > writeIndex) {
             entries.pop();
         }
+    }
+
+    /**
+     * @dev Calculates time until user's oldest XP fully decays
+     * @param user User address
+     * @return Time in seconds until full decay (0 if no XP)
+     */
+    function _calculateTimeToFullDecay(address user) internal view returns (uint256) {
+        XPEntry[] storage entries = userXPEntries[user];
+        if (entries.length == 0) return 0;
+
+        uint256 oldestTimestamp = type(uint256).max;
+        for (uint256 i = 0; i < entries.length; i++) {
+            if (entries[i].timestamp < oldestTimestamp) {
+                oldestTimestamp = entries[i].timestamp;
+            }
+        }
+
+        uint256 ageOfOldest = block.timestamp - oldestTimestamp;
+        if (ageOfOldest >= DECAY_WINDOW) return 0;
+        
+        return DECAY_WINDOW - ageOfOldest;
     }
 
     /**

@@ -75,6 +75,7 @@ contract VeELTA is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
     event VotingPowerDelegated(uint256 indexed tokenId, address indexed from, address indexed to);
     event EmergencyUnlock(uint256 indexed tokenId, uint256 amount, uint256 penalty);
     event Withdrawn(uint256 indexed tokenId, uint256 amount);
+    event EmergencyUnlockToggled(bool enabled);
 
     /**
      * @notice Initializes the multi-lock veELTA contract
@@ -406,6 +407,95 @@ contract VeELTA is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
      */
     function setEmergencyUnlockEnabled(bool enabled) external onlyRole(EMERGENCY_ROLE) {
         emergencyUnlockEnabled = enabled;
+        emit EmergencyUnlockToggled(enabled);
+    }
+
+    /**
+     * @notice Gets detailed position information for frontend display
+     * @param tokenId Position token ID
+     * @return amount Locked amount
+     * @return startTime Lock start timestamp
+     * @return endTime Lock end timestamp
+     * @return delegate Current delegate address
+     * @return votingPower Current voting power
+     * @return timeRemaining Time until unlock (0 if expired)
+     * @return isExpired Whether position has expired
+     * @return emergencyUnlocked Whether emergency unlocked
+     */
+    function getPositionDetails(uint256 tokenId) external view returns (
+        uint256 amount,
+        uint256 startTime,
+        uint256 endTime,
+        address delegate,
+        uint256 votingPower,
+        uint256 timeRemaining,
+        bool isExpired,
+        bool emergencyUnlocked
+    ) {
+        LockPosition storage position = positions[tokenId];
+        
+        amount = position.amount;
+        startTime = position.start;
+        endTime = position.end;
+        delegate = position.delegate;
+        votingPower = _getPositionVotingPower(tokenId);
+        isExpired = block.timestamp >= position.end;
+        timeRemaining = isExpired ? 0 : position.end - block.timestamp;
+        emergencyUnlocked = position.emergencyUnlocked;
+    }
+
+    /**
+     * @notice Gets user's total staking summary
+     * @param user User address
+     * @return positionCount Number of positions
+     * @return totalStaked Total ELTA staked
+     * @return totalVotingPower Total voting power
+     * @return averageTimeRemaining Average time until unlock
+     */
+    function getUserStakingSummary(address user) external view returns (
+        uint256 positionCount,
+        uint256 totalStaked,
+        uint256 totalVotingPower,
+        uint256 averageTimeRemaining
+    ) {
+        uint256[] memory tokenIds = this.getUserPositions(user);
+        positionCount = tokenIds.length;
+        
+        if (positionCount == 0) return (0, 0, 0, 0);
+        
+        uint256 totalTimeRemaining = 0;
+        
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            LockPosition storage position = positions[tokenIds[i]];
+            totalStaked += position.amount;
+            totalVotingPower += _getPositionVotingPower(tokenIds[i]);
+            
+            if (block.timestamp < position.end) {
+                totalTimeRemaining += position.end - block.timestamp;
+            }
+        }
+        
+        averageTimeRemaining = totalTimeRemaining / positionCount;
+    }
+
+    /**
+     * @notice Checks if a position can be withdrawn
+     * @param tokenId Position token ID
+     * @return withdrawable Whether position can be withdrawn
+     * @return reason Reason if cannot withdraw
+     */
+    function canWithdraw(uint256 tokenId) external view returns (bool withdrawable, string memory reason) {
+        LockPosition storage position = positions[tokenId];
+        
+        if (position.amount == 0) {
+            return (false, "Position does not exist or already withdrawn");
+        }
+        
+        if (!position.emergencyUnlocked && block.timestamp < position.end) {
+            return (false, "Position is still locked");
+        }
+        
+        return (true, "Position can be withdrawn");
     }
 
     /**

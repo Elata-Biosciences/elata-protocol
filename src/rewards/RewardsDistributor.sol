@@ -179,12 +179,14 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
-        RewardEpoch storage epoch = epochs[currentEpoch];
+        // Deposit to current active epoch (currentEpoch - 1)
+        uint256 activeEpoch = currentEpoch > 0 ? currentEpoch - 1 : 0;
+        RewardEpoch storage epoch = epochs[activeEpoch];
         epoch.totalRewards += amount;
 
         rewardTokens[token].totalDistributed += amount;
 
-        emit RewardsDeposited(token, amount, currentEpoch);
+        emit RewardsDeposited(token, amount, activeEpoch);
     }
 
     /**
@@ -192,7 +194,9 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
      * @param merkleRoot Merkle root of the reward distribution tree
      */
     function finalizeEpoch(bytes32 merkleRoot) external onlyRole(DISTRIBUTOR_ROLE) whenNotPaused {
-        RewardEpoch storage epoch = epochs[currentEpoch];
+        // Finalize the previous epoch (currentEpoch - 1)
+        uint256 epochToFinalize = currentEpoch > 0 ? currentEpoch - 1 : 0;
+        RewardEpoch storage epoch = epochs[epochToFinalize];
 
         if (epoch.finalized) revert EpochAlreadyFinalized();
         if (block.timestamp < epoch.endTime + MIN_DISTRIBUTION_DELAY) {
@@ -205,7 +209,7 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
         epoch.merkleRoot = merkleRoot;
         epoch.finalized = true;
 
-        emit EpochFinalized(currentEpoch, merkleRoot, epoch.totalRewards);
+        emit EpochFinalized(epochToFinalize, merkleRoot, epoch.totalRewards);
 
         // Start next epoch
         _startNewEpoch();
@@ -304,8 +308,10 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
         view
         returns (uint256 epoch, uint256 startTime, uint256 endTime, uint256 totalRewards, bool finalized)
     {
-        RewardEpoch storage current = epochs[currentEpoch];
-        return (currentEpoch, current.startTime, current.endTime, current.totalRewards, current.finalized);
+        // Current active epoch is currentEpoch - 1 (since _startNewEpoch increments)
+        uint256 activeEpoch = currentEpoch > 0 ? currentEpoch - 1 : 0;
+        RewardEpoch storage current = epochs[activeEpoch];
+        return (activeEpoch, current.startTime, current.endTime, current.totalRewards, current.finalized);
     }
 
     /**
@@ -344,6 +350,92 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
         }
         
         return totalPending;
+    }
+
+    /**
+     * @notice Gets user's reward claim history
+     * @param user User address
+     * @return claimedEpochs Array of epochs where user has claimed
+     * @return userTotalClaimed Total amount claimed across all epochs
+     */
+    function getUserRewardHistory(address user) external view returns (
+        uint256[] memory claimedEpochs,
+        uint256 userTotalClaimed
+    ) {
+        // Count claimed epochs
+        uint256 claimedCount = 0;
+        for (uint256 i = 0; i < currentEpoch; i++) {
+            if (epochs[i].claimed[user]) {
+                claimedCount++;
+            }
+        }
+        
+        // Build array of claimed epochs
+        claimedEpochs = new uint256[](claimedCount);
+        uint256 index = 0;
+        for (uint256 i = 0; i < currentEpoch; i++) {
+            if (epochs[i].claimed[user]) {
+                claimedEpochs[index] = i;
+                index++;
+            }
+        }
+        
+        userTotalClaimed = totalClaimed[user];
+    }
+
+    /**
+     * @notice Gets detailed epoch information
+     * @param epochId Epoch ID
+     * @return startTime Epoch start time
+     * @return endTime Epoch end time
+     * @return totalRewards Total rewards in epoch
+     * @return totalVotingPower Total voting power snapshot
+     * @return finalized Whether epoch is finalized
+     * @return merkleRoot Merkle root for claims
+     */
+    function getEpochDetails(uint256 epochId) external view returns (
+        uint256 startTime,
+        uint256 endTime,
+        uint256 totalRewards,
+        uint256 totalVotingPower,
+        bool finalized,
+        bytes32 merkleRoot
+    ) {
+        RewardEpoch storage epoch = epochs[epochId];
+        return (
+            epoch.startTime,
+            epoch.endTime,
+            epoch.totalRewards,
+            epoch.totalVotingPower,
+            epoch.finalized,
+            epoch.merkleRoot
+        );
+    }
+
+    /**
+     * @notice Gets reward token information
+     * @param token Token address
+     * @return isActive Whether token is active for rewards
+     * @return totalDistributed Total amount distributed of this token
+     */
+    function getRewardTokenInfo(address token) external view returns (
+        bool isActive,
+        uint256 totalDistributed
+    ) {
+        RewardToken storage rewardToken = rewardTokens[token];
+        return (rewardToken.active, rewardToken.totalDistributed);
+    }
+
+    /**
+     * @notice Gets time until next epoch finalization
+     * @return timeRemaining Time in seconds until current epoch can be finalized
+     */
+    function getTimeUntilFinalization() external view returns (uint256 timeRemaining) {
+        RewardEpoch storage current = epochs[currentEpoch];
+        uint256 finalizationTime = current.endTime + MIN_DISTRIBUTION_DELAY;
+        
+        if (block.timestamp >= finalizationTime) return 0;
+        return finalizationTime - block.timestamp;
     }
 
     /**

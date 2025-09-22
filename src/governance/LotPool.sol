@@ -151,6 +151,75 @@ contract LotPool is AccessControl {
         return _rounds[roundId].votes[option];
     }
 
+    /**
+     * @notice Gets user's voting status for a specific round
+     * @param user User address
+     * @param roundId Round ID
+     * @return availableXP XP available for voting (from snapshot)
+     * @return usedXP XP already used in this round
+     * @return remainingXP XP still available for voting
+     */
+    function getUserVotingStatus(address user, uint256 roundId) external view returns (
+        uint256 availableXP,
+        uint256 usedXP,
+        uint256 remainingXP
+    ) {
+        Round storage r = _rounds[roundId];
+        availableXP = XP.getPastXP(user, r.snapshotBlock);
+        usedXP = r.used[user];
+        remainingXP = availableXP > usedXP ? availableXP - usedXP : 0;
+    }
+
+    /**
+     * @notice Gets all vote counts for a round
+     * @param roundId Round ID
+     * @return options Array of option IDs
+     * @return votes Array of vote counts for each option
+     */
+    function getRoundVotes(uint256 roundId) external view returns (
+        bytes32[] memory options,
+        uint256[] memory votes
+    ) {
+        Round storage r = _rounds[roundId];
+        options = r.options;
+        votes = new uint256[](options.length);
+        
+        for (uint256 i = 0; i < options.length; i++) {
+            votes[i] = r.votes[options[i]];
+        }
+    }
+
+    /**
+     * @notice Gets recipient address for a specific option
+     * @param roundId Round ID
+     * @param option Option ID
+     * @return Recipient address for the option
+     */
+    function getOptionRecipient(uint256 roundId, bytes32 option) external view returns (address) {
+        return _rounds[roundId].recipient[option];
+    }
+
+    /**
+     * @notice Checks if a round is currently active (in voting period)
+     * @param roundId Round ID
+     * @return Whether the round is active
+     */
+    function isRoundActive(uint256 roundId) external view returns (bool) {
+        Round storage r = _rounds[roundId];
+        return block.timestamp >= r.start && block.timestamp <= r.end && !r.finalized;
+    }
+
+    /**
+     * @notice Gets time remaining in current round
+     * @param roundId Round ID
+     * @return Time remaining in seconds (0 if expired)
+     */
+    function getRoundTimeRemaining(uint256 roundId) external view returns (uint256) {
+        Round storage r = _rounds[roundId];
+        if (block.timestamp >= r.end || r.finalized) return 0;
+        return r.end - block.timestamp;
+    }
+
     /// @notice Finalize a round and pay out `amount` ELTA to the winner's recipient.
     function finalize(uint256 roundId, bytes32 winner, uint256 amount)
         external
