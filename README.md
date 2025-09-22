@@ -43,9 +43,13 @@ Elata Biosciences is building the infrastructure for the future of mental health
 | Contract | Description | Key Features |
 |----------|-------------|--------------|
 | **ELTA.sol** | Governance token | ERC20 + Votes + Permit, 77M supply cap |
-| **VeELTA.sol** | Vote-escrowed staking | Linear time decay, 1 week - 2 year locks |
-| **ElataXP.sol** | Experience points | Non-transferable, checkpoint tracking |
+| **VeELTA.sol** | Simple vote-escrowed staking | Linear time decay, 1 week - 2 year locks |
+| **VeELTAMultiLock.sol** | Advanced multi-position staking | NFT-based, multiple concurrent locks |
+| **ElataXP.sol** | Basic experience points | Non-transferable, checkpoint tracking |
+| **ElataXPWithDecay.sol** | Advanced XP with decay | 14-day rolling decay, keeper functions |
 | **LotPool.sol** | Research funding | XP-weighted voting, weekly rounds |
+| **RewardsDistributor.sol** | Staker rewards | Merkle tree distribution, multiple tokens |
+| **ElataGovernorSimple.sol** | On-chain governance | Quorum voting, emergency proposals |
 
 ### Token Economics
 
@@ -178,25 +182,6 @@ forge test -vvv
 - Linear decay prevents gaming of voting power
 - Withdrawal only after lock expiration
 
-## Roadmap
-
-### Phase 1: Core Protocol ✅
-- [x] Token contracts (ELTA, veELTA, XP)
-- [x] Governance system (LotPool)
-- [x] Comprehensive testing
-- [x] Deployment scripts
-
-### Phase 2: Advanced Features 🚧
-- [ ] Rewards distributor for veELTA stakers
-- [ ] XP decay mechanics (14-day rolling window)
-- [ ] Multi-lock positions (ve-NFT style)
-- [ ] Advanced governance (quorum, timelocks)
-
-### Phase 3: Integration 📋
-- [ ] ZORP protocol integration
-- [ ] EEG hardware connectivity
-- [ ] App ecosystem launch
-- [ ] Data marketplace
 
 ## Contributing
 

@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { ElataXP } from "../xp/ElataXP.sol";
+import { ElataXPWithDecay } from "../xp/ElataXPWithDecay.sol";
 import { Errors } from "../utils/Errors.sol";
 
 /**
@@ -24,7 +24,7 @@ contract LotPool is AccessControl {
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
     IERC20 public immutable ELTA;
-    ElataXP public immutable XP;
+    ElataXPWithDecay public immutable XP;
 
     struct Round {
         uint256 snapshotBlock; // block number for XP snapshot
@@ -45,7 +45,7 @@ contract LotPool is AccessControl {
     event Voted(uint256 indexed roundId, address indexed voter, bytes32 option, uint256 weight);
     event Finalized(uint256 indexed roundId, bytes32 winner, uint256 amount, address recipient);
 
-    constructor(IERC20 elta, ElataXP xp, address admin) {
+    constructor(IERC20 elta, ElataXPWithDecay xp, address admin) {
         if (address(elta) == address(0) || address(xp) == address(0) || admin == address(0)) {
             revert Errors.ZeroAddress();
         }

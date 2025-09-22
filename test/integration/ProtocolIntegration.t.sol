@@ -4,13 +4,13 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import { ELTA } from "../../src/token/ELTA.sol";
 import { VeELTA } from "../../src/staking/VeELTA.sol";
-import { ElataXP } from "../../src/xp/ElataXP.sol";
+import { ElataXPWithDecay } from "../../src/xp/ElataXPWithDecay.sol";
 import { LotPool } from "../../src/governance/LotPool.sol";
 
 contract ProtocolIntegrationTest is Test {
     ELTA public elta;
     VeELTA public veELTA;
-    ElataXP public xp;
+    ElataXPWithDecay public xp;
     LotPool public lotPool;
 
     address public admin = makeAddr("admin");
@@ -28,7 +28,7 @@ contract ProtocolIntegrationTest is Test {
         // Deploy all contracts
         elta = new ELTA("ELTA", "ELTA", admin, treasury, INITIAL_MINT, MAX_SUPPLY);
         veELTA = new VeELTA(elta, admin);
-        xp = new ElataXP(admin);
+        xp = new ElataXPWithDecay(admin);
         lotPool = new LotPool(elta, xp, admin);
 
         // Distribute ELTA to users

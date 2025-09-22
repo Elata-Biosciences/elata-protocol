@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Script.sol";
 import { ELTA } from "../src/token/ELTA.sol";
-import { ElataXP } from "../src/xp/ElataXP.sol";
+import { ElataXPWithDecay } from "../src/xp/ElataXPWithDecay.sol";
 import { VeELTA } from "../src/staking/VeELTA.sol";
 import { LotPool } from "../src/governance/LotPool.sol";
 
@@ -19,7 +19,7 @@ contract Deploy is Script {
 
         ELTA elta = new ELTA("ELTA", "ELTA", ADMIN, INITIAL_TREAS, INITIAL_MINT, MAX_SUPPLY);
 
-        ElataXP xp = new ElataXP(ADMIN);
+        ElataXPWithDecay xp = new ElataXPWithDecay(ADMIN);
 
         VeELTA ve = new VeELTA(elta, ADMIN);
 

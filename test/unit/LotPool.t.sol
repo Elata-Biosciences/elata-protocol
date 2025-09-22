@@ -3,13 +3,13 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import { LotPool } from "../../src/governance/LotPool.sol";
-import { ElataXP } from "../../src/xp/ElataXP.sol";
+import { ElataXPWithDecay } from "../../src/xp/ElataXPWithDecay.sol";
 import { ELTA } from "../../src/token/ELTA.sol";
 import { Errors } from "../../src/utils/Errors.sol";
 
 contract LotPoolTest is Test {
     LotPool public lotPool;
-    ElataXP public xp;
+    ElataXPWithDecay public xp;
     ELTA public elta;
 
     address public admin = makeAddr("admin");
@@ -30,7 +30,7 @@ contract LotPoolTest is Test {
 
     function setUp() public {
         elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 77_000_000 ether);
-        xp = new ElataXP(admin);
+        xp = new ElataXPWithDecay(admin);
         lotPool = new LotPool(elta, xp, admin);
 
         // Give users some XP
@@ -60,7 +60,7 @@ contract LotPoolTest is Test {
         new LotPool(ELTA(address(0)), xp, admin);
 
         vm.expectRevert(Errors.ZeroAddress.selector);
-        new LotPool(elta, ElataXP(address(0)), admin);
+        new LotPool(elta, ElataXPWithDecay(address(0)), admin);
 
         vm.expectRevert(Errors.ZeroAddress.selector);
         new LotPool(elta, xp, address(0));
