@@ -20,11 +20,11 @@ contract Deploy is Script {
     // Configuration - Set via environment variables
     address public ADMIN_MSIG = vm.envAddress("ADMIN_MSIG");
     address public INITIAL_TREASURY = vm.envAddress("INITIAL_TREASURY");
-    
+
     // Token configuration
-    uint256 public constant INITIAL_MINT = 10_000_000 ether;  // 10M ELTA initial
-    uint256 public constant MAX_SUPPLY = 77_000_000 ether;    // 77M ELTA total cap
-    
+    uint256 public constant INITIAL_MINT = 10_000_000 ether; // 10M ELTA initial
+    uint256 public constant MAX_SUPPLY = 77_000_000 ether; // 77M ELTA total cap
+
     // Governance configuration
     uint256 public constant TIMELOCK_DELAY = 48 hours;
 
@@ -58,14 +58,8 @@ contract Deploy is Script {
         console2.log("=====================================");
 
         // 1. Deploy core token
-        protocol.token = new ELTA(
-            "ELTA",
-            "ELTA",
-            ADMIN_MSIG,
-            INITIAL_TREASURY,
-            INITIAL_MINT,
-            MAX_SUPPLY
-        );
+        protocol.token =
+            new ELTA("ELTA", "ELTA", ADMIN_MSIG, INITIAL_TREASURY, INITIAL_MINT, MAX_SUPPLY);
 
         // 2. Deploy experience point system
         protocol.xp = new ElataXP(ADMIN_MSIG);
@@ -144,7 +138,7 @@ contract Deploy is Script {
         console2.log("Governor:          ", address(protocol.governor));
         console2.log("Timelock:          ", address(protocol.timelock));
         console2.log("===========================");
-        
+
         // Verification commands
         console2.log("\n=== VERIFICATION COMMANDS ===");
         console2.log("cast call", address(protocol.token), '"name()"');

@@ -4,7 +4,8 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import { ERC721Enumerable } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import { ERC721Enumerable } from
+    "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { Errors } from "../utils/Errors.sol";
@@ -62,16 +63,16 @@ contract VeELTA is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
     bool public emergencyUnlockEnabled;
 
     event LockCreated(
-        address indexed user,
-        uint256 indexed tokenId,
-        uint256 amount,
-        uint256 start,
-        uint256 end
+        address indexed user, uint256 indexed tokenId, uint256 amount, uint256 start, uint256 end
     );
     event LockIncreased(uint256 indexed tokenId, uint256 addedAmount, uint256 newAmount);
     event LockExtended(uint256 indexed tokenId, uint256 oldEnd, uint256 newEnd);
-    event PositionsMerged(uint256 indexed fromTokenId, uint256 indexed toTokenId, uint256 totalAmount);
-    event PositionSplit(uint256 indexed originalTokenId, uint256 indexed newTokenId, uint256 splitAmount);
+    event PositionsMerged(
+        uint256 indexed fromTokenId, uint256 indexed toTokenId, uint256 totalAmount
+    );
+    event PositionSplit(
+        uint256 indexed originalTokenId, uint256 indexed newTokenId, uint256 splitAmount
+    );
     event VotingPowerDelegated(uint256 indexed tokenId, address indexed from, address indexed to);
     event EmergencyUnlock(uint256 indexed tokenId, uint256 amount, uint256 penalty);
     event Withdrawn(uint256 indexed tokenId, uint256 amount);
@@ -82,10 +83,7 @@ contract VeELTA is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
      * @param _elta Address of the ELTA token
      * @param _admin Address that will receive admin roles
      */
-    constructor(
-        IERC20 _elta,
-        address _admin
-    ) ERC721("Vote-Escrowed ELTA", "veELTA") {
+    constructor(IERC20 _elta, address _admin) ERC721("Vote-Escrowed ELTA", "veELTA") {
         if (address(_elta) == address(0) || _admin == address(0)) {
             revert Errors.ZeroAddress();
         }
@@ -102,7 +100,11 @@ contract VeELTA is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
      * @param lockDuration Duration of the lock in seconds
      * @return tokenId The ID of the created position NFT
      */
-    function createLock(uint256 amount, uint256 lockDuration) external nonReentrant returns (uint256 tokenId) {
+    function createLock(uint256 amount, uint256 lockDuration)
+        external
+        nonReentrant
+        returns (uint256 tokenId)
+    {
         if (amount == 0) revert Errors.InvalidAmount();
         if (lockDuration < MIN_LOCK) revert Errors.LockTooShort();
         if (lockDuration > MAX_LOCK) revert Errors.LockTooLong();
@@ -122,7 +124,7 @@ contract VeELTA is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
         });
 
         _mint(msg.sender, tokenId);
-        
+
         // Update delegation
         delegatedVotingPower[msg.sender] += _calculateVotingPower(amount, lockDuration);
 
@@ -150,7 +152,8 @@ contract VeELTA is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
         uint256 newVotingPower = _getPositionVotingPower(tokenId);
 
         address delegate = position.delegate;
-        delegatedVotingPower[delegate] = delegatedVotingPower[delegate] - oldVotingPower + newVotingPower;
+        delegatedVotingPower[delegate] =
+            delegatedVotingPower[delegate] - oldVotingPower + newVotingPower;
 
         emit LockIncreased(tokenId, addedAmount, position.amount);
     }
@@ -178,7 +181,8 @@ contract VeELTA is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
         uint256 newVotingPower = _getPositionVotingPower(tokenId);
 
         address delegate = position.delegate;
-        delegatedVotingPower[delegate] = delegatedVotingPower[delegate] - oldVotingPower + newVotingPower;
+        delegatedVotingPower[delegate] =
+            delegatedVotingPower[delegate] - oldVotingPower + newVotingPower;
 
         emit LockExtended(tokenId, oldEnd, newEnd);
     }
@@ -197,7 +201,9 @@ contract VeELTA is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
         LockPosition storage toPos = positions[toTokenId];
 
         if (fromPos.emergencyUnlocked || toPos.emergencyUnlocked) revert Errors.LockNotExpired();
-        if (block.timestamp >= fromPos.end || block.timestamp >= toPos.end) revert Errors.LockNotExpired();
+        if (block.timestamp >= fromPos.end || block.timestamp >= toPos.end) {
+            revert Errors.LockNotExpired();
+        }
 
         // Update voting power delegation
         uint256 oldFromPower = _getPositionVotingPower(fromTokenId);
@@ -214,9 +220,10 @@ contract VeELTA is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
         // Update delegated voting power
         address fromDelegate = fromPos.delegate;
         address toDelegate = toPos.delegate;
-        
+
         delegatedVotingPower[fromDelegate] -= oldFromPower;
-        delegatedVotingPower[toDelegate] = delegatedVotingPower[toDelegate] - oldToPower + newToPower;
+        delegatedVotingPower[toDelegate] =
+            delegatedVotingPower[toDelegate] - oldToPower + newToPower;
 
         // Burn the source position
         _burn(fromTokenId);
@@ -231,7 +238,11 @@ contract VeELTA is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
      * @param splitAmount Amount to split into new position
      * @return newTokenId ID of the newly created position
      */
-    function splitPosition(uint256 tokenId, uint256 splitAmount) external nonReentrant returns (uint256 newTokenId) {
+    function splitPosition(uint256 tokenId, uint256 splitAmount)
+        external
+        nonReentrant
+        returns (uint256 newTokenId)
+    {
         if (!_isAuthorized(ownerOf(tokenId), msg.sender, tokenId)) revert Errors.NotAuthorized();
         if (splitAmount == 0) revert Errors.InvalidAmount();
 
@@ -261,7 +272,8 @@ contract VeELTA is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
 
         // Update delegated voting power
         address delegate = position.delegate;
-        delegatedVotingPower[delegate] = delegatedVotingPower[delegate] - oldVotingPower + newOriginalPower + newSplitPower;
+        delegatedVotingPower[delegate] =
+            delegatedVotingPower[delegate] - oldVotingPower + newOriginalPower + newSplitPower;
 
         emit PositionSplit(tokenId, newTokenId, splitAmount);
     }
@@ -277,11 +289,11 @@ contract VeELTA is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
 
         LockPosition storage position = positions[tokenId];
         address oldDelegate = position.delegate;
-        
+
         if (oldDelegate == to) return; // No change needed
 
         uint256 votingPower = _getPositionVotingPower(tokenId);
-        
+
         // Update delegation
         delegatedVotingPower[oldDelegate] -= votingPower;
         delegatedVotingPower[to] += votingPower;
@@ -333,7 +345,7 @@ contract VeELTA is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
         }
 
         uint256 amount = position.amount;
-        
+
         // Update voting power delegation if not emergency unlocked
         if (!position.emergencyUnlocked) {
             uint256 votingPower = _getPositionVotingPower(tokenId);
@@ -422,18 +434,22 @@ contract VeELTA is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
      * @return isExpired Whether position has expired
      * @return emergencyUnlocked Whether emergency unlocked
      */
-    function getPositionDetails(uint256 tokenId) external view returns (
-        uint256 amount,
-        uint256 startTime,
-        uint256 endTime,
-        address delegate,
-        uint256 votingPower,
-        uint256 timeRemaining,
-        bool isExpired,
-        bool emergencyUnlocked
-    ) {
+    function getPositionDetails(uint256 tokenId)
+        external
+        view
+        returns (
+            uint256 amount,
+            uint256 startTime,
+            uint256 endTime,
+            address delegate,
+            uint256 votingPower,
+            uint256 timeRemaining,
+            bool isExpired,
+            bool emergencyUnlocked
+        )
+    {
         LockPosition storage position = positions[tokenId];
-        
+
         amount = position.amount;
         startTime = position.start;
         endTime = position.end;
@@ -452,29 +468,33 @@ contract VeELTA is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
      * @return totalVotingPower Total voting power
      * @return averageTimeRemaining Average time until unlock
      */
-    function getUserStakingSummary(address user) external view returns (
-        uint256 positionCount,
-        uint256 totalStaked,
-        uint256 totalVotingPower,
-        uint256 averageTimeRemaining
-    ) {
+    function getUserStakingSummary(address user)
+        external
+        view
+        returns (
+            uint256 positionCount,
+            uint256 totalStaked,
+            uint256 totalVotingPower,
+            uint256 averageTimeRemaining
+        )
+    {
         uint256[] memory tokenIds = this.getUserPositions(user);
         positionCount = tokenIds.length;
-        
+
         if (positionCount == 0) return (0, 0, 0, 0);
-        
+
         uint256 totalTimeRemaining = 0;
-        
+
         for (uint256 i = 0; i < tokenIds.length; i++) {
             LockPosition storage position = positions[tokenIds[i]];
             totalStaked += position.amount;
             totalVotingPower += _getPositionVotingPower(tokenIds[i]);
-            
+
             if (block.timestamp < position.end) {
                 totalTimeRemaining += position.end - block.timestamp;
             }
         }
-        
+
         averageTimeRemaining = totalTimeRemaining / positionCount;
     }
 
@@ -484,17 +504,21 @@ contract VeELTA is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
      * @return withdrawable Whether position can be withdrawn
      * @return reason Reason if cannot withdraw
      */
-    function canWithdraw(uint256 tokenId) external view returns (bool withdrawable, string memory reason) {
+    function canWithdraw(uint256 tokenId)
+        external
+        view
+        returns (bool withdrawable, string memory reason)
+    {
         LockPosition storage position = positions[tokenId];
-        
+
         if (position.amount == 0) {
             return (false, "Position does not exist or already withdrawn");
         }
-        
+
         if (!position.emergencyUnlocked && block.timestamp < position.end) {
             return (false, "Position is still locked");
         }
-        
+
         return (true, "Position can be withdrawn");
     }
 
@@ -504,7 +528,11 @@ contract VeELTA is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
      * @param duration Lock duration
      * @return Voting power
      */
-    function _calculateVotingPower(uint256 amount, uint256 duration) internal pure returns (uint256) {
+    function _calculateVotingPower(uint256 amount, uint256 duration)
+        internal
+        pure
+        returns (uint256)
+    {
         return (amount * duration) / MAX_LOCK;
     }
 
@@ -515,7 +543,7 @@ contract VeELTA is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
      */
     function _getPositionVotingPower(uint256 tokenId) internal view returns (uint256) {
         LockPosition storage position = positions[tokenId];
-        
+
         if (position.amount == 0 || position.emergencyUnlocked) return 0;
         if (block.timestamp >= position.end) return 0;
 
@@ -532,7 +560,7 @@ contract VeELTA is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
         returns (address)
     {
         address from = _ownerOf(tokenId);
-        
+
         // Allow minting (from == 0) and burning (to == 0)
         if (from != address(0) && to != address(0)) {
             revert Errors.TransfersDisabled();
@@ -544,7 +572,10 @@ contract VeELTA is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
     /**
      * @dev Required override for ERC721Enumerable
      */
-    function _increaseBalance(address account, uint128 value) internal override(ERC721, ERC721Enumerable) {
+    function _increaseBalance(address account, uint128 value)
+        internal
+        override(ERC721, ERC721Enumerable)
+    {
         super._increaseBalance(account, value);
     }
 

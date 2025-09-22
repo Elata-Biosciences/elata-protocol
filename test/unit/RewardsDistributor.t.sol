@@ -12,7 +12,7 @@ contract RewardsDistributorTest is Test {
     VeELTA public veELTA;
     ELTA public elta;
     ELTA public rewardToken;
-    
+
     address public admin = makeAddr("admin");
     address public treasury = makeAddr("treasury");
     address public user1 = makeAddr("user1");
@@ -21,7 +21,9 @@ contract RewardsDistributorTest is Test {
 
     event EpochStarted(uint256 indexed epoch, uint256 startTime, uint256 endTime);
     event EpochFinalized(uint256 indexed epoch, bytes32 merkleRoot, uint256 totalRewards);
-    event RewardClaimed(address indexed user, uint256 indexed epoch, address indexed token, uint256 amount);
+    event RewardClaimed(
+        address indexed user, uint256 indexed epoch, address indexed token, uint256 amount
+    );
     event RewardTokenAdded(address indexed token);
     event RewardsDeposited(address indexed token, uint256 amount, uint256 epoch);
 
@@ -45,7 +47,7 @@ contract RewardsDistributorTest is Test {
         assertEq(rewardsDistributor.EPOCH_DURATION(), 7 days);
         assertEq(rewardsDistributor.MIN_DISTRIBUTION_DELAY(), 1 days);
         assertEq(rewardsDistributor.currentEpoch(), 1); // First epoch started in constructor
-        
+
         assertTrue(rewardsDistributor.hasRole(rewardsDistributor.DEFAULT_ADMIN_ROLE(), admin));
         assertTrue(rewardsDistributor.hasRole(rewardsDistributor.DISTRIBUTOR_ROLE(), admin));
         assertTrue(rewardsDistributor.hasRole(rewardsDistributor.PAUSER_ROLE(), admin));
@@ -54,7 +56,7 @@ contract RewardsDistributorTest is Test {
     function test_AddRewardToken() public {
         vm.expectEmit(true, false, false, false);
         emit RewardTokenAdded(address(rewardToken));
-        
+
         vm.prank(admin);
         rewardsDistributor.addRewardToken(rewardToken);
 
@@ -75,7 +77,7 @@ contract RewardsDistributorTest is Test {
         rewardsDistributor.addRewardToken(rewardToken);
 
         uint256 depositAmount = 1000 ether;
-        
+
         vm.startPrank(admin);
         rewardToken.approve(address(rewardsDistributor), depositAmount);
         rewardsDistributor.depositRewards(address(rewardToken), depositAmount);
@@ -87,7 +89,7 @@ contract RewardsDistributorTest is Test {
     function test_RevertWhen_DepositRewardsTokenNotActive() public {
         vm.startPrank(admin);
         rewardToken.approve(address(rewardsDistributor), 1000 ether);
-        
+
         vm.expectRevert(RewardsDistributor.TokenNotActive.selector);
         rewardsDistributor.depositRewards(address(rewardToken), 1000 ether);
         vm.stopPrank();
@@ -116,7 +118,7 @@ contract RewardsDistributorTest is Test {
         vm.warp(block.timestamp + 7 days + 1 days + 1);
 
         bytes32 merkleRoot = keccak256("test_merkle_root");
-        
+
         vm.prank(admin);
         rewardsDistributor.finalizeEpoch(merkleRoot);
 
@@ -147,11 +149,11 @@ contract RewardsDistributorTest is Test {
 
         // Verify epoch was finalized (epoch 0 should be finalized, epoch 1 should be current)
         assertEq(rewardsDistributor.currentEpoch(), 2); // New epoch started
-        
+
         // Check that epoch 0 was finalized
-        (,,,,bool finalized,) = rewardsDistributor.getEpochDetails(0);
+        (,,,, bool finalized,) = rewardsDistributor.getEpochDetails(0);
         assertTrue(finalized);
-        
+
         // Note: Actual reward claiming would require proper merkle proofs
         // This test verifies the epoch finalization works correctly
     }
@@ -174,7 +176,7 @@ contract RewardsDistributorTest is Test {
     function test_PauseUnpause() public {
         vm.prank(admin);
         rewardsDistributor.setPaused(true);
-        
+
         assertTrue(rewardsDistributor.paused());
 
         // Should revert when paused - try deposit rewards
@@ -188,14 +190,14 @@ contract RewardsDistributorTest is Test {
         // Unpause
         vm.prank(admin);
         rewardsDistributor.setPaused(false);
-        
+
         assertFalse(rewardsDistributor.paused());
     }
 
     function test_GetCurrentEpoch() public {
-        (uint256 epoch, uint256 startTime, uint256 endTime, uint256 totalRewards, bool finalized) = 
+        (uint256 epoch, uint256 startTime, uint256 endTime, uint256 totalRewards, bool finalized) =
             rewardsDistributor.getCurrentEpoch();
-        
+
         assertEq(epoch, 0); // Current epoch index is 0
         assertEq(startTime, 1); // Block timestamp in tests starts at 1
         assertEq(endTime, 1 + 7 days);
@@ -215,7 +217,7 @@ contract RewardsDistributorTest is Test {
 
     function testFuzz_DepositRewards(uint256 amount) public {
         amount = bound(amount, 1 ether, 10000 ether);
-        
+
         vm.prank(admin);
         rewardsDistributor.addRewardToken(rewardToken);
 

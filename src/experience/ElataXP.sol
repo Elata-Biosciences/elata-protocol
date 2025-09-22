@@ -71,7 +71,7 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(XP_MINTER_ROLE, admin);
         _grantRole(KEEPER_ROLE, admin);
-        
+
         lastGlobalDecay = block.timestamp;
     }
 
@@ -92,10 +92,7 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl {
         _updateUserDecay(to);
 
         // Add new XP entry
-        userXPEntries[to].push(XPEntry({
-            amount: amount,
-            timestamp: block.timestamp
-        }));
+        userXPEntries[to].push(XPEntry({ amount: amount, timestamp: block.timestamp }));
 
         _mint(to, amount);
         totalXPBeforeDecay += amount;
@@ -131,7 +128,7 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl {
             if (entry.amount <= remainingToRevoke) {
                 remainingToRevoke -= entry.amount;
                 totalXPBeforeDecay -= entry.amount;
-                
+
                 // Remove entry by swapping with last and popping
                 entries[index] = entries[entries.length - 1];
                 entries.pop();
@@ -224,22 +221,26 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @return nextDecayAmount Amount that will decay next
      * @return timeToFullDecay Time until oldest XP fully decays
      */
-    function getUserXPSummary(address user) external view returns (
-        uint256 currentBalance,
-        uint256 currentEffectiveBalance,
-        uint256 decayRate,
-        uint256 nextDecayAmount,
-        uint256 timeToFullDecay
-    ) {
+    function getUserXPSummary(address user)
+        external
+        view
+        returns (
+            uint256 currentBalance,
+            uint256 currentEffectiveBalance,
+            uint256 decayRate,
+            uint256 nextDecayAmount,
+            uint256 timeToFullDecay
+        )
+    {
         currentBalance = balanceOf(user);
         currentEffectiveBalance = _calculateEffectiveBalance(user);
-        
+
         if (currentBalance > 0) {
             decayRate = ((currentBalance - currentEffectiveBalance) * 10000) / currentBalance;
         } else {
             decayRate = 0;
         }
-        
+
         nextDecayAmount = currentBalance - currentEffectiveBalance;
         timeToFullDecay = _calculateTimeToFullDecay(user);
     }
@@ -250,18 +251,22 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @param futureTimestamp Future timestamp to project to
      * @return projectedBalance Projected XP balance at future time
      */
-    function getXPProjection(address user, uint256 futureTimestamp) external view returns (uint256 projectedBalance) {
+    function getXPProjection(address user, uint256 futureTimestamp)
+        external
+        view
+        returns (uint256 projectedBalance)
+    {
         if (futureTimestamp <= block.timestamp) {
             return _calculateEffectiveBalance(user);
         }
-        
+
         XPEntry[] storage entries = userXPEntries[user];
         projectedBalance = 0;
-        
+
         for (uint256 i = 0; i < entries.length; i++) {
             XPEntry storage entry = entries[i];
             uint256 age = futureTimestamp - entry.timestamp;
-            
+
             if (age < DECAY_WINDOW) {
                 uint256 decayFactor = DECAY_WINDOW - age;
                 projectedBalance += (entry.amount * decayFactor) / DECAY_WINDOW;
@@ -275,10 +280,14 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @return needsUpdate Whether user should update decay
      * @return decayAmount Amount that would be decayed
      */
-    function checkDecayStatus(address user) external view returns (bool needsUpdate, uint256 decayAmount) {
+    function checkDecayStatus(address user)
+        external
+        view
+        returns (bool needsUpdate, uint256 decayAmount)
+    {
         uint256 currentBalance = balanceOf(user);
         uint256 currentEffectiveBalance = _calculateEffectiveBalance(user);
-        
+
         needsUpdate = currentBalance > currentEffectiveBalance;
         decayAmount = needsUpdate ? currentBalance - currentEffectiveBalance : 0;
     }
@@ -295,23 +304,23 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl {
 
         uint256 currentBalance = balanceOf(user);
         uint256 calculatedEffectiveBalance = _calculateEffectiveBalance(user);
-        
+
         if (currentBalance <= calculatedEffectiveBalance) {
             lastDecayUpdate[user] = block.timestamp;
             return 0; // No decay needed
         }
 
         uint256 decayAmount = currentBalance - calculatedEffectiveBalance;
-        
+
         // Remove decayed entries
         _removeDecayedEntries(user);
-        
+
         // Burn decayed XP
         _burn(user, decayAmount);
         totalXPBeforeDecay -= decayAmount;
-        
+
         lastDecayUpdate[user] = block.timestamp;
-        
+
         emit XPDecayed(user, decayAmount, calculatedEffectiveBalance);
         return decayAmount;
     }
@@ -384,7 +393,7 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl {
 
         uint256 ageOfOldest = block.timestamp - oldestTimestamp;
         if (ageOfOldest >= DECAY_WINDOW) return 0;
-        
+
         return DECAY_WINDOW - ageOfOldest;
     }
 

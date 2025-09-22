@@ -79,10 +79,7 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
     event EpochStarted(uint256 indexed epoch, uint256 startTime, uint256 endTime);
     event EpochFinalized(uint256 indexed epoch, bytes32 merkleRoot, uint256 totalRewards);
     event RewardClaimed(
-        address indexed user,
-        uint256 indexed epoch,
-        address indexed token,
-        uint256 amount
+        address indexed user, uint256 indexed epoch, address indexed token, uint256 amount
     );
     event RewardTokenAdded(address indexed token);
     event RewardTokenRemoved(address indexed token);
@@ -134,11 +131,8 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
         if (address(token) == address(0)) revert Errors.ZeroAddress();
         if (rewardTokens[address(token)].active) return; // Already active
 
-        rewardTokens[address(token)] = RewardToken({
-            token: token,
-            totalDistributed: 0,
-            active: true
-        });
+        rewardTokens[address(token)] =
+            RewardToken({ token: token, totalDistributed: 0, active: true });
 
         activeTokens.push(address(token));
         emit RewardTokenAdded(address(token));
@@ -170,10 +164,11 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
      * @param token Address of the reward token
      * @param amount Amount of tokens to deposit
      */
-    function depositRewards(
-        address token,
-        uint256 amount
-    ) external onlyRole(DISTRIBUTOR_ROLE) whenNotPaused {
+    function depositRewards(address token, uint256 amount)
+        external
+        onlyRole(DISTRIBUTOR_ROLE)
+        whenNotPaused
+    {
         if (!rewardTokens[token].active) revert TokenNotActive();
         if (amount == 0) revert Errors.InvalidAmount();
 
@@ -221,11 +216,11 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
      * @param amount Amount of rewards to claim
      * @param merkleProof Merkle proof for the claim
      */
-    function claimRewards(
-        uint256 epoch,
-        uint256 amount,
-        bytes32[] calldata merkleProof
-    ) external nonReentrant whenNotPaused {
+    function claimRewards(uint256 epoch, uint256 amount, bytes32[] calldata merkleProof)
+        external
+        nonReentrant
+        whenNotPaused
+    {
         if (epoch >= currentEpoch) revert InvalidEpoch();
 
         RewardEpoch storage rewardEpoch = epochs[epoch];
@@ -306,12 +301,20 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
     function getCurrentEpoch()
         external
         view
-        returns (uint256 epoch, uint256 startTime, uint256 endTime, uint256 totalRewards, bool finalized)
+        returns (
+            uint256 epoch,
+            uint256 startTime,
+            uint256 endTime,
+            uint256 totalRewards,
+            bool finalized
+        )
     {
         // Current active epoch is currentEpoch - 1 (since _startNewEpoch increments)
         uint256 activeEpoch = currentEpoch > 0 ? currentEpoch - 1 : 0;
         RewardEpoch storage current = epochs[activeEpoch];
-        return (activeEpoch, current.startTime, current.endTime, current.totalRewards, current.finalized);
+        return (
+            activeEpoch, current.startTime, current.endTime, current.totalRewards, current.finalized
+        );
     }
 
     /**
@@ -341,14 +344,14 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
         // This is a simplified calculation - in practice, this would require
         // off-chain computation based on voting power at each epoch
         uint256 totalPending = 0;
-        
+
         for (uint256 i = 0; i < currentEpoch; i++) {
             if (epochs[i].finalized && !epochs[i].claimed[user]) {
                 // Simplified calculation - actual implementation would use merkle tree data
                 totalPending += _estimateUserRewards(user, i);
             }
         }
-        
+
         return totalPending;
     }
 
@@ -358,10 +361,11 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
      * @return claimedEpochs Array of epochs where user has claimed
      * @return userTotalClaimed Total amount claimed across all epochs
      */
-    function getUserRewardHistory(address user) external view returns (
-        uint256[] memory claimedEpochs,
-        uint256 userTotalClaimed
-    ) {
+    function getUserRewardHistory(address user)
+        external
+        view
+        returns (uint256[] memory claimedEpochs, uint256 userTotalClaimed)
+    {
         // Count claimed epochs
         uint256 claimedCount = 0;
         for (uint256 i = 0; i < currentEpoch; i++) {
@@ -369,7 +373,7 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
                 claimedCount++;
             }
         }
-        
+
         // Build array of claimed epochs
         claimedEpochs = new uint256[](claimedCount);
         uint256 index = 0;
@@ -379,7 +383,7 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
                 index++;
             }
         }
-        
+
         userTotalClaimed = totalClaimed[user];
     }
 
@@ -393,14 +397,18 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
      * @return finalized Whether epoch is finalized
      * @return merkleRoot Merkle root for claims
      */
-    function getEpochDetails(uint256 epochId) external view returns (
-        uint256 startTime,
-        uint256 endTime,
-        uint256 totalRewards,
-        uint256 totalVotingPower,
-        bool finalized,
-        bytes32 merkleRoot
-    ) {
+    function getEpochDetails(uint256 epochId)
+        external
+        view
+        returns (
+            uint256 startTime,
+            uint256 endTime,
+            uint256 totalRewards,
+            uint256 totalVotingPower,
+            bool finalized,
+            bytes32 merkleRoot
+        )
+    {
         RewardEpoch storage epoch = epochs[epochId];
         return (
             epoch.startTime,
@@ -418,10 +426,11 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
      * @return isActive Whether token is active for rewards
      * @return totalDistributed Total amount distributed of this token
      */
-    function getRewardTokenInfo(address token) external view returns (
-        bool isActive,
-        uint256 totalDistributed
-    ) {
+    function getRewardTokenInfo(address token)
+        external
+        view
+        returns (bool isActive, uint256 totalDistributed)
+    {
         RewardToken storage rewardToken = rewardTokens[token];
         return (rewardToken.active, rewardToken.totalDistributed);
     }
@@ -433,7 +442,7 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
     function getTimeUntilFinalization() external view returns (uint256 timeRemaining) {
         RewardEpoch storage current = epochs[currentEpoch];
         uint256 finalizationTime = current.endTime + MIN_DISTRIBUTION_DELAY;
-        
+
         if (block.timestamp >= finalizationTime) return 0;
         return finalizationTime - block.timestamp;
     }
@@ -475,7 +484,7 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
         for (uint256 i = 0; i < activeTokens.length; i++) {
             address tokenAddr = activeTokens[i];
             uint256 amount = amountPerToken;
-            
+
             // Give remainder to first token
             if (i == 0) amount += remainder;
 
@@ -493,11 +502,11 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
      * @param leaf Leaf to verify
      * @return Whether the proof is valid
      */
-    function _verifyProof(
-        bytes32[] memory proof,
-        bytes32 root,
-        bytes32 leaf
-    ) internal pure returns (bool) {
+    function _verifyProof(bytes32[] memory proof, bytes32 root, bytes32 leaf)
+        internal
+        pure
+        returns (bool)
+    {
         bytes32 computedHash = leaf;
 
         for (uint256 i = 0; i < proof.length; i++) {

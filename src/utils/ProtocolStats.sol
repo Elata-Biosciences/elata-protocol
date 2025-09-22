@@ -125,21 +125,21 @@ contract ProtocolStats {
     function getXPDecayInfo(address user) external view returns (XPDecayInfo memory) {
         uint256 currentBalance = xp.balanceOf(user);
         uint256 effectiveBalance = xp.effectiveBalance(user);
-        
+
         ElataXP.XPEntry[] memory entries = xp.getUserXPEntries(user);
         XPEntry[] memory formattedEntries = new XPEntry[](entries.length);
-        
+
         for (uint256 i = 0; i < entries.length; i++) {
-            formattedEntries[i] = XPEntry({
-                amount: entries[i].amount,
-                timestamp: entries[i].timestamp
-            });
+            formattedEntries[i] =
+                XPEntry({ amount: entries[i].amount, timestamp: entries[i].timestamp });
         }
 
         return XPDecayInfo({
             currentBalance: currentBalance,
             effectiveBalance: effectiveBalance,
-            decayRate: currentBalance > 0 ? ((currentBalance - effectiveBalance) * 10000) / currentBalance : 0,
+            decayRate: currentBalance > 0
+                ? ((currentBalance - effectiveBalance) * 10000) / currentBalance
+                : 0,
             nextDecayAmount: currentBalance - effectiveBalance,
             timeToFullDecay: _calculateTimeToFullDecay(user),
             entries: formattedEntries
@@ -171,17 +171,22 @@ contract ProtocolStats {
      * @param finalized Whether round is finalized
      * @param options Array of voting options
      */
-    function getCurrentFundingRound() external view returns (
-        uint256 roundId,
-        uint256 snapshotBlock,
-        uint64 startTime,
-        uint64 endTime,
-        bool finalized,
-        bytes32[] memory options
-    ) {
+    function getCurrentFundingRound()
+        external
+        view
+        returns (
+            uint256 roundId,
+            uint256 snapshotBlock,
+            uint64 startTime,
+            uint64 endTime,
+            bool finalized,
+            bytes32[] memory options
+        )
+    {
         uint256 currentRound = funding.currentRoundId();
         if (currentRound > 0) {
-            (snapshotBlock, startTime, endTime, finalized, options) = funding.getRound(currentRound - 1);
+            (snapshotBlock, startTime, endTime, finalized, options) =
+                funding.getRound(currentRound - 1);
             roundId = currentRound - 1;
         } else {
             return (0, 0, 0, 0, false, new bytes32[](0));
@@ -196,12 +201,12 @@ contract ProtocolStats {
      * @return usedXP XP already used in voting
      * @return remainingXP XP still available
      */
-    function getUserVotingStatus(address user, uint256 roundId) external view returns (
-        uint256 userXP,
-        uint256 usedXP,
-        uint256 remainingXP
-    ) {
-        (uint256 snapshotBlock,,,, ) = funding.getRound(roundId);
+    function getUserVotingStatus(address user, uint256 roundId)
+        external
+        view
+        returns (uint256 userXP, uint256 usedXP, uint256 remainingXP)
+    {
+        (uint256 snapshotBlock,,,,) = funding.getRound(roundId);
         userXP = xp.getPastXP(user, snapshotBlock);
         // Note: usedXP would need to be tracked in LotPool - see enhancement below
         usedXP = 0; // Placeholder
@@ -213,7 +218,11 @@ contract ProtocolStats {
      * @param users Array of user addresses
      * @return Array of ELTA balances
      */
-    function getBatchELTABalances(address[] calldata users) external view returns (uint256[] memory) {
+    function getBatchELTABalances(address[] calldata users)
+        external
+        view
+        returns (uint256[] memory)
+    {
         uint256[] memory balances = new uint256[](users.length);
         for (uint256 i = 0; i < users.length; i++) {
             balances[i] = elta.balanceOf(users[i]);
@@ -226,7 +235,11 @@ contract ProtocolStats {
      * @param users Array of user addresses
      * @return Array of XP balances
      */
-    function getBatchXPBalances(address[] calldata users) external view returns (uint256[] memory) {
+    function getBatchXPBalances(address[] calldata users)
+        external
+        view
+        returns (uint256[] memory)
+    {
         uint256[] memory balances = new uint256[](users.length);
         for (uint256 i = 0; i < users.length; i++) {
             balances[i] = xp.balanceOf(users[i]);
@@ -237,7 +250,7 @@ contract ProtocolStats {
     // Internal helper functions
 
     function _getPositionSummary(uint256 tokenId) internal view returns (PositionSummary memory) {
-        (uint128 amount, uint64 start, uint64 end, address delegate, bool emergencyUnlocked) = 
+        (uint128 amount, uint64 start, uint64 end, address delegate, bool emergencyUnlocked) =
             staking.positions(tokenId);
 
         bool isExpired = block.timestamp >= end;
@@ -261,7 +274,7 @@ contract ProtocolStats {
         uint256 totalStaked = 0;
 
         for (uint256 i = 0; i < tokenIds.length; i++) {
-            (uint128 amount,,,, ) = staking.positions(tokenIds[i]);
+            (uint128 amount,,,,) = staking.positions(tokenIds[i]);
             totalStaked += amount;
         }
 
@@ -283,12 +296,12 @@ contract ProtocolStats {
         // Sum across all reward tokens
         address[] memory tokens = rewards.getActiveTokens();
         uint256 totalDistributed = 0;
-        
+
         for (uint256 i = 0; i < tokens.length; i++) {
-            (,uint256 distributed,) = rewards.rewardTokens(tokens[i]);
+            (, uint256 distributed,) = rewards.rewardTokens(tokens[i]);
             totalDistributed += distributed;
         }
-        
+
         return totalDistributed;
     }
 
@@ -310,7 +323,7 @@ contract ProtocolStats {
 
         uint256 ageOfOldest = block.timestamp - oldestTimestamp;
         if (ageOfOldest >= xp.DECAY_WINDOW()) return 0;
-        
+
         return xp.DECAY_WINDOW() - ageOfOldest;
     }
 }

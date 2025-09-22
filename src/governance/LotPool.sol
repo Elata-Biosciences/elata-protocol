@@ -159,11 +159,11 @@ contract LotPool is AccessControl {
      * @return usedXP XP already used in this round
      * @return remainingXP XP still available for voting
      */
-    function getUserVotingStatus(address user, uint256 roundId) external view returns (
-        uint256 availableXP,
-        uint256 usedXP,
-        uint256 remainingXP
-    ) {
+    function getUserVotingStatus(address user, uint256 roundId)
+        external
+        view
+        returns (uint256 availableXP, uint256 usedXP, uint256 remainingXP)
+    {
         Round storage r = _rounds[roundId];
         availableXP = XP.getPastXP(user, r.snapshotBlock);
         usedXP = r.used[user];
@@ -176,14 +176,15 @@ contract LotPool is AccessControl {
      * @return options Array of option IDs
      * @return votes Array of vote counts for each option
      */
-    function getRoundVotes(uint256 roundId) external view returns (
-        bytes32[] memory options,
-        uint256[] memory votes
-    ) {
+    function getRoundVotes(uint256 roundId)
+        external
+        view
+        returns (bytes32[] memory options, uint256[] memory votes)
+    {
         Round storage r = _rounds[roundId];
         options = r.options;
         votes = new uint256[](options.length);
-        
+
         for (uint256 i = 0; i < options.length; i++) {
             votes[i] = r.votes[options[i]];
         }

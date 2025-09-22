@@ -2,10 +2,13 @@
 pragma solidity ^0.8.24;
 
 import { Governor } from "@openzeppelin/contracts/governance/Governor.sol";
-import { GovernorSettings } from "@openzeppelin/contracts/governance/extensions/GovernorSettings.sol";
-import { GovernorCountingSimple } from "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
+import { GovernorSettings } from
+    "@openzeppelin/contracts/governance/extensions/GovernorSettings.sol";
+import { GovernorCountingSimple } from
+    "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
 import { GovernorVotes } from "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
-import { GovernorVotesQuorumFraction } from "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
+import { GovernorVotesQuorumFraction } from
+    "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
 import { IVotes } from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 
 /**
@@ -56,13 +59,13 @@ contract ElataGovernor is
     constructor(IVotes _token)
         Governor("Elata Governor")
         GovernorSettings(
-            1 days,    /* voting delay */
-            7 days,    /* voting period */
-            77000e18   /* proposal threshold (0.1% of 77M) */
+            1 days, /* voting delay */
+            7 days, /* voting period */
+            77000e18 /* proposal threshold (0.1% of 77M) */
         )
         GovernorVotes(_token)
         GovernorVotesQuorumFraction(4) /* 4% quorum */
-    {}
+    { }
 
     /**
      * @notice Creates an emergency proposal with expedited voting
@@ -81,7 +84,7 @@ contract ElataGovernor is
         // Check emergency proposal threshold
         uint256 voterVotes = getVotes(msg.sender, block.number - 1);
         uint256 threshold = _emergencyProposalThreshold();
-        
+
         if (voterVotes < threshold) {
             revert GovernorInsufficientProposerVotes(msg.sender, voterVotes, threshold);
         }
@@ -176,7 +179,12 @@ contract ElataGovernor is
         return super.quorum(blockNumber);
     }
 
-    function proposalThreshold() public view override(Governor, GovernorSettings) returns (uint256) {
+    function proposalThreshold()
+        public
+        view
+        override(Governor, GovernorSettings)
+        returns (uint256)
+    {
         return super.proposalThreshold();
     }
 }

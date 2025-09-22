@@ -24,7 +24,7 @@ contract ElataXPTest is Test {
         assertEq(xp.totalSupply(), 0);
         assertEq(xp.DECAY_WINDOW(), 14 days);
         assertEq(xp.MIN_DECAY_INTERVAL(), 1 hours);
-        
+
         assertTrue(xp.hasRole(xp.DEFAULT_ADMIN_ROLE(), admin));
         assertTrue(xp.hasRole(xp.XP_MINTER_ROLE(), admin));
         assertTrue(xp.hasRole(xp.KEEPER_ROLE(), admin));
@@ -240,24 +240,24 @@ contract ElataXPTest is Test {
     function test_CheckpointTracking() public {
         vm.prank(admin);
         xp.award(user1, 1000 ether);
-        
+
         vm.roll(block.number + 1);
         uint256 block1 = block.number - 1;
-        
+
         vm.roll(block.number + 4);
         vm.prank(admin);
         xp.award(user1, 500 ether);
-        
+
         vm.roll(block.number + 1);
         uint256 block2 = block.number - 1;
-        
+
         vm.roll(block.number + 2);
         vm.prank(admin);
         xp.revoke(user1, 200 ether);
-        
+
         vm.roll(block.number + 1);
         uint256 block3 = block.number - 1;
-        
+
         // Check historical balances
         assertEq(xp.getPastXP(user1, block1), 1000 ether);
         assertEq(xp.getPastXP(user1, block2), 1500 ether);
@@ -268,22 +268,22 @@ contract ElataXPTest is Test {
     function test_XPDecayMechanism() public {
         vm.prank(admin);
         xp.award(user1, 1000 ether);
-        
+
         // At start, effective balance should equal actual balance
         assertEq(xp.effectiveBalance(user1), 1000 ether);
-        
+
         // After 7 days (half decay window), effective balance should be ~50%
         vm.warp(block.timestamp + 7 days);
         uint256 halfDecayBalance = xp.effectiveBalance(user1);
         assertApproxEqRel(halfDecayBalance, 500 ether, 0.01e18);
-        
+
         // After 14 days (full decay window), effective balance should be 0
         vm.warp(block.timestamp + 7 days);
         assertEq(xp.effectiveBalance(user1), 0);
-        
+
         // Actual balance should still be 1000 until decay is applied
         assertEq(xp.balanceOf(user1), 1000 ether);
-        
+
         // Apply decay
         xp.updateUserDecay(user1);
         assertEq(xp.balanceOf(user1), 0);
@@ -295,20 +295,20 @@ contract ElataXPTest is Test {
         xp.award(user1, 1000 ether);
         xp.award(user2, 500 ether);
         vm.stopPrank();
-        
+
         // Fast forward past decay window
         vm.warp(block.timestamp + 15 days);
-        
+
         address[] memory users = new address[](2);
         users[0] = user1;
         users[1] = user2;
-        
+
         // Wait for initial interval to pass
         vm.warp(block.timestamp + 2 hours);
-        
+
         vm.prank(admin);
         xp.batchUpdateDecay(users);
-        
+
         assertEq(xp.balanceOf(user1), 0);
         assertEq(xp.balanceOf(user2), 0);
     }
