@@ -1,0 +1,71 @@
+# Dependencies
+node_modules/
+lib/
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Build outputs
+out/
+cache/
+artifacts/
+
+# Logs
+*.log
+logs/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Coverage reports
+coverage/
+lcov.info
+
+# Temporary files
+*.tmp
+*.temp
+
+# Foundry
+broadcast/
+gas_snapshots/
+
+# Local development
+.local/
+
+# Backup files
+*.backup
+*.bak
+
+# Private keys (should never be committed)
+private.key
+*.pem
+
+# Test artifacts
+test-results/
+*.trace
+
+# Documentation build
+docs/_build/
+docs/.doctrees/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+
+# npm
+package-lock.json
+yarn.lock
