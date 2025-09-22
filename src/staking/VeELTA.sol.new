@@ -10,9 +10,9 @@ import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol"
 import { Errors } from "../utils/Errors.sol";
 
 /**
- * @title VeELTAMultiLock
+ * @title VeELTA
  * @author Elata Biosciences
- * @notice Advanced ve-style staking with multiple non-transferable lock positions
+ * @notice Vote-escrowed ELTA staking with multiple non-transferable lock positions
  * @dev NFT-based approach allowing multiple concurrent locks per user
  *
  * Features:
@@ -29,7 +29,7 @@ import { Errors } from "../utils/Errors.sol";
  * - Non-transferable positions prevent secondary markets
  * - Time-locked withdrawals prevent flash loan attacks
  */
-contract VeELTAMultiLock is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
+contract VeELTA is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
     using SafeERC20 for IERC20;
 
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
@@ -84,7 +84,7 @@ contract VeELTAMultiLock is ERC721, ERC721Enumerable, ReentrancyGuard, AccessCon
     constructor(
         IERC20 _elta,
         address _admin
-    ) ERC721("Vote-Escrowed ELTA Multi-Lock", "veELTA-ML") {
+    ) ERC721("Vote-Escrowed ELTA", "veELTA") {
         if (address(_elta) == address(0) || _admin == address(0)) {
             revert Errors.ZeroAddress();
         }

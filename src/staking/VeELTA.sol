@@ -3,119 +3,470 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import { ERC721Enumerable } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { Errors } from "../utils/Errors.sol";
 
 /**
- * @title VeELTA (vote-escrowed ELTA)
- * @notice Minimal ve-style staking with linear time-decay of voting power.
- *         - One active lock per address in this v1 (simple & safe).
- *         - Voting power: amount * (timeRemaining / MAX_LOCK).
- *         - MAX_LOCK and MIN_LOCK are constants; adjust as needed.
- *         - Not transferable. Use views to fetch voting power per account.
+ * @title VeELTA
+ * @author Elata Biosciences
+ * @notice Vote-escrowed ELTA staking with multiple non-transferable lock positions
+ * @dev NFT-based approach allowing multiple concurrent locks per user
  *
- * Notes:
- * - This is intentionally minimal scaffolding. A future v2 can migrate to an
- *   ERC721 "non-transferable positions" model if multi-locks are required.
+ * Features:
+ * - Multiple concurrent lock positions per user
+ * - Non-transferable NFT positions (soulbound)
+ * - Linear decay voting power calculation
+ * - Position merging and splitting capabilities
+ * - Delegation support for governance participation
+ * - Emergency unlock with penalty mechanism
+ *
+ * Security:
+ * - Reentrancy protection on all state-changing functions
+ * - Role-based access control for admin functions
+ * - Non-transferable positions prevent secondary markets
+ * - Time-locked withdrawals prevent flash loan attacks
  */
-contract VeELTA is ReentrancyGuard, AccessControl {
+contract VeELTA is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
     using SafeERC20 for IERC20;
 
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
 
     IERC20 public immutable ELTA;
 
     uint256 public constant MIN_LOCK = 1 weeks;
-    uint256 public constant MAX_LOCK = 104 weeks; // 2 years (tunable)
+    uint256 public constant MAX_LOCK = 208 weeks; // 4 years for multi-lock
+    uint256 public constant EMERGENCY_UNLOCK_PENALTY = 5000; // 50% penalty
 
-    struct Lock {
-        uint128 amount; // staked ELTA
-        uint64 start; // lock start (timestamp)
-        uint64 end; // lock end (timestamp)
+    struct LockPosition {
+        uint128 amount;
+        uint64 start;
+        uint64 end;
+        address delegate;
+        bool emergencyUnlocked;
     }
 
-    mapping(address => Lock) public locks;
+    /// @notice Current token ID counter
+    uint256 public nextTokenId = 1;
 
-    event LockCreated(address indexed user, uint256 amount, uint256 start, uint256 end);
-    event LockIncreased(address indexed user, uint256 addedAmount, uint256 newAmount);
-    event UnlockExtended(address indexed user, uint256 oldEnd, uint256 newEnd);
-    event Withdrawn(address indexed user, uint256 amount);
+    /// @notice Mapping from token ID to lock position
+    mapping(uint256 => LockPosition) public positions;
 
-    constructor(IERC20 elta, address admin) {
-        if (address(elta) == address(0) || admin == address(0)) revert Errors.ZeroAddress();
-        ELTA = elta;
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(MANAGER_ROLE, admin);
+    /// @notice Mapping from user to their delegated voting power
+    mapping(address => uint256) public delegatedVotingPower;
+
+    /// @notice Emergency unlock enabled flag
+    bool public emergencyUnlockEnabled;
+
+    event LockCreated(
+        address indexed user,
+        uint256 indexed tokenId,
+        uint256 amount,
+        uint256 start,
+        uint256 end
+    );
+    event LockIncreased(uint256 indexed tokenId, uint256 addedAmount, uint256 newAmount);
+    event LockExtended(uint256 indexed tokenId, uint256 oldEnd, uint256 newEnd);
+    event PositionsMerged(uint256 indexed fromTokenId, uint256 indexed toTokenId, uint256 totalAmount);
+    event PositionSplit(uint256 indexed originalTokenId, uint256 indexed newTokenId, uint256 splitAmount);
+    event VotingPowerDelegated(uint256 indexed tokenId, address indexed from, address indexed to);
+    event EmergencyUnlock(uint256 indexed tokenId, uint256 amount, uint256 penalty);
+    event Withdrawn(uint256 indexed tokenId, uint256 amount);
+
+    /**
+     * @notice Initializes the multi-lock veELTA contract
+     * @param _elta Address of the ELTA token
+     * @param _admin Address that will receive admin roles
+     */
+    constructor(
+        IERC20 _elta,
+        address _admin
+    ) ERC721("Vote-Escrowed ELTA", "veELTA") {
+        if (address(_elta) == address(0) || _admin == address(0)) {
+            revert Errors.ZeroAddress();
+        }
+
+        ELTA = _elta;
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        _grantRole(MANAGER_ROLE, _admin);
+        _grantRole(EMERGENCY_ROLE, _admin);
     }
 
-    /// @notice Create a new lock. Reverts if user already has an active lock.
-    function createLock(uint256 amount, uint256 lockDuration) external nonReentrant {
+    /**
+     * @notice Creates a new lock position
+     * @param amount Amount of ELTA to lock
+     * @param lockDuration Duration of the lock in seconds
+     * @return tokenId The ID of the created position NFT
+     */
+    function createLock(uint256 amount, uint256 lockDuration) external nonReentrant returns (uint256 tokenId) {
         if (amount == 0) revert Errors.InvalidAmount();
         if (lockDuration < MIN_LOCK) revert Errors.LockTooShort();
         if (lockDuration > MAX_LOCK) revert Errors.LockTooLong();
 
-        Lock memory l = locks[msg.sender];
-        if (l.amount > 0 && block.timestamp < l.end) revert Errors.LockActive();
-
-        // pull tokens
         ELTA.safeTransferFrom(msg.sender, address(this), amount);
 
+        tokenId = nextTokenId++;
         uint64 start = uint64(block.timestamp);
         uint64 end = uint64(block.timestamp + lockDuration);
-        locks[msg.sender] = Lock(uint128(amount), start, end);
 
-        emit LockCreated(msg.sender, amount, start, end);
+        positions[tokenId] = LockPosition({
+            amount: uint128(amount),
+            start: start,
+            end: end,
+            delegate: msg.sender, // Default delegation to owner
+            emergencyUnlocked: false
+        });
+
+        _mint(msg.sender, tokenId);
+        
+        // Update delegation
+        delegatedVotingPower[msg.sender] += _calculateVotingPower(amount, lockDuration);
+
+        emit LockCreated(msg.sender, tokenId, amount, start, end);
     }
 
-    /// @notice Add more ELTA to an existing active lock.
-    function increaseAmount(uint256 added) external nonReentrant {
-        if (added == 0) revert Errors.InvalidAmount();
+    /**
+     * @notice Increases the amount of an existing lock position
+     * @param tokenId ID of the position to increase
+     * @param addedAmount Additional amount to lock
+     */
+    function increaseAmount(uint256 tokenId, uint256 addedAmount) external nonReentrant {
+        if (addedAmount == 0) revert Errors.InvalidAmount();
+        if (!_isAuthorized(ownerOf(tokenId), msg.sender, tokenId)) revert Errors.NotAuthorized();
 
-        Lock storage l = locks[msg.sender];
-        if (l.amount == 0 || block.timestamp >= l.end) revert Errors.NoActiveLock();
+        LockPosition storage position = positions[tokenId];
+        if (position.emergencyUnlocked) revert Errors.LockNotExpired();
+        if (block.timestamp >= position.end) revert Errors.LockNotExpired();
 
-        ELTA.safeTransferFrom(msg.sender, address(this), added);
-        l.amount = uint128(uint256(l.amount) + added);
+        ELTA.safeTransferFrom(msg.sender, address(this), addedAmount);
 
-        emit LockIncreased(msg.sender, added, l.amount);
+        // Update voting power delegation
+        uint256 oldVotingPower = _getPositionVotingPower(tokenId);
+        position.amount = uint128(uint256(position.amount) + addedAmount);
+        uint256 newVotingPower = _getPositionVotingPower(tokenId);
+
+        address delegate = position.delegate;
+        delegatedVotingPower[delegate] = delegatedVotingPower[delegate] - oldVotingPower + newVotingPower;
+
+        emit LockIncreased(tokenId, addedAmount, position.amount);
     }
 
-    /// @notice Extend lock end time (cannot reduce, cannot exceed MAX_LOCK from original start).
-    function increaseUnlockTime(uint256 newEnd) external {
-        Lock storage l = locks[msg.sender];
-        if (l.amount == 0 || block.timestamp >= l.end) revert Errors.NoActiveLock();
-        if (newEnd <= l.end) revert Errors.LockTooShort();
+    /**
+     * @notice Extends the unlock time of a position
+     * @param tokenId ID of the position to extend
+     * @param newEnd New end timestamp
+     */
+    function increaseUnlockTime(uint256 tokenId, uint256 newEnd) external {
+        if (!_isAuthorized(ownerOf(tokenId), msg.sender, tokenId)) revert Errors.NotAuthorized();
 
-        // enforce max from original start
-        uint256 maxAllowed = uint256(l.start) + MAX_LOCK;
+        LockPosition storage position = positions[tokenId];
+        if (position.emergencyUnlocked) revert Errors.LockNotExpired();
+        if (block.timestamp >= position.end) revert Errors.LockNotExpired();
+        if (newEnd <= position.end) revert Errors.LockTooShort();
+
+        uint256 maxAllowed = uint256(position.start) + MAX_LOCK;
         if (newEnd > maxAllowed) revert Errors.LockTooLong();
 
-        uint64 oldEnd = l.end;
-        l.end = uint64(newEnd);
-        emit UnlockExtended(msg.sender, oldEnd, newEnd);
+        // Update voting power delegation
+        uint256 oldVotingPower = _getPositionVotingPower(tokenId);
+        uint64 oldEnd = position.end;
+        position.end = uint64(newEnd);
+        uint256 newVotingPower = _getPositionVotingPower(tokenId);
+
+        address delegate = position.delegate;
+        delegatedVotingPower[delegate] = delegatedVotingPower[delegate] - oldVotingPower + newVotingPower;
+
+        emit LockExtended(tokenId, oldEnd, newEnd);
     }
 
-    /// @notice Withdraw after expiry.
-    function withdraw() external nonReentrant {
-        Lock storage l = locks[msg.sender];
-        if (l.amount == 0) revert Errors.NoActiveLock();
-        if (block.timestamp < l.end) revert Errors.LockNotExpired();
+    /**
+     * @notice Merges two lock positions owned by the same user
+     * @param fromTokenId Source position to merge from
+     * @param toTokenId Target position to merge into
+     */
+    function mergePositions(uint256 fromTokenId, uint256 toTokenId) external nonReentrant {
+        address owner = ownerOf(fromTokenId);
+        if (owner != ownerOf(toTokenId)) revert Errors.NotAuthorized();
+        if (!_isAuthorized(owner, msg.sender, fromTokenId)) revert Errors.NotAuthorized();
 
-        uint256 amount = l.amount;
-        delete locks[msg.sender];
+        LockPosition storage fromPos = positions[fromTokenId];
+        LockPosition storage toPos = positions[toTokenId];
 
-        ELTA.safeTransfer(msg.sender, amount);
-        emit Withdrawn(msg.sender, amount);
+        if (fromPos.emergencyUnlocked || toPos.emergencyUnlocked) revert Errors.LockNotExpired();
+        if (block.timestamp >= fromPos.end || block.timestamp >= toPos.end) revert Errors.LockNotExpired();
+
+        // Update voting power delegation
+        uint256 oldFromPower = _getPositionVotingPower(fromTokenId);
+        uint256 oldToPower = _getPositionVotingPower(toTokenId);
+
+        // Merge into the position with the later end time
+        if (toPos.end < fromPos.end) {
+            toPos.end = fromPos.end;
+        }
+        toPos.amount = uint128(uint256(toPos.amount) + uint256(fromPos.amount));
+
+        uint256 newToPower = _getPositionVotingPower(toTokenId);
+
+        // Update delegated voting power
+        address fromDelegate = fromPos.delegate;
+        address toDelegate = toPos.delegate;
+        
+        delegatedVotingPower[fromDelegate] -= oldFromPower;
+        delegatedVotingPower[toDelegate] = delegatedVotingPower[toDelegate] - oldToPower + newToPower;
+
+        // Burn the source position
+        _burn(fromTokenId);
+        delete positions[fromTokenId];
+
+        emit PositionsMerged(fromTokenId, toTokenId, toPos.amount);
     }
 
-    /// @notice Current voting power for an account.
-    function votingPower(address account) public view returns (uint256) {
-        Lock memory l = locks[account];
-        if (l.amount == 0 || block.timestamp >= l.end) return 0;
+    /**
+     * @notice Splits a lock position into two positions
+     * @param tokenId ID of the position to split
+     * @param splitAmount Amount to split into new position
+     * @return newTokenId ID of the newly created position
+     */
+    function splitPosition(uint256 tokenId, uint256 splitAmount) external nonReentrant returns (uint256 newTokenId) {
+        if (!_isAuthorized(ownerOf(tokenId), msg.sender, tokenId)) revert Errors.NotAuthorized();
+        if (splitAmount == 0) revert Errors.InvalidAmount();
 
-        uint256 remaining = uint256(l.end) - block.timestamp;
-        // amount * remaining / MAX_LOCK
-        return (uint256(l.amount) * remaining) / MAX_LOCK;
+        LockPosition storage position = positions[tokenId];
+        if (position.emergencyUnlocked) revert Errors.LockNotExpired();
+        if (block.timestamp >= position.end) revert Errors.LockNotExpired();
+        if (splitAmount >= position.amount) revert Errors.InvalidAmount();
+
+        // Update original position
+        uint256 oldVotingPower = _getPositionVotingPower(tokenId);
+        position.amount = uint128(uint256(position.amount) - splitAmount);
+        uint256 newOriginalPower = _getPositionVotingPower(tokenId);
+
+        // Create new position
+        newTokenId = nextTokenId++;
+        positions[newTokenId] = LockPosition({
+            amount: uint128(splitAmount),
+            start: position.start,
+            end: position.end,
+            delegate: position.delegate,
+            emergencyUnlocked: false
+        });
+
+        _mint(ownerOf(tokenId), newTokenId);
+
+        uint256 newSplitPower = _getPositionVotingPower(newTokenId);
+
+        // Update delegated voting power
+        address delegate = position.delegate;
+        delegatedVotingPower[delegate] = delegatedVotingPower[delegate] - oldVotingPower + newOriginalPower + newSplitPower;
+
+        emit PositionSplit(tokenId, newTokenId, splitAmount);
+    }
+
+    /**
+     * @notice Delegates voting power of a position to another address
+     * @param tokenId ID of the position
+     * @param to Address to delegate to
+     */
+    function delegatePosition(uint256 tokenId, address to) external {
+        if (!_isAuthorized(ownerOf(tokenId), msg.sender, tokenId)) revert Errors.NotAuthorized();
+        if (to == address(0)) revert Errors.ZeroAddress();
+
+        LockPosition storage position = positions[tokenId];
+        address oldDelegate = position.delegate;
+        
+        if (oldDelegate == to) return; // No change needed
+
+        uint256 votingPower = _getPositionVotingPower(tokenId);
+        
+        // Update delegation
+        delegatedVotingPower[oldDelegate] -= votingPower;
+        delegatedVotingPower[to] += votingPower;
+        position.delegate = to;
+
+        emit VotingPowerDelegated(tokenId, oldDelegate, to);
+    }
+
+    /**
+     * @notice Emergency unlock with penalty (admin only)
+     * @param tokenId ID of the position to emergency unlock
+     */
+    function emergencyUnlock(uint256 tokenId) external onlyRole(EMERGENCY_ROLE) {
+        if (!emergencyUnlockEnabled) revert Errors.NotAuthorized();
+
+        LockPosition storage position = positions[tokenId];
+        if (position.emergencyUnlocked) revert Errors.LockNotExpired();
+        if (block.timestamp >= position.end) revert Errors.LockNotExpired();
+
+        uint256 amount = position.amount;
+        uint256 penalty = (amount * EMERGENCY_UNLOCK_PENALTY) / 10000;
+        uint256 returnAmount = amount - penalty;
+
+        // Update voting power delegation
+        uint256 votingPower = _getPositionVotingPower(tokenId);
+        delegatedVotingPower[position.delegate] -= votingPower;
+
+        position.emergencyUnlocked = true;
+        position.amount = 0;
+
+        address owner = ownerOf(tokenId);
+        ELTA.safeTransfer(owner, returnAmount);
+        // Penalty stays in contract (can be redistributed)
+
+        emit EmergencyUnlock(tokenId, returnAmount, penalty);
+    }
+
+    /**
+     * @notice Withdraws from an expired lock position
+     * @param tokenId ID of the position to withdraw from
+     */
+    function withdraw(uint256 tokenId) external nonReentrant {
+        if (!_isAuthorized(ownerOf(tokenId), msg.sender, tokenId)) revert Errors.NotAuthorized();
+
+        LockPosition storage position = positions[tokenId];
+        if (position.amount == 0) revert Errors.NoActiveLock();
+        if (!position.emergencyUnlocked && block.timestamp < position.end) {
+            revert Errors.LockNotExpired();
+        }
+
+        uint256 amount = position.amount;
+        
+        // Update voting power delegation if not emergency unlocked
+        if (!position.emergencyUnlocked) {
+            uint256 votingPower = _getPositionVotingPower(tokenId);
+            delegatedVotingPower[position.delegate] -= votingPower;
+        }
+
+        position.amount = 0;
+        _burn(tokenId);
+
+        if (!position.emergencyUnlocked) {
+            ELTA.safeTransfer(msg.sender, amount);
+        }
+
+        emit Withdrawn(tokenId, amount);
+    }
+
+    /**
+     * @notice Gets the voting power for a specific position
+     * @param tokenId ID of the position
+     * @return Voting power of the position
+     */
+    function getPositionVotingPower(uint256 tokenId) external view returns (uint256) {
+        return _getPositionVotingPower(tokenId);
+    }
+
+    /**
+     * @notice Gets the total voting power for a user across all positions
+     * @param user User address
+     * @return Total voting power
+     */
+    function getUserVotingPower(address user) external view returns (uint256) {
+        uint256 totalPower = 0;
+        uint256 balance = balanceOf(user);
+
+        for (uint256 i = 0; i < balance; i++) {
+            uint256 tokenId = tokenOfOwnerByIndex(user, i);
+            totalPower += _getPositionVotingPower(tokenId);
+        }
+
+        return totalPower;
+    }
+
+    /**
+     * @notice Gets delegated voting power for an address
+     * @param delegate Delegate address
+     * @return Total delegated voting power
+     */
+    function getDelegatedVotingPower(address delegate) external view returns (uint256) {
+        return delegatedVotingPower[delegate];
+    }
+
+    /**
+     * @notice Gets all position IDs owned by a user
+     * @param user User address
+     * @return Array of token IDs
+     */
+    function getUserPositions(address user) external view returns (uint256[] memory) {
+        uint256 balance = balanceOf(user);
+        uint256[] memory tokenIds = new uint256[](balance);
+
+        for (uint256 i = 0; i < balance; i++) {
+            tokenIds[i] = tokenOfOwnerByIndex(user, i);
+        }
+
+        return tokenIds;
+    }
+
+    /**
+     * @notice Enables/disables emergency unlock functionality
+     * @param enabled Whether emergency unlock should be enabled
+     */
+    function setEmergencyUnlockEnabled(bool enabled) external onlyRole(EMERGENCY_ROLE) {
+        emergencyUnlockEnabled = enabled;
+    }
+
+    /**
+     * @dev Calculates voting power for a given amount and duration
+     * @param amount Locked amount
+     * @param duration Lock duration
+     * @return Voting power
+     */
+    function _calculateVotingPower(uint256 amount, uint256 duration) internal pure returns (uint256) {
+        return (amount * duration) / MAX_LOCK;
+    }
+
+    /**
+     * @dev Gets the current voting power for a position
+     * @param tokenId Position token ID
+     * @return Current voting power
+     */
+    function _getPositionVotingPower(uint256 tokenId) internal view returns (uint256) {
+        LockPosition storage position = positions[tokenId];
+        
+        if (position.amount == 0 || position.emergencyUnlocked) return 0;
+        if (block.timestamp >= position.end) return 0;
+
+        uint256 remaining = uint256(position.end) - block.timestamp;
+        return (uint256(position.amount) * remaining) / MAX_LOCK;
+    }
+
+    /**
+     * @dev Override to make tokens non-transferable (soulbound)
+     */
+    function _update(address to, uint256 tokenId, address auth)
+        internal
+        override(ERC721, ERC721Enumerable)
+        returns (address)
+    {
+        address from = _ownerOf(tokenId);
+        
+        // Allow minting (from == 0) and burning (to == 0)
+        if (from != address(0) && to != address(0)) {
+            revert Errors.TransfersDisabled();
+        }
+
+        return super._update(to, tokenId, auth);
+    }
+
+    /**
+     * @dev Required override for ERC721Enumerable
+     */
+    function _increaseBalance(address account, uint128 value) internal override(ERC721, ERC721Enumerable) {
+        super._increaseBalance(account, value);
+    }
+
+    /**
+     * @dev Required override for multiple inheritance
+     */
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(ERC721, ERC721Enumerable, AccessControl)
+        returns (bool)
+    {
+        return super.supportsInterface(interfaceId);
     }
 }

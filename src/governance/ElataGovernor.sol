@@ -9,9 +9,9 @@ import { GovernorVotesQuorumFraction } from "@openzeppelin/contracts/governance/
 import { IVotes } from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 
 /**
- * @title ElataGovernorSimple
+ * @title ElataGovernor
  * @author Elata Biosciences
- * @notice Simplified governance contract for the Elata Protocol
+ * @notice On-chain governance contract for the Elata Protocol
  * @dev OpenZeppelin Governor without timelock for initial governance
  *
  * Features:
@@ -27,7 +27,7 @@ import { IVotes } from "@openzeppelin/contracts/governance/utils/IVotes.sol";
  * - Proposal Threshold: 0.1% of total supply (77K tokens)
  * - Quorum: 4% of total supply
  */
-contract ElataGovernorSimple is
+contract ElataGovernor is
     Governor,
     GovernorSettings,
     GovernorCountingSimple,

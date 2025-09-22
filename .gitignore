@@ -6,6 +6,7 @@ lib/
 .env
 .env.local
 .env.production
+.env.*.local
 
 # Build outputs
 out/
@@ -45,10 +46,13 @@ gas_snapshots/
 # Backup files
 *.backup
 *.bak
+*_backup.*
 
 # Private keys (should never be committed)
 private.key
 *.pem
+.secret
+*.secret
 
 # Test artifacts
 test-results/
@@ -66,6 +70,17 @@ __pycache__/
 # Jupyter notebooks
 .ipynb_checkpoints/
 
-# npm
+# npm/yarn
 package-lock.json
 yarn.lock
+
+# Deprecated/development files
+src_deprecated/
+test_deprecated/
+*_deprecated/
+
+# Temporary development files
+*.dev
+*.tmp
+*.temp
+README_backup.md

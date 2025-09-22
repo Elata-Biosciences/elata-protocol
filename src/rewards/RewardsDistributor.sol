@@ -444,7 +444,7 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
         if (!rewardEpoch.finalized || rewardEpoch.totalVotingPower == 0) return 0;
 
         // This is a placeholder calculation
-        uint256 userVotingPower = veELTA.votingPower(user);
+        uint256 userVotingPower = veELTA.getUserVotingPower(user);
         return (rewardEpoch.totalRewards * userVotingPower) / rewardEpoch.totalVotingPower;
     }
 }

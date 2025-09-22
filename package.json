@@ -1,0 +1,43 @@
+{
+  "name": "elata-protocol",
+  "version": "2.0.0",
+  "description": "On-chain economics for the Internet of Brains - Smart contracts for the Elata Protocol",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Elata-Biosciences/elata-protocol.git"
+  },
+  "keywords": [
+    "blockchain",
+    "defi",
+    "governance",
+    "neuroscience",
+    "eeg",
+    "research",
+    "tokenomics",
+    "staking",
+    "dao"
+  ],
+  "author": "Elata Biosciences",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Elata-Biosciences/elata-protocol/issues"
+  },
+  "homepage": "https://elata.bio",
+  "scripts": {
+    "build": "forge build",
+    "test": "forge test",
+    "test:gas": "forge test --gas-report",
+    "test:coverage": "forge coverage",
+    "deploy:sepolia": "forge script script/Deploy.sol --rpc-url $SEPOLIA_RPC_URL --broadcast --verify",
+    "deploy:mainnet": "forge script script/Deploy.sol --rpc-url $MAINNET_RPC_URL --broadcast --verify",
+    "format": "forge fmt",
+    "lint": "forge fmt --check"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

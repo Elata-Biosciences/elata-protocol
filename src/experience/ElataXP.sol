@@ -9,9 +9,9 @@ import { Nonces } from "@openzeppelin/contracts/utils/Nonces.sol";
 import { Errors } from "../utils/Errors.sol";
 
 /**
- * @title ElataXPWithDecay
+ * @title ElataXP
  * @author Elata Biosciences
- * @notice Enhanced XP system with 14-day rolling decay mechanism
+ * @notice Experience point system with 14-day rolling decay mechanism
  * @dev Non-transferable XP tokens that decay over time to encourage continuous participation
  *
  * Features:
@@ -27,7 +27,7 @@ import { Errors } from "../utils/Errors.sol";
  * - Decay can be triggered by anyone (keeper function)
  * - Efficient batch decay processing
  */
-contract ElataXPWithDecay is ERC20, ERC20Permit, ERC20Votes, AccessControl {
+contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl {
     bytes32 public constant XP_MINTER_ROLE = keccak256("XP_MINTER_ROLE");
     bytes32 public constant KEEPER_ROLE = keccak256("KEEPER_ROLE");
 
@@ -66,7 +66,7 @@ contract ElataXPWithDecay is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @notice Initializes the XP contract with decay mechanics
      * @param admin Address that will receive admin roles
      */
-    constructor(address admin) ERC20("Elata XP with Decay", "ELTAXP") ERC20Permit("Elata XP with Decay") {
+    constructor(address admin) ERC20("Elata XP", "ELTAXP") ERC20Permit("Elata XP") {
         if (admin == address(0)) revert Errors.ZeroAddress();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(XP_MINTER_ROLE, admin);
