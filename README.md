@@ -10,6 +10,32 @@ This repository contains the smart contracts that power Elata's token, staking, 
 
 ## 💡 What problem does the protocol solve?
 
+```mermaid
+graph LR
+    subgraph "Traditional Research"
+        T1[Slow Funding<br/>🐌 Months/years]
+        T2[Centralized Decisions<br/>🏢 Committee-based]
+        T3[Disconnected Incentives<br/>❌ No user alignment]
+    end
+    
+    subgraph "Elata Solution"
+        S1[Weekly Funding<br/>⚡ Community-driven]
+        S2[Decentralized Voting<br/>🗳️ XP-weighted]
+        S3[Aligned Incentives<br/>✅ Usage-based rewards]
+    end
+    
+    T1 -.->|Replaces| S1
+    T2 -.->|Replaces| S2
+    T3 -.->|Replaces| S3
+    
+    style T1 fill:#ffcdd2
+    style T2 fill:#ffcdd2
+    style T3 fill:#ffcdd2
+    style S1 fill:#c8e6c9
+    style S2 fill:#c8e6c9
+    style S3 fill:#c8e6c9
+```
+
 Neurotech needs participation at scale—people playing EEG games, training, submitting sessions—and a way to **fund the right experiments** while **accruing value** to long‑term stewards. Traditional research funding is slow, centralized, and disconnected from actual usage.
 
 Elata Protocol provides:
@@ -25,6 +51,26 @@ Think of it as an **app & research economy** where usage and participation deter
 
 ## 🔁 Economic flywheel
 
+```mermaid
+graph TD
+    A[Users Play EEG Apps<br/>🎮 Engagement] --> B[Generate Data & Usage<br/>📊 Value Creation]
+    B --> C[Protocol Captures Fees<br/>💰 Revenue Generation]
+    C --> D[Community Directs Funding<br/>🗳️ XP-weighted Voting]
+    D --> E[Fund Research & Development<br/>🔬 Innovation]
+    E --> F[Better Apps & Experiences<br/>⭐ Quality Improvement]
+    F --> A
+    
+    C --> G[Distribute Yields to Stakers<br/>💎 Real Returns]
+    G --> H[Attract Long-term Holders<br/>🤝 Stable Governance]
+    H --> I[Quality Governance Decisions<br/>🏛️ Protocol Evolution]
+    I --> D
+    
+    style A fill:#e1f5fe
+    style C fill:#fff3e0
+    style D fill:#f3e5f5
+    style G fill:#e8f5e8
+```
+
 **Play → Data → Fees → Funding → Yield → Better Apps → More Play**
 
 1. **Users engage**: Play EEG apps, submit data sessions, participate in tournaments
@@ -38,6 +84,41 @@ Think of it as an **app & research economy** where usage and participation deter
 ---
 
 ## 🧱 Contract architecture
+
+```mermaid
+graph TB
+    subgraph "Core Protocol"
+        ELTA[ELTA Token<br/>🪙 Governance & Utility<br/>77M Supply Cap]
+        VE[VeELTA<br/>🔒 Multi-position Staking<br/>NFT-based, 1w-4y locks]
+        XP[ElataXP<br/>🏅 Experience Points<br/>14-day decay, soulbound]
+        LP[LotPool<br/>💧 Funding Rounds<br/>XP-weighted voting]
+    end
+    
+    subgraph "Advanced Features"
+        RD[RewardsDistributor<br/>🎁 Staker Rewards<br/>Merkle tree, 7d epochs]
+        GOV[ElataGovernor<br/>🏛️ On-chain Governance<br/>4% quorum, 1d delay]
+        TL[ElataTimelock<br/>⏰ Execution Delays<br/>48h standard, 6h emergency]
+        STATS[ProtocolStats<br/>📊 Frontend Utils<br/>Batch queries]
+    end
+    
+    ELTA --> VE
+    ELTA --> GOV
+    VE --> RD
+    XP --> LP
+    GOV --> TL
+    
+    STATS -.-> ELTA
+    STATS -.-> VE
+    STATS -.-> XP
+    STATS -.-> LP
+    
+    style ELTA fill:#ff9999
+    style VE fill:#99ccff
+    style XP fill:#99ff99
+    style LP fill:#ffcc99
+    style RD fill:#cc99ff
+    style GOV fill:#ffccff
+```
 
 ### Core Protocol (Phase 1)
 
@@ -124,6 +205,23 @@ Buyback & burn: $3,750 (reduces supply)
 
 ## 🔒 veELTA Staking — Time-weighted governance
 
+### Voting Power Visualization
+
+```mermaid
+graph LR
+    subgraph "Voting Power Calculation"
+        INPUT[Locked Amount × Time Remaining<br/>÷ MAX_LOCK]
+        DECAY[Linear Decay Over Time<br/>📉 Continuous Reduction]
+        OUTPUT[Current Voting Power<br/>⚡ Governance Influence]
+    end
+    
+    INPUT --> DECAY --> OUTPUT
+    
+    style INPUT fill:#e3f2fd
+    style DECAY fill:#fff3e0
+    style OUTPUT fill:#e8f5e8
+```
+
 ### Mathematical Formula
 
 ```solidity
@@ -132,7 +230,7 @@ votingPower = (lockedAmount * timeRemaining) / MAX_LOCK
 
 // Constants
 MIN_LOCK = 1 weeks    // 604,800 seconds
-MAX_LOCK = 104 weeks  // 2 years = 63,072,000 seconds
+MAX_LOCK = 208 weeks  // 4 years = 125,798,400 seconds
 ```
 
 ### Examples (MAX_LOCK = 104 weeks)
@@ -202,6 +300,29 @@ Day 14: Effective: 0 XP (fully decayed)
 
 **Why decay?** Encourages **continuous participation** and prevents long-term XP hoarding that could skew governance.
 
+### XP Decay Visualization
+
+```mermaid
+graph TD
+    subgraph "XP Lifecycle"
+        AWARD[XP Awarded<br/>📅 Timestamped Entry]
+        FRESH[Day 0: 100% Effective<br/>✅ Full Voting Power]
+        DECAY[Day 7: 50% Effective<br/>⚠️ Decay Warning]
+        EXPIRED[Day 14: 0% Effective<br/>❌ No Voting Power]
+        UPDATE[Decay Update<br/>🔄 Burn Expired XP]
+    end
+    
+    AWARD --> FRESH
+    FRESH --> DECAY
+    DECAY --> EXPIRED
+    EXPIRED --> UPDATE
+    
+    style FRESH fill:#4caf50
+    style DECAY fill:#ffc107
+    style EXPIRED fill:#f44336
+    style UPDATE fill:#2196f3
+```
+
 ---
 
 ## 💧 LotPool — XP-weighted funding rounds
@@ -253,6 +374,31 @@ Results:
 - ✅ **Modular** (recipients can be PIs, escrow contracts, dev grants)
 - ✅ **Snapshot-based** (prevents double-voting or manipulation)
 
+### Funding Round Flow
+
+```mermaid
+sequenceDiagram
+    participant Admin
+    participant LotPool
+    participant Users
+    participant Winners
+    
+    Note over Admin, Winners: Round Setup
+    Admin->>LotPool: startRound(options, recipients, duration)
+    LotPool->>LotPool: Take XP snapshot at block N-1
+    LotPool->>Users: Announce new round
+    
+    Note over Admin, Winners: Voting Phase
+    Users->>LotPool: vote(roundId, option, xpAmount)
+    LotPool->>LotPool: Validate XP at snapshot
+    LotPool->>LotPool: Record votes
+    
+    Note over Admin, Winners: Finalization
+    Admin->>LotPool: finalize(roundId, winner, amount)
+    LotPool->>Winners: Transfer ELTA funding
+    LotPool->>Users: Announce results
+```
+
 
 ## 🧮 Technical specifications
 
@@ -284,6 +430,32 @@ RewardsDistributor.EPOCH_DURATION = 7 days   // Weekly cycles
 ```
 
 ### Gas Costs (Optimized for Mainnet)
+
+```mermaid
+graph TD
+    subgraph "Low Cost Operations (<100K gas)"
+        LC1[ELTA Transfer: 56K<br/>💰 Standard token transfer]
+        LC2[ELTA Mint: 67K<br/>🏭 With supply cap check]
+        LC3[VeELTA Lock: 88K<br/>🔒 Position creation]
+        LC4[XP Decay Update: 87K<br/>🔄 Single user update]
+        LC5[LotPool Vote: 86K<br/>🗳️ XP allocation]
+        LC6[Reward Claim: 80K<br/>🎁 Merkle verification]
+    end
+    
+    subgraph "Medium Cost Operations (100K-300K gas)"
+        MC1[XP Award: 189K<br/>🏅 With auto-delegation]
+        MC2[Multi-lock Create: 256K<br/>🎯 NFT + delegation]
+    end
+    
+    style LC1 fill:#c8e6c9
+    style LC2 fill:#c8e6c9
+    style LC3 fill:#c8e6c9
+    style LC4 fill:#c8e6c9
+    style LC5 fill:#c8e6c9
+    style LC6 fill:#c8e6c9
+    style MC1 fill:#fff3e0
+    style MC2 fill:#fff3e0
+```
 
 | Operation | Gas Cost | Notes |
 |-----------|----------|-------|
@@ -404,11 +576,23 @@ forge script script/Deploy.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast --verify
 
 ### Test Coverage
 
-**112 comprehensive tests** with 100% pass rate for core contracts:
+**100 comprehensive tests** with 100% pass rate for core contracts:
+
+```mermaid
+pie title Test Coverage by Contract
+    "ELTA Token (16 tests)" : 16
+    "VeELTA Staking (10 tests)" : 10
+    "ElataXP System (23 tests)" : 23
+    "LotPool Funding (22 tests)" : 22
+    "RewardsDistributor (15 tests)" : 15
+    "Integration Tests (4 tests)" : 4
+    "Security Tests (10 tests)" : 10
+```
 
 - **Unit tests**: Individual contract functionality
 - **Integration tests**: Cross-contract workflows
 - **Fuzz tests**: Property-based testing with random inputs
+- **Security tests**: Critical protection verification
 - **Gas optimization**: Benchmarked for mainnet efficiency
 
 ```bash

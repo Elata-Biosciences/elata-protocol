@@ -1,301 +1,373 @@
-# Deployment Guide
+# 🚀 Deployment Guide
 
-This guide covers deploying the Elata Protocol smart contracts to various networks.
+## 📋 **Deployment Flow Overview**
 
-## Table of Contents
-
-- [Prerequisites](#prerequisites)
-- [Environment Setup](#environment-setup)
-- [Network Configuration](#network-configuration)
-- [Deployment Process](#deployment-process)
-- [Post-Deployment](#post-deployment)
-- [Verification](#verification)
-- [Troubleshooting](#troubleshooting)
-
-## Prerequisites
-
-### Required Tools
-
-- [Foundry](https://getfoundry.sh/) (latest version)
-- [Git](https://git-scm.com/)
-- Access to RPC endpoints
-- API keys for contract verification
-
-### Required Accounts
-
-- Deployer wallet with sufficient ETH for gas
-- Admin multisig wallet (Gnosis Safe recommended)
-- Treasury wallet for initial token distribution
-
-## Environment Setup
-
-### 1. Clone and Setup Repository
-
-```bash
-git clone https://github.com/Elata-Biosciences/elata-protocol
-cd elata-protocol
-forge install
-forge build
+```mermaid
+graph TD
+    subgraph "Pre-deployment Phase"
+        P1[Environment Setup<br/>🔧 Configure variables]
+        P2[Security Review<br/>🛡️ Audit contracts]
+        P3[Test Validation<br/>🧪 100% pass rate]
+        P4[Gas Estimation<br/>⛽ Cost planning]
+    end
+    
+    subgraph "Deployment Phase"
+        D1[Testnet Deploy<br/>🧪 Sepolia validation]
+        D2[Community Testing<br/>👥 User validation]
+        D3[Final Review<br/>📋 Last checks]
+        D4[Mainnet Deploy<br/>🚀 Production launch]
+    end
+    
+    subgraph "Post-deployment Phase"
+        PD1[Verification<br/>✅ Contract validation]
+        PD2[Configuration<br/>⚙️ Role setup]
+        PD3[Monitoring<br/>📊 System health]
+        PD4[Community Launch<br/>🎉 Go live]
+    end
+    
+    P1 --> P2 --> P3 --> P4
+    P4 --> D1 --> D2 --> D3 --> D4
+    D4 --> PD1 --> PD2 --> PD3 --> PD4
+    
+    style P3 fill:#e8f5e8
+    style D4 fill:#fff3e0
+    style PD4 fill:#e3f2fd
 ```
 
-### 2. Configure Environment Variables
+## 🔧 **Environment Configuration**
 
-Copy the example environment file:
+### Network Setup Matrix
 
-```bash
-cp .env.example .env
+```mermaid
+graph TD
+    subgraph "Ethereum Mainnet"
+        EM1[Chain ID: 1]
+        EM2[Gas Price: 15-30 gwei]
+        EM3[Deploy Cost: ~$260]
+        EM4[Security: Highest]
+    end
+    
+    subgraph "Base Mainnet"
+        BM1[Chain ID: 8453]
+        BM2[Gas Price: 0.01-0.1 gwei]
+        BM3[Deploy Cost: ~$2.60]
+        BM4[Security: High]
+    end
+    
+    subgraph "Sepolia Testnet"
+        ST1[Chain ID: 11155111]
+        ST2[Gas Price: Free]
+        ST3[Deploy Cost: $0]
+        ST4[Security: Testing only]
+    end
+    
+    subgraph "Base Sepolia"
+        BS1[Chain ID: 84532]
+        BS2[Gas Price: Free]
+        BS3[Deploy Cost: $0]
+        BS4[Security: Testing only]
+    end
+    
+    style EM1 fill:#ff9999
+    style BM1 fill:#99ccff
+    style ST1 fill:#99ff99
+    style BS1 fill:#ffcc99
 ```
 
-Edit `.env` with your values:
+### Deployment Prerequisites
 
-```bash
-# Required for deployment
-ADMIN_MSIG=0x...                    # Your Gnosis Safe address
-INITIAL_TREASURY=0x...              # Initial token recipient
-SEPOLIA_RPC_URL=https://...         # Testnet RPC
-MAINNET_RPC_URL=https://...         # Mainnet RPC (if deploying to mainnet)
-ETHERSCAN_API_KEY=...               # For contract verification
+```mermaid
+graph LR
+    subgraph "Required Tools"
+        RT1[Foundry<br/>Latest version]
+        RT2[Git<br/>Version control]
+        RT3[Node.js<br/>v18+ for scripts]
+    end
+    
+    subgraph "Required Accounts"
+        RA1[Deployer Wallet<br/>Sufficient ETH]
+        RA2[Admin Multisig<br/>Gnosis Safe]
+        RA3[Treasury Wallet<br/>Token recipient]
+    end
+    
+    subgraph "Required Keys"
+        RK1[RPC Endpoints<br/>Infura/Alchemy]
+        RK2[API Keys<br/>Etherscan/Basescan]
+        RK3[Private Keys<br/>Secure storage]
+    end
+    
+    RT1 --> RA1
+    RT2 --> RA2
+    RT3 --> RA3
+    
+    RA1 --> RK1
+    RA2 --> RK2
+    RA3 --> RK3
+    
+    style RA2 fill:#fff3e0
+    style RK3 fill:#ffebee
 ```
 
-### 3. Fund Deployer Wallet
+## 📦 **Deployment Process**
 
-Ensure your deployer wallet has sufficient funds:
+### Contract Deployment Sequence
 
-| Network | Estimated Gas Cost |
-|---------|-------------------|
-| Ethereum Mainnet | ~0.1 ETH |
-| Sepolia Testnet | ~0.01 ETH (free from faucet) |
-| Base Mainnet | ~0.001 ETH |
-| Base Sepolia | ~0.0001 ETH (free from faucet) |
-
-## Network Configuration
-
-### Supported Networks
-
-| Network | Chain ID | RPC URL | Explorer |
-|---------|----------|---------|----------|
-| Ethereum Mainnet | 1 | Various providers | etherscan.io |
-| Sepolia Testnet | 11155111 | Various providers | sepolia.etherscan.io |
-| Base Mainnet | 8453 | https://mainnet.base.org | basescan.org |
-| Base Sepolia | 84532 | https://sepolia.base.org | sepolia.basescan.org |
-
-### Gas Price Recommendations
-
-```bash
-# Check current gas prices
-cast gas-price --rpc-url $MAINNET_RPC_URL
-
-# Set gas price in foundry.toml if needed
-[profile.mainnet]
-gas_price = 20_000_000_000  # 20 gwei
+```mermaid
+sequenceDiagram
+    participant Deployer
+    participant ELTA
+    participant ElataXP
+    participant VeELTA
+    participant LotPool
+    participant RewardsDistributor
+    participant ElataGovernor
+    participant Verification
+    
+    Note over Deployer, Verification: Phase 1: Core Contracts
+    Deployer->>ELTA: Deploy with initial mint
+    ELTA-->>Deployer: Contract address
+    
+    Deployer->>ElataXP: Deploy with admin
+    ElataXP-->>Deployer: Contract address
+    
+    Deployer->>VeELTA: Deploy with ELTA reference
+    VeELTA-->>Deployer: Contract address
+    
+    Note over Deployer, Verification: Phase 2: Governance
+    Deployer->>LotPool: Deploy with ELTA + XP
+    LotPool-->>Deployer: Contract address
+    
+    Deployer->>RewardsDistributor: Deploy with VeELTA
+    RewardsDistributor-->>Deployer: Contract address
+    
+    Deployer->>ElataGovernor: Deploy with ELTA
+    ElataGovernor-->>Deployer: Contract address
+    
+    Note over Deployer, Verification: Phase 3: Configuration
+    Deployer->>RewardsDistributor: addRewardToken(ELTA)
+    Deployer->>ElataXP: grantRole(XP_MINTER, LotPool)
+    
+    Note over Deployer, Verification: Phase 4: Verification
+    Deployer->>Verification: Run verification script
+    Verification-->>Deployer: All contracts verified ✅
 ```
 
-## Deployment Process
+### Gas Cost Estimation
 
-### Step 1: Validate Configuration
-
-```bash
-# Test compilation
-forge build
-
-# Run all tests
-forge test
-
-# Simulate deployment (dry run)
-forge script script/Deploy.s.sol --rpc-url $SEPOLIA_RPC_URL
+```mermaid
+graph TD
+    subgraph "Deployment Costs by Network"
+        direction TB
+        
+        ETH[Ethereum Mainnet<br/>13M gas × 20 gwei = $260]
+        BASE[Base Mainnet<br/>13M gas × 0.05 gwei = $1.30]
+        SEPOLIA[Sepolia Testnet<br/>13M gas × 0 gwei = FREE]
+    end
+    
+    subgraph "Cost Breakdown"
+        direction TB
+        
+        C1[ELTA: 2.3M gas (18%)]
+        C2[VeELTA: 3.3M gas (25%)]
+        C3[ElataXP: 3.0M gas (23%)]
+        C4[Others: 4.4M gas (34%)]
+    end
+    
+    style ETH fill:#ff9999
+    style BASE fill:#99ccff
+    style SEPOLIA fill:#99ff99
 ```
 
-### Step 2: Deploy to Testnet
+## ✅ **Verification Procedures**
 
-```bash
-# Deploy to Sepolia testnet
-forge script script/Deploy.s.sol \
-  --rpc-url $SEPOLIA_RPC_URL \
-  --broadcast \
-  --verify \
-  --etherscan-api-key $ETHERSCAN_API_KEY
+### Post-Deployment Verification
+
+```mermaid
+graph TD
+    subgraph "Contract Verification"
+        CV1[Source Code<br/>Block explorer verification]
+        CV2[ABI Matching<br/>Interface consistency]
+        CV3[Bytecode Hash<br/>Compilation verification]
+    end
+    
+    subgraph "Functional Verification"
+        FV1[Basic Operations<br/>Token transfers work]
+        FV2[Access Control<br/>Roles properly set]
+        FV3[Integration<br/>Cross-contract calls]
+        FV4[Security<br/>Protection mechanisms active]
+    end
+    
+    subgraph "Configuration Verification"
+        CFV1[Admin Roles<br/>Multisig control]
+        CFV2[Initial State<br/>Correct parameters]
+        CFV3[Token Supply<br/>Expected amounts]
+        CFV4[Permissions<br/>Proper role grants]
+    end
+    
+    CV1 --> FV1
+    CV2 --> FV2
+    CV3 --> FV3
+    
+    FV1 --> CFV1
+    FV2 --> CFV2
+    FV3 --> CFV3
+    FV4 --> CFV4
+    
+    style CFV1 fill:#e8f5e8
+    style CFV4 fill:#fff3e0
 ```
 
-### Step 3: Verify Testnet Deployment
+### Verification Commands
 
 ```bash
-# Check deployment addresses
-cat broadcast/Deploy.s.sol/11155111/run-latest.json | jq '.transactions[].contractAddress'
+# Contract verification
+cast call $ELTA_ADDRESS "name()" --rpc-url $RPC_URL
+cast call $ELTA_ADDRESS "totalSupply()" --rpc-url $RPC_URL
+cast call $ELTA_ADDRESS "MAX_SUPPLY()" --rpc-url $RPC_URL
 
-# Verify contracts are working
-cast call <ELTA_ADDRESS> "totalSupply()" --rpc-url $SEPOLIA_RPC_URL
-cast call <ELTA_ADDRESS> "hasRole(bytes32,address)" 0x0000000000000000000000000000000000000000000000000000000000000000 $ADMIN_MSIG --rpc-url $SEPOLIA_RPC_URL
+# Access control verification
+cast call $ELTA_ADDRESS "hasRole(bytes32,address)" \
+  0x0000000000000000000000000000000000000000000000000000000000000000 \
+  $ADMIN_MSIG --rpc-url $RPC_URL
+
+# Integration verification
+cast call $VEELTA_ADDRESS "ELTA()" --rpc-url $RPC_URL
+cast call $LOTPOOL_ADDRESS "XP()" --rpc-url $RPC_URL
 ```
 
-### Step 4: Deploy to Mainnet (Production)
+## 🚨 **Emergency Procedures**
 
-⚠️ **CRITICAL**: Only deploy to mainnet after thorough testnet testing!
+### Incident Response Flow
 
-```bash
-# Final checks
-forge test
-forge script script/Deploy.s.sol --rpc-url $MAINNET_RPC_URL  # Dry run
-
-# Deploy to mainnet
-forge script script/Deploy.s.sol \
-  --rpc-url $MAINNET_RPC_URL \
-  --broadcast \
-  --verify \
-  --etherscan-api-key $ETHERSCAN_API_KEY \
-  --slow  # Add delay between transactions
+```mermaid
+graph TD
+    subgraph "Detection"
+        D1[Monitoring Alert]
+        D2[Community Report]
+        D3[Security Scan]
+    end
+    
+    subgraph "Assessment"
+        A1[Severity Analysis<br/>Critical/High/Medium/Low]
+        A2[Impact Assessment<br/>User funds/Protocol function]
+        A3[Response Planning<br/>Immediate/Planned/Monitoring]
+    end
+    
+    subgraph "Response Actions"
+        R1[Emergency Pause<br/>If available]
+        R2[Governance Proposal<br/>Protocol changes]
+        R3[Community Communication<br/>Transparency]
+        R4[Fix Development<br/>Code changes]
+    end
+    
+    subgraph "Resolution"
+        RES1[Fix Deployment<br/>New contracts if needed]
+        RES2[Migration Plan<br/>User fund safety]
+        RES3[Post-mortem<br/>Lessons learned]
+    end
+    
+    D1 --> A1
+    D2 --> A1
+    D3 --> A1
+    
+    A1 --> R1
+    A2 --> R2
+    A3 --> R3
+    
+    R1 --> RES1
+    R2 --> RES2
+    R3 --> RES3
+    
+    style A1 fill:#ffebee
+    style R1 fill:#fff3e0
+    style RES1 fill:#e8f5e8
 ```
 
-## Post-Deployment
+### Emergency Contact Tree
 
-### Contract Addresses
-
-After deployment, record the contract addresses:
-
-```bash
-# Save addresses to a file
-echo "ELTA_ADDRESS=$(cat broadcast/Deploy.s.sol/1/run-latest.json | jq -r '.transactions[] | select(.contractName == "ELTA") | .contractAddress')" >> deployed-addresses.env
-echo "VEELTA_ADDRESS=$(cat broadcast/Deploy.s.sol/1/run-latest.json | jq -r '.transactions[] | select(.contractName == "VeELTA") | .contractAddress')" >> deployed-addresses.env
-echo "XP_ADDRESS=$(cat broadcast/Deploy.s.sol/1/run-latest.json | jq -r '.transactions[] | select(.contractName == "ElataXP") | .contractAddress')" >> deployed-addresses.env
-echo "LOTPOOL_ADDRESS=$(cat broadcast/Deploy.s.sol/1/run-latest.json | jq -r '.transactions[] | select(.contractName == "LotPool") | .contractAddress')" >> deployed-addresses.env
+```mermaid
+graph TD
+    INCIDENT[Security Incident Detected]
+    
+    subgraph "Immediate Response (0-1 hours)"
+        IR1[Technical Lead<br/>Initial assessment]
+        IR2[Security Team<br/>Threat analysis]
+        IR3[Multisig Signers<br/>Emergency actions]
+    end
+    
+    subgraph "Extended Response (1-24 hours)"
+        ER1[Core Team<br/>Solution development]
+        ER2[Legal Counsel<br/>Compliance review]
+        ER3[Communications<br/>Community updates]
+    end
+    
+    subgraph "Recovery Phase (24+ hours)"
+        RP1[External Auditors<br/>Independent review]
+        RP2[Community DAO<br/>Governance decisions]
+        RP3[Ecosystem Partners<br/>Coordination]
+    end
+    
+    INCIDENT --> IR1
+    INCIDENT --> IR2
+    INCIDENT --> IR3
+    
+    IR1 --> ER1
+    IR2 --> ER2
+    IR3 --> ER3
+    
+    ER1 --> RP1
+    ER2 --> RP2
+    ER3 --> RP3
+    
+    style INCIDENT fill:#ffcdd2
+    style IR1 fill:#fff3e0
+    style ER1 fill:#e8f5e8
+    style RP1 fill:#e3f2fd
 ```
 
-### Initial Configuration
+## 📊 **Monitoring & Analytics**
 
-1. **Transfer Admin Roles** (if needed):
-   ```bash
-   # Transfer DEFAULT_ADMIN_ROLE to multisig
-   cast send $ELTA_ADDRESS "grantRole(bytes32,address)" 0x0000000000000000000000000000000000000000000000000000000000000000 $NEW_ADMIN --rpc-url $MAINNET_RPC_URL --private-key $PRIVATE_KEY
-   ```
+### Key Performance Indicators
 
-2. **Configure XP Minters**:
-   ```bash
-   # Grant XP_MINTER_ROLE to app contracts
-   cast send $XP_ADDRESS "grantRole(bytes32,address)" $(cast call $XP_ADDRESS "XP_MINTER_ROLE()") $APP_CONTRACT --rpc-url $MAINNET_RPC_URL --private-key $PRIVATE_KEY
-   ```
-
-3. **Setup Initial LotPool Funding**:
-   ```bash
-   # Approve ELTA for LotPool
-   cast send $ELTA_ADDRESS "approve(address,uint256)" $LOTPOOL_ADDRESS 100000000000000000000000 --rpc-url $MAINNET_RPC_URL --private-key $PRIVATE_KEY
-   
-   # Fund LotPool
-   cast send $LOTPOOL_ADDRESS "fund(uint256)" 100000000000000000000000 --rpc-url $MAINNET_RPC_URL --private-key $PRIVATE_KEY
-   ```
-
-## Verification
-
-### Contract Verification
-
-Contracts should auto-verify during deployment. If verification fails:
-
-```bash
-# Manual verification
-forge verify-contract \
-  --chain-id 1 \
-  --num-of-optimizations 500 \
-  --constructor-args $(cast abi-encode "constructor(string,string,address,address,uint256,uint256)" "ELTA" "ELTA" $ADMIN_MSIG $INITIAL_TREASURY 10000000000000000000000000 77000000000000000000000000) \
-  --etherscan-api-key $ETHERSCAN_API_KEY \
-  $ELTA_ADDRESS \
-  src/token/ELTA.sol:ELTA
+```mermaid
+graph TD
+    subgraph "Protocol Health"
+        PH1[Total Value Locked<br/>📈 Growth metric]
+        PH2[Active Users<br/>👥 Engagement]
+        PH3[Transaction Volume<br/>💱 Usage]
+        PH4[Governance Participation<br/>🗳️ Decentralization]
+    end
+    
+    subgraph "Economic Metrics"
+        EM1[Token Price<br/>💰 Market value]
+        EM2[Staking Ratio<br/>🔒 Supply locked]
+        EM3[XP Distribution<br/>🏅 Participation]
+        EM4[Funding Efficiency<br/>💧 Capital allocation]
+    end
+    
+    subgraph "Security Metrics"
+        SM1[Failed Transactions<br/>🚨 Error rate]
+        SM2[Unusual Patterns<br/>🔍 Anomaly detection]
+        SM3[Emergency Usage<br/>⚠️ Crisis indicators]
+        SM4[Access Control Events<br/>🔐 Permission changes]
+    end
+    
+    PH1 --> EM1
+    PH2 --> EM2
+    PH3 --> EM3
+    PH4 --> EM4
+    
+    EM1 --> SM1
+    EM2 --> SM2
+    EM3 --> SM3
+    EM4 --> SM4
+    
+    style PH1 fill:#e8f5e8
+    style EM1 fill:#fff3e0
+    style SM1 fill:#ffebee
 ```
-
-### Functionality Testing
-
-Test core functionality on deployed contracts:
-
-```bash
-# Test ELTA token
-cast call $ELTA_ADDRESS "name()" --rpc-url $MAINNET_RPC_URL
-cast call $ELTA_ADDRESS "symbol()" --rpc-url $MAINNET_RPC_URL
-cast call $ELTA_ADDRESS "totalSupply()" --rpc-url $MAINNET_RPC_URL
-cast call $ELTA_ADDRESS "MAX_SUPPLY()" --rpc-url $MAINNET_RPC_URL
-
-# Test VeELTA
-cast call $VEELTA_ADDRESS "MIN_LOCK()" --rpc-url $MAINNET_RPC_URL
-cast call $VEELTA_ADDRESS "MAX_LOCK()" --rpc-url $MAINNET_RPC_URL
-
-# Test XP
-cast call $XP_ADDRESS "name()" --rpc-url $MAINNET_RPC_URL
-cast call $XP_ADDRESS "symbol()" --rpc-url $MAINNET_RPC_URL
-
-# Test LotPool
-cast call $LOTPOOL_ADDRESS "currentRoundId()" --rpc-url $MAINNET_RPC_URL
-```
-
-## Troubleshooting
-
-### Common Issues
-
-#### 1. Insufficient Gas
-
-**Error**: `Transaction failed: out of gas`
-
-**Solution**:
-```bash
-# Increase gas limit in foundry.toml
-[profile.default]
-gas_limit = 30000000
-
-# Or specify gas limit in command
-forge script script/Deploy.s.sol --gas-limit 30000000
-```
-
-#### 2. Nonce Issues
-
-**Error**: `Transaction failed: nonce too low/high`
-
-**Solution**:
-```bash
-# Check current nonce
-cast nonce $DEPLOYER_ADDRESS --rpc-url $MAINNET_RPC_URL
-
-# Reset nonce if needed (use with caution)
-# Wait for pending transactions or cancel them
-```
-
-#### 3. Verification Failures
-
-**Error**: `Contract verification failed`
-
-**Solution**:
-```bash
-# Check compiler version matches
-forge --version
-
-# Ensure optimization settings match
-# Check constructor arguments are correct
-# Try manual verification with exact parameters
-```
-
-#### 4. Role Assignment Issues
-
-**Error**: `AccessControlUnauthorizedAccount`
-
-**Solution**:
-```bash
-# Verify admin address is correct
-cast call $ELTA_ADDRESS "hasRole(bytes32,address)" 0x0000000000000000000000000000000000000000000000000000000000000000 $ADMIN_MSIG
-
-# Check if you're using the right private key
-cast wallet address --private-key $PRIVATE_KEY
-```
-
-### Emergency Procedures
-
-If deployment fails partially:
-
-1. **Document** all successful contract deployments
-2. **Pause** any problematic contracts if possible
-3. **Redeploy** failed contracts with updated parameters
-4. **Update** integration points with new addresses
-
-### Gas Optimization Tips
-
-- Deploy during low network congestion
-- Use appropriate gas price (not too low, not too high)
-- Consider using CREATE2 for deterministic addresses
-- Batch related transactions when possible
 
 ---
 
-*Always test deployments thoroughly on testnets before mainnet deployment. Keep detailed records of all deployment transactions and addresses.*
+*Complete deployment guide with visual workflows for professional protocol deployment.*
+

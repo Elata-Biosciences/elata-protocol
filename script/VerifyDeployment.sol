@@ -54,7 +54,7 @@ contract VerifyDeployment is Script {
         require(elta.totalSupply() > 0, "No initial supply");
         require(elta.MAX_SUPPLY() == 77_000_000 ether, "Invalid max supply");
 
-        console2.log("✅ ELTA Token verified");
+        console2.log("[OK] ELTA Token verified");
     }
 
     function _verifyElataXP(address xpAddress) internal view {
@@ -72,7 +72,7 @@ contract VerifyDeployment is Script {
         require(xp.DECAY_WINDOW() == 14 days, "Invalid decay window");
         require(xp.MIN_DECAY_INTERVAL() == 1 hours, "Invalid decay interval");
 
-        console2.log("✅ ElataXP verified");
+        console2.log("[OK] ElataXP verified");
     }
 
     function _verifyVeELTA(address stakingAddress, address eltaAddress) internal view {
@@ -92,7 +92,7 @@ contract VerifyDeployment is Script {
         require(staking.MAX_LOCK() == 208 weeks, "Invalid max lock");
         require(staking.EMERGENCY_UNLOCK_PENALTY() == 5000, "Invalid emergency penalty");
 
-        console2.log("✅ VeELTA verified");
+        console2.log("[OK] VeELTA verified");
     }
 
     function _verifyLotPool(address fundingAddress, address eltaAddress, address xpAddress)
@@ -110,7 +110,7 @@ contract VerifyDeployment is Script {
         require(address(funding.ELTA()) == eltaAddress, "Invalid ELTA reference");
         require(address(funding.XP()) == xpAddress, "Invalid XP reference");
 
-        console2.log("✅ LotPool verified");
+        console2.log("[OK] LotPool verified");
     }
 
     function _verifyRewardsDistributor(address rewardsAddress, address stakingAddress)
@@ -130,11 +130,11 @@ contract VerifyDeployment is Script {
         require(rewards.EPOCH_DURATION() == 7 days, "Invalid epoch duration");
         require(rewards.MIN_DISTRIBUTION_DELAY() == 1 days, "Invalid distribution delay");
 
-        console2.log("✅ RewardsDistributor verified");
+        console2.log("[OK] RewardsDistributor verified");
     }
 
     function _verifyGovernor(address governorAddress, address eltaAddress) internal view {
-        ElataGovernor governor = ElataGovernor(governorAddress);
+        ElataGovernor governor = ElataGovernor(payable(governorAddress));
 
         console2.log("\n--- ElataGovernor Verification ---");
         console2.log("Address:", governorAddress);
@@ -149,6 +149,6 @@ contract VerifyDeployment is Script {
         require(governor.votingPeriod() == 7 days, "Invalid voting period");
         require(governor.proposalThreshold() == 77000e18, "Invalid proposal threshold");
 
-        console2.log("✅ ElataGovernor verified");
+        console2.log("[OK] ElataGovernor verified");
     }
 }
