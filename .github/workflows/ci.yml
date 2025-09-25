@@ -37,7 +37,7 @@ jobs:
 
       - name: Run Forge tests
         run: |
-          forge test -vvv --gas-report
+          forge test -vv --gas-report
         id: test
 
       - name: Run Forge coverage
@@ -72,25 +72,21 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
 
-      - name: Run Slither
-        uses: crytic/slither-action@v0.3.0
-        id: slither
+      - name: Install Slither
+        run: |
+          python3 -m pip install --upgrade pip
+          pip3 install slither-analyzer
+
+      - name: Run Slither Analysis
+        run: |
+          slither src/ --print human-summary --json slither-report.json || true
+        continue-on-error: true
+
+      - name: Upload Slither Report
+        uses: actions/upload-artifact@v3
         with:
-          target: 'src/'
-          slither-config: 'slither.config.json'
-          fail-on: none
-          
-      - name: Create/update checklist as PR comment
-        uses: actions/github-script@v6
-        if: github.event_name == 'pull_request'
-        env:
-          REPORT: ${{ steps.slither.outputs.stdout }}
-        with:
-          script: |
-            const script = require('.github/scripts/comment-checklist.js')
-            const header = '# Security Analysis Results'
-            const body = process.env.REPORT
-            await script({github, context, header, body})
+          name: slither-report
+          path: slither-report.json
 
   gas-report:
     name: Gas Report
@@ -125,33 +121,3 @@ jobs:
               repo: context.repo.repo,
               body: body
             });
-
-  deploy-testnet:
-    name: Deploy to Testnet
-    runs-on: ubuntu-latest
-    needs: [check, lint]
-    if: github.ref == 'refs/heads/develop'
-    environment: testnet
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-
-      - name: Deploy to Sepolia
-        run: |
-          forge script script/Deploy.s.sol \
-            --rpc-url ${{ secrets.SEPOLIA_RPC_URL }} \
-            --private-key ${{ secrets.DEPLOYER_PRIVATE_KEY }} \
-            --broadcast \
-            --verify \
-            --etherscan-api-key ${{ secrets.ETHERSCAN_API_KEY }}
-        env:
-          ADMIN_MSIG: ${{ secrets.TESTNET_ADMIN_MSIG }}
-          INITIAL_TREASURY: ${{ secrets.TESTNET_TREASURY }}
-
-      - name: Save deployment artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: testnet-deployment
-          path: broadcast/
