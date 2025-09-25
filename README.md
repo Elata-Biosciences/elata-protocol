@@ -149,6 +149,81 @@ graph TB
 * **Rewards**: Distributes **real yield** to stakers based on protocol revenue
 * **Governor**: Enables **on-chain voting** for protocol parameters and upgrades
 
+### App Launch Framework (Phase 3)
+
+```mermaid
+graph TD
+    subgraph "App Token Launch"
+        AF[AppFactory<br/>🏭 Permissionless Launcher]
+        ABC[AppBondingCurve<br/>📈 Fair Price Discovery]
+        AT[AppToken<br/>🪙 Individual App Tokens]
+        LL[LpLocker<br/>🔒 Liquidity Protection]
+    end
+    
+    subgraph "Launch Process"
+        CREATE[Developer Creates App<br/>💡 Stakes 100 ELTA]
+        CURVE[Bonding Curve Sale<br/>📊 Price increases with demand]
+        GRADUATE[Auto-Graduation<br/>🎓 At 42k ELTA raised]
+        LIQUIDITY[DEX Liquidity<br/>💧 Locked for 2 years]
+    end
+    
+    AF --> CREATE
+    CREATE --> CURVE
+    CURVE --> GRADUATE
+    GRADUATE --> LIQUIDITY
+    
+    ABC -.-> CURVE
+    AT -.-> CURVE
+    LL -.-> LIQUIDITY
+    
+    style AF fill:#e8f5e8
+    style ABC fill:#fff3e0
+    style AT fill:#e3f2fd
+    style LL fill:#ffebee
+```
+
+**New App Launch Contracts:**
+
+| Contract | Purpose | Key Features |
+|----------|---------|--------------|
+| **[AppFactory.sol](src/apps/AppFactory.sol)** | App token launcher | Permissionless creation, bonding curves, registry |
+| **[AppBondingCurve.sol](src/apps/AppBondingCurve.sol)** | Fair price discovery | Constant product formula, auto-liquidity, LP locking |
+| **[AppToken.sol](src/apps/AppToken.sol)** | Individual app tokens | Standard ERC20, no fees, fixed supply, metadata |
+| **[LpLocker.sol](src/apps/LpLocker.sol)** | Liquidity protection | Time-locked LP tokens, rug-pull prevention |
+
+**Why the App Launch Framework:**
+* **Developer Empowerment**: Any developer can launch their EEG app with its own token economy
+* **Fair Distribution**: Bonding curves ensure fair price discovery without insider allocations
+* **Ecosystem Growth**: Each app token creates new utility and demand for ELTA
+* **Liquidity Security**: Automatic LP creation and locking prevents rug pulls
+* **Protocol Integration**: App launches feed back into ELTA treasury and governance
+
+### App Launch Process
+
+```mermaid
+sequenceDiagram
+    participant Developer
+    participant AppFactory
+    participant BondingCurve
+    participant Users
+    participant DEX
+    
+    Note over Developer, DEX: App Creation
+    Developer->>AppFactory: createApp() + stake 110 ELTA
+    AppFactory->>AppFactory: Deploy AppToken & BondingCurve
+    AppFactory->>BondingCurve: Initialize with seed liquidity
+    
+    Note over Developer, DEX: Bonding Curve Phase
+    Users->>BondingCurve: buy() tokens with ELTA
+    BondingCurve->>BondingCurve: Price increases with demand
+    BondingCurve->>AppFactory: Collect 2.5% protocol fee
+    
+    Note over Developer, DEX: Graduation
+    BondingCurve->>BondingCurve: Target reached (42k ELTA)
+    BondingCurve->>DEX: Create LP with remaining reserves
+    BondingCurve->>DEX: Lock LP tokens for 2 years
+```
+
 
 ## 🪙 Token economics deep dive
 
@@ -200,6 +275,27 @@ Buyback & burn: $3,750 (reduces supply)
 ```
 
 > **Important**: Data licensing proceeds go to participants via data trusts, **not** to the protocol. ELTA accrues from software/infrastructure economics.
+
+### App Launch Economics
+
+**App Token Launch Model:**
+```
+Developer Investment: 110 ELTA (100 seed + 10 fee)
+├── Seed Liquidity: 100 ELTA → Bonding curve initial liquidity
+├── Creation Fee: 10 ELTA → Protocol treasury
+└── Token Supply: 1B tokens → Fair distribution via curve
+
+User Purchases: ELTA → App Tokens
+├── Protocol Fee: 2.5% → Treasury (sustainable revenue)
+├── Net Purchase: 97.5% → Bonding curve reserves
+└── Graduation: At 42k ELTA → Auto-create locked DEX liquidity
+```
+
+**Economic Benefits:**
+- **ELTA Demand**: Every app launch requires ELTA for creation and purchases
+- **Protocol Revenue**: 2.5% fee on all app token trading volume
+- **Ecosystem Growth**: More apps = more ELTA utility and value
+- **Developer Incentives**: Fair token distribution attracts quality developers
 
 ---
 

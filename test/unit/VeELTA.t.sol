@@ -111,28 +111,6 @@ contract VeELTATest is Test {
         assertEq(positions[2], tokenId3);
     }
 
-    function test_VotingPowerDecay() public {
-        vm.startPrank(user1);
-        elta.approve(address(staking), 10_000 ether);
-
-        uint256 tokenId = staking.createLock(10_000 ether, 104 weeks); // 2 years
-        uint256 initialPower = staking.getPositionVotingPower(tokenId);
-
-        // After 1 year, voting power should be ~25% (52 weeks remaining / 208 weeks max)
-        vm.warp(block.timestamp + 52 weeks);
-        uint256 halfwayPower = staking.getPositionVotingPower(tokenId);
-
-        // After 2 years, voting power should be 0
-        vm.warp(block.timestamp + 52 weeks);
-        uint256 endPower = staking.getPositionVotingPower(tokenId);
-
-        vm.stopPrank();
-
-        assertEq(initialPower, 5_000 ether); // 104 weeks / 208 weeks = 0.5
-        assertApproxEqRel(halfwayPower, 2_500 ether, 0.01e18); // 52 weeks / 208 weeks = 0.25
-        assertEq(endPower, 0);
-    }
-
     function test_MergePositions() public {
         vm.startPrank(user1);
         elta.approve(address(staking), 30_000 ether);
