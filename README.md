@@ -1,6 +1,6 @@
 # Elata Protocol
 
-**On‑chain economics for the Internet of Brains.**
+**On‑chain economic model for Elata, the Internet of Brains.**
 
 This repository contains the smart contracts that power Elata's token, staking, XP (reputation), and experiment‑funding governance. It is the **economic coordination layer** that aligns players, researchers, developers, and long‑term token holders in building the future of precision psychiatry.
 
@@ -8,20 +8,20 @@ This repository contains the smart contracts that power Elata's token, staking, 
 
 ---
 
-## 💡 What problem does the protocol solve?
+## What problem does the protocol solve?
 
 ```mermaid
 graph LR
     subgraph "Traditional Research"
-        T1[Slow Funding<br/>🐌 Months/years]
-        T2[Centralized Decisions<br/>🏢 Committee-based]
-        T3[Disconnected Incentives<br/>❌ No user alignment]
+        T1[Slow Funding<br/> Months/years]
+        T2[Centralized Decisions<br/> Committee-based]
+        T3[Disconnected Incentives<br/> No user alignment]
     end
     
     subgraph "Elata Solution"
-        S1[Weekly Funding<br/>⚡ Community-driven]
-        S2[Decentralized Voting<br/>🗳️ XP-weighted]
-        S3[Aligned Incentives<br/>✅ Usage-based rewards]
+        S1[Weekly Funding<br/> Community-driven]
+        S2[Decentralized Voting<br/> XP-weighted]
+        S3[Aligned Incentives<br/> Usage-based rewards]
     end
     
     T1 -.->|Replaces| S1
@@ -49,20 +49,20 @@ Think of it as an **app & research economy** where usage and participation deter
 
 ---
 
-## 🔁 Economic flywheel
+## Economic flow model
 
 ```mermaid
 graph TD
-    A[Users Play EEG Apps<br/>🎮 Engagement] --> B[Generate Data & Usage<br/>📊 Value Creation]
-    B --> C[Protocol Captures Fees<br/>💰 Revenue Generation]
-    C --> D[Community Directs Funding<br/>🗳️ XP-weighted Voting]
-    D --> E[Fund Research & Development<br/>🔬 Innovation]
-    E --> F[Better Apps & Experiences<br/>⭐ Quality Improvement]
+    A[Users Play EEG Apps<br/> Engagement] --> B[Generate Data & Usage<br/> Value Creation]
+    B --> C[Protocol Captures Fees<br/> Revenue Generation]
+    C --> D[Community Directs Funding<br/> XP-weighted Voting]
+    D --> E[Fund Research & Development<br/> Innovation]
+    E --> F[Better Apps & Experiences<br/> Quality Improvement]
     F --> A
     
-    C --> G[Distribute Yields to Stakers<br/>💎 Real Returns]
-    G --> H[Attract Long-term Holders<br/>🤝 Stable Governance]
-    H --> I[Quality Governance Decisions<br/>🏛️ Protocol Evolution]
+    C --> G[Distribute Yields to Stakers<br/> Real Returns]
+    G --> H[Attract Long-term Holders<br/> Stable Governance]
+    H --> I[Quality Governance Decisions<br/> Protocol Evolution]
     I --> D
     
     style A fill:#e1f5fe
@@ -83,22 +83,22 @@ graph TD
 
 ---
 
-## 🧱 Contract architecture
+## Contract architecture
 
 ```mermaid
 graph TB
     subgraph "Core Protocol"
-        ELTA[ELTA Token<br/>🪙 Governance & Utility<br/>77M Supply Cap]
-        VE[VeELTA<br/>🔒 Multi-position Staking<br/>NFT-based, 1w-4y locks]
-        XP[ElataXP<br/>🏅 Experience Points<br/>14-day decay, soulbound]
-        LP[LotPool<br/>💧 Funding Rounds<br/>XP-weighted voting]
+        ELTA[ELTA Token<br/> Governance & Utility<br/>77M Supply Cap]
+        VE[VeELTA<br/> Multi-position Staking<br/>NFT-based, 1w-4y locks]
+        XP[ElataXP<br/> Experience Points<br/>14-day decay, soulbound]
+        LP[LotPool<br/> Funding Rounds<br/>XP-weighted voting]
     end
     
     subgraph "Advanced Features"
-        RD[RewardsDistributor<br/>🎁 Staker Rewards<br/>Merkle tree, 7d epochs]
-        GOV[ElataGovernor<br/>🏛️ On-chain Governance<br/>4% quorum, 1d delay]
-        TL[ElataTimelock<br/>⏰ Execution Delays<br/>48h standard, 6h emergency]
-        STATS[ProtocolStats<br/>📊 Frontend Utils<br/>Batch queries]
+        RD[RewardsDistributor<br/> Staker Rewards<br/>Merkle tree, 7d epochs]
+        GOV[ElataGovernor<br/> On-chain Governance<br/>4% quorum, 1d delay]
+        TL[ElataTimelock<br/> Execution Delays<br/>48h standard, 6h emergency]
+        STATS[ProtocolStats<br/> Frontend Utils<br/>Batch queries]
     end
     
     ELTA --> VE
@@ -125,7 +125,7 @@ graph TB
 | Contract | Purpose | Key Features |
 |----------|---------|--------------|
 | **[ELTA.sol](src/token/ELTA.sol)** | Governance & utility token | ERC20 + Votes + Permit + Burnable, 77M cap, no fees |
-| **[VeELTA.sol](src/staking/VeELTA.sol)** | Vote-escrowed staking | Linear decay, 1 week–2 year locks, one position per user |
+| **[veELTA.sol](src/staking/VeELTA.sol)** | Vote-escrowed staking | Linear decay, 1 week–2 year locks, one position per user |
 | **[ElataXP.sol](src/xp/ElataXP.sol)** | Basic experience points | Non-transferable, checkpoint tracking, governance ready |
 | **[LotPool.sol](src/governance/LotPool.sol)** | Research funding rounds | XP-weighted voting, weekly cycles, transparent payouts |
 
@@ -133,7 +133,7 @@ graph TB
 
 | Contract | Purpose | Key Features |
 |----------|---------|--------------|
-| **[VeELTAMultiLock.sol](src/staking/VeELTAMultiLock.sol)** | Advanced staking | NFT positions, multiple locks, merge/split, 4-year max |
+| **[veELTAMultiLock.sol](src/staking/VeELTAMultiLock.sol)** | Advanced staking | NFT positions, multiple locks, merge/split, 4-year max |
 | **[ElataXPWithDecay.sol](src/xp/ElataXPWithDecay.sol)** | XP with decay | 14-day rolling decay, keeper functions, anti-hoarding |
 | **[RewardsDistributor.sol](src/rewards/RewardsDistributor.sol)** | Staker rewards | Merkle tree distribution, multiple tokens, epoch-based |
 | **[ElataGovernorSimple.sol](src/governance/ElataGovernorSimple.sol)** | On-chain governance | 4% quorum, emergency proposals, timelock integration |
@@ -141,7 +141,7 @@ graph TB
 ### Why each contract exists
 
 * **ELTA**: Clean, DEX-compatible governance token with **no transfer taxes** and **hard supply cap**
-* **VeELTA**: Aligns governance with **time commitment**; prevents flash-loan governance attacks
+* **veELTA**: Aligns governance with **time commitment**; prevents flash-loan governance attacks
 * **XP**: Rewards **participation over capital**; non-transferable prevents reputation markets
 * **LotPool**: Turns community activity into **transparent capital allocation**
 * **Multi-Lock**: Advanced users can optimize positions, merge/split for flexibility
@@ -150,7 +150,7 @@ graph TB
 * **Governor**: Enables **on-chain voting** for protocol parameters and upgrades
 
 
-## 🪙 Token economics deep dive
+## Token economics deep dive
 
 ### ELTA Token Mechanics
 
@@ -167,11 +167,11 @@ MINTER_ROLE                   // Role-gated minting up to cap
 - **Remaining**: 67,000,000 ELTA available for future minting (role-gated)
 
 **Key Properties**
-- ✅ **No transfer fees** → DEX/aggregator compatible
-- ✅ **ERC20Votes** → On-chain governance ready
-- ✅ **ERC20Permit** → Gasless approvals
-- ✅ **Burnable** → Deflationary pressure
-- ✅ **Non-upgradeable** → Immutable, trustless
+- **No transfer fees** → DEX/aggregator compatible
+- **ERC20Votes** → On-chain governance ready
+- **ERC20Permit** → Gasless approvals
+- **Burnable** → Deflationary pressure
+- **Non-upgradeable** → Immutable, trustless
 
 ### Value Accrual Mechanisms
 
@@ -203,7 +203,7 @@ Buyback & burn: $3,750 (reduces supply)
 
 ---
 
-## 🔒 veELTA Staking — Time-weighted governance
+## veELTA Staking — Time-weighted governance
 
 ### Voting Power Visualization
 
@@ -211,8 +211,8 @@ Buyback & burn: $3,750 (reduces supply)
 graph LR
     subgraph "Voting Power Calculation"
         INPUT[Locked Amount × Time Remaining<br/>÷ MAX_LOCK]
-        DECAY[Linear Decay Over Time<br/>📉 Continuous Reduction]
-        OUTPUT[Current Voting Power<br/>⚡ Governance Influence]
+        DECAY[Linear Decay Over Time<br/> Continuous Reduction]
+        OUTPUT[Current Voting Power<br/> Governance Influence]
     end
     
     INPUT --> DECAY --> OUTPUT
@@ -225,7 +225,7 @@ graph LR
 ### Mathematical Formula
 
 ```solidity
-// From VeELTA.sol line 119
+// From veELTA.sol line 119
 votingPower = (lockedAmount * timeRemaining) / MAX_LOCK
 
 // Constants
@@ -244,7 +244,7 @@ MAX_LOCK = 208 weeks  // 4 years = 125,798,400 seconds
 ### Advanced Multi-Lock System
 
 ```solidity
-// From VeELTAMultiLock.sol
+// From veELTAMultiLock.sol
 MAX_LOCK = 208 weeks  // 4 years for advanced system
 EMERGENCY_UNLOCK_PENALTY = 50%  // Discourages abuse
 ```
@@ -256,7 +256,7 @@ EMERGENCY_UNLOCK_PENALTY = 50%  // Discourages abuse
 - **Extended lock periods** up to 4 years for maximum commitment
 
 
-## 🏅 ElataXP — Participation without speculation
+## ElataXP — Participation without speculation
 
 ### Basic XP System
 
@@ -305,11 +305,11 @@ Day 14: Effective: 0 XP (fully decayed)
 ```mermaid
 graph TD
     subgraph "XP Lifecycle"
-        AWARD[XP Awarded<br/>📅 Timestamped Entry]
-        FRESH[Day 0: 100% Effective<br/>✅ Full Voting Power]
-        DECAY[Day 7: 50% Effective<br/>⚠️ Decay Warning]
-        EXPIRED[Day 14: 0% Effective<br/>❌ No Voting Power]
-        UPDATE[Decay Update<br/>🔄 Burn Expired XP]
+        AWARD[XP Awarded<br/> Timestamped Entry]
+        FRESH[Day 0: 100% Effective<br/> Full Voting Power]
+        DECAY[Day 7: 50% Effective<br/> Decay Warning]
+        EXPIRED[Day 14: 0% Effective<br/> No Voting Power]
+        UPDATE[Decay Update<br/> Burn Expired XP]
     end
     
     AWARD --> FRESH
@@ -325,7 +325,7 @@ graph TD
 
 ---
 
-## 💧 LotPool — XP-weighted funding rounds
+## LotPool — XP-weighted funding rounds
 
 ### Mechanism
 
@@ -369,10 +369,10 @@ Results:
 ```
 
 **Properties**:
-- ✅ **Sybil-resistant** via XP (must be earned on-chain)
-- ✅ **Transparent** (all votes and payouts on-chain)
-- ✅ **Modular** (recipients can be PIs, escrow contracts, dev grants)
-- ✅ **Snapshot-based** (prevents double-voting or manipulation)
+- **Sybil-resistant** via XP (must be earned on-chain)
+- **Transparent** (all votes and payouts on-chain)
+- **Modular** (recipients can be PIs, escrow contracts, dev grants)
+- **Snapshot-based** (prevents double-voting or manipulation)
 
 ### Funding Round Flow
 
@@ -400,7 +400,7 @@ sequenceDiagram
 ```
 
 
-## 🧮 Technical specifications
+## Technical specifications
 
 ### Contract Constants
 
@@ -434,17 +434,17 @@ RewardsDistributor.EPOCH_DURATION = 7 days   // Weekly cycles
 ```mermaid
 graph TD
     subgraph "Low Cost Operations (<100K gas)"
-        LC1[ELTA Transfer: 56K<br/>💰 Standard token transfer]
-        LC2[ELTA Mint: 67K<br/>🏭 With supply cap check]
-        LC3[VeELTA Lock: 88K<br/>🔒 Position creation]
-        LC4[XP Decay Update: 87K<br/>🔄 Single user update]
-        LC5[LotPool Vote: 86K<br/>🗳️ XP allocation]
-        LC6[Reward Claim: 80K<br/>🎁 Merkle verification]
+        LC1[ELTA Transfer: 56K<br/> Standard token transfer]
+        LC2[ELTA Mint: 67K<br/> With supply cap check]
+        LC3[VeELTA Lock: 88K<br/> Position creation]
+        LC4[XP Decay Update: 87K<br/> Single user update]
+        LC5[LotPool Vote: 86K<br/> XP allocation]
+        LC6[Reward Claim: 80K<br/> Merkle verification]
     end
     
     subgraph "Medium Cost Operations (100K-300K gas)"
-        MC1[XP Award: 189K<br/>🏅 With auto-delegation]
-        MC2[Multi-lock Create: 256K<br/>🎯 NFT + delegation]
+        MC1[XP Award: 189K<br/> With auto-delegation]
+        MC2[Multi-lock Create: 256K<br/> NFT + delegation]
     end
     
     style LC1 fill:#c8e6c9
@@ -461,7 +461,7 @@ graph TD
 |-----------|----------|-------|
 | **ELTA transfer** | ~56K | Standard ERC20 |
 | **ELTA mint** | ~67K | With supply cap check |
-| **VeELTA lock** | ~88K | Single position creation |
+| **veELTA lock** | ~88K | Single position creation |
 | **Multi-lock create** | ~256K | NFT + delegation setup |
 | **XP award** | ~189K | With auto-delegation |
 | **XP decay update** | ~87K | Single user update |
@@ -473,18 +473,18 @@ graph TD
 
 | Contract | Size | Deploy Cost | Status |
 |----------|------|-------------|--------|
-| ELTA | 13.3KB | 2.3M gas | ✅ Optimal |
-| VeELTA | 4.7KB | 1.0M gas | ✅ Optimal |
-| ElataXP | 10.8KB | 2.2M gas | ✅ Optimal |
-| LotPool | 5.5KB | 1.1M gas | ✅ Optimal |
-| VeELTAMultiLock | 13.8KB | 3.0M gas | ✅ Acceptable |
-| ElataXPWithDecay | 13.5KB | 2.8M gas | ✅ Acceptable |
-| RewardsDistributor | 7.4KB | 1.1M gas | ✅ Optimal |
-| ElataGovernor | 16.6KB | 3.2M gas | ✅ Acceptable |
+| ELTA | 13.3KB | 2.3M gas |  Optimal |
+| veELTA | 4.7KB | 1.0M gas |  Optimal |
+| ElataXP | 10.8KB | 2.2M gas |  Optimal |
+| LotPool | 5.5KB | 1.1M gas |  Optimal |
+| VeELTAMultiLock | 13.8KB | 3.0M gas |  Acceptable |
+| ElataXPWithDecay | 13.5KB | 2.8M gas |  Acceptable |
+| RewardsDistributor | 7.4KB | 1.1M gas |  Optimal |
+| ElataGovernor | 16.6KB | 3.2M gas |  Acceptable |
 
 ---
 
-## 🔧 Developer integration
+## Developer integration
 
 ### Awarding XP Automatically
 
@@ -528,7 +528,7 @@ lotPool.finalize(roundId, keccak256("EXP-123"), 10000e18);
 ```
 
 
-## 🛡️ Security & design principles
+## Security & design principles
 
 ### Core Security Features
 
@@ -549,7 +549,7 @@ lotPool.finalize(roundId, keccak256("EXP-123"), 10000e18);
 
 ---
 
-## 🧪 Build, test, deploy
+## Build, test, deploy
 
 ### Prerequisites
 
@@ -581,7 +581,7 @@ forge script script/Deploy.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast --verify
 ```mermaid
 pie title Test Coverage by Contract
     "ELTA Token (16 tests)" : 16
-    "VeELTA Staking (10 tests)" : 10
+    "veELTA Staking (10 tests)" : 10
     "ElataXP System (23 tests)" : 23
     "LotPool Funding (22 tests)" : 22
     "RewardsDistributor (15 tests)" : 15
@@ -607,7 +607,7 @@ forge test -vvv
 
 ---
 
-## ❓ FAQ (for tokenomics-minded readers)
+## FAQ (for tokenomics-minded readers)
 
 **Q: Why no "reward token" or emissions?**
 A: Emissions tokens tend to inflate and collapse without strong sinks. Elata routes **real protocol fees** to veELTA stakers and uses **buyback & burn**—value tracks actual usage.
@@ -626,9 +626,9 @@ A: Balances **rewarding contribution** with **preventing hoarding**. Active part
 
 ---
 
-## 🚀 Production readiness
+## Production readiness
 
-### ✅ **Ready for Mainnet**
+### **Ready for Mainnet**
 
 - **All core contracts** compile and pass 112 comprehensive tests
 - **Gas costs optimized** for Ethereum mainnet usage
@@ -636,7 +636,7 @@ A: Balances **rewarding contribution** with **preventing hoarding**. Active part
 - **Non-upgradeable** design for trustlessness and immutability
 - **Professional documentation** and deployment infrastructure
 
-### 📋 **Next Steps**
+### **Next Steps**
 
 1. **External security audit** of all contracts
 2. **Testnet deployment** with community testing
@@ -646,19 +646,19 @@ A: Balances **rewarding contribution** with **preventing hoarding**. Active part
 
 ---
 
-## 📄 License
+## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-## 🧠 One-liner summary
+## One-liner summary
 
-> **Elata Protocol makes neurotech economical**: earn XP by contributing, steer funding with XP, capture real protocol yield by locking ELTA, and build the Internet of Brains together.
+> **Elata Protocol makes neurotechnology more economical**: earn XP by contributing, steer funding with XP, capture real protocol yield by locking ELTA, and build the Internet of Brains together.
 
 ---
 
-**Ready to revolutionize precision psychiatry through decentralized coordination.** 🧠⚡
+**Ready to revolutionize precision psychiatry through decentralized coordination.** 
 
 *For technical architecture details, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)*  
 *For deployment instructions, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)*  
