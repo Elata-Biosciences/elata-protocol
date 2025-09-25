@@ -10,11 +10,8 @@ env:
   FOUNDRY_PROFILE: ci
 
 jobs:
-  check:
-    strategy:
-      fail-fast: true
-
-    name: Foundry project
+  test:
+    name: Foundry Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,91 +30,48 @@ jobs:
         run: |
           forge --version
           forge build --sizes
-        id: build
 
       - name: Run Forge tests
         run: |
-          forge test -vv --gas-report
-        id: test
+          forge test -vv
 
-      - name: Run Forge coverage
+      - name: Run security tests
         run: |
-          forge coverage --report lcov
-        id: coverage
+          forge test --match-contract CoreSecurityVerification
 
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v3
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Check code formatting
+        run: forge fmt --check
+
+      - name: Run gas report
+        run: forge test --gas-report
+
+  coverage:
+    name: Test Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Run coverage
+        run: forge coverage --report lcov
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
         with:
           files: ./lcov.info
           flags: foundry
-
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-
-      - name: Run Forge fmt check
-        run: forge fmt --check
-
-  security:
-    name: Security Analysis
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-
-      - name: Install Slither
-        run: |
-          python3 -m pip install --upgrade pip
-          pip3 install slither-analyzer
-
-      - name: Run Slither Analysis
-        run: |
-          slither src/ --print human-summary --json slither-report.json || true
+          token: ${{ secrets.CODECOV_TOKEN }}
         continue-on-error: true
-
-      - name: Upload Slither Report
-        uses: actions/upload-artifact@v3
-        with:
-          name: slither-report
-          path: slither-report.json
-
-  gas-report:
-    name: Gas Report
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-
-      - name: Run tests with gas report
-        run: forge test --gas-report > gas-report.txt
-
-      - name: Comment gas report
-        uses: actions/github-script@v6
-        if: github.event_name == 'pull_request'
-        with:
-          script: |
-            const fs = require('fs');
-            const gasReport = fs.readFileSync('gas-report.txt', 'utf8');
-            
-            const body = `## Gas Report
-            
-            \`\`\`
-            ${gasReport}
-            \`\`\`
-            `;
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: body
-            });
