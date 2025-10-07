@@ -75,7 +75,7 @@ export function HeroSection() {
         <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center animate-fadeInUp stagger-4 px-4 mb-16">
           <Link
             href="/create"
-            className="w-full sm:w-auto inline-flex items-center justify-center px-6 sm:px-8 py-3 font-sf-pro font-medium rounded-none shadow-lg hover:shadow-xl transform hover:scale-105 hover:-translate-y-1 transition-all duration-300"
+            className="w-full sm:w-auto inline-flex items-center justify-center px-6 sm:px-8 py-4 font-sf-pro font-medium rounded-none shadow-lg hover:shadow-xl transform hover:scale-105 hover:-translate-y-1 transition-all duration-300"
             style={{ backgroundColor: '#171717', color: '#FDFDFD' }}
           >
             <IoRocket className="w-5 h-5 mr-2" />
@@ -85,7 +85,7 @@ export function HeroSection() {
           
           <Link
             href="#apps"
-            className="w-full sm:w-auto inline-flex items-center justify-center px-6 sm:px-8 py-3 bg-white text-offBlack font-sf-pro font-medium rounded-full shadow-lg hover:shadow-xl hover:bg-gray1/20 transform hover:scale-105 hover:-translate-y-1 transition-all duration-300"
+            className="w-full sm:w-auto inline-flex items-center justify-center px-6 sm:px-8 py-4 bg-white text-offBlack font-sf-pro font-medium rounded-full shadow-lg hover:shadow-xl hover:bg-gray1/20 transform hover:scale-105 hover:-translate-y-1 transition-all duration-300"
           >
             Learn More
             <IoArrowForward className="w-5 h-5 ml-2" />
@@ -95,8 +95,8 @@ export function HeroSection() {
         {/* Key Features */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl hover:-translate-y-2 hover:scale-105 transition-all duration-500 animate-fadeInUp stagger-5">
-            <div className="w-16 h-16 bg-elataGreen/10 rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg className="w-8 h-8 text-elataGreen" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-20 h-20 bg-elataGreen/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-12 h-12 text-elataGreen" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
@@ -109,8 +109,8 @@ export function HeroSection() {
           </div>
           
           <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl hover:-translate-y-2 hover:scale-105 transition-all duration-500 animate-fadeInUp stagger-6">
-            <div className="w-16 h-16 bg-accentRed/10 rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg className="w-8 h-8 text-accentRed" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-20 h-20 bg-accentRed/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-12 h-12 text-accentRed" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
             </div>
@@ -123,8 +123,8 @@ export function HeroSection() {
           </div>
           
           <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl hover:-translate-y-2 hover:scale-105 transition-all duration-500 animate-fadeInUp stagger-1">
-            <div className="w-16 h-16 bg-elataGreen/10 rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg className="w-8 h-8 text-elataGreen" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-20 h-20 bg-elataGreen/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-12 h-12 text-elataGreen" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
               </svg>
             </div>
