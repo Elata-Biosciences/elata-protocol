@@ -25,8 +25,8 @@ export function Header() {
           />
         </Link>
 
-        {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center space-x-8">
+        {/* Desktop Navigation (show from lg and up to avoid cramped iPad Mini layout) */}
+        <div className="hidden lg:flex items-center space-x-8">
           <Link
             href="/"
             className={`transition-colors duration-200 font-sf-pro ${
@@ -162,8 +162,8 @@ export function Header() {
         </div>
       </nav>
 
-      {/* Mobile Navigation */}
-      <div className="md:hidden bg-offCream/90 backdrop-blur-sm">
+      {/* Mobile/Tablet Navigation (up to lg) */}
+      <div className="lg:hidden bg-offCream/90 backdrop-blur-sm">
         <nav className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-around">
             <Link
