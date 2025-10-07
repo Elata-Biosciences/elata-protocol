@@ -6,6 +6,13 @@ This repository contains the smart contracts that power Elata's token, staking, 
 
 > **Scope of this repo**: Token economics + staking + XP + funding governance. (ZORP experiment data contracts live in a separate repository.)
 
+## 🚀 Live dApp
+
+- Production: [app.elata.bio](https://app.elata.bio)
+- Screenshot placeholder (add file at `docs/images/app-screenshot.png`):
+
+[![Elata Protocol – App Screenshot](docs/images/app-screenshot.png)](https://app.elata.bio)
+
 ---
 
 ## 💡 What problem does the protocol solve?
