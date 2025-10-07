@@ -191,7 +191,7 @@ export default function StakingPage() {
                 
                 <button
                   disabled
-                  className="w-full inline-flex items-center justify-center px-10 sm:px-16 py-4 sm:py-5 rounded-xl sm:rounded-none shadow-lg font-sf-pro font-medium text-base sm:text-lg transition-all duration-300 cursor-not-allowed disabled:opacity-50"
+                  className="w-full inline-flex items-center justify-center px-10 sm:px-16 py-4 sm:py-5 rounded-none shadow-lg font-sf-pro font-medium text-base sm:text-lg transition-all duration-300 cursor-not-allowed disabled:opacity-50"
                   style={{ backgroundColor: '#171717', color: '#FDFDFD' }}
                 >
                   Staking Coming Soon

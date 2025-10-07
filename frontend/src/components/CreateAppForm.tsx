@@ -168,7 +168,7 @@ export function CreateAppForm() {
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <button
             onClick={() => window.location.href = '/'}
-            className="inline-flex items-center justify-center px-8 py-4 font-sf-pro font-medium rounded-xl sm:rounded-none shadow-lg hover:shadow-xl transform hover:scale-105 hover:-translate-y-1 transition-all duration-300"
+            className="inline-flex items-center justify-center px-8 py-4 font-sf-pro font-medium rounded-none shadow-lg hover:shadow-xl transform hover:scale-105 hover:-translate-y-1 transition-all duration-300"
             style={{ backgroundColor: '#171717', color: '#FDFDFD' }}
           >
             View Protocol
@@ -420,7 +420,7 @@ export function CreateAppForm() {
           type="submit"
           onClick={handleSubmit}
           disabled={isCreatingApp || isApproving || hasInsufficientBalance || step !== 'form'}
-          className="w-full inline-flex items-center justify-center px-10 sm:px-16 py-4 sm:py-5 rounded-xl sm:rounded-none shadow-lg font-sf-pro font-medium text-base sm:text-lg transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+          className="w-full inline-flex items-center justify-center px-10 sm:px-16 py-4 sm:py-5 rounded-none shadow-lg font-sf-pro font-medium text-base sm:text-lg transition-all duration-300 hover:shadow-xl transform hover:scale-105 hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
           style={{ backgroundColor: '#171717', color: '#FDFDFD' }}
         >
           {step === 'approve' && isApproving && (
