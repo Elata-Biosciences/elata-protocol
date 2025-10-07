@@ -9,9 +9,9 @@ This repository contains the smart contracts that power Elata's token, staking, 
 ## 🚀 Live dApp
 
 - Production: [app.elata.bio](https://app.elata.bio)
-- Screenshot placeholder (add file at `docs/images/app-screenshot.png`):
+- Screenshot:
 
-[![Elata Protocol – App Screenshot](docs/images/app-screenshot.png)](https://app.elata.bio)
+[![Elata Protocol – Live dApp](docs/images/app-screenshot.png)](https://app.elata.bio)
 
 ---
 
