@@ -1,0 +1,85 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+:root {
+  /* Elata Design System Colors */
+  --color-black: #0A0A0A;
+  --color-off-black: #171717;
+  --color-gray3: #6D6D6D;
+  --color-gray2: #CCCCCC;
+  --color-gray1: #DDDDDD;
+  --color-off-white: #F7F7F7;
+  --color-white: #FDFDFD;
+  --color-elata-green: #607274;
+  --color-accent-red: #FF797B;
+  --color-off-cream: #F8F5EE;
+  --color-cream1: #F3EEE2;
+  --color-cream2: #E5E0D3;
+  --color-success: #34c759;
+  --color-warning: #ffcc00;
+  --color-danger: #ff3b30;
+  --color-info: #32ade6;
+  
+  /* Font families */
+  --font-montserrat: 'Montserrat', sans-serif;
+  --font-sf-pro: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  
+  /* Background and foreground for the app */
+  --background: var(--color-off-cream);
+  --foreground: var(--color-off-black);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sf-pro);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom text selection styling */
+::selection {
+  background-color: #607274;
+  color: #FDFDFD;
+}
+
+::-moz-selection {
+  background-color: #607274;
+  color: #FDFDFD;
+}
+
+/* ZORP-style animations */
+@keyframes wave {
+  0%, 100% {
+    transform: translateX(0%) translateY(0%) rotate(0deg) scale(1);
+  }
+  25% {
+    transform: translateX(15%) translateY(-8%) rotate(3deg) scale(1.1);
+  }
+  50% {
+    transform: translateX(-8%) translateY(15%) rotate(0deg) scale(0.9);
+  }
+  75% {
+    transform: translateX(-15%) translateY(-8%) rotate(-3deg) scale(1.05);
+  }
+}
+
+@keyframes fadeInScale {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

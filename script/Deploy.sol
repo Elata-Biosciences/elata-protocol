@@ -10,6 +10,8 @@ import { RewardsDistributor } from "../src/rewards/RewardsDistributor.sol";
 import { ElataGovernor } from "../src/governance/ElataGovernor.sol";
 import { ElataTimelock } from "../src/governance/ElataTimelock.sol";
 import { TimelockController } from "@openzeppelin/contracts/governance/TimelockController.sol";
+import { AppFactory } from "../src/apps/AppFactory.sol";
+import { IUniswapV2Router02 } from "../src/interfaces/IUniswapV2Router02.sol";
 
 /**
  * @title Deploy
@@ -36,6 +38,7 @@ contract Deploy is Script {
         RewardsDistributor rewards;
         TimelockController timelock;
         ElataGovernor governor;
+        AppFactory appFactory;
     }
 
     event ProtocolDeployed(
@@ -45,7 +48,8 @@ contract Deploy is Script {
         address funding,
         address rewards,
         address governor,
-        address timelock
+        address timelock,
+        address appFactory
     );
 
     function run() external returns (ProtocolContracts memory protocol) {
@@ -75,7 +79,17 @@ contract Deploy is Script {
         protocol.funding = new LotPool(protocol.token, protocol.xp, ADMIN_MSIG);
         protocol.rewards = new RewardsDistributor(protocol.staking, ADMIN_MSIG);
 
-        // 6. Configure system permissions
+        // 6. Deploy app launch framework
+        // Note: Router address should be set via environment variable for each network
+        address routerAddress =
+            vm.envOr("UNISWAP_V2_ROUTER", address(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D)); // Mainnet default
+        if (routerAddress != address(0)) {
+            protocol.appFactory = new AppFactory(
+                protocol.token, IUniswapV2Router02(routerAddress), INITIAL_TREASURY, ADMIN_MSIG
+            );
+        }
+
+        // 7. Configure system permissions
         _configurePermissions(protocol);
 
         // 7. Log deployment addresses
@@ -89,7 +103,8 @@ contract Deploy is Script {
             address(protocol.funding),
             address(protocol.rewards),
             address(protocol.governor),
-            address(protocol.timelock)
+            address(protocol.timelock),
+            address(protocol.appFactory)
         );
 
         vm.stopBroadcast();
@@ -137,6 +152,7 @@ contract Deploy is Script {
         console2.log("Rewards:           ", address(protocol.rewards));
         console2.log("Governor:          ", address(protocol.governor));
         console2.log("Timelock:          ", address(protocol.timelock));
+        console2.log("App Factory:       ", address(protocol.appFactory));
         console2.log("===========================");
 
         // Verification commands
