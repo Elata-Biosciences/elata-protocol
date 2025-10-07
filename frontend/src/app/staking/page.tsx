@@ -4,7 +4,7 @@ import { useAccount } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Header } from '../../components/Header';
 import { Footer } from '../../components/Footer';
-import { IoWallet, IoCheckmarkCircle, IoTrendingUp, IoShieldCheckmark, IoTime } from 'react-icons/io5';
+import { IoWallet, IoCheckmarkCircle, IoTrendingUp, IoShieldCheckmark, IoTime, IoLockClosed, IoCash } from 'react-icons/io5';
 
 export default function StakingPage() {
   const { isConnected } = useAccount();
@@ -217,7 +217,7 @@ export default function StakingPage() {
                 
                 <div className="flex items-center space-x-3">
                   <div className="w-8 h-8 bg-warning/10 rounded-full flex items-center justify-center">
-                    <IoTime className="w-4 h-4 text-warning" />
+                    <IoLockClosed className="w-4 h-4 text-warning" />
                   </div>
                   <div>
                     <div className="font-medium text-offBlack">ELTA Staking (veELTA)</div>
@@ -227,7 +227,7 @@ export default function StakingPage() {
                 
                 <div className="flex items-center space-x-3">
                   <div className="w-8 h-8 bg-warning/10 rounded-full flex items-center justify-center">
-                    <IoTime className="w-4 h-4 text-warning" />
+                    <IoShieldCheckmark className="w-4 h-4 text-warning" />
                   </div>
                   <div>
                     <div className="font-medium text-offBlack">Governance Voting</div>
@@ -237,7 +237,7 @@ export default function StakingPage() {
                 
                 <div className="flex items-center space-x-3">
                   <div className="w-8 h-8 bg-warning/10 rounded-full flex items-center justify-center">
-                    <IoTime className="w-4 h-4 text-warning" />
+                    <IoCash className="w-4 h-4 text-warning" />
                   </div>
                   <div>
                     <div className="font-medium text-offBlack">Rewards Distribution</div>
