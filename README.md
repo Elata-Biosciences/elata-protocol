@@ -96,7 +96,7 @@ graph TB
     
     subgraph "Advanced Features"
         RD[RewardsDistributor<br/>🎁 Staker Rewards<br/>Merkle tree, 7d epochs]
-        GOV[ElataGovernor<br/>🏛️ On-chain Governance<br/>4% quorum, 1d delay]
+        GOV[ElataGovernor<br/>🏛️ Onchain Governance<br/>4% quorum, 1d delay]
         TL[ElataTimelock<br/>⏰ Execution Delays<br/>48h standard, 6h emergency]
         STATS[ProtocolStats<br/>📊 Frontend Utils<br/>Batch queries]
     end
@@ -136,7 +136,7 @@ graph TB
 | **[VeELTAMultiLock.sol](src/staking/VeELTAMultiLock.sol)** | Advanced staking | NFT positions, multiple locks, merge/split, 4-year max |
 | **[ElataXPWithDecay.sol](src/xp/ElataXPWithDecay.sol)** | XP with decay | 14-day rolling decay, keeper functions, anti-hoarding |
 | **[RewardsDistributor.sol](src/rewards/RewardsDistributor.sol)** | Staker rewards | Merkle tree distribution, multiple tokens, epoch-based |
-| **[ElataGovernorSimple.sol](src/governance/ElataGovernorSimple.sol)** | On-chain governance | 4% quorum, emergency proposals, timelock integration |
+| **[ElataGovernorSimple.sol](src/governance/ElataGovernorSimple.sol)** | Onchain governance | 4% quorum, emergency proposals, timelock integration |
 
 ### Why each contract exists
 
@@ -243,7 +243,7 @@ MINTER_ROLE                   // Role-gated minting up to cap
 
 **Key Properties**
 - ✅ **No transfer fees** → DEX/aggregator compatible
-- ✅ **ERC20Votes** → On-chain governance ready
+- ✅ **ERC20Votes** → Onchain governance ready
 - ✅ **ERC20Permit** → Gasless approvals
 - ✅ **Burnable** → Deflationary pressure
 - ✅ **Non-upgradeable** → Immutable, trustless

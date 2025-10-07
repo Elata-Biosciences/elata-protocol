@@ -21,7 +21,7 @@ graph TB
         
         subgraph "Advanced Contracts"
             RD[RewardsDistributor<br/>Yield Distribution]
-            GOV[ElataGovernor<br/>On-chain Voting]
+            GOV[ElataGovernor<br/>Onchain Voting]
             TL[ElataTimelock<br/>Execution Delays]
             STATS[ProtocolStats<br/>Data Aggregation]
         end

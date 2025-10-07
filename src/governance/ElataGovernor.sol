@@ -14,7 +14,7 @@ import { IVotes } from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 /**
  * @title ElataGovernor
  * @author Elata Biosciences
- * @notice On-chain governance contract for the Elata Protocol
+ * @notice Onchain governance contract for the Elata Protocol
  * @dev OpenZeppelin Governor without timelock for initial governance
  *
  * Features:
