@@ -17,6 +17,8 @@ contract AppTokenTest is Test {
     uint256 public constant MAX_SUPPLY = 1_000_000_000 ether;
 
     event AppMetadataUpdated(string description, string imageURI, string website);
+    event MintingFinalized();
+    event Minted(address indexed to, uint256 amount);
 
     function setUp() public {
         token = new AppToken("TestApp Token", "TEST", 18, MAX_SUPPLY, creator, admin);
@@ -225,5 +227,58 @@ contract AppTokenTest is Test {
         assertEq(token.appWebsite(), "https://v2.com");
 
         vm.stopPrank();
+    }
+
+    // ────────────────────────────────────────────────────────────────────────────
+    // FINALIZE MINTING TESTS
+    // ────────────────────────────────────────────────────────────────────────────
+
+    function test_FinalizeMinting() public {
+        assertFalse(token.mintingFinalized());
+
+        vm.expectEmit(true, true, true, true);
+        emit MintingFinalized();
+
+        vm.prank(admin);
+        token.finalizeMinting();
+
+        assertTrue(token.mintingFinalized());
+    }
+
+    function test_RevertWhen_MintAfterFinalize() public {
+        vm.prank(admin);
+        token.finalizeMinting();
+
+        vm.expectRevert(AppToken.MintingAlreadyFinalized.selector);
+        vm.prank(admin);
+        token.mint(user1, 1000 ether);
+    }
+
+    function test_RevertWhen_FinalizeMintingUnauthorized() public {
+        vm.expectRevert();
+        vm.prank(user1);
+        token.finalizeMinting();
+    }
+
+    function test_MintBeforeFinalize() public {
+        // Mint should work before finalize
+        vm.prank(admin);
+        token.mint(user1, 1000 ether);
+        assertEq(token.balanceOf(user1), 1000 ether);
+
+        // Finalize
+        vm.prank(admin);
+        token.finalizeMinting();
+
+        // Mint should fail after finalize
+        vm.expectRevert(AppToken.MintingAlreadyFinalized.selector);
+        vm.prank(admin);
+        token.mint(user1, 1000 ether);
+    }
+
+    function test_PermitFunctionality() public {
+        // Test that permit extension is available
+        assertEq(token.DOMAIN_SEPARATOR(), token.DOMAIN_SEPARATOR());
+        assertEq(token.nonces(user1), 0);
     }
 }
