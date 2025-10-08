@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC20Burnable } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 
 /**
@@ -12,17 +13,21 @@ import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol"
  * @dev No transfer taxes, fixed supply, minted to bonding curve for fair distribution
  *
  * Features:
- * - Standard ERC20 with burning capability
+ * - Standard ERC20 with burning capability and permit support
  * - No transfer fees for DEX compatibility
- * - Fixed supply minted once to bonding curve
+ * - Optional supply cap with finalizeMinting() for permanent lock
  * - Role-based minting control
- * - Snapshot-compatible for future governance
+ * - Gasless approvals via ERC20Permit
+ * - App metadata storage
  */
-contract AppToken is ERC20, ERC20Burnable, AccessControl {
+contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     uint8 private immutable _decimals;
     uint256 public immutable maxSupply;
+    
+    /// @notice Whether minting has been finalized (irreversible)
+    bool public mintingFinalized;
 
     // App metadata
     string public appDescription;
@@ -31,16 +36,19 @@ contract AppToken is ERC20, ERC20Burnable, AccessControl {
     address public appCreator;
 
     event AppMetadataUpdated(string description, string imageURI, string website);
+    event MintingFinalized();
+    event Minted(address indexed to, uint256 amount);
 
     error SupplyCapExceeded();
     error OnlyCreator();
+    error MintingAlreadyFinalized();
 
     /**
      * @notice Initialize app token with metadata
      * @param name_ Token name (e.g., "NeuroGame Token")
      * @param symbol_ Token symbol (e.g., "NGT")
      * @param decimals_ Token decimals (typically 18)
-     * @param maxSupply_ Maximum token supply
+     * @param maxSupply_ Maximum token supply (0 = uncapped until finalize)
      * @param creator_ App creator address
      * @param admin_ Admin address (typically AppFactory)
      */
@@ -51,7 +59,7 @@ contract AppToken is ERC20, ERC20Burnable, AccessControl {
         uint256 maxSupply_,
         address creator_,
         address admin_
-    ) ERC20(name_, symbol_) {
+    ) ERC20(name_, symbol_) ERC20Permit(name_) {
         require(creator_ != address(0) && admin_ != address(0), "Zero address");
         require(maxSupply_ > 0, "Invalid supply");
 
@@ -68,13 +76,33 @@ contract AppToken is ERC20, ERC20Burnable, AccessControl {
     }
 
     /**
+     * @notice Returns the app creator (compatible with IOwnable)
+     * @return Address of the app creator
+     */
+    function owner() public view returns (address) {
+        return appCreator;
+    }
+
+    /**
      * @notice Mint tokens to specified address (typically bonding curve)
      * @param to Address to mint tokens to
      * @param amount Amount of tokens to mint
      */
     function mint(address to, uint256 amount) external onlyRole(MINTER_ROLE) {
-        if (totalSupply() + amount > maxSupply) revert SupplyCapExceeded();
+        if (mintingFinalized) revert MintingAlreadyFinalized();
+        if (maxSupply > 0 && totalSupply() + amount > maxSupply) revert SupplyCapExceeded();
+        
         _mint(to, amount);
+        emit Minted(to, amount);
+    }
+
+    /**
+     * @notice Permanently disable further minting
+     * @dev Irreversible operation - locks supply forever
+     */
+    function finalizeMinting() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        mintingFinalized = true;
+        emit MintingFinalized();
     }
 
     /**

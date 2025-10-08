@@ -114,10 +114,15 @@ contract AppLaunchIntegrationTest is Test {
 
         // Verify token details
         AppToken token = AppToken(app.token);
+        uint256 defaultSupply = factory.defaultSupply();
+        uint256 creatorTreasury = (defaultSupply * 10) / 100; // 10% to creator
+        uint256 curveSupply = defaultSupply - creatorTreasury; // 90% to curve
+        
         assertEq(token.name(), "NeuroRacing");
         assertEq(token.symbol(), "RACE");
-        assertEq(token.totalSupply(), factory.defaultSupply());
-        assertEq(token.balanceOf(app.curve), factory.defaultSupply());
+        assertEq(token.totalSupply(), defaultSupply);
+        assertEq(token.balanceOf(creator1), creatorTreasury); // Creator has 10%
+        assertEq(token.balanceOf(app.curve), curveSupply); // Curve has 90%
 
         console2.log("[OK] App created successfully");
     }
@@ -169,8 +174,11 @@ contract AppLaunchIntegrationTest is Test {
         // Verify curve state
         (uint256 eltaReserve, uint256 tokenReserve,,,, uint256 progress) = curve.getCurveState();
 
+        uint256 defaultSupply = factory.defaultSupply();
+        uint256 curveSupply = (defaultSupply * 90) / 100; // 90% to curve, 10% to creator
+        
         assertGt(eltaReserve, factory.seedElta()); // Should have more than seed
-        assertEq(tokenReserve, factory.defaultSupply() - totalTokensPurchased);
+        assertEq(tokenReserve, curveSupply - totalTokensPurchased);
         assertGt(progress, 0);
         assertLt(progress, 10000); // Not graduated yet
 
@@ -503,10 +511,14 @@ contract AppLaunchIntegrationTest is Test {
         AppBondingCurve curve = AppBondingCurve(app.curve);
         AppToken token = AppToken(app.token);
 
+        uint256 creatorTreasury = (supply * 10) / 100;
+        uint256 curveSupply = supply - creatorTreasury;
+        
         assertEq(token.maxSupply(), supply);
+        assertEq(token.balanceOf(creator1), creatorTreasury); // Creator has 10%
         assertEq(curve.targetRaisedElta(), targetAmount);
         assertEq(curve.reserveElta(), seedAmount);
-        assertEq(curve.reserveToken(), supply);
+        assertEq(curve.reserveToken(), curveSupply); // Curve has 90%
 
         // Test purchase with fuzzed amount
         vm.prank(treasury);

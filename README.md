@@ -126,21 +126,21 @@ graph TB
     style GOV fill:#ffccff
 ```
 
-### Core Protocol (Phase 1)
+### Core Protocol
 
 | Contract | Purpose | Key Features |
 |----------|---------|--------------|
 | **[ELTA.sol](src/token/ELTA.sol)** | Governance & utility token | ERC20 + Votes + Permit + Burnable, 77M cap, no fees |
 | **[VeELTA.sol](src/staking/VeELTA.sol)** | Vote-escrowed staking | Linear decay, 1 week–2 year locks, one position per user |
-| **[ElataXP.sol](src/xp/ElataXP.sol)** | Basic experience points | Non-transferable, checkpoint tracking, governance ready |
+| **[ElataXP.sol](src/experience/ElataXP.sol)** | Basic experience points | Non-transferable, checkpoint tracking, governance ready |
 | **[LotPool.sol](src/governance/LotPool.sol)** | Research funding rounds | XP-weighted voting, weekly cycles, transparent payouts |
 
-### Advanced Features (Phase 2)
+### Advanced Protocol Contracts
 
 | Contract | Purpose | Key Features |
 |----------|---------|--------------|
 | **[VeELTAMultiLock.sol](src/staking/VeELTAMultiLock.sol)** | Advanced staking | NFT positions, multiple locks, merge/split, 4-year max |
-| **[ElataXPWithDecay.sol](src/xp/ElataXPWithDecay.sol)** | XP with decay | 14-day rolling decay, keeper functions, anti-hoarding |
+| **[ElataXPWithDecay.sol](src/experience/ElataXPWithDecay.sol)** | XP with decay | 14-day rolling decay, keeper functions, anti-hoarding |
 | **[RewardsDistributor.sol](src/rewards/RewardsDistributor.sol)** | Staker rewards | Merkle tree distribution, multiple tokens, epoch-based |
 | **[ElataGovernorSimple.sol](src/governance/ElataGovernorSimple.sol)** | Onchain governance | 4% quorum, emergency proposals, timelock integration |
 
@@ -155,7 +155,7 @@ graph TB
 * **Rewards**: Distributes **real yield** to stakers based on protocol revenue
 * **Governor**: Enables **on-chain voting** for protocol parameters and upgrades
 
-### App Launch Framework (Phase 3)
+### App Launch Framework
 
 ```mermaid
 graph TD
@@ -219,7 +219,7 @@ sequenceDiagram
     AppFactory->>AppFactory: Deploy AppToken & BondingCurve
     AppFactory->>BondingCurve: Initialize with seed liquidity
     
-    Note over Developer, DEX: Bonding Curve Phase
+    Note over Developer, DEX: Bonding Curve
     Users->>BondingCurve: buy() tokens with ELTA
     BondingCurve->>BondingCurve: Price increases with demand
     BondingCurve->>AppFactory: Collect 2.5% protocol fee
@@ -286,10 +286,15 @@ Buyback & burn: $3,750 (reduces supply)
 
 **App Token Launch Model:**
 ```
-Developer Investment: 110 ELTA (100 seed + 10 fee)
+Developer Investment: 110 ELTA (default: 100 seed + 10 fee, governable)
 ├── Seed Liquidity: 100 ELTA → Bonding curve initial liquidity
 ├── Creation Fee: 10 ELTA → Protocol treasury
 └── Token Supply: 1B tokens → Fair distribution via curve
+
+Note: All parameters (seedElta, creationFee, targetRaise, etc.) are fully 
+governable by protocol team via AppFactory.setParameters(). Fees adjust 
+dynamically based on ELTA market price to maintain accessibility.
+Query current cost: appFactory.getTotalCreationCost()
 
 User Purchases: ELTA → App Tokens
 ├── Protocol Fee: 2.5% → Treasury (sustainable revenue)
@@ -305,7 +310,277 @@ User Purchases: ELTA → App Tokens
 
 ---
 
-## 🔒 veELTA Staking — Time-weighted governance
+## App Token Utility Modules
+
+Beyond fair token launches, Elata provides utility modules that make app tokens valuable for in-game economies and user engagement.
+
+### Utility Contracts
+
+| Contract | Purpose | Key Features |
+|----------|---------|--------------|
+| **[AppAccess1155.sol](src/apps/AppAccess1155.sol)** | Items and passes | Burn-on-purchase, soulbound toggle, feature gates, 25+ view functions |
+| **[AppStakingVault.sol](src/apps/AppStakingVault.sol)** | Per-app staking | Simple stake/unstake, feature gating, governance weight |
+| **[Tournament.sol](src/apps/Tournament.sol)** | Paid competitions | Entry fees, protocol fees, burn fees, Merkle claims |
+| **[EpochRewards.sol](src/apps/EpochRewards.sol)** | Time-boxed rewards | Owner-funded, Merkle claims, no continuous emissions |
+| **[AppModuleFactory.sol](src/apps/AppModuleFactory.sol)** | Core module deployer | Deploys Access1155, StakingVault, EpochRewards in one call |
+| **[TournamentFactory.sol](src/apps/TournamentFactory.sol)** | Tournament deployer | One-click tournament creation, registry, default fees |
+| **[Interfaces.sol](src/apps/Interfaces.sol)** | Interface definitions | IAppToken, IOwnable |
+
+### Core Utility Features
+
+**AppToken** (Enhanced):
+- ERC20 with Permit support for gasless approvals
+- Optional max supply cap with enforcement
+- Irreversible `finalizeMinting()` to lock supply permanently
+- Burnable for deflationary mechanics
+- `owner()` function for factory integration
+- No transfer fees (DEX compatible)
+
+**AppAccess1155** (Items & Passes):
+- ERC1155 multi-token standard for in-app items
+- Configurable per item: price, soulbound toggle, time windows, supply caps
+- 100% burn-on-purchase (deflationary by design)
+- Soulbound (non-transferable) enforcement per item
+- Feature gate registry for app-side access control
+- Comprehensive view functions: `checkFeatureAccess()`, `checkPurchaseEligibility()`, `getPurchaseCost()`, `getRemainingSupply()`
+- Batch getters for efficient UI loading
+
+**AppStakingVault** (Staking):
+- Per-app isolated staking (not global)
+- Simple stake/unstake with no lock periods
+- View functions for feature gating: `stakedOf()`, `totalStaked()`
+- Clean event emission for indexing
+- ReentrancyGuard protection
+
+**Tournament** (Competitions):
+- Entry fee collection in app tokens
+- Protocol fee (default 2.5%) to treasury
+- Burn fee (default 1%) for deflationary pressure
+- Time-windowed entry periods
+- Merkle proof claim distribution
+- One-time finalization
+- View functions: `getTournamentState()`, `checkEntryEligibility()`, `calculateFees()`
+
+**EpochRewards** (Distribution):
+- Time-boxed reward periods (no continuous faucets)
+- Owner-funded from rewards treasury
+- Merkle proof claims for gas efficiency
+- Per-epoch isolation and tracking
+- Analytics views: `getEpochUtilization()`, `isEpochClaimable()`
+- Batch operations for multiple epochs
+
+**AppModuleFactory** (Core Module Deployment):
+- Deploys Access1155, StakingVault, and EpochRewards in one call
+- Restricted: only AppToken owner can deploy
+- Optional ELTA creation fee to treasury
+- On-chain registry via `modulesByApp` mapping
+- Ownership alignment (creator owns all modules)
+- One-time deployment per app
+
+**TournamentFactory** (Tournament Deployment):
+- Deploys new Tournament contract per event
+- Tournaments are single-use (finalize once, claim once per user)
+- Registry tracks all tournaments by app and creator
+- Default fee templates (2.5% protocol, 1% burn)
+- Custom fees supported for special events
+- Enables weekly/monthly tournaments without manual deployment
+
+### Complete App Creator Journey
+
+```
+Step 1: Launch App (via AppFactory)
+├─ Pay ELTA (default 110: 100 seed + 10 fee, governable)
+├─ AppToken deployed
+├─ Receive 10% of supply for rewards treasury (default: 100M tokens)
+├─ Receive admin control (DEFAULT_ADMIN_ROLE)
+└─ 90% of supply in bonding curve for trading (default: 900M tokens)
+
+Note: Launch costs and parameters are governable by protocol
+      Query current cost: appFactory.getTotalCreationCost()
+
+Step 2: Deploy Utility Modules (via AppModuleFactory)
+├─ Pay optional ELTA creation fee
+├─ Receive AppAccess1155 (items/passes)
+├─ Receive AppStakingVault (staking)
+├─ Receive EpochRewards (reward distribution)
+└─ Creator owns all modules
+
+Step 3: Configure Economy
+├─ Set items with prices, time windows, supply caps
+├─ Configure feature gates (stake + item requirements)
+└─ Ready for users
+
+Step 4: Deploy Tournaments (via TournamentFactory - per event)
+├─ Create tournament with entry fee and time window
+├─ Tournament uses default fees (2.5% protocol, 1% burn)
+├─ One contract per event (tournaments are single-use)
+└─ Registry tracks all tournaments
+
+Step 5: Run Reward Epochs (reusable)
+├─ Start epoch with time window
+├─ Fund from creator treasury (has 100M tokens!)
+├─ Finalize with Merkle root after off-chain computation
+└─ Users claim rewards with proofs
+```
+
+### Deflationary Economics
+
+**Burn Mechanisms:**
+1. **Purchase Burns**: 100% of item/pass purchases burn app tokens
+2. **Tournament Burns**: 1% of entry fee pool burned
+3. **No New Minting**: After `finalizeMinting()`, supply can only decrease
+
+**Example Flow:**
+```
+Initial Supply: 1,000,000,000 tokens
+AppFactory mints at creation:
+├─ 100,000,000 tokens (10%) → Creator treasury for rewards
+└─ 900,000,000 tokens (90%) → Bonding curve for trading
+
+Creator can optionally call finalizeMinting() to lock supply
+
+Month 1 Activity:
+├─ Users purchase items: 500,000 tokens burned
+├─ Tournament burns: 50,000 tokens burned
+└─ Epoch rewards distributed: 10,000,000 tokens (from creator treasury)
+
+Net Supply: 999,450,000 tokens (deflationary)
+Creator Treasury Remaining: 90,000,000 tokens for future rewards
+```
+
+### Feature Gating System
+
+Apps can gate features using on-chain state:
+
+**Stake-Only Gating:**
+```solidity
+access.setFeatureGate(featureId, FeatureGate({
+    minStake: 1000 ether,  // Require 1000 tokens staked
+    requiredItem: 0,        // No item required
+    requireBoth: false,
+    active: true
+}));
+
+// App checks access
+bool hasAccess = access.checkFeatureAccess(user, featureId, userStake);
+```
+
+**Item-Only Gating:**
+```solidity
+access.setFeatureGate(featureId, FeatureGate({
+    minStake: 0,
+    requiredItem: 5,        // Require premium pass (ID 5)
+    requireBoth: false,
+    active: true
+}));
+```
+
+**Combined Gating (Both Required):**
+```solidity
+access.setFeatureGate(featureId, FeatureGate({
+    minStake: 5000 ether,   // Require 5000 staked
+    requiredItem: 10,       // AND legendary pass (ID 10)
+    requireBoth: true,      // Both required
+    active: true
+}));
+```
+
+### Tournament Economics
+
+```
+Entry Fees Collected
+├── Protocol Fee (2.5%) → Treasury (ELTA-aligned revenue)
+├── Burn Fee (1.0%) → Removed from circulation
+└── Net Pool (96.5%) → Distributed to winners via Merkle claims
+```
+
+**Why Merkle Claims:**
+- Gas efficient for any number of winners
+- Off-chain ranking/scoring flexibility
+- On-chain verification and transparency
+- No gas cost for non-winners
+
+### Epoch Rewards Model
+
+**Sustainable Distribution:**
+- Owner creates time-boxed epochs (e.g., weekly, monthly)
+- Owner funds from 10% creator treasury received at launch
+- Off-chain: compute XP/rankings, generate Merkle tree
+- Owner finalizes epoch with Merkle root
+- Users claim rewards with proofs
+- Single EpochRewards contract handles all seasons (reusable)
+
+**No Continuous Faucets:**
+- Prevents inflation spirals
+- Maintains token value
+- Allows curated, merit-based distribution
+- Owner controls emission schedule
+- Finite supply from creator treasury (100M tokens)
+
+### Tournament Model
+
+**Per-Event Deployment:**
+- TournamentFactory creates new Tournament for each event
+- Tournaments are single-use (finalize once)
+- Entry fees accumulate in prize pool
+- Protocol fee (2.5%) and burn fee (1%) applied at finalization
+- Winners claim via Merkle proofs
+- Registry tracks all tournaments per app for discovery
+
+### View Functions for UI/UX
+
+All contracts include comprehensive view functions for frontends:
+
+**Eligibility Checking:**
+- `checkFeatureAccess(user, featureId, stake)` - Can user access feature?
+- `checkPurchaseEligibility(user, id, amount)` - Can user purchase item?
+- `checkEntryEligibility(user)` - Can user enter tournament?
+
+**Cost Calculations:**
+- `getPurchaseCost(id, amount)` - Calculate purchase cost
+- `calculateFees()` - Preview tournament fee breakdown
+
+**State Queries:**
+- `getRemainingSupply(id)` - Check item availability
+- `getTournamentState()` - Complete tournament info
+- `getEpochUtilization(id)` - Track claim rates
+
+**Batch Operations:**
+- `getItems(ids[])` - Load multiple items efficiently
+- `getFeatureGates(featureIds[])` - Load multiple gates
+- `getEpochs(ids[])` - Load multiple epochs
+- `checkClaimStatuses(id, users[])` - Check multiple users
+
+### Security & Design Principles
+
+**Non-Upgradeable:**
+- All contracts immutable after deployment
+- No proxy patterns or upgrade mechanisms
+- Trust through code transparency
+
+**Owner-Controlled:**
+- App creators configure their own modules
+- No protocol-level governance of app parameters
+- Creators can use Snapshot for community input
+
+**Burn-by-Default:**
+- Purchases burn 100% of tokens (deflationary)
+- Can add fee splits later if desired
+- Supports token value directly
+
+**ELTA-Aligned:**
+- Module creation fees paid in ELTA
+- Tournament protocol fees to treasury
+- Sustainable protocol revenue
+
+**Gating App-Side:**
+- Smart contracts provide data via views
+- Apps enforce access in their logic
+- Flexible, gas-efficient, easy to update
+
+---
+
+## veELTA Staking — Time-weighted governance
 
 ### Voting Power Visualization
 
@@ -490,7 +765,7 @@ sequenceDiagram
     LotPool->>LotPool: Take XP snapshot at block N-1
     LotPool->>Users: Announce new round
     
-    Note over Admin, Winners: Voting Phase
+    Note over Admin, Winners: Voting Period
     Users->>LotPool: vote(roundId, option, xpAmount)
     LotPool->>LotPool: Validate XP at snapshot
     LotPool->>LotPool: Record votes
