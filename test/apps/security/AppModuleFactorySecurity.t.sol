@@ -91,7 +91,7 @@ contract AppModuleFactorySecurityTest is Test {
 
     function test_Security_DeployedModulesHaveCorrectOwner() public {
         vm.prank(appCreator);
-        (address access, address vault) = factory.deployModules(
+        (address access, address vault, ) = factory.deployModules(
             address(appToken),
             "https://test/"
         );
@@ -103,7 +103,7 @@ contract AppModuleFactorySecurityTest is Test {
 
     function test_Security_DeployedModulesLinkedCorrectly() public {
         vm.prank(appCreator);
-        (address access, address vault) = factory.deployModules(
+        (address access, address vault, ) = factory.deployModules(
             address(appToken),
             "https://test/"
         );
@@ -177,16 +177,17 @@ contract AppModuleFactorySecurityTest is Test {
 
     function test_Security_RegistryMappingCorrect() public {
         vm.prank(appCreator);
-        (address access, address vault) = factory.deployModules(
+        (address access, address vault, address epochs) = factory.deployModules(
             address(appToken),
             "https://test/"
         );
 
-        (address storedAccess, address storedVault) = 
+        (address storedAccess, address storedVault, address storedEpochs) = 
             factory.modulesByApp(address(appToken));
 
         assertEq(storedAccess, access);
         assertEq(storedVault, vault);
+        assertEq(storedEpochs, epochs);
     }
 
     function test_Security_MultipleAppsIsolated() public {
@@ -202,12 +203,12 @@ contract AppModuleFactorySecurityTest is Test {
 
         // Deploy for both apps
         vm.startPrank(appCreator);
-        (address access1, address vault1) = factory.deployModules(
+        (address access1, address vault1, ) = factory.deployModules(
             address(appToken),
             "https://app1/"
         );
 
-        (address access2, address vault2) = factory.deployModules(
+        (address access2, address vault2, ) = factory.deployModules(
             address(appToken2),
             "https://app2/"
         );
@@ -285,7 +286,7 @@ contract AppModuleFactorySecurityTest is Test {
 
     function test_Security_DeployedContractsAreValid() public {
         vm.prank(appCreator);
-        (address access, address vault) = factory.deployModules(
+        (address access, address vault, ) = factory.deployModules(
             address(appToken),
             "https://test/"
         );

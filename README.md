@@ -286,10 +286,15 @@ Buyback & burn: $3,750 (reduces supply)
 
 **App Token Launch Model:**
 ```
-Developer Investment: 110 ELTA (100 seed + 10 fee)
+Developer Investment: 110 ELTA (default: 100 seed + 10 fee, governable)
 ├── Seed Liquidity: 100 ELTA → Bonding curve initial liquidity
 ├── Creation Fee: 10 ELTA → Protocol treasury
 └── Token Supply: 1B tokens → Fair distribution via curve
+
+Note: All parameters (seedElta, creationFee, targetRaise, etc.) are fully 
+governable by protocol team via AppFactory.setParameters(). Fees adjust 
+dynamically based on ELTA market price to maintain accessibility.
+Query current cost: appFactory.getTotalCreationCost()
 
 User Purchases: ELTA → App Tokens
 ├── Protocol Fee: 2.5% → Treasury (sustainable revenue)
@@ -317,7 +322,8 @@ Beyond fair token launches, Elata provides utility modules that make app tokens 
 | **[AppStakingVault.sol](src/apps/AppStakingVault.sol)** | Per-app staking | Simple stake/unstake, feature gating, governance weight |
 | **[Tournament.sol](src/apps/Tournament.sol)** | Paid competitions | Entry fees, protocol fees, burn fees, Merkle claims |
 | **[EpochRewards.sol](src/apps/EpochRewards.sol)** | Time-boxed rewards | Owner-funded, Merkle claims, no continuous emissions |
-| **[AppModuleFactory.sol](src/apps/AppModuleFactory.sol)** | Module deployer | Token-owner restricted, optional ELTA creation fee |
+| **[AppModuleFactory.sol](src/apps/AppModuleFactory.sol)** | Core module deployer | Deploys Access1155, StakingVault, EpochRewards in one call |
+| **[TournamentFactory.sol](src/apps/TournamentFactory.sol)** | Tournament deployer | One-click tournament creation, registry, default fees |
 | **[Interfaces.sol](src/apps/Interfaces.sol)** | Interface definitions | IAppToken, IOwnable |
 
 ### Core Utility Features
@@ -363,25 +369,58 @@ Beyond fair token launches, Elata provides utility modules that make app tokens 
 - Analytics views: `getEpochUtilization()`, `isEpochClaimable()`
 - Batch operations for multiple epochs
 
-**AppModuleFactory** (Deployment):
-- Deploys Access1155 + StakingVault pair
+**AppModuleFactory** (Core Module Deployment):
+- Deploys Access1155, StakingVault, and EpochRewards in one call
 - Restricted: only AppToken owner can deploy
 - Optional ELTA creation fee to treasury
 - On-chain registry via `modulesByApp` mapping
 - Ownership alignment (creator owns all modules)
+- One-time deployment per app
 
-### Token Utility Flow
+**TournamentFactory** (Tournament Deployment):
+- Deploys new Tournament contract per event
+- Tournaments are single-use (finalize once, claim once per user)
+- Registry tracks all tournaments by app and creator
+- Default fee templates (2.5% protocol, 1% burn)
+- Custom fees supported for special events
+- Enables weekly/monthly tournaments without manual deployment
+
+### Complete App Creator Journey
 
 ```
-App Creator Deploys AppToken
-    ↓
-Calls factory.deployModules() (pays ELTA fee)
-    ↓
-Receives AppAccess1155 + AppStakingVault
-    ↓
-Configures items, feature gates, tournaments, epochs
-    ↓
-Users: Purchase items (burns tokens) → Stake → Access features → Compete → Earn rewards
+Step 1: Launch App (via AppFactory)
+├─ Pay ELTA (default 110: 100 seed + 10 fee, governable)
+├─ AppToken deployed
+├─ Receive 10% of supply for rewards treasury (default: 100M tokens)
+├─ Receive admin control (DEFAULT_ADMIN_ROLE)
+└─ 90% of supply in bonding curve for trading (default: 900M tokens)
+
+Note: Launch costs and parameters are governable by protocol
+      Query current cost: appFactory.getTotalCreationCost()
+
+Step 2: Deploy Utility Modules (via AppModuleFactory)
+├─ Pay optional ELTA creation fee
+├─ Receive AppAccess1155 (items/passes)
+├─ Receive AppStakingVault (staking)
+├─ Receive EpochRewards (reward distribution)
+└─ Creator owns all modules
+
+Step 3: Configure Economy
+├─ Set items with prices, time windows, supply caps
+├─ Configure feature gates (stake + item requirements)
+└─ Ready for users
+
+Step 4: Deploy Tournaments (via TournamentFactory - per event)
+├─ Create tournament with entry fee and time window
+├─ Tournament uses default fees (2.5% protocol, 1% burn)
+├─ One contract per event (tournaments are single-use)
+└─ Registry tracks all tournaments
+
+Step 5: Run Reward Epochs (reusable)
+├─ Start epoch with time window
+├─ Fund from creator treasury (has 100M tokens!)
+├─ Finalize with Merkle root after off-chain computation
+└─ Users claim rewards with proofs
 ```
 
 ### Deflationary Economics
@@ -394,15 +433,19 @@ Users: Purchase items (burns tokens) → Stake → Access features → Compete �
 **Example Flow:**
 ```
 Initial Supply: 1,000,000,000 tokens
-Creator mints rewards treasury: 100,000,000 tokens
-Creator calls finalizeMinting()
+AppFactory mints at creation:
+├─ 100,000,000 tokens (10%) → Creator treasury for rewards
+└─ 900,000,000 tokens (90%) → Bonding curve for trading
 
-Month 1:
-- Users purchase items: 500,000 tokens burned
-- Tournament burns: 50,000 tokens burned
-- Rewards distributed: 1,000,000 tokens (from treasury, not minted)
+Creator can optionally call finalizeMinting() to lock supply
+
+Month 1 Activity:
+├─ Users purchase items: 500,000 tokens burned
+├─ Tournament burns: 50,000 tokens burned
+└─ Epoch rewards distributed: 10,000,000 tokens (from creator treasury)
 
 Net Supply: 999,450,000 tokens (deflationary)
+Creator Treasury Remaining: 90,000,000 tokens for future rewards
 ```
 
 ### Feature Gating System
@@ -461,16 +504,28 @@ Entry Fees Collected
 
 **Sustainable Distribution:**
 - Owner creates time-boxed epochs (e.g., weekly, monthly)
-- Owner funds from rewards treasury (no new minting)
+- Owner funds from 10% creator treasury received at launch
 - Off-chain: compute XP/rankings, generate Merkle tree
 - Owner finalizes epoch with Merkle root
 - Users claim rewards with proofs
+- Single EpochRewards contract handles all seasons (reusable)
 
 **No Continuous Faucets:**
 - Prevents inflation spirals
 - Maintains token value
 - Allows curated, merit-based distribution
 - Owner controls emission schedule
+- Finite supply from creator treasury (100M tokens)
+
+### Tournament Model
+
+**Per-Event Deployment:**
+- TournamentFactory creates new Tournament for each event
+- Tournaments are single-use (finalize once)
+- Entry fees accumulate in prize pool
+- Protocol fee (2.5%) and burn fee (1%) applied at finalization
+- Winners claim via Merkle proofs
+- Registry tracks all tournaments per app for discovery
 
 ### View Functions for UI/UX
 

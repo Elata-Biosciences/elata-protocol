@@ -80,7 +80,7 @@ contract AppModulesIntegrationTest is Test {
         elta.approve(address(factory), CREATE_FEE);
 
         vm.prank(appCreator);
-        (address accessAddr, address vaultAddr) = factory.deployModules(
+        (address accessAddr, address vaultAddr, ) = factory.deployModules(
             address(appToken),
             "https://metadata.neuropong.game/"
         );
@@ -125,10 +125,11 @@ contract AppModulesIntegrationTest is Test {
         assertEq(elta.balanceOf(treasury), CREATE_FEE);
 
         // Verify registry
-        (address storedAccess, address storedVault) = 
+        (address storedAccess, address storedVault, address storedEpochs) = 
             factory.modulesByApp(address(appToken));
         assertEq(storedAccess, address(access));
         assertEq(storedVault, address(vault));
+        assertTrue(storedEpochs != address(0));
     }
 
     function test_Integration_SeasonPassPurchaseAndStaking() public {
@@ -331,7 +332,7 @@ contract AppModulesIntegrationTest is Test {
         elta.approve(address(factory), CREATE_FEE);
 
         vm.prank(appCreator);
-        (address access2Addr, address vault2Addr) = factory.deployModules(
+        (address access2Addr, address vault2Addr, ) = factory.deployModules(
             address(app2),
             "https://metadata.brainwaves/"
         );

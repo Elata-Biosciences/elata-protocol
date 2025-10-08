@@ -25,7 +25,8 @@ contract AppModuleFactoryTest is Test {
     event ModulesDeployed(
         address indexed appToken,
         address access1155,
-        address stakingVault
+        address stakingVault,
+        address epochRewards
     );
     event TreasurySet(address treasury);
     event FeeSet(uint256 fee);
@@ -88,10 +89,10 @@ contract AppModuleFactoryTest is Test {
         string memory baseURI = "https://metadata.test/";
 
         vm.expectEmit(true, false, false, false);
-        emit ModulesDeployed(address(appToken), address(0), address(0));
+        emit ModulesDeployed(address(appToken), address(0), address(0), address(0));
 
         vm.prank(appCreator);
-        (address access1155, address staking) = factory.deployModules(
+        (address access1155, address staking, address epochs) = factory.deployModules(
             address(appToken),
             baseURI
         );
@@ -99,12 +100,14 @@ contract AppModuleFactoryTest is Test {
         // Verify addresses are non-zero
         assertTrue(access1155 != address(0));
         assertTrue(staking != address(0));
+        assertTrue(epochs != address(0));
 
         // Verify registry
-        (address storedAccess, address storedStaking) =
+        (address storedAccess, address storedStaking, address storedEpochs) =
             factory.modulesByApp(address(appToken));
         assertEq(storedAccess, access1155);
         assertEq(storedStaking, staking);
+        assertEq(storedEpochs, epochs);
 
         // Verify ownership
         assertEq(AppAccess1155(access1155).owner(), appCreator);
@@ -114,6 +117,17 @@ contract AppModuleFactoryTest is Test {
         assertEq(address(AppAccess1155(access1155).APP()), address(appToken));
         assertEq(address(AppAccess1155(access1155).STAKING()), staking);
         assertEq(address(AppStakingVault(staking).APP()), address(appToken));
+    }
+
+    function test_EpochRewardsDeployment() public {
+        vm.prank(appCreator);
+        (, , address epochs) = factory.deployModules(
+            address(appToken),
+            "https://test/"
+        );
+
+        // Verify epoch rewards deployed correctly
+        assertTrue(epochs != address(0));
     }
 
     function test_DeployModulesWithELTAFee() public {
@@ -218,28 +232,30 @@ contract AppModuleFactoryTest is Test {
 
         // Deploy modules for first app
         vm.prank(appCreator);
-        (address access1, address stake1) = factory.deployModules(
+        (address access1, address stake1, address epochs1) = factory.deployModules(
             address(appToken),
             "https://app1.test/"
         );
 
         // Deploy modules for second app
         vm.prank(appCreator);
-        (address access2, address stake2) = factory.deployModules(
+        (address access2, address stake2, address epochs2) = factory.deployModules(
             address(appToken2),
             "https://app2.test/"
         );
 
         // Verify both are registered correctly
-        (address storedAccess1, address storedStake1) =
+        (address storedAccess1, address storedStake1, address storedEpochs1) =
             factory.modulesByApp(address(appToken));
         assertEq(storedAccess1, access1);
         assertEq(storedStake1, stake1);
+        assertEq(storedEpochs1, epochs1);
 
-        (address storedAccess2, address storedStake2) =
+        (address storedAccess2, address storedStake2, address storedEpochs2) =
             factory.modulesByApp(address(appToken2));
         assertEq(storedAccess2, access2);
         assertEq(storedStake2, stake2);
+        assertEq(storedEpochs2, epochs2);
 
         // Verify they're different
         assertTrue(access1 != access2);
@@ -249,7 +265,7 @@ contract AppModuleFactoryTest is Test {
     function test_DeployModulesAndConfigureItems() public {
         // Deploy modules
         vm.prank(appCreator);
-        (address access1155, ) = factory.deployModules(
+        (address access1155, , ) = factory.deployModules(
             address(appToken),
             "https://metadata.test/"
         );
@@ -281,7 +297,7 @@ contract AppModuleFactoryTest is Test {
 
         // Deploy modules
         vm.prank(appCreator);
-        (, address stakingVault) = factory.deployModules(
+        (, address stakingVault, ) = factory.deployModules(
             address(appToken),
             "https://metadata.test/"
         );

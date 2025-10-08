@@ -151,12 +151,14 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         uint256 _protocolFeeRate,
         uint256 _creationFee
     ) external onlyRole(PARAMS_ROLE) {
+        // Logical bounds only (no arbitrary maximums)
         if (_seedElta == 0) revert InvalidParameters();
         if (_targetRaised <= _seedElta) revert InvalidParameters();
         if (_defaultSupply == 0) revert InvalidParameters();
         if (_lpLockDuration < 30 days) revert InvalidParameters();
         if (_protocolFeeRate > 1000) revert InvalidParameters(); // Max 10%
 
+        // No bounds on creationFee or seedElta - protocol governance decides based on ELTA price
         seedElta = _seedElta;
         targetRaisedElta = _targetRaised;
         defaultSupply = _defaultSupply;
@@ -222,6 +224,10 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         AppToken token =
             new AppToken(name, symbol, defaultDecimals, tokenSupply, msg.sender, address(this));
 
+        // Calculate supply distribution
+        uint256 creatorTreasury = (tokenSupply * 10) / 100; // 10% to creator for rewards
+        uint256 curveSupply = tokenSupply - creatorTreasury;
+
         // Deploy bonding curve
         AppBondingCurve curve = new AppBondingCurve(
             appCount,
@@ -236,13 +242,22 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
             protocolFeeRate
         );
 
-        // Mint full supply to curve
-        token.mint(address(curve), tokenSupply);
+        // Mint creator treasury for rewards
+        token.mint(msg.sender, creatorTreasury);
+
+        // Mint curve supply
+        token.mint(address(curve), curveSupply);
+
+        // Revoke minter first (while we still have admin)
         token.revokeMinter(address(this));
 
-        // Initialize curve with seed ELTA
+        // Transfer admin rights to creator
+        token.grantRole(token.DEFAULT_ADMIN_ROLE(), msg.sender);
+        token.revokeRole(token.DEFAULT_ADMIN_ROLE(), address(this));
+
+        // Initialize curve with seed ELTA and curve supply (90% of total)
         ELTA.safeTransfer(address(curve), seedElta);
-        curve.initializeCurve(seedElta, tokenSupply);
+        curve.initializeCurve(seedElta, curveSupply);
 
         // Note: Creator can update metadata separately using token.updateMetadata()
 
@@ -329,6 +344,48 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
      */
     function getAppIdFromToken(address token) external view returns (uint256) {
         return tokenToAppId[token];
+    }
+
+    /**
+     * @notice Get total cost to create an app
+     * @return Total ELTA required (seedElta + creationFee)
+     */
+    function getTotalCreationCost() external view returns (uint256) {
+        return seedElta + creationFee;
+    }
+
+    /**
+     * @notice Get current launch parameters
+     * @return seed Current seed ELTA amount
+     * @return creation Current creation fee
+     * @return target Target ELTA to raise
+     * @return supply Default token supply
+     * @return lpLock LP lock duration
+     * @return decimals Default decimals
+     * @return protocolFee Protocol fee rate in bps
+     */
+    function getParameters()
+        external
+        view
+        returns (
+            uint256 seed,
+            uint256 creation,
+            uint256 target,
+            uint256 supply,
+            uint256 lpLock,
+            uint8 decimals,
+            uint256 protocolFee
+        )
+    {
+        return (
+            seedElta,
+            creationFee,
+            targetRaisedElta,
+            defaultSupply,
+            lpLockDuration,
+            defaultDecimals,
+            protocolFeeRate
+        );
     }
 
     /**

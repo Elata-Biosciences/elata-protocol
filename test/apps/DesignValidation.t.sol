@@ -45,7 +45,7 @@ contract DesignValidationTest is Test {
         appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin);
 
         vm.prank(appCreator);
-        (address accessAddr, address vaultAddr) = factory.deployModules(
+        (address accessAddr, address vaultAddr, ) = factory.deployModules(
             address(appToken),
             "https://metadata.test/"
         );
@@ -363,7 +363,7 @@ contract DesignValidationTest is Test {
         AppToken app2 = new AppToken("App2", "APP2", 18, MAX_SUPPLY, appCreator, admin);
 
         vm.prank(appCreator);
-        (address access2Addr, address vault2Addr) = factory.deployModules(
+        (address access2Addr, address vault2Addr, ) = factory.deployModules(
             address(app2),
             "https://metadata.app2/"
         );

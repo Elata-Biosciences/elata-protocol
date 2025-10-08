@@ -6,6 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IOwnable } from "./Interfaces.sol";
 import { AppAccess1155 } from "./AppAccess1155.sol";
 import { AppStakingVault } from "./AppStakingVault.sol";
+import { EpochRewards } from "./EpochRewards.sol";
 
 /**
  * @title AppModuleFactory
@@ -36,6 +37,7 @@ contract AppModuleFactory is Ownable {
     struct Modules {
         address access1155;     // AppAccess1155 instance
         address stakingVault;   // AppStakingVault instance
+        address epochRewards;   // EpochRewards instance
     }
 
     /// @notice Deployed modules by app token address
@@ -47,7 +49,8 @@ contract AppModuleFactory is Ownable {
     event ModulesDeployed(
         address indexed appToken,
         address access1155,
-        address stakingVault
+        address stakingVault,
+        address epochRewards
     );
     event TreasurySet(address treasury);
     event FeeSet(uint256 fee);
@@ -93,10 +96,11 @@ contract AppModuleFactory is Ownable {
      * @param baseURI Base URI for Access1155 metadata
      * @return access1155 Address of deployed AppAccess1155
      * @return staking Address of deployed AppStakingVault
+     * @return epochs Address of deployed EpochRewards
      */
     function deployModules(address appToken, string calldata baseURI)
         external
-        returns (address access1155, address staking)
+        returns (address access1155, address staking, address epochs)
     {
         // Verify caller is token owner
         if (IOwnable(appToken).owner() != msg.sender) {
@@ -113,16 +117,17 @@ contract AppModuleFactory is Ownable {
             IERC20(ELTA).transferFrom(msg.sender, treasury, createFeeELTA);
         }
 
-        // Deploy modules (msg.sender becomes owner)
+        // Deploy modules (msg.sender becomes owner of all)
         staking = address(new AppStakingVault(appToken, msg.sender));
         access1155 = address(
             new AppAccess1155(appToken, staking, msg.sender, baseURI)
         );
+        epochs = address(new EpochRewards(appToken, msg.sender));
 
         // Register modules
-        modulesByApp[appToken] = Modules(access1155, staking);
+        modulesByApp[appToken] = Modules(access1155, staking, epochs);
 
-        emit ModulesDeployed(appToken, access1155, staking);
+        emit ModulesDeployed(appToken, access1155, staking, epochs);
     }
 }
 
