@@ -11,24 +11,12 @@ import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol"
 import { Errors } from "../utils/Errors.sol";
 
 /**
- * @title VeELTA
+ * @title VeELTA (Vote-Escrowed ELTA)
  * @author Elata Biosciences
- * @notice Vote-escrowed ELTA staking with multiple non-transferable lock positions
- * @dev NFT-based approach allowing multiple concurrent locks per user
- *
- * Features:
- * - Multiple concurrent lock positions per user
- * - Non-transferable NFT positions (soulbound)
- * - Linear decay voting power calculation
- * - Position merging and splitting capabilities
- * - Delegation support for governance participation
- * - Emergency unlock with penalty mechanism
- *
- * Security:
- * - Reentrancy protection on all state-changing functions
- * - Role-based access control for admin functions
- * - Non-transferable positions prevent secondary markets
- * - Time-locked withdrawals prevent flash loan attacks
+ * @notice Stake ELTA to receive non-transferable veELTA (voting power) NFTs with time-decay.
+ * @dev Each veELTA is an ERC721 NFT representing a locked ELTA position. Voting power = amount * (time remaining / MAX_LOCK).
+ * Users can hold multiple locks (multiple NFTs), and manage them (increase, extend, merge, split).
+ * This contract does NOT handle reward token distribution directly; use RewardsDistributor for yield rewards.
  */
 contract VeELTA is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
     using SafeERC20 for IERC20;
@@ -39,7 +27,7 @@ contract VeELTA is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
     IERC20 public immutable ELTA;
 
     uint256 public constant MIN_LOCK = 1 weeks;
-    uint256 public constant MAX_LOCK = 208 weeks; // 4 years for multi-lock
+    uint256 public constant MAX_LOCK = 104 weeks; // 2 years
     uint256 public constant EMERGENCY_UNLOCK_PENALTY = 5000; // 50% penalty
 
     struct LockPosition {
@@ -79,9 +67,9 @@ contract VeELTA is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
     event EmergencyUnlockToggled(bool enabled);
 
     /**
-     * @notice Initializes the multi-lock veELTA contract
-     * @param _elta Address of the ELTA token
-     * @param _admin Address that will receive admin roles
+     * @notice Contract constructor.
+     * @param _elta Address of the ELTA ERC20 token contract.
+     * @param _admin Address to receive the default admin, manager, and emergency roles.
      */
     constructor(IERC20 _elta, address _admin) ERC721("Vote-Escrowed ELTA", "veELTA") {
         if (address(_elta) == address(0) || _admin == address(0)) {
@@ -89,6 +77,7 @@ contract VeELTA is ERC721, ERC721Enumerable, ReentrancyGuard, AccessControl {
         }
 
         ELTA = _elta;
+        // Set up roles: the _admin gets all roles initially (can be a multisig or governance contract).
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         _grantRole(MANAGER_ROLE, _admin);
         _grantRole(EMERGENCY_ROLE, _admin);

@@ -24,7 +24,6 @@ contract ProtocolStats {
         uint256 eltaBalance;
         uint256 eltaVotingPower;
         uint256 xpBalance;
-        uint256 xpEffectiveBalance;
         uint256 stakingPositions;
         uint256 totalStaked;
         uint256 totalVotingPower;
@@ -54,19 +53,6 @@ contract ProtocolStats {
         uint256 totalFundingAllocated;
     }
 
-    struct XPDecayInfo {
-        uint256 currentBalance;
-        uint256 effectiveBalance;
-        uint256 decayRate;
-        uint256 nextDecayAmount;
-        uint256 timeToFullDecay;
-        XPEntry[] entries;
-    }
-
-    struct XPEntry {
-        uint256 amount;
-        uint256 timestamp;
-    }
 
     constructor(
         ELTA _elta,
@@ -92,7 +78,6 @@ contract ProtocolStats {
             eltaBalance: elta.balanceOf(user),
             eltaVotingPower: elta.getVotes(user),
             xpBalance: xp.balanceOf(user),
-            xpEffectiveBalance: xp.effectiveBalance(user),
             stakingPositions: staking.balanceOf(user),
             totalStaked: _getTotalStaked(user),
             totalVotingPower: staking.getUserVotingPower(user),
@@ -117,34 +102,6 @@ contract ProtocolStats {
         return positions;
     }
 
-    /**
-     * @notice Gets XP decay information for a user
-     * @param user User address
-     * @return Detailed decay information
-     */
-    function getXPDecayInfo(address user) external view returns (XPDecayInfo memory) {
-        uint256 currentBalance = xp.balanceOf(user);
-        uint256 effectiveBalance = xp.effectiveBalance(user);
-
-        ElataXP.XPEntry[] memory entries = xp.getUserXPEntries(user);
-        XPEntry[] memory formattedEntries = new XPEntry[](entries.length);
-
-        for (uint256 i = 0; i < entries.length; i++) {
-            formattedEntries[i] =
-                XPEntry({ amount: entries[i].amount, timestamp: entries[i].timestamp });
-        }
-
-        return XPDecayInfo({
-            currentBalance: currentBalance,
-            effectiveBalance: effectiveBalance,
-            decayRate: currentBalance > 0
-                ? ((currentBalance - effectiveBalance) * 10000) / currentBalance
-                : 0,
-            nextDecayAmount: currentBalance - effectiveBalance,
-            timeToFullDecay: _calculateTimeToFullDecay(user),
-            entries: formattedEntries
-        });
-    }
 
     /**
      * @notice Gets comprehensive protocol statistics
@@ -308,22 +265,5 @@ contract ProtocolStats {
     function _getTotalFundingAllocated() internal view returns (uint256) {
         // This would need to be tracked via events or additional state
         return elta.balanceOf(address(funding));
-    }
-
-    function _calculateTimeToFullDecay(address user) internal view returns (uint256) {
-        ElataXP.XPEntry[] memory entries = xp.getUserXPEntries(user);
-        if (entries.length == 0) return 0;
-
-        uint256 oldestTimestamp = type(uint256).max;
-        for (uint256 i = 0; i < entries.length; i++) {
-            if (entries[i].timestamp < oldestTimestamp) {
-                oldestTimestamp = entries[i].timestamp;
-            }
-        }
-
-        uint256 ageOfOldest = block.timestamp - oldestTimestamp;
-        if (ageOfOldest >= xp.DECAY_WINDOW()) return 0;
-
-        return xp.DECAY_WINDOW() - ageOfOldest;
     }
 }

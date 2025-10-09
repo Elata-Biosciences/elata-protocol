@@ -121,16 +121,11 @@ contract ProtocolTest is Test {
         assertEq(xp.balanceOf(bob), 3000 ether);
         assertEq(xp.balanceOf(charlie), 1500 ether);
 
-        // Test XP decay over time
+        // XP is now permanent (no decay in simplified version)
+        // Test that XP persists over time
         vm.warp(block.timestamp + 7 days);
-
-        uint256 aliceEffective = xp.effectiveBalance(alice);
-        assertLt(aliceEffective, 5000 ether); // Should be ~2500 due to decay
-        assertGt(aliceEffective, 2000 ether);
-
-        // Apply decay
-        xp.updateUserDecay(alice);
-        assertApproxEqRel(xp.balanceOf(alice), aliceEffective, 0.01e18);
+        assertEq(xp.balanceOf(alice), 5000 ether);
+        assertEq(xp.balanceOf(bob), 3000 ether);
     }
 
     function _testFundingWorkflow() internal {

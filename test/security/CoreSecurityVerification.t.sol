@@ -235,25 +235,23 @@ contract CoreSecurityVerificationTest is Test {
     }
 
     function test_Critical_XPDecayMechanism() public {
-        // Test that XP decay mechanism is working
+        // Test that XP is permanent (no decay in simplified version)
 
         vm.prank(admin);
         xp.award(user1, 10_000 ether);
 
-        // Initially, effective balance equals actual balance
-        assertEq(xp.effectiveBalance(user1), 10_000 ether);
+        // Balance remains constant over time
+        assertEq(xp.balanceOf(user1), 10_000 ether);
 
-        // After half decay window, effective balance should be lower
+        // After 7 days, balance should still be the same
         vm.warp(block.timestamp + 7 days);
-        uint256 halfDecayBalance = xp.effectiveBalance(user1);
-        assertLt(halfDecayBalance, 10_000 ether);
+        assertEq(xp.balanceOf(user1), 10_000 ether);
 
-        // After full decay window, effective balance should be 0 or very low
+        // After 14 days, balance should still be the same
         vm.warp(block.timestamp + 7 days);
-        uint256 fullDecayBalance = xp.effectiveBalance(user1);
-        assertLe(fullDecayBalance, halfDecayBalance);
+        assertEq(xp.balanceOf(user1), 10_000 ether);
 
-        // Decay mechanism is working correctly
+        // XP is permanent until explicitly revoked
     }
 
     function test_Critical_EmergencyMechanisms() public {

@@ -17,4 +17,6 @@ library Errors {
     error InsufficientXP();
     error ArrayLengthMismatch();
     error DuplicateOption();
+    error SignatureExpired();
+    error InvalidSignature();
 }

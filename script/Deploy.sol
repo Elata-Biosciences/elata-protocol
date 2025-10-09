@@ -11,6 +11,8 @@ import { ElataGovernor } from "../src/governance/ElataGovernor.sol";
 import { ElataTimelock } from "../src/governance/ElataTimelock.sol";
 import { TimelockController } from "@openzeppelin/contracts/governance/TimelockController.sol";
 import { AppFactory } from "../src/apps/AppFactory.sol";
+import { AppModuleFactory } from "../src/apps/AppModuleFactory.sol";
+import { TournamentFactory } from "../src/apps/TournamentFactory.sol";
 import { IUniswapV2Router02 } from "../src/interfaces/IUniswapV2Router02.sol";
 
 /**
@@ -39,6 +41,8 @@ contract Deploy is Script {
         TimelockController timelock;
         ElataGovernor governor;
         AppFactory appFactory;
+        AppModuleFactory appModuleFactory;
+        TournamentFactory tournamentFactory;
     }
 
     event ProtocolDeployed(
@@ -49,7 +53,9 @@ contract Deploy is Script {
         address rewards,
         address governor,
         address timelock,
-        address appFactory
+        address appFactory,
+        address appModuleFactory,
+        address tournamentFactory
     );
 
     function run() external returns (ProtocolContracts memory protocol) {
@@ -89,13 +95,19 @@ contract Deploy is Script {
             );
         }
 
-        // 7. Configure system permissions
+        // 7. Deploy app module utilities
+        protocol.appModuleFactory =
+            new AppModuleFactory(address(protocol.token), ADMIN_MSIG, INITIAL_TREASURY);
+
+        protocol.tournamentFactory = new TournamentFactory(ADMIN_MSIG, INITIAL_TREASURY);
+
+        // 8. Configure system permissions
         _configurePermissions(protocol);
 
-        // 7. Log deployment addresses
+        // 9. Log deployment addresses
         _logDeployment(protocol);
 
-        // 8. Emit deployment event
+        // 10. Emit deployment event
         emit ProtocolDeployed(
             address(protocol.token),
             address(protocol.staking),
@@ -104,7 +116,9 @@ contract Deploy is Script {
             address(protocol.rewards),
             address(protocol.governor),
             address(protocol.timelock),
-            address(protocol.appFactory)
+            address(protocol.appFactory),
+            address(protocol.appModuleFactory),
+            address(protocol.tournamentFactory)
         );
 
         vm.stopBroadcast();
@@ -134,8 +148,8 @@ contract Deploy is Script {
         // Add ELTA as reward token
         protocol.rewards.addRewardToken(protocol.token);
 
-        // Grant XP minter role to funding system for rewards
-        protocol.xp.grantRole(protocol.xp.XP_MINTER_ROLE(), address(protocol.funding));
+        // Grant XP operator role to funding system for rewards
+        protocol.xp.grantRole(protocol.xp.XP_OPERATOR_ROLE(), address(protocol.funding));
 
         console2.log("Permissions configured successfully");
     }
@@ -145,15 +159,17 @@ contract Deploy is Script {
      */
     function _logDeployment(ProtocolContracts memory protocol) internal view {
         console2.log("=== DEPLOYMENT COMPLETE ===");
-        console2.log("ELTA Token:        ", address(protocol.token));
-        console2.log("ElataXP:           ", address(protocol.xp));
-        console2.log("VeELTA Staking:    ", address(protocol.staking));
-        console2.log("LotPool Funding:   ", address(protocol.funding));
-        console2.log("Rewards:           ", address(protocol.rewards));
-        console2.log("Governor:          ", address(protocol.governor));
-        console2.log("Timelock:          ", address(protocol.timelock));
-        console2.log("App Factory:       ", address(protocol.appFactory));
-        console2.log("===========================");
+        console2.log("ELTA Token:           ", address(protocol.token));
+        console2.log("ElataXP:              ", address(protocol.xp));
+        console2.log("VeELTA Staking:       ", address(protocol.staking));
+        console2.log("LotPool Funding:      ", address(protocol.funding));
+        console2.log("Rewards:              ", address(protocol.rewards));
+        console2.log("Governor:             ", address(protocol.governor));
+        console2.log("Timelock:             ", address(protocol.timelock));
+        console2.log("App Factory:          ", address(protocol.appFactory));
+        console2.log("App Module Factory:   ", address(protocol.appModuleFactory));
+        console2.log("Tournament Factory:   ", address(protocol.tournamentFactory));
+        console2.log("================================");
 
         // Verification commands
         console2.log("\n=== VERIFICATION COMMANDS ===");

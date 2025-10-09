@@ -95,8 +95,8 @@ graph TD
 graph TB
     subgraph "Core Protocol"
         ELTA[ELTA Token<br/>🪙 Governance & Utility<br/>77M Supply Cap]
-        VE[VeELTA<br/>🔒 Multi-position Staking<br/>NFT-based, 1w-4y locks]
-        XP[ElataXP<br/>🏅 Experience Points<br/>14-day decay, soulbound]
+        VE[VeELTA<br/>🔒 Multi-position Staking<br/>NFT-based, 1w-2y locks]
+        XP[ElataXP<br/>🏅 Experience Points<br/>Permanent, soulbound]
         LP[LotPool<br/>💧 Funding Rounds<br/>XP-weighted voting]
     end
     
@@ -107,11 +107,21 @@ graph TB
         STATS[ProtocolStats<br/>📊 Frontend Utils<br/>Batch queries]
     end
     
+    subgraph "App Ecosystem"
+        AF[AppFactory<br/>🏭 Token Launcher<br/>Bonding curves, LP locking]
+        AMF[AppModuleFactory<br/>🔧 Utility Deployer<br/>Staking, NFTs, Rewards]
+        TF[TournamentFactory<br/>🏆 Tournament Creator<br/>Competition infrastructure]
+    end
+    
     ELTA --> VE
     ELTA --> GOV
+    ELTA --> AF
     VE --> RD
     XP --> LP
     GOV --> TL
+    
+    AF --> AMF
+    AMF --> TF
     
     STATS -.-> ELTA
     STATS -.-> VE
@@ -124,6 +134,9 @@ graph TB
     style LP fill:#ffcc99
     style RD fill:#cc99ff
     style GOV fill:#ffccff
+    style AF fill:#ffe6cc
+    style AMF fill:#e6f3ff
+    style TF fill:#fff0e6
 ```
 
 ### Core Protocol
@@ -131,7 +144,7 @@ graph TB
 | Contract | Purpose | Key Features |
 |----------|---------|--------------|
 | **[ELTA.sol](src/token/ELTA.sol)** | Governance & utility token | ERC20 + Votes + Permit + Burnable, 77M cap, no fees |
-| **[VeELTA.sol](src/staking/VeELTA.sol)** | Vote-escrowed staking | Linear decay, 1 week–2 year locks, one position per user |
+| **[VeELTA.sol](src/staking/VeELTA.sol)** | Vote-escrowed staking | Linear decay, 1 week–2 year locks, multiple positions per user |
 | **[ElataXP.sol](src/experience/ElataXP.sol)** | Basic experience points | Non-transferable, checkpoint tracking, governance ready |
 | **[LotPool.sol](src/governance/LotPool.sol)** | Research funding rounds | XP-weighted voting, weekly cycles, transparent payouts |
 
@@ -139,10 +152,10 @@ graph TB
 
 | Contract | Purpose | Key Features |
 |----------|---------|--------------|
-| **[VeELTAMultiLock.sol](src/staking/VeELTAMultiLock.sol)** | Advanced staking | NFT positions, multiple locks, merge/split, 4-year max |
-| **[ElataXPWithDecay.sol](src/experience/ElataXPWithDecay.sol)** | XP with decay | 14-day rolling decay, keeper functions, anti-hoarding |
+| **[VeELTA.sol](src/staking/VeELTA.sol)** | Advanced staking | NFT positions, multiple locks, merge/split, delegation, 2-year max |
+| **[ElataXP.sol](src/experience/ElataXP.sol)** | Experience points | Non-transferable, signature-based awards, governance integration |
 | **[RewardsDistributor.sol](src/rewards/RewardsDistributor.sol)** | Staker rewards | Merkle tree distribution, multiple tokens, epoch-based |
-| **[ElataGovernorSimple.sol](src/governance/ElataGovernorSimple.sol)** | Onchain governance | 4% quorum, emergency proposals, timelock integration |
+| **[ElataGovernor.sol](src/governance/ElataGovernor.sol)** | Onchain governance | 4% quorum, emergency proposals, timelock integration |
 
 ### Why each contract exists
 
@@ -151,7 +164,7 @@ graph TB
 * **XP**: Rewards **participation over capital**; non-transferable prevents reputation markets
 * **LotPool**: Turns community activity into **transparent capital allocation**
 * **Multi-Lock**: Advanced users can optimize positions, merge/split for flexibility
-* **XP Decay**: Encourages **continuous participation**, prevents long-term hoarding
+* **XP Permanence**: Simple, reliable reputation system without complex decay mechanics
 * **Rewards**: Distributes **real yield** to stakers based on protocol revenue
 * **Governor**: Enables **on-chain voting** for protocol parameters and upgrades
 
@@ -173,29 +186,44 @@ graph TD
         LIQUIDITY[DEX Liquidity<br/>💧 Locked for 2 years]
     end
     
-    AF --> CREATE
-    CREATE --> CURVE
-    CURVE --> GRADUATE
-    GRADUATE --> LIQUIDITY
+    Developer[👨‍💻 Developer] --> AF
+    AF --> AT
+    AF --> ABC
+    AT --> AMF
+    AMF --> ASV
+    AMF --> AA
+    AMF --> ER
+    AT -.-> TF
+    TF -.-> T
     
-    ABC -.-> CURVE
-    AT -.-> CURVE
-    LL -.-> LIQUIDITY
+    CREATE[1. Pay 110 ELTA] --> AF
+    CURVE[2. Users buy tokens] --> ABC
+    MODULES[3. Deploy modules] --> AMF
+    GRADUATE[4. Auto-graduation] --> ABC
     
-    style AF fill:#e8f5e8
-    style ABC fill:#fff3e0
-    style AT fill:#e3f2fd
-    style LL fill:#ffebee
+    style Developer fill:#e3f2fd
+    style AF fill:#ffe6cc
+    style AMF fill:#e6f3ff
+    style TF fill:#fff0e6
 ```
 
-**New App Launch Contracts:**
+**App Ecosystem Contracts:**
 
-| Contract | Purpose | Key Features |
+| Factory | Purpose | Deployed In |
+|---------|---------|-------------|
+| **[AppFactory.sol](src/apps/AppFactory.sol)** | Token launcher with bonding curves | Main Deploy.sol |
+| **[AppModuleFactory.sol](src/apps/AppModuleFactory.sol)** | Utility module deployer (staking, NFTs, rewards) | Main Deploy.sol |
+| **[TournamentFactory.sol](src/apps/TournamentFactory.sol)** | Tournament infrastructure deployer | Main Deploy.sol |
+
+| Per-App Contracts | Purpose | Deployed Via |
 |----------|---------|--------------|
-| **[AppFactory.sol](src/apps/AppFactory.sol)** | App token launcher | Permissionless creation, bonding curves, registry |
-| **[AppBondingCurve.sol](src/apps/AppBondingCurve.sol)** | Fair price discovery | Constant product formula, auto-liquidity, LP locking |
-| **[AppToken.sol](src/apps/AppToken.sol)** | Individual app tokens | Standard ERC20, no fees, fixed supply, metadata |
-| **[LpLocker.sol](src/apps/LpLocker.sol)** | Liquidity protection | Time-locked LP tokens, rug-pull prevention |
+| **[AppToken.sol](src/apps/AppToken.sol)** | Individual app tokens | AppFactory.createApp() |
+| **[AppBondingCurve.sol](src/apps/AppBondingCurve.sol)** | Fair price discovery | AppFactory.createApp() |
+| **[AppStakingVault.sol](src/apps/AppStakingVault.sol)** | Per-app token staking | AppModuleFactory.deployModules() |
+| **[AppAccess1155.sol](src/apps/AppAccess1155.sol)** | NFT items and gating | AppModuleFactory.deployModules() |
+| **[EpochRewards.sol](src/apps/EpochRewards.sol)** | Reward distribution | AppModuleFactory.deployModules() |
+| **[Tournament.sol](src/apps/Tournament.sol)** | Individual tournaments | TournamentFactory.createTournament() |
+| **[LpLocker.sol](src/apps/LpLocker.sol)** | Liquidity protection | AppBondingCurve (on graduation) |
 
 **Why the App Launch Framework:**
 * **Developer Empowerment**: Any developer can launch their EEG app with its own token economy
@@ -204,30 +232,42 @@ graph TD
 * **Liquidity Security**: Automatic LP creation and locking prevents rug pulls
 * **Protocol Integration**: App launches feed back into ELTA treasury and governance
 
-### App Launch Process
+### Complete App Launch Workflow
 
 ```mermaid
 sequenceDiagram
     participant Developer
     participant AppFactory
+    participant AppModuleFactory
+    participant AppToken
     participant BondingCurve
     participant Users
-    participant DEX
     
-    Note over Developer, DEX: App Creation
-    Developer->>AppFactory: createApp() + stake 110 ELTA
-    AppFactory->>AppFactory: Deploy AppToken & BondingCurve
-    AppFactory->>BondingCurve: Initialize with seed liquidity
+    Note over Developer, Users: Step 1: Create App Token
+    Developer->>AppFactory: createApp() + 110 ELTA
+    AppFactory->>AppToken: Deploy token (1B supply)
+    AppFactory->>BondingCurve: Deploy bonding curve
+    AppFactory->>AppToken: Mint 10% to creator, 90% to curve
+    AppFactory-->>Developer: Returns appId, token address
     
-    Note over Developer, DEX: Bonding Curve
-    Users->>BondingCurve: buy() tokens with ELTA
-    BondingCurve->>BondingCurve: Price increases with demand
-    BondingCurve->>AppFactory: Collect 2.5% protocol fee
+    Note over Developer, Users: Step 2: Deploy Utility Modules
+    Developer->>AppModuleFactory: deployModules(appToken, baseURI)
+    AppModuleFactory->>AppModuleFactory: Deploy AppStakingVault
+    AppModuleFactory->>AppModuleFactory: Deploy AppAccess1155
+    AppModuleFactory->>AppModuleFactory: Deploy EpochRewards
+    AppModuleFactory-->>Developer: Returns module addresses
     
-    Note over Developer, DEX: Graduation
-    BondingCurve->>BondingCurve: Target reached (42k ELTA)
-    BondingCurve->>DEX: Create LP with remaining reserves
-    BondingCurve->>DEX: Lock LP tokens for 2 years
+    Note over Developer, Users: Step 3: Configure & Launch
+    Developer->>AppAccess1155: setItem() - Configure NFTs
+    Developer->>AppAccess1155: setFeatureGate() - Set requirements
+    Users->>BondingCurve: buy() - Purchase tokens with ELTA
+    Users->>AppAccess1155: purchase() - Buy NFTs (burns tokens)
+    Users->>AppStakingVault: stake() - Stake for benefits
+    
+    Note over Developer, Users: Step 4: Graduation
+    BondingCurve->>BondingCurve: Target reached (42k ELTA raised)
+    BondingCurve->>BondingCurve: Create DEX liquidity pair
+    BondingCurve->>BondingCurve: Lock LP tokens for 2 years
 ```
 
 
@@ -371,6 +411,7 @@ Beyond fair token launches, Elata provides utility modules that make app tokens 
 
 **AppModuleFactory** (Core Module Deployment):
 - Deploys Access1155, StakingVault, and EpochRewards in one call
+- **Used after AppFactory** - adds utility modules to your token
 - Restricted: only AppToken owner can deploy
 - Optional ELTA creation fee to treasury
 - On-chain registry via `modulesByApp` mapping
@@ -607,7 +648,7 @@ votingPower = (lockedAmount * timeRemaining) / MAX_LOCK
 
 // Constants
 MIN_LOCK = 1 weeks    // 604,800 seconds
-MAX_LOCK = 208 weeks  // 4 years = 125,798,400 seconds
+MAX_LOCK = 104 weeks  // 2 years = 62,899,200 seconds
 ```
 
 ### Examples (MAX_LOCK = 104 weeks)
@@ -621,8 +662,8 @@ MAX_LOCK = 208 weeks  // 4 years = 125,798,400 seconds
 ### Advanced Multi-Lock System
 
 ```solidity
-// From VeELTAMultiLock.sol
-MAX_LOCK = 208 weeks  // 4 years for advanced system
+// From VeELTA.sol
+MAX_LOCK = 104 weeks  // 2 years
 EMERGENCY_UNLOCK_PENALTY = 50%  // Discourages abuse
 ```
 
@@ -630,7 +671,7 @@ EMERGENCY_UNLOCK_PENALTY = 50%  // Discourages abuse
 - **Multiple concurrent positions** per user (NFT-based)
 - **Position management**: merge, split, delegate independently
 - **Emergency unlock** with 50% penalty (admin-controlled)
-- **Extended lock periods** up to 4 years for maximum commitment
+- **Lock periods** up to 2 years for balanced commitment
 
 
 ## 🏅 ElataXP — Participation without speculation
@@ -651,53 +692,40 @@ EMERGENCY_UNLOCK_PENALTY = 50%  // Discourages abuse
 - **Reputation system** (proof of sustained contribution)
 - **Access control** (XP-gated tournaments, exclusive content)
 
-### Advanced XP with Decay
+### XP Management
 
 ```solidity
-// From ElataXPWithDecay.sol
-DECAY_WINDOW = 14 days        // Rolling decay period
-MIN_DECAY_INTERVAL = 1 hours  // Rate limiting for updates
-
-// Decay formula (linear)
-effectiveXP = sum(entryAmount × (DECAY_WINDOW - age) / DECAY_WINDOW)
+// From ElataXP.sol
+XP_OPERATOR_ROLE  // Required to award/revoke XP
 ```
 
-**Decay Mechanism**:
-1. Each XP award creates a **timestamped entry**
-2. XP decays **linearly over 14 days** from award date
-3. **Keeper functions** can batch-update decay for gas efficiency
-4. **Automatic decay** applied when new XP is awarded
+**Features**:
+1. **Permanent XP**: Once earned, XP remains until explicitly revoked
+2. **Signature-based awards**: Off-chain operators can sign XP grants (EIP-712)
+3. **Soulbound**: Non-transferable, preventing reputation trading
+4. **Snapshot voting**: Built-in checkpoint system for governance
 
-**Example Decay Timeline**:
-```
-Day 0:  Award 1000 XP → Effective: 1000 XP (100%)
-Day 7:  Effective: 500 XP (50%)
-Day 14: Effective: 0 XP (fully decayed)
-```
+**Why permanent?** Simpler implementation, clear accounting, and reliable reputation without complex decay mechanics.
 
-**Why decay?** Encourages **continuous participation** and prevents long-term XP hoarding that could skew governance.
-
-### XP Decay Visualization
+### XP Lifecycle
 
 ```mermaid
-graph TD
-    subgraph "XP Lifecycle"
-        AWARD[XP Awarded<br/>📅 Timestamped Entry]
-        FRESH[Day 0: 100% Effective<br/>✅ Full Voting Power]
-        DECAY[Day 7: 50% Effective<br/>⚠️ Decay Warning]
-        EXPIRED[Day 14: 0% Effective<br/>❌ No Voting Power]
-        UPDATE[Decay Update<br/>🔄 Burn Expired XP]
+graph LR
+    subgraph "XP Flow"
+        AWARD[XP Awarded<br/>📋 Operator/Signature]
+        HOLD[XP Balance<br/>💎 Permanent Reputation]
+        VOTE[Voting Power<br/>🗳️ Snapshot-based]
+        REVOKE[XP Revoked<br/>⚠️ Admin Only]
     end
     
-    AWARD --> FRESH
-    FRESH --> DECAY
-    DECAY --> EXPIRED
-    EXPIRED --> UPDATE
+    AWARD --> HOLD
+    HOLD --> VOTE
+    HOLD -.optional.-> REVOKE
     
-    style FRESH fill:#4caf50
-    style DECAY fill:#ffc107
-    style EXPIRED fill:#f44336
-    style UPDATE fill:#2196f3
+    style AWARD fill:#4caf50
+    style HOLD fill:#2196f3
+    style VOTE fill:#9c27b0
+    style REVOKE fill:#ff9800
 ```
 
 ---
@@ -789,12 +817,11 @@ ELTA.decimals = 18                     // Standard precision
 // Staking Parameters
 VeELTA.MIN_LOCK = 1 weeks              // Minimum lock duration
 VeELTA.MAX_LOCK = 104 weeks            // 2 years maximum
-VeELTAMultiLock.MAX_LOCK = 208 weeks   // 4 years for advanced system
-VeELTAMultiLock.EMERGENCY_PENALTY = 50% // Early unlock penalty
+VeELTA.EMERGENCY_PENALTY = 50%         // Early unlock penalty
 
-// XP Decay System
-ElataXPWithDecay.DECAY_WINDOW = 14 days      // Rolling decay period
-ElataXPWithDecay.MIN_DECAY_INTERVAL = 1 hours // Rate limiting
+// XP System
+ElataXP.XP_OPERATOR_ROLE               // Required role for award/revoke
+ElataXP (permanent, no decay)          // Simple reputation system
 
 // Governance
 Governor.votingDelay = 1 days          // Proposal delay
@@ -814,7 +841,6 @@ graph TD
         LC1[ELTA Transfer: 56K<br/>💰 Standard token transfer]
         LC2[ELTA Mint: 67K<br/>🏭 With supply cap check]
         LC3[VeELTA Lock: 88K<br/>🔒 Position creation]
-        LC4[XP Decay Update: 87K<br/>🔄 Single user update]
         LC5[LotPool Vote: 86K<br/>🗳️ XP allocation]
         LC6[Reward Claim: 80K<br/>🎁 Merkle verification]
     end
@@ -841,33 +867,78 @@ graph TD
 | **VeELTA lock** | ~88K | Single position creation |
 | **Multi-lock create** | ~256K | NFT + delegation setup |
 | **XP award** | ~189K | With auto-delegation |
-| **XP decay update** | ~87K | Single user update |
+| **XP revoke** | ~82K | Burn XP from user |
 | **LotPool vote** | ~86K | XP allocation |
 | **Governance vote** | ~90K | Standard governor |
 | **Reward claim** | ~80K | Merkle proof verification |
 
 ### Deployment Costs
 
-| Contract | Size | Deploy Cost | Status |
-|----------|------|-------------|--------|
-| ELTA | 13.3KB | 2.3M gas | ✅ Optimal |
-| VeELTA | 4.7KB | 1.0M gas | ✅ Optimal |
-| ElataXP | 10.8KB | 2.2M gas | ✅ Optimal |
-| LotPool | 5.5KB | 1.1M gas | ✅ Optimal |
-| VeELTAMultiLock | 13.8KB | 3.0M gas | ✅ Acceptable |
-| ElataXPWithDecay | 13.5KB | 2.8M gas | ✅ Acceptable |
-| RewardsDistributor | 7.4KB | 1.1M gas | ✅ Optimal |
-| ElataGovernor | 16.6KB | 3.2M gas | ✅ Acceptable |
+| Contract | Size | Deploy Cost | Category | Status |
+|----------|------|-------------|----------|--------|
+| **Core Tokenomics** ||||
+| ELTA | 13.3KB | 2.3M gas | Token | ✅ Optimal |
+| VeELTA | 13.8KB | 3.0M gas | Staking | ✅ Optimal |
+| ElataXP | 8.2KB | 1.8M gas | Reputation | ✅ Optimal |
+| LotPool | 5.5KB | 1.1M gas | Funding | ✅ Optimal |
+| RewardsDistributor | 7.4KB | 1.1M gas | Rewards | ✅ Optimal |
+| ElataGovernor | 16.6KB | 3.2M gas | Governance | ✅ Acceptable |
+| **App Ecosystem** ||||
+| AppFactory | 14.2KB | 2.9M gas | Factory | ✅ Optimal |
+| AppModuleFactory | 6.8KB | 1.4M gas | Factory | ✅ Optimal |
+| TournamentFactory | 5.2KB | 1.0M gas | Factory | ✅ Optimal |
 
 ---
 
 ## 🔧 Developer integration
 
+### Launching a Complete App
+
+```solidity
+// Step 1: Create app token with bonding curve (via AppFactory)
+ELTA.approve(address(appFactory), 110 ether);
+uint256 appId = appFactory.createApp(
+    "NeuroPong Token",    // name
+    "NPONG",              // symbol
+    0,                    // supply (0 = use default 1B)
+    "Description",        // description
+    "ipfs://...",         // imageURI
+    "https://..."         // website
+);
+
+// Get your token address
+address myToken = appFactory.apps(appId).token;
+
+// Step 2: Deploy utility modules (via AppModuleFactory)
+(address access1155, address staking, address rewards) = 
+    appModuleFactory.deployModules(
+        myToken,
+        "https://metadata.myapp.com/"
+    );
+
+// Step 3: Configure your economy
+AppAccess1155(access1155).setItem(
+    1,              // itemId
+    50 ether,       // price in app tokens
+    true,           // soulbound
+    true,           // active
+    0, 0,           // no time restrictions
+    10000,          // max supply
+    "ipfs://..."    // metadata URI
+);
+
+// Now users can:
+// - Buy your token on the bonding curve
+// - Purchase NFT items (burns tokens)
+// - Stake tokens for benefits
+// - Enter tournaments
+```
+
 ### Awarding XP Automatically
 
 ```solidity
-// Grant XP_MINTER_ROLE to your app contract
-xp.grantRole(XP_MINTER_ROLE, address(myAppContract));
+// Grant XP_OPERATOR_ROLE to your app contract
+xp.grantRole(XP_OPERATOR_ROLE, address(myAppContract));
 
 // In your app logic
 function completeSession(address user, uint256 sessionQuality) external {
@@ -879,14 +950,20 @@ function completeSession(address user, uint256 sessionQuality) external {
 ### Creating Staking Positions
 
 ```solidity
-// Simple staking (one position per user)
-veELTA.createLock(1000e18, 52 weeks);
-veELTA.increaseAmount(500e18);           // Add more ELTA
-veELTA.increaseUnlockTime(newEndTime);   // Extend duration
+// VeELTA supports multiple lock positions per user (NFT-based)
+uint256 tokenId1 = veELTA.createLock(1000e18, 52 weeks);  // First position
+uint256 tokenId2 = veELTA.createLock(500e18, 26 weeks);   // Second position
 
-// Advanced multi-lock
-uint256 tokenId = veELTAMulti.createLock(1000e18, 52 weeks);
-veELTAMulti.delegatePosition(tokenId, delegateAddress);
+// Manage individual positions
+veELTA.increaseAmount(tokenId1, 500e18);           // Add more ELTA
+veELTA.increaseUnlockTime(tokenId1, newEndTime);   // Extend duration
+veELTA.delegatePosition(tokenId1, delegateAddress); // Delegate voting power
+
+// Merge two positions
+veELTA.mergePositions(tokenId2, tokenId1);  // Combine into tokenId1
+
+// Split a position
+uint256 tokenId3 = veELTA.splitPosition(tokenId1, 200e18);  // Split off 200 ELTA
 ```
 
 ### Running Funding Rounds
@@ -998,8 +1075,8 @@ A: Only up to the hard cap (77M) and only by addresses with `MINTER_ROLE`. The D
 **Q: What prevents governance attacks?**
 A: **Time-locked staking** (can't flash-loan veELTA), **XP requirements** (can't buy reputation), **quorum thresholds** (4% minimum), and **time delays** (48h for execution).
 
-**Q: Why 14-day XP decay?**
-A: Balances **rewarding contribution** with **preventing hoarding**. Active participants maintain XP; inactive users gradually lose voting power, keeping governance responsive.
+**Q: Why is XP permanent (no decay)?**
+A: Simplicity and reliability. Permanent XP provides clear accounting and predictable reputation. Operators can revoke XP if needed, but users don't need to worry about losing earned reputation over time.
 
 ---
 

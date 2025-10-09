@@ -90,11 +90,11 @@ graph TD
     subgraph "Reputation Economics"
         direction TB
         EARN[XP Earning<br/>Activity-based]
-        DECAY[XP Decay<br/>14-day Window]
+        HOLD[XP Balance<br/>Permanent Reputation]
         VOTE[Voting Rights<br/>Funding Rounds]
         
-        EARN --> DECAY
-        DECAY --> VOTE
+        EARN --> HOLD
+        HOLD --> VOTE
     end
     
     subgraph "Funding Economics"
@@ -156,32 +156,30 @@ stateDiagram-v2
     end note
 ```
 
-### XP Decay State Machine
+### XP State Machine
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Fresh: XP Awarded
-    Fresh --> Aging: Time passes
-    Aging --> PartialDecay: 0-14 days old
-    PartialDecay --> FullDecay: 14+ days old
-    PartialDecay --> Refreshed: New XP awarded
-    Refreshed --> Aging: Time passes
-    FullDecay --> Removed: updateUserDecay()
-    Removed --> [*]: Entry deleted
+    [*] --> Awarded: XP Granted
+    Awarded --> Held: Permanent Balance
+    Held --> Voting: Used in Governance
+    Held --> Revoked: Admin Revokes
+    Voting --> Held: After Vote
+    Revoked --> [*]: XP Burned
     
-    note right of Fresh
-        Effective XP = 100%
-        Full voting power
+    note right of Awarded
+        XP minted via operator
+        or signature authorization
     end note
     
-    note right of PartialDecay
-        Effective XP = linear decay
-        (14 - age) ÷ 14 × amount
+    note right of Held
+        Permanent reputation
+        Snapshot-based tracking
     end note
     
-    note right of FullDecay
-        Effective XP = 0%
-        No voting power
+    note right of Revoked
+        Only by XP_OPERATOR_ROLE
+        Exceptional circumstances
     end note
 ```
 
@@ -224,7 +222,7 @@ stateDiagram-v2
 graph LR
     subgraph "Linear Decay Model"
         INPUT[Lock: 1000 ELTA<br/>Duration: 104 weeks]
-        FORMULA[f(t) = 1000 × (104-t)/208]
+        FORMULA[f(t) = 1000 × (104-t)/104]
         OUTPUT[Voting Power over Time]
     end
     
@@ -241,31 +239,31 @@ Where:
 - $A$ = Locked amount
 - $D$ = Lock duration
 - $t$ = Time elapsed since lock creation
-- $MAX\_LOCK$ = 208 weeks
+- $MAX\_LOCK$ = 104 weeks (2 years)
 
-### XP Decay Function
+### XP Balance Function
 
 ```mermaid
 graph LR
-    subgraph "Exponential-like Decay"
-        XP_INPUT[XP Entry: 1000 XP<br/>Timestamp: t₀]
-        XP_FORMULA[g(t) = 1000 × max(0, (14d - age)/14d)]
-        XP_OUTPUT[Effective XP over Time]
+    subgraph "Permanent Reputation Model"
+        XP_INPUT[XP Awarded: 1000 XP<br/>Timestamp: t₀]
+        XP_BALANCE[Balance = 1000 XP<br/>Permanent]
+        XP_OUTPUT[Voting Power = Balance<br/>at Snapshot]
     end
     
-    XP_INPUT --> XP_FORMULA --> XP_OUTPUT
+    XP_INPUT --> XP_BALANCE --> XP_OUTPUT
 ```
 
 **Mathematical Expression:**
 $$
-XP_{effective}(t) = \sum_{i=1}^{n} XP_i \times \frac{\max(0, DECAY\_WINDOW - (t - t_i))}{DECAY\_WINDOW}
+XP_{balance}(t) = \sum_{i=1}^{n} XP_i - \sum_{j=1}^{m} XP_{revoked,j}
 $$
 
 Where:
-- $XP_{effective}(t)$ = Total effective XP at time $t$
-- $XP_i$ = Amount of XP entry $i$
-- $t_i$ = Timestamp of XP entry $i$
-- $DECAY\_WINDOW$ = 14 days
+- $XP_{balance}(t)$ = Total XP balance (permanent unless revoked)
+- $XP_i$ = Amount of XP award $i$
+- $XP_{revoked,j}$ = Amount of XP revoked in event $j$
+- No time decay applied
 
 ### Reward Distribution Formula
 
@@ -295,7 +293,7 @@ sequenceDiagram
     Frontend->>ProtocolStats: getUserSummary(address)
     ProtocolStats->>ELTA: balanceOf(user)
     ProtocolStats->>VeELTA: getUserVotingPower(user)
-    ProtocolStats->>ElataXP: effectiveBalance(user)
+    ProtocolStats->>ElataXP: balanceOf(user)
     ProtocolStats->>LotPool: getUserVotingStatus(user, round)
     ProtocolStats-->>Frontend: Complete user data
     

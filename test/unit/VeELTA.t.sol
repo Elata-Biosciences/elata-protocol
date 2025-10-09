@@ -44,7 +44,7 @@ contract VeELTATest is Test {
         assertEq(staking.name(), "Vote-Escrowed ELTA");
         assertEq(staking.symbol(), "veELTA");
         assertEq(staking.MIN_LOCK(), 1 weeks);
-        assertEq(staking.MAX_LOCK(), 208 weeks);
+        assertEq(staking.MAX_LOCK(), 104 weeks); // 2 years
         assertEq(staking.EMERGENCY_UNLOCK_PENALTY(), 5000);
         assertEq(staking.nextTokenId(), 1);
 

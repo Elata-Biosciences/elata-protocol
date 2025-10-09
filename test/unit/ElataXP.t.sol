@@ -19,15 +19,12 @@ contract ElataXPTest is Test {
 
     function test_Deployment() public {
         assertEq(xp.name(), "Elata XP");
-        assertEq(xp.symbol(), "ELTAXP");
+        assertEq(xp.symbol(), "XP");
         assertEq(xp.decimals(), 18);
         assertEq(xp.totalSupply(), 0);
-        assertEq(xp.DECAY_WINDOW(), 14 days);
-        assertEq(xp.MIN_DECAY_INTERVAL(), 1 hours);
 
         assertTrue(xp.hasRole(xp.DEFAULT_ADMIN_ROLE(), admin));
-        assertTrue(xp.hasRole(xp.XP_MINTER_ROLE(), admin));
-        assertTrue(xp.hasRole(xp.KEEPER_ROLE(), admin));
+        assertTrue(xp.hasRole(xp.XP_OPERATOR_ROLE(), admin));
     }
 
     function test_RevertWhen_DeploymentZeroAddress() public {
@@ -197,7 +194,7 @@ contract ElataXPTest is Test {
     }
 
     function test_AdminCanAwardXP() public {
-        // Test that admin (who has XP_MINTER_ROLE by default) can award XP
+        // Test that admin (who has XP_OPERATOR_ROLE by default) can award XP
         vm.prank(admin);
         xp.award(user1, 1000 ether);
 
@@ -211,11 +208,11 @@ contract ElataXPTest is Test {
 
     function test_RevokeMinterRole() public {
         vm.startPrank(admin);
-        xp.grantRole(xp.XP_MINTER_ROLE(), minter);
-        xp.revokeRole(xp.XP_MINTER_ROLE(), minter);
+        xp.grantRole(xp.XP_OPERATOR_ROLE(), minter);
+        xp.revokeRole(xp.XP_OPERATOR_ROLE(), minter);
         vm.stopPrank();
 
-        assertFalse(xp.hasRole(xp.XP_MINTER_ROLE(), minter));
+        assertFalse(xp.hasRole(xp.XP_OPERATOR_ROLE(), minter));
 
         vm.expectRevert();
         vm.prank(minter);
@@ -238,29 +235,6 @@ contract ElataXPTest is Test {
         assertEq(xp.totalSupply(), amount1 + amount2 + amount3);
     }
 
-    function test_BatchDecayUpdate() public {
-        // Give XP to multiple users
-        vm.startPrank(admin);
-        xp.award(user1, 1000 ether);
-        xp.award(user2, 500 ether);
-        vm.stopPrank();
-
-        // Fast forward past decay window
-        vm.warp(block.timestamp + 15 days);
-
-        address[] memory users = new address[](2);
-        users[0] = user1;
-        users[1] = user2;
-
-        // Wait for initial interval to pass
-        vm.warp(block.timestamp + 2 hours);
-
-        vm.prank(admin);
-        xp.batchUpdateDecay(users);
-
-        assertEq(xp.balanceOf(user1), 0);
-        assertEq(xp.balanceOf(user2), 0);
-    }
 
     function testFuzz_Award(uint256 amount) public {
         amount = bound(amount, 1, type(uint128).max);
