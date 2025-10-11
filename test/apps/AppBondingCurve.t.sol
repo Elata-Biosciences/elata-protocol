@@ -6,6 +6,7 @@ import { ELTA } from "../../src/token/ELTA.sol";
 import { AppToken } from "../../src/apps/AppToken.sol";
 import { AppBondingCurve } from "../../src/apps/AppBondingCurve.sol";
 import { IUniswapV2Router02 } from "../../src/interfaces/IUniswapV2Router02.sol";
+import { IAppFeeRouter } from "../../src/interfaces/IAppFeeRouter.sol";
 
 contract AppBondingCurveTest is Test {
     ELTA public elta;
@@ -44,7 +45,8 @@ contract AppBondingCurveTest is Test {
             365 days, // lpLockDuration
             treasury, // lpBeneficiary
             treasury, // treasury
-            250 // 2.5% protocol fee
+            250, // 2.5% protocol fee
+            IAppFeeRouter(address(0)) // No fee router in tests
         );
 
         // Setup: mint tokens to curve and initialize

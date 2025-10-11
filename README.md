@@ -26,7 +26,7 @@ graph LR
     
     subgraph "Elata Solution"
         S1[Weekly Funding<br/> Community-driven]
-        S2[Decentralized Voting<br/>🗳️ XP-weighted]
+        S2[Decentralized Voting<br/>XP-weighted]
         S3[Aligned Incentives<br/> Usage-based rewards]
     end
     
@@ -60,14 +60,14 @@ Think of it as an **app & research economy** where usage and participation deter
 ```mermaid
 graph TD
     A[Users Play EEG Apps<br/> Engagement] --> B[Generate Data & Usage<br/> Value Creation]
-    B --> C[Protocol Captures Fees<br/>💰 Revenue Generation]
-    C --> D[Community Directs Funding<br/>🗳️ XP-weighted Voting]
-    D --> E[Fund Research & Development<br/>🔬 Innovation]
-    E --> F[Better Apps & Experiences<br/>⭐ Quality Improvement]
+    B --> C[Protocol Captures Fees<br/>Revenue Generation]
+    C --> D[Community Directs Funding<br/>XP-weighted Voting]
+    D --> E[Fund Research & Development<br/>Innovation]
+    E --> F[Better Apps & Experiences<br/>Quality Improvement]
     F --> A
     
-    C --> G[Distribute Yields to Stakers<br/>💎 Real Returns]
-    G --> H[Attract Long-term Holders<br/>🤝 Stable Governance]
+    C --> G[Distribute Yields to Stakers<br/>Real Returns]
+    G --> H[Attract Long-term Holders<br/>Stable Governance]
     H --> I[Quality Governance Decisions<br/> Protocol Evolution]
     I --> D
     
@@ -110,7 +110,7 @@ graph TB
     subgraph "App Ecosystem"
         AF[AppFactory<br/> Token Launcher<br/>Bonding curves, LP locking]
         AMF[AppModuleFactory<br/> Utility Deployer<br/>Staking, NFTs, Rewards]
-        TF[TournamentFactory<br/>🏆 Tournament Creator<br/>Competition infrastructure]
+        TF[TournamentFactory<br/>Tournament Creator<br/>Competition infrastructure]
     end
     
     ELTA --> VE
@@ -144,28 +144,28 @@ graph TB
 | Contract | Purpose | Key Features |
 |----------|---------|--------------|
 | **[ELTA.sol](src/token/ELTA.sol)** | Governance & utility token | ERC20 + Votes + Permit + Burnable, 77M cap, no fees |
-| **[VeELTA.sol](src/staking/VeELTA.sol)** | Vote-escrowed staking | Linear decay, 1 week–2 year locks, multiple positions per user |
-| **[ElataXP.sol](src/experience/ElataXP.sol)** | Basic experience points | Non-transferable, checkpoint tracking, governance ready |
+| **[VeELTA.sol](src/staking/VeELTA.sol)** | Vote-escrowed staking | Non-transferable ERC20Votes, duration boost (1x-2x), snapshot-enabled |
+| **[ElataXP.sol](src/experience/ElataXP.sol)** | Experience points | Non-transferable, checkpoint tracking, governance ready |
 | **[LotPool.sol](src/governance/LotPool.sol)** | Research funding rounds | XP-weighted voting, weekly cycles, transparent payouts |
 
-### Advanced Protocol Contracts
+### Rewards & Revenue Architecture
 
 | Contract | Purpose | Key Features |
 |----------|---------|--------------|
-| **[VeELTA.sol](src/staking/VeELTA.sol)** | Advanced staking | NFT positions, multiple locks, merge/split, delegation, 2-year max |
-| **[ElataXP.sol](src/experience/ElataXP.sol)** | Experience points | Non-transferable, signature-based awards, governance integration |
-| **[RewardsDistributor.sol](src/rewards/RewardsDistributor.sol)** | Staker rewards | Merkle tree distribution, multiple tokens, epoch-based |
+| **[RewardsDistributor.sol](src/rewards/RewardsDistributor.sol)** | Central revenue hub | 70/15/15 split, on-chain snapshot claims, no Merkle trees |
+| **[AppRewardsDistributor.sol](src/rewards/AppRewardsDistributor.sol)** | App staker rewards | Pro-rata distribution by stake, snapshot-based, gas-bounded |
+| **[AppFeeRouter.sol](src/fees/AppFeeRouter.sol)** | Fee collection | 1% trading fee, forwards to rewards, governance-adjustable |
 | **[ElataGovernor.sol](src/governance/ElataGovernor.sol)** | Onchain governance | 4% quorum, emergency proposals, timelock integration |
 
 ### Why each contract exists
 
 * **ELTA**: Clean, DEX-compatible governance token with **no transfer taxes** and **hard supply cap**
-* **VeELTA**: Aligns governance with **time commitment**; prevents flash-loan governance attacks
+* **VeELTA**: Aligns governance with **time commitment**; non-transferable ERC20Votes with duration boost
 * **XP**: Rewards **participation over capital**; non-transferable prevents reputation markets
 * **LotPool**: Turns community activity into **transparent capital allocation**
-* **Multi-Lock**: Advanced users can optimize positions, merge/split for flexibility
-* **XP Permanence**: Simple, reliable reputation system without complex decay mechanics
-* **Rewards**: Distributes **real yield** to stakers based on protocol revenue
+* **RewardsDistributor**: Distributes **real yield** with 70/15/15 split (app stakers / veELTA / treasury)
+* **AppRewardsDistributor**: On-chain snapshot-based rewards for app token stakers
+* **AppFeeRouter**: Collects 1% trading fees and forwards to rewards system
 * **Governor**: Enables **on-chain voting** for protocol parameters and upgrades
 
 ### App Launch Framework
@@ -182,11 +182,11 @@ graph TD
     subgraph "Launch Process"
         CREATE[Developer Creates App<br/> Stakes 100 ELTA]
         CURVE[Bonding Curve Sale<br/> Price increases with demand]
-        GRADUATE[Auto-Graduation<br/>🎓 At 42k ELTA raised]
+        GRADUATE[Auto-Graduation<br/>At 42k ELTA raised]
         LIQUIDITY[DEX Liquidity<br/> Locked for 2 years]
     end
     
-    Developer[👨‍💻 Developer] --> AF
+    Developer[Developer] --> AF
     AF --> AT
     AF --> ABC
     AT --> AMF
@@ -301,23 +301,33 @@ MINTER_ROLE                   // Role-gated minting up to cap
 App Store (15% take rate) + Tournament Rake (5-10%) + Infrastructure Fees
 ```
 
-**Distribution Policy** (illustrative)
+**Distribution Policy** (automated via RewardsDistributor)
 ```
-Protocol Revenue
-├── 50% → Treasury (grants, operations, runway)
-├── 25% → veELTA Yield (real yield to stakers)
-└── 25% → Buyback & Burn (deflationary pressure)
+Protocol Revenue (ELTA)
+├── 70% → App Token Stakers (via AppRewardsDistributor)
+├── 15% → veELTA Stakers (on-chain snapshot claims)
+└── 15% → Treasury (grants, operations, development)
+```
+
+**Revenue Sources**
+```
+Trading Fees (1% on bonding curve) + Tournament Rake + App Fees
+  ↓
+RewardsDistributor.deposit()
+  ↓ Automatic 70/15/15 Split
+  ├─ 70% → Distributed to app stakers proportionally
+  ├─ 15% → Claimable by veELTA holders
+  └─ 15% → Treasury (immediate transfer)
 ```
 
 **Example Calculation**
 ```
-Monthly app volume: $100,000
-Store take rate: 15%
-Protocol revenue: $15,000
+Monthly trading volume: 100,000 ELTA
+Trading fee (1%): 1,000 ELTA
 
-Treasury: $7,500
-veELTA yield: $3,750 (distributed to stakers)
-Buyback & burn: $3,750 (reduces supply)
+App stakers: 700 ELTA (70%)
+veELTA stakers: 150 ELTA (15%)
+Treasury: 150 ELTA (15%)
 ```
 
 > **Important**: Data licensing proceeds go to participants via data trusts, **not** to the protocol. ELTA accrues from software/infrastructure economics.
@@ -326,27 +336,29 @@ Buyback & burn: $3,750 (reduces supply)
 
 **App Token Launch Model:**
 ```
-Developer Investment: 110 ELTA (default: 100 seed + 10 fee, governable)
+Developer Investment: 110 ELTA (100 seed + 10 creation fee)
 ├── Seed Liquidity: 100 ELTA → Bonding curve initial liquidity
 ├── Creation Fee: 10 ELTA → Protocol treasury
-└── Token Supply: 1B tokens → Fair distribution via curve
+└── Token Supply: 1B tokens → Split 50/50
 
-Note: All parameters (seedElta, creationFee, targetRaise, etc.) are fully 
-governable by protocol team via AppFactory.setParameters(). Fees adjust 
-dynamically based on ELTA market price to maintain accessibility.
-Query current cost: appFactory.getTotalCreationCost()
+Token Distribution:
+├── 50% → Auto-staked for creator (aligned incentives, earns rewards immediately)
+└── 50% → Bonding curve (public sale, fair price discovery)
 
-User Purchases: ELTA → App Tokens
-├── Protocol Fee: 2.5% → Treasury (sustainable revenue)
-├── Net Purchase: 97.5% → Bonding curve reserves
-└── Graduation: At 42k ELTA → Auto-create locked DEX liquidity
+Trading Fees (ON TOP of trade):
+├── Trading Fee: 1% → AppFeeRouter → RewardsDistributor
+│   ├── 70% → App token stakers
+│   ├── 15% → veELTA stakers
+│   └── 15% → Treasury
+└── Graduation: At 42k ELTA raised → Auto-create locked DEX liquidity (2 years)
 ```
 
 **Economic Benefits:**
-- **ELTA Demand**: Every app launch requires ELTA for creation and purchases
-- **Protocol Revenue**: 2.5% fee on all app token trading volume
-- **Ecosystem Growth**: More apps = more ELTA utility and value
-- **Developer Incentives**: Fair token distribution attracts quality developers
+- **Creator Alignment**: 50% auto-staked prevents dumps, aligns with long-term success
+- **ELTA Demand**: Every app launch requires ELTA; all trading uses ELTA
+- **Protocol Revenue**: 1% trading fee on all bonding curve volume
+- **Ecosystem Growth**: More apps = more ELTA utility and rewards for stakers
+- **Real Yield**: App stakers earn 70% of protocol revenues in ELTA
 
 ---
 
@@ -359,9 +371,9 @@ Beyond fair token launches, Elata provides utility modules that make app tokens 
 | Contract | Purpose | Key Features |
 |----------|---------|--------------|
 | **[AppAccess1155.sol](src/apps/AppAccess1155.sol)** | Items and passes | Burn-on-purchase, soulbound toggle, feature gates, 25+ view functions |
-| **[AppStakingVault.sol](src/apps/AppStakingVault.sol)** | Per-app staking | Simple stake/unstake, feature gating, governance weight |
+| **[AppStakingVault.sol](src/apps/AppStakingVault.sol)** | Per-app staking | ERC20Votes stake-shares, non-transferable, snapshot-enabled for rewards |
 | **[Tournament.sol](src/apps/Tournament.sol)** | Paid competitions | Entry fees, protocol fees, burn fees, Merkle claims |
-| **[EpochRewards.sol](src/apps/EpochRewards.sol)** | Time-boxed rewards | Owner-funded, Merkle claims, no continuous emissions |
+| **[EpochRewards.sol](src/apps/EpochRewards.sol)** | Time-boxed rewards | Owner-funded, Merkle claims, for app token seasonal distributions |
 | **[AppModuleFactory.sol](src/apps/AppModuleFactory.sol)** | Core module deployer | Deploys Access1155, StakingVault, EpochRewards in one call |
 | **[TournamentFactory.sol](src/apps/TournamentFactory.sol)** | Tournament deployer | One-click tournament creation, registry, default fees |
 | **[Interfaces.sol](src/apps/Interfaces.sol)** | Interface definitions | IAppToken, IOwnable |
@@ -386,11 +398,13 @@ Beyond fair token launches, Elata provides utility modules that make app tokens 
 - Batch getters for efficient UI loading
 
 **AppStakingVault** (Staking):
-- Per-app isolated staking (not global)
-- Simple stake/unstake with no lock periods
-- View functions for feature gating: `stakedOf()`, `totalStaked()`
-- Clean event emission for indexing
-- ReentrancyGuard protection
+- Per-app isolated staking with ERC20Votes stake-shares
+- Non-transferable shares (prevents stake trading)
+- Snapshot-enabled for on-chain ELTA reward distribution
+- Instant unstake (no lock periods)
+- Auto-delegation for voting power
+- Feature gating via `balanceOf()` checks
+- Earns 70% of protocol revenues proportionally
 
 **Tournament** (Competitions):
 - Entry fee collection in app tokens
@@ -430,14 +444,20 @@ Beyond fair token launches, Elata provides utility modules that make app tokens 
 
 ```
 Step 1: Launch App (via AppFactory)
-├─ Pay ELTA (default 110: 100 seed + 10 fee, governable)
-├─ AppToken deployed
-├─ Receive 10% of supply for rewards treasury (default: 100M tokens)
+├─ Pay ELTA (110: 100 seed + 10 creation fee)
+├─ AppToken deployed (1B supply)
+├─ AppStakingVault deployed (for rewards)
+├─ Bonding curve deployed (with 1% fee routing)
+├─ Receive 50% auto-staked (500M tokens staked, earns ELTA rewards immediately)
 ├─ Receive admin control (DEFAULT_ADMIN_ROLE)
-└─ 90% of supply in bonding curve for trading (default: 900M tokens)
+├─ Vault ownership transferred to creator
+└─ 50% in bonding curve for public trading (500M tokens)
 
-Note: Launch costs and parameters are governable by protocol
-      Query current cost: appFactory.getTotalCreationCost()
+Creator Benefits:
+- Staked position earns 70% of all protocol revenues (proportional by stake)
+- Cannot immediately dump (must unstake first, visible on-chain)
+- Aligned with long-term app success
+- No vesting period (immediate rewards eligibility)
 
 Step 2: Deploy Utility Modules (via AppModuleFactory)
 ├─ Pay optional ELTA creation fee
@@ -623,55 +643,52 @@ All contracts include comprehensive view functions for frontends:
 
 ## veELTA Staking — Time-weighted governance
 
-### Voting Power Visualization
+### Voting Power Model
+
+veELTA is a **non-transferable ERC20Votes token** with duration-based boost.
 
 ```mermaid
 graph LR
     subgraph "Voting Power Calculation"
-        INPUT[Locked Amount × Time Remaining<br/>÷ MAX_LOCK]
-        DECAY[Linear Decay Over Time<br/>📉 Continuous Reduction]
-        OUTPUT[Current Voting Power<br/> Governance Influence]
+        INPUT[Locked ELTA Amount × Duration Boost]
+        BOOST[Linear: 1x at 7 days to 2x at 730 days]
+        OUTPUT[veELTA Balance = Voting Power]
     end
     
-    INPUT --> DECAY --> OUTPUT
+    INPUT --> BOOST --> OUTPUT
     
     style INPUT fill:#e3f2fd
-    style DECAY fill:#fff3e0
+    style BOOST fill:#fff3e0
     style OUTPUT fill:#e8f5e8
 ```
 
 ### Mathematical Formula
 
 ```solidity
-// From VeELTA.sol line 119
-votingPower = (lockedAmount * timeRemaining) / MAX_LOCK
+// From VeELTA.sol - Duration boost (linear interpolation)
+boost = 1e18 + ((1e18 * duration) / MAX_LOCK)  // 1x to 2x
+veELTA_minted = (eltaAmount * boost) / 1e18
 
 // Constants
-MIN_LOCK = 1 weeks    // 604,800 seconds
-MAX_LOCK = 104 weeks  // 2 years = 62,899,200 seconds
+MIN_LOCK = 7 days     // Minimum lock period
+MAX_LOCK = 730 days   // Maximum lock period (2 years)
 ```
 
-### Examples (MAX_LOCK = 104 weeks)
+### Examples
 
-| Lock Amount | Lock Duration | Initial Voting Power | After 50% Time | At Expiry |
-|-------------|---------------|---------------------|-----------------|-----------|
-| 1,000 ELTA | 104 weeks | 1,000 veELTA | 500 veELTA | 0 veELTA |
-| 1,000 ELTA | 52 weeks | 500 veELTA | 250 veELTA | 0 veELTA |
-| 1,000 ELTA | 26 weeks | 250 veELTA | 125 veELTA | 0 veELTA |
+| Lock Amount | Lock Duration | Boost | veELTA Received | Unlock After |
+|-------------|---------------|-------|-----------------|--------------|
+| 1,000 ELTA | 730 days (max) | 2.0x | 2,000 veELTA | 730 days |
+| 1,000 ELTA | 365 days | 1.5x | 1,500 veELTA | 365 days |
+| 1,000 ELTA | 7 days (min) | 1.0x | 1,000 veELTA | 7 days |
 
-### Advanced Multi-Lock System
-
-```solidity
-// From VeELTA.sol
-MAX_LOCK = 104 weeks  // 2 years
-EMERGENCY_UNLOCK_PENALTY = 50%  // Discourages abuse
-```
-
-**Features**:
-- **Multiple concurrent positions** per user (NFT-based)
-- **Position management**: merge, split, delegate independently
-- **Emergency unlock** with 50% penalty (admin-controlled)
-- **Lock periods** up to 2 years for balanced commitment
+**Key Features**:
+- **Single lock per user** (simplifies state, reduces gas)
+- **Can increase amount** or **extend duration** anytime
+- **No continuous decay** (voting power updates only on actions)
+- **Principal returned 1:1** on unlock (veELTA burned, ELTA returned)
+- **Non-transferable** (prevents vote-buying, ensures genuine commitment)
+- **Snapshot-enabled** (ERC20Votes) for on-chain governance and reward claims
 
 
 ##  ElataXP — Participation without speculation
@@ -713,9 +730,9 @@ XP_OPERATOR_ROLE  // Required to award/revoke XP
 graph LR
     subgraph "XP Flow"
         AWARD[XP Awarded<br/> Operator/Signature]
-        HOLD[XP Balance<br/>💎 Permanent Reputation]
-        VOTE[Voting Power<br/>🗳️ Snapshot-based]
-        REVOKE[XP Revoked<br/>⚠️ Admin Only]
+        HOLD[XP Balance<br/>Permanent Reputation]
+        VOTE[Voting Power<br/>Snapshot-based]
+        REVOKE[XP Revoked<br/>Admin Only]
     end
     
     AWARD --> HOLD
@@ -815,9 +832,10 @@ ELTA.MAX_SUPPLY = 77,000,000 * 1e18    // Hard cap
 ELTA.decimals = 18                     // Standard precision
 
 // Staking Parameters
-VeELTA.MIN_LOCK = 1 weeks              // Minimum lock duration
-VeELTA.MAX_LOCK = 104 weeks            // 2 years maximum
-VeELTA.EMERGENCY_PENALTY = 50%         // Early unlock penalty
+VeELTA.MIN_LOCK = 7 days               // Minimum lock duration
+VeELTA.MAX_LOCK = 730 days             // 2 years maximum
+VeELTA.BOOST_MIN = 1e18                // 1x boost at min duration
+VeELTA.BOOST_MAX = 2e18                // 2x boost at max duration
 
 // XP System
 ElataXP.XP_OPERATOR_ROLE               // Required role for award/revoke
@@ -829,8 +847,11 @@ Governor.votingPeriod = 7 days         // Voting duration
 Governor.proposalThreshold = 0.1%      // 77K ELTA minimum
 Governor.quorum = 4%                   // 3.08M ELTA required
 
-// Rewards
-RewardsDistributor.EPOCH_DURATION = 7 days   // Weekly cycles
+// Rewards & Fees
+RewardsDistributor.BIPS_APP = 7000     // 70% to app stakers
+RewardsDistributor.BIPS_VEELTA = 1500  // 15% to veELTA stakers
+RewardsDistributor.BIPS_TREASURY = 1500 // 15% to treasury
+AppFeeRouter.feeBps = 100              // 1% trading fee (max 5%)
 ```
 
 ### Gas Costs (Optimized for Mainnet)
@@ -838,16 +859,16 @@ RewardsDistributor.EPOCH_DURATION = 7 days   // Weekly cycles
 ```mermaid
 graph TD
     subgraph "Low Cost Operations (<100K gas)"
-        LC1[ELTA Transfer: 56K<br/>💰 Standard token transfer]
-        LC2[ELTA Mint: 67K<br/> With supply cap check]
-        LC3[VeELTA Lock: 88K<br/> Position creation]
-        LC5[LotPool Vote: 86K<br/>🗳️ XP allocation]
-        LC6[Reward Claim: 80K<br/> Merkle verification]
+        LC1[ELTA Transfer: 56K<br/>Standard token transfer]
+        LC2[ELTA Mint: 67K<br/>With supply cap check]
+        LC3[VeELTA Lock: 88K<br/>Position creation]
+        LC5[LotPool Vote: 86K<br/>XP allocation]
+        LC6[Reward Claim: 80K<br/>Merkle verification]
     end
     
     subgraph "Medium Cost Operations (100K-300K gas)"
         MC1[XP Award: 189K<br/> With auto-delegation]
-        MC2[Multi-lock Create: 256K<br/>🎯 NFT + delegation]
+        MC2[Multi-lock Create: 256K<br/>NFT + delegation]
     end
     
     style LC1 fill:#c8e6c9
@@ -950,20 +971,21 @@ function completeSession(address user, uint256 sessionQuality) external {
 ### Creating Staking Positions
 
 ```solidity
-// VeELTA supports multiple lock positions per user (NFT-based)
-uint256 tokenId1 = veELTA.createLock(1000e18, 52 weeks);  // First position
-uint256 tokenId2 = veELTA.createLock(500e18, 26 weeks);   // Second position
+// VeELTA V2: Single lock per user with ERC20Votes
+veELTA.lock(1000e18, uint64(block.timestamp + 365 days));  // Lock for 1 year
 
-// Manage individual positions
-veELTA.increaseAmount(tokenId1, 500e18);           // Add more ELTA
-veELTA.increaseUnlockTime(tokenId1, newEndTime);   // Extend duration
-veELTA.delegatePosition(tokenId1, delegateAddress); // Delegate voting power
+// Manage your lock
+veELTA.increaseAmount(500e18);                              // Add more ELTA to existing lock
+veELTA.extendLock(uint64(block.timestamp + 730 days));     // Extend to 2 years
 
-// Merge two positions
-veELTA.mergePositions(tokenId2, tokenId1);  // Combine into tokenId1
+// Check your voting power
+uint256 votingPower = veELTA.balanceOf(msg.sender);         // Current veELTA balance
+uint256 pastPower = veELTA.getPastVotes(msg.sender, blockNumber);  // Historical snapshot
 
-// Split a position
-uint256 tokenId3 = veELTA.splitPosition(tokenId1, 200e18);  // Split off 200 ELTA
+// Unlock after expiry
+veELTA.unlock();  // Burns veELTA, returns 1:1 ELTA principal
+
+// Delegation is automatic (self-delegated for voting power)
 ```
 
 ### Running Funding Rounds
@@ -1041,11 +1063,11 @@ This automatically:
 -  Seeds test data (apps, XP, staking, funding rounds)
 -  Generates frontend configuration
 -  Funds test accounts with ELTA
--  ✨ **NEW:** Sets up pre-commit hooks for code quality
+-  Sets up pre-commit hooks for code quality
 
 **See [QUICKSTART.md](QUICKSTART.md) for details** or the [full local development guide](docs/LOCAL_DEVELOPMENT.md).
 
-### 🛠️ Development Tools
+### Development Tools
 
 We provide a comprehensive Makefile for common development tasks:
 
@@ -1064,12 +1086,12 @@ make ci            # Run all CI checks locally (before pushing)
 **Pre-commit Hooks**: Automatically format code, build, and run tests before each commit.
 **Pre-push Hooks**: Run comprehensive checks including gas reports before pushing.
 
-**💡 Tip**: Run `make ci` before pushing to catch issues locally!
+**Tip**: Run `make ci` before pushing to catch issues locally.
 
 ### Testing
 
 ```bash
-# Run comprehensive test suite (422 tests, 100% pass rate)
+# Run comprehensive test suite (454 tests, 97.6% pass rate)
 npm test
 # or
 make test
@@ -1126,24 +1148,26 @@ make ci
 
 ### Test Coverage
 
-**422 comprehensive tests** with 100% pass rate for core contracts:
+**454 comprehensive tests** with 97.6% pass rate:
 
 ```mermaid
 pie title Test Coverage by Contract
-    "ELTA Token (16 tests)" : 16
-    "VeELTA Staking (10 tests)" : 10
-    "ElataXP System (23 tests)" : 23
-    "LotPool Funding (22 tests)" : 22
-    "RewardsDistributor (15 tests)" : 15
-    "Integration Tests (4 tests)" : 4
-    "Security Tests (10 tests)" : 10
+    "Core Tokens (ELTA, XP)" : 39
+    "VeELTA V2 (13 tests)" : 13
+    "Rewards V2 (31 tests)" : 31
+    "App Launch (150+ tests)" : 150
+    "Utilities (80+ tests)" : 80
+    "Integration (11 tests)" : 11
+    "Security (130+ tests)" : 130
 ```
 
-- **Unit tests**: Individual contract functionality
-- **Integration tests**: Cross-contract workflows
+- **Unit tests**: Individual contract functionality (100% coverage on new contracts)
+- **Integration tests**: Cross-contract workflows including full revenue flow
 - **Fuzz tests**: Property-based testing with random inputs
 - **Security tests**: Critical protection verification
 - **Gas optimization**: Benchmarked for mainnet efficiency
+
+**Economic Upgrade V2 Tests**: 56/56 passing (100%)
 
 ```bash
 # Test specific contracts

@@ -122,10 +122,11 @@ contract SeedLocalData is Script {
 
         for (uint256 i = 0; i < amounts.length; i++) {
             elta.approve(address(staking), amounts[i]);
-            uint256 tokenId = staking.createLock(amounts[i], durations[i]);
+            // NOTE: VeELTA API changed from createLock() to lock() (no tokenId returned)
+            staking.lock(amounts[i], uint64(block.timestamp + durations[i]));
             console2.log(
                 "       Created lock #%s: %s ELTA for %s weeks",
-                tokenId,
+                i,
                 amounts[i] / 1 ether,
                 durations[i] / 1 weeks
             );
@@ -199,7 +200,8 @@ contract SeedLocalData is Script {
         );
 
         // Get app token address (apps mapping returns the full struct as tuple)
-        (, app.token,,,,,,,,) = factory.apps(app.appId);
+        // App struct: creator, token, vault, curve, pair, locker, createdAt, graduatedAt, graduated, totalRaised, finalSupply
+        (, app.token,,,,,,,,,) = factory.apps(app.appId);
         app.name = name;
         app.symbol = symbol;
 

@@ -9,6 +9,9 @@ import { AppToken } from "../../src/apps/AppToken.sol";
 import { AppBondingCurve } from "../../src/apps/AppBondingCurve.sol";
 import { LpLocker } from "../../src/apps/LpLocker.sol";
 import { IUniswapV2Router02 } from "../../src/interfaces/IUniswapV2Router02.sol";
+import { IAppFeeRouter } from "../../src/interfaces/IAppFeeRouter.sol";
+import { IAppRewardsDistributor } from "../../src/interfaces/IAppRewardsDistributor.sol";
+import { MockAppFeeRouter, MockAppRewardsDistributor } from "../mocks/MockContracts.sol";
 
 /**
  * @title App Launch Integration Tests
@@ -38,7 +41,18 @@ contract AppLaunchIntegrationTest is Test {
         // Setup mock Uniswap
         _setupMockUniswap();
 
-        factory = new AppFactory(elta, IUniswapV2Router02(mockRouter), treasury, admin);
+        // Deploy mocks for new architecture
+        MockAppFeeRouter mockFeeRouter = new MockAppFeeRouter();
+        MockAppRewardsDistributor mockAppRewards = new MockAppRewardsDistributor();
+
+        factory = new AppFactory(
+            elta,
+            IUniswapV2Router02(mockRouter),
+            treasury,
+            IAppFeeRouter(address(mockFeeRouter)),
+            IAppRewardsDistributor(address(mockAppRewards)),
+            admin
+        );
 
         // Deploy views contract for complex queries
         views = new AppFactoryViews(address(factory));

@@ -8,6 +8,9 @@ import { AppToken } from "../../src/apps/AppToken.sol";
 import { AppBondingCurve } from "../../src/apps/AppBondingCurve.sol";
 import { LpLocker } from "../../src/apps/LpLocker.sol";
 import { IUniswapV2Router02 } from "../../src/interfaces/IUniswapV2Router02.sol";
+import { IAppFeeRouter } from "../../src/interfaces/IAppFeeRouter.sol";
+import { IAppRewardsDistributor } from "../../src/interfaces/IAppRewardsDistributor.sol";
+import { MockAppFeeRouter, MockAppRewardsDistributor } from "../mocks/MockContracts.sol";
 
 /**
  * @title App Launch Security Tests
@@ -33,7 +36,18 @@ contract AppLaunchSecurityTest is Test {
             mockRouter, abi.encodeWithSignature("factory()"), abi.encode(makeAddr("mockFactory"))
         );
 
-        factory = new AppFactory(elta, IUniswapV2Router02(mockRouter), treasury, admin);
+        // Deploy mocks
+        MockAppFeeRouter mockFeeRouter = new MockAppFeeRouter();
+        MockAppRewardsDistributor mockAppRewards = new MockAppRewardsDistributor();
+
+        factory = new AppFactory(
+            elta,
+            IUniswapV2Router02(mockRouter),
+            treasury,
+            IAppFeeRouter(address(mockFeeRouter)),
+            IAppRewardsDistributor(address(mockAppRewards)),
+            admin
+        );
 
         // Distribute ELTA
         vm.startPrank(treasury);
@@ -257,7 +271,16 @@ contract AppLaunchSecurityTest is Test {
         // All contracts should reject zero addresses
 
         vm.expectRevert("Zero address");
-        new AppFactory(ELTA(address(0)), IUniswapV2Router02(mockRouter), treasury, admin);
+        MockAppFeeRouter mockFee = new MockAppFeeRouter();
+        MockAppRewardsDistributor mockRewards = new MockAppRewardsDistributor();
+        new AppFactory(
+            ELTA(address(0)),
+            IUniswapV2Router02(mockRouter),
+            treasury,
+            IAppFeeRouter(address(mockFee)),
+            IAppRewardsDistributor(address(mockRewards)),
+            admin
+        );
 
         vm.expectRevert("Zero address");
         new AppToken("Test", "TEST", 18, 1000 ether, address(0), admin);

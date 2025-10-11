@@ -29,7 +29,7 @@ contract AppAccess1155Test is Test {
         appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, owner, admin);
 
         // Deploy staking vault
-        vault = new AppStakingVault(address(appToken), owner);
+        vault = new AppStakingVault("TestApp", "TAPP", appToken, owner);
 
         // Deploy access control
         access =

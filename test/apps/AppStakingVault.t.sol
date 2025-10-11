@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import { AppStakingVault } from "../../src/apps/AppStakingVault.sol";
 import { AppToken } from "../../src/apps/AppToken.sol";
+import { Errors } from "../../src/utils/Errors.sol";
 
 contract AppStakingVaultTest is Test {
     AppStakingVault public vault;
@@ -21,7 +22,7 @@ contract AppStakingVaultTest is Test {
 
     function setUp() public {
         appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, owner, admin);
-        vault = new AppStakingVault(address(appToken), owner);
+        vault = new AppStakingVault("TestApp", "TAPP", appToken, owner);
 
         // Mint tokens to users
         vm.startPrank(admin);
@@ -98,7 +99,7 @@ contract AppStakingVaultTest is Test {
     }
 
     function test_RevertWhen_StakeZero() public {
-        vm.expectRevert(AppStakingVault.ZeroAmount.selector);
+        vm.expectRevert(Errors.InvalidAmount.selector);
         vm.prank(user1);
         vault.stake(0);
     }
@@ -149,7 +150,7 @@ contract AppStakingVaultTest is Test {
     }
 
     function test_RevertWhen_UnstakeZero() public {
-        vm.expectRevert(AppStakingVault.ZeroAmount.selector);
+        vm.expectRevert(Errors.InvalidAmount.selector);
         vm.prank(user1);
         vault.unstake(0);
     }
@@ -161,13 +162,13 @@ contract AppStakingVaultTest is Test {
         vault.stake(1000 ether);
 
         // Try to unstake 1001
-        vm.expectRevert(AppStakingVault.InsufficientStake.selector);
+        vm.expectRevert(AppStakingVault.Insufficient.selector);
         vault.unstake(1001 ether);
         vm.stopPrank();
     }
 
     function test_RevertWhen_UnstakeWithNoStake() public {
-        vm.expectRevert(AppStakingVault.InsufficientStake.selector);
+        vm.expectRevert(AppStakingVault.Insufficient.selector);
         vm.prank(user1);
         vault.unstake(1000 ether);
     }

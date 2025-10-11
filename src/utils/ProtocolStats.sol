@@ -79,24 +79,39 @@ contract ProtocolStats {
             xpBalance: xp.balanceOf(user),
             stakingPositions: staking.balanceOf(user),
             totalStaked: _getTotalStaked(user),
-            totalVotingPower: staking.getUserVotingPower(user),
-            pendingRewards: rewards.pendingRewards(user),
-            totalClaimedRewards: rewards.totalClaimed(user)
-        });
+            totalVotingPower: staking.balanceOf(user),
+            pendingRewards: rewards.estimatePendingVeRewards(user),
+            totalClaimedRewards: 0 // No longer tracked globally in new architecture
+         });
     }
 
     /**
-     * @notice Gets detailed information about all user positions
+     * @notice Gets detailed information about user's lock position
+     * @dev In V2, each user has one lock position (not multiple NFTs)
      * @param user User address
-     * @return Array of position summaries
+     * @return Array of position summaries (single element or empty)
      */
     function getUserPositions(address user) external view returns (PositionSummary[] memory) {
-        uint256[] memory tokenIds = staking.getUserPositions(user);
-        PositionSummary[] memory positions = new PositionSummary[](tokenIds.length);
+        // V2: Single lock per user
+        (uint256 principal, uint64 unlockTime, uint256 veBalance, bool isExpired) =
+            staking.getLockDetails(user);
 
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            positions[i] = _getPositionSummary(tokenIds[i]);
+        if (principal == 0) {
+            return new PositionSummary[](0);
         }
+
+        PositionSummary[] memory positions = new PositionSummary[](1);
+        positions[0] = PositionSummary({
+            tokenId: 0, // No tokenId in V2
+            amount: principal,
+            startTime: 0, // Not tracked in simplified model
+            endTime: unlockTime,
+            votingPower: veBalance,
+            delegate: user, // V2 uses self-delegation only
+            isExpired: isExpired,
+            emergencyUnlocked: false, // Not tracked in V2
+            timeRemaining: isExpired ? 0 : (unlockTime - uint64(block.timestamp))
+        });
 
         return positions;
     }
@@ -205,35 +220,24 @@ contract ProtocolStats {
     // Internal helper functions
 
     function _getPositionSummary(uint256 tokenId) internal view returns (PositionSummary memory) {
-        (uint128 amount, uint64 start, uint64 end, address delegate, bool emergencyUnlocked) =
-            staking.positions(tokenId);
-
-        bool isExpired = block.timestamp >= end;
-        uint256 timeRemaining = isExpired ? 0 : end - block.timestamp;
-
+        // V2: No longer used (kept for backwards compatibility, always returns empty)
         return PositionSummary({
             tokenId: tokenId,
-            amount: amount,
-            startTime: start,
-            endTime: end,
-            votingPower: staking.getPositionVotingPower(tokenId),
-            delegate: delegate,
-            isExpired: isExpired,
-            emergencyUnlocked: emergencyUnlocked,
-            timeRemaining: timeRemaining
+            amount: 0,
+            startTime: 0,
+            endTime: 0,
+            votingPower: 0,
+            delegate: address(0),
+            isExpired: true,
+            emergencyUnlocked: false,
+            timeRemaining: 0
         });
     }
 
     function _getTotalStaked(address user) internal view returns (uint256) {
-        uint256[] memory tokenIds = staking.getUserPositions(user);
-        uint256 totalStaked = 0;
-
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            (uint128 amount,,,,) = staking.positions(tokenIds[i]);
-            totalStaked += amount;
-        }
-
-        return totalStaked;
+        // V2: Single lock per user - get principal from lock
+        (uint256 principal,,,) = staking.getLockDetails(user);
+        return principal;
     }
 
     function _calculateTotalValueLocked() internal view returns (uint256) {
@@ -248,13 +252,13 @@ contract ProtocolStats {
     }
 
     function _getTotalRewardsDistributed() internal view returns (uint256) {
-        // Sum across all reward tokens
-        address[] memory tokens = rewards.getActiveTokens();
+        // V2: Track via veEpochs sum (simplified - only ELTA rewards now)
+        uint256 epochCount = rewards.getEpochCount();
         uint256 totalDistributed = 0;
 
-        for (uint256 i = 0; i < tokens.length; i++) {
-            (, uint256 distributed,) = rewards.rewardTokens(tokens[i]);
-            totalDistributed += distributed;
+        for (uint256 i = 0; i < epochCount; i++) {
+            (, uint256 amount) = rewards.getEpoch(i);
+            totalDistributed += amount;
         }
 
         return totalDistributed;

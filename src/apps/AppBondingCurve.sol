@@ -9,6 +9,7 @@ import { IUniswapV2Factory } from "../interfaces/IUniswapV2Factory.sol";
 import { IUniswapV2Pair } from "../interfaces/IUniswapV2Pair.sol";
 import { AppToken } from "./AppToken.sol";
 import { LpLocker } from "./LpLocker.sol";
+import { IAppFeeRouter } from "../interfaces/IAppFeeRouter.sol";
 
 interface IAppFactory {
     function onAppGraduated(
@@ -71,6 +72,7 @@ contract AppBondingCurve is ReentrancyGuard {
     address public immutable lpBeneficiary;
     address public immutable treasury;
     uint256 public immutable protocolFeeRate; // basis points (e.g., 250 = 2.5%)
+    IAppFeeRouter public immutable appFeeRouter; // New fee router for protocol revenues
 
     // Events
     event CurveInitialized(
@@ -126,6 +128,7 @@ contract AppBondingCurve is ReentrancyGuard {
      * @param _lpBeneficiary Address to receive LP tokens after lock
      * @param _treasury Protocol treasury address
      * @param _protocolFeeRate Protocol fee rate in basis points
+     * @param _appFeeRouter App fee router for revenue forwarding
      */
     constructor(
         uint256 _appId,
@@ -137,7 +140,8 @@ contract AppBondingCurve is ReentrancyGuard {
         uint256 _lpLockDuration,
         address _lpBeneficiary,
         address _treasury,
-        uint256 _protocolFeeRate
+        uint256 _protocolFeeRate,
+        IAppFeeRouter _appFeeRouter
     ) {
         require(_factory != address(0), "Zero factory");
         require(address(_elta) != address(0), "Zero ELTA");
@@ -147,6 +151,7 @@ contract AppBondingCurve is ReentrancyGuard {
         require(_lpBeneficiary != address(0), "Zero beneficiary");
         require(_treasury != address(0), "Zero treasury");
         require(_protocolFeeRate <= 1000, "Fee too high"); // Max 10%
+        // appFeeRouter can be address(0) to disable fee forwarding
 
         appId = _appId;
         appFactory = _factory;
@@ -159,6 +164,7 @@ contract AppBondingCurve is ReentrancyGuard {
         lpBeneficiary = _lpBeneficiary;
         treasury = _treasury;
         protocolFeeRate = _protocolFeeRate;
+        appFeeRouter = _appFeeRouter;
     }
 
     /**
@@ -257,23 +263,35 @@ contract AppBondingCurve is ReentrancyGuard {
         tokensOut = getTokensOut(actualEltaIn);
         if (tokensOut < minTokensOut) revert InsufficientOutput();
 
-        // Take protocol fee if configured
+        // Calculate fee ON TOP of trade (buyer pays extra)
+        uint256 tradingFee = 0;
+        if (address(appFeeRouter) != address(0)) {
+            tradingFee = (actualEltaIn * appFeeRouter.feeBps()) / 10_000;
+        }
+
+        // Take protocol fee if configured (legacy treasury fee)
         uint256 protocolFee = 0;
         if (protocolFeeRate > 0) {
             protocolFee = (actualEltaIn * protocolFeeRate) / 10000;
             actualEltaIn -= protocolFee;
         }
 
-        // Pull ELTA from buyer
-        ELTA.safeTransferFrom(msg.sender, address(this), eltaIn);
+        // Pull ELTA from buyer: curve amount + trading fee
+        ELTA.safeTransferFrom(msg.sender, address(this), eltaIn + tradingFee);
 
-        // Send protocol fee to treasury
+        // Forward trading fee to RewardsDistributor via router (70/15/15 split)
+        if (tradingFee > 0) {
+            ELTA.approve(address(appFeeRouter), tradingFee);
+            appFeeRouter.takeAndForwardFee(msg.sender, actualEltaIn);
+        }
+
+        // Send protocol fee to treasury (legacy)
         if (protocolFee > 0) {
             ELTA.safeTransfer(treasury, protocolFee);
             emit ProtocolFeeCollected(appId, protocolFee);
         }
 
-        // Update reserves
+        // Update reserves with net ELTA (after legacy protocol fee)
         reserveElta += actualEltaIn;
         reserveToken -= tokensOut;
 
@@ -354,7 +372,7 @@ contract AppBondingCurve is ReentrancyGuard {
         ELTA.approve(address(router), reserveElta);
 
         // Add all remaining reserves as liquidity
-        (uint256 amountToken, uint256 amountElta, uint256 liquidity) = router.addLiquidity(
+        (,, uint256 liquidity) = router.addLiquidity(
             address(TOKEN),
             address(ELTA),
             reserveToken,
@@ -374,11 +392,13 @@ contract AppBondingCurve is ReentrancyGuard {
         IUniswapV2Pair(pair).transfer(address(lpLocker), liquidity);
         lpLocker.lockLp(liquidity);
 
-        emit AppGraduated(appId, address(TOKEN), pair, locker, lpUnlockAt, reserveElta, amountToken);
+        emit AppGraduated(
+            appId, address(TOKEN), pair, locker, lpUnlockAt, reserveElta, reserveToken
+        );
 
         // Notify factory
         IAppFactory(appFactory).onAppGraduated(
-            appId, pair, locker, lpUnlockAt, reserveElta, amountToken
+            appId, pair, locker, lpUnlockAt, reserveElta, reserveToken
         );
 
         // Clear reserves (all moved to LP)
