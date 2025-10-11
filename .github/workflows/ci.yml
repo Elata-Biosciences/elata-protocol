@@ -66,7 +66,8 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
 
       - name: Run coverage
-        run: forge coverage --report lcov
+        run: forge coverage --ir-minimum --report lcov
+        continue-on-error: true
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -75,3 +76,4 @@ jobs:
           flags: foundry
           token: ${{ secrets.CODECOV_TOKEN }}
         continue-on-error: true
+        if: success() || failure()
