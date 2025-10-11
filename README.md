@@ -1020,9 +1020,13 @@ lotPool.finalize(roundId, keccak256("EXP-123"), 10000e18);
 git clone https://github.com/Elata-Biosciences/elata-protocol
 cd elata-protocol
 
-# Install dependencies
+# Install dependencies and setup Git hooks
+make install
+
+# Or manually:
 forge install
 npm install
+bash scripts/setup-hooks.sh
 
 # Start local blockchain with all contracts + test data
 npm run dev
@@ -1037,20 +1041,50 @@ This automatically:
 -  Seeds test data (apps, XP, staking, funding rounds)
 -  Generates frontend configuration
 -  Funds test accounts with ELTA
+-  ✨ **NEW:** Sets up pre-commit hooks for code quality
 
 **See [QUICKSTART.md](QUICKSTART.md) for details** or the [full local development guide](docs/LOCAL_DEVELOPMENT.md).
+
+### 🛠️ Development Tools
+
+We provide a comprehensive Makefile for common development tasks:
+
+```bash
+make help          # Show all available commands
+make build         # Build contracts
+make test          # Run tests
+make test-v        # Run tests with verbose output
+make fmt           # Format code with forge fmt
+make fmt-check     # Check code formatting
+make coverage      # Generate test coverage report
+make gas-report    # Generate gas usage report
+make ci            # Run all CI checks locally (before pushing)
+```
+
+**Pre-commit Hooks**: Automatically format code, build, and run tests before each commit.
+**Pre-push Hooks**: Run comprehensive checks including gas reports before pushing.
+
+**💡 Tip**: Run `make ci` before pushing to catch issues locally!
 
 ### Testing
 
 ```bash
-# Run comprehensive test suite (112 tests, 100% pass rate)
+# Run comprehensive test suite (422 tests, 100% pass rate)
 npm test
+# or
+make test
+
+# With verbose output
+make test-v
 
 # With gas report
-npm run test:gas
+make gas-report
 
 # Run specific test
 forge test --match-test testStakingLock
+
+# Run all CI checks locally
+make ci
 ```
 
 ### Deploying to Testnet
@@ -1066,9 +1100,33 @@ export ETHERSCAN_API_KEY=YOUR_API_KEY
 npm run deploy:sepolia
 ```
 
+### Contributing
+
+We welcome contributions! Please see our [Contributing Guide](docs/CONTRIBUTING_DEV.md) for:
+- Development workflow
+- Code style guidelines
+- Testing best practices
+- Git commit conventions
+- Pull request process
+
+**Quick Start for Contributors:**
+```bash
+# Fork and clone the repo
+git clone https://github.com/YOUR_USERNAME/elata-protocol
+cd elata-protocol
+
+# Setup development environment
+make install
+
+# Make your changes and run checks
+make ci
+
+# Push and create a pull request
+```
+
 ### Test Coverage
 
-**100 comprehensive tests** with 100% pass rate for core contracts:
+**422 comprehensive tests** with 100% pass rate for core contracts:
 
 ```mermaid
 pie title Test Coverage by Contract

@@ -1,0 +1,40 @@
+#!/bin/bash
+# Pre-commit hook for Foundry projects
+# This ensures code is formatted and builds before committing
+
+set -e
+
+echo "🔍 Running pre-commit checks..."
+
+# Check if forge is installed
+if ! command -v forge &> /dev/null; then
+    echo "❌ Forge is not installed. Please install Foundry first."
+    exit 1
+fi
+
+# 1. Format check and auto-fix
+echo "📝 Checking and fixing code formatting..."
+if ! forge fmt; then
+    echo "❌ Formatting failed!"
+    exit 1
+fi
+
+# Stage any formatting changes
+git add -u
+
+# 2. Build check
+echo "🔨 Building contracts..."
+if ! forge build --sizes; then
+    echo "❌ Build failed!"
+    exit 1
+fi
+
+# 3. Run quick tests (only on changed files if possible)
+echo "🧪 Running tests..."
+if ! forge test --silent; then
+    echo "❌ Tests failed! Run 'forge test -vv' to see details."
+    exit 1
+fi
+
+echo "✅ All pre-commit checks passed!"
+

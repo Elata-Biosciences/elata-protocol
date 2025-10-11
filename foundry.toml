@@ -25,6 +25,19 @@ ignore_eip_3860 = true
 # Note: AppFactory is ~26KB (over EIP-170 limit) but Anvil deploys it anyway
 # This is fine for local dev - optimize before mainnet deployment
 
+[profile.ci]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc_version = "0.8.24"
+optimizer = true
+optimizer_runs = 500
+evm_version = "paris"
+via_ir = true
+bytecode_hash = "ipfs"
+ignore_eip_3860 = true
+# CI profile: optimize for gas efficiency and size constraints
+
 [fmt]
 line_length = 100
 tab_width = 4

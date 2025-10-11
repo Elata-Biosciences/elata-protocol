@@ -1,0 +1,51 @@
+#!/bin/bash
+# Pre-push hook for Foundry projects
+# This runs comprehensive checks before pushing to remote
+
+set -e
+
+echo "🚀 Running pre-push checks..."
+
+# Check if forge is installed
+if ! command -v forge &> /dev/null; then
+    echo "❌ Forge is not installed. Please install Foundry first."
+    exit 1
+fi
+
+# 1. Format check (should already be formatted by pre-commit)
+echo "📝 Verifying code formatting..."
+if ! forge fmt --check; then
+    echo "❌ Code is not properly formatted! Run 'forge fmt' first."
+    exit 1
+fi
+
+# 2. Build with size check
+echo "🔨 Building contracts with size check..."
+if ! forge build --sizes; then
+    echo "❌ Build failed!"
+    exit 1
+fi
+
+# 3. Run full test suite with verbose output
+echo "🧪 Running full test suite..."
+if ! forge test; then
+    echo "❌ Tests failed! Run 'forge test -vv' to see details."
+    exit 1
+fi
+
+# 4. Run gas report to catch any gas regressions
+echo "⛽ Generating gas report..."
+if ! forge test --gas-report > /dev/null; then
+    echo "⚠️  Warning: Gas report generation failed (non-blocking)"
+fi
+
+# 5. Check for common security issues
+echo "🔒 Running security checks..."
+if [ -f "scripts/security-check.sh" ]; then
+    if ! bash scripts/security-check.sh; then
+        echo "⚠️  Warning: Security checks found issues (non-blocking)"
+    fi
+fi
+
+echo "✅ All pre-push checks passed! Safe to push."
+
