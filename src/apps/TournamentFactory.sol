@@ -87,10 +87,7 @@ contract TournamentFactory is Ownable {
      * @param protocolFeeBps Default protocol fee in bps
      * @param burnFeeBps Default burn fee in bps
      */
-    function setDefaultFees(uint256 protocolFeeBps, uint256 burnFeeBps)
-        external
-        onlyOwner
-    {
+    function setDefaultFees(uint256 protocolFeeBps, uint256 burnFeeBps) external onlyOwner {
         if (protocolFeeBps + burnFeeBps > 1500) revert InvalidFees();
         defaultProtocolFeeBps = protocolFeeBps;
         defaultBurnFeeBps = burnFeeBps;
@@ -105,19 +102,12 @@ contract TournamentFactory is Ownable {
      * @param endTime Tournament end time (0 = no end)
      * @return tournament Address of deployed tournament
      */
-    function createTournament(
-        address appToken,
-        uint256 entryFee,
-        uint64 startTime,
-        uint64 endTime
-    ) external returns (address tournament) {
+    function createTournament(address appToken, uint256 entryFee, uint64 startTime, uint64 endTime)
+        external
+        returns (address tournament)
+    {
         return createTournamentWithFees(
-            appToken,
-            entryFee,
-            startTime,
-            endTime,
-            defaultProtocolFeeBps,
-            defaultBurnFeeBps
+            appToken, entryFee, startTime, endTime, defaultProtocolFeeBps, defaultBurnFeeBps
         );
     }
 
@@ -178,14 +168,7 @@ contract TournamentFactory is Ownable {
         tournamentsByApp[appToken].push(tournamentAddr);
         tournamentsByCreator[msg.sender].push(tournamentAddr);
 
-        emit TournamentCreated(
-            appToken,
-            tournamentAddr,
-            msg.sender,
-            entryFee,
-            startTime,
-            endTime
-        );
+        emit TournamentCreated(appToken, tournamentAddr, msg.sender, entryFee, startTime, endTime);
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -197,11 +180,7 @@ contract TournamentFactory is Ownable {
      * @param appToken App token address
      * @return Array of tournament addresses
      */
-    function getAppTournaments(address appToken)
-        external
-        view
-        returns (address[] memory)
-    {
+    function getAppTournaments(address appToken) external view returns (address[] memory) {
         return tournamentsByApp[appToken];
     }
 
@@ -210,11 +189,7 @@ contract TournamentFactory is Ownable {
      * @param creator Creator address
      * @return Array of tournament addresses
      */
-    function getCreatorTournaments(address creator)
-        external
-        view
-        returns (address[] memory)
-    {
+    function getCreatorTournaments(address creator) external view returns (address[] memory) {
         return tournamentsByCreator[creator];
     }
 
@@ -239,4 +214,3 @@ contract TournamentFactory is Ownable {
         return tournaments[tournamentId];
     }
 }
-

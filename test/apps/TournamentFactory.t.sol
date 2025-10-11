@@ -29,14 +29,7 @@ contract TournamentFactoryTest is Test {
 
     function setUp() public {
         factory = new TournamentFactory(factoryOwner, treasury);
-        appToken = new AppToken(
-            "TestApp",
-            "TEST",
-            18,
-            MAX_SUPPLY,
-            appCreator,
-            admin
-        );
+        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin);
     }
 
     function test_Deployment() public {
@@ -48,12 +41,7 @@ contract TournamentFactoryTest is Test {
 
     function test_CreateTournament() public {
         vm.prank(appCreator);
-        address tournament = factory.createTournament(
-            address(appToken),
-            10 ether,
-            0,
-            0
-        );
+        address tournament = factory.createTournament(address(appToken), 10 ether, 0, 0);
 
         assertTrue(tournament != address(0));
         assertEq(Tournament(tournament).owner(), appCreator);
@@ -71,7 +59,7 @@ contract TournamentFactoryTest is Test {
             uint64(block.timestamp),
             uint64(block.timestamp + 7 days),
             300, // 3% protocol fee
-            200  // 2% burn fee
+            200 // 2% burn fee
         );
 
         assertEq(Tournament(tournament).protocolFeeBps(), 300);
@@ -93,7 +81,7 @@ contract TournamentFactoryTest is Test {
             0,
             0,
             1000,
-            600  // Total > 15%
+            600 // Total > 15%
         );
     }
 
@@ -101,10 +89,7 @@ contract TournamentFactoryTest is Test {
         // Create first tournament
         vm.prank(appCreator);
         address tourn1 = factory.createTournament(
-            address(appToken),
-            10 ether,
-            0,
-            uint64(block.timestamp + 7 days)
+            address(appToken), 10 ether, 0, uint64(block.timestamp + 7 days)
         );
 
         // Create second tournament
@@ -120,9 +105,7 @@ contract TournamentFactoryTest is Test {
         assertTrue(tourn1 != tourn2);
 
         // Verify registry
-        address[] memory appTournaments = factory.getAppTournaments(
-            address(appToken)
-        );
+        address[] memory appTournaments = factory.getAppTournaments(address(appToken));
         assertEq(appTournaments.length, 2);
         assertEq(appTournaments[0], tourn1);
         assertEq(appTournaments[1], tourn2);
@@ -164,4 +147,3 @@ contract TournamentFactoryTest is Test {
         factory.setDefaultFees(1000, 600);
     }
 }
-

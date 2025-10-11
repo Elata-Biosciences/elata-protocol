@@ -216,9 +216,7 @@ contract AppStakingVaultTest is Test {
         assertEq(vault.totalStaked(), amount);
     }
 
-    function testFuzz_StakeAndUnstake(uint256 stakeAmount, uint256 unstakeAmount)
-        public
-    {
+    function testFuzz_StakeAndUnstake(uint256 stakeAmount, uint256 unstakeAmount) public {
         stakeAmount = bound(stakeAmount, 1, 10000 ether);
         unstakeAmount = bound(unstakeAmount, 1, stakeAmount);
 
@@ -233,4 +231,3 @@ contract AppStakingVaultTest is Test {
         assertEq(vault.totalStaked(), stakeAmount - unstakeAmount);
     }
 }
-

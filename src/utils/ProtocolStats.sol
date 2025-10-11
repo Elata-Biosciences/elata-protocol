@@ -53,7 +53,6 @@ contract ProtocolStats {
         uint256 totalFundingAllocated;
     }
 
-
     constructor(
         ELTA _elta,
         VeELTA _staking,
@@ -101,7 +100,6 @@ contract ProtocolStats {
 
         return positions;
     }
-
 
     /**
      * @notice Gets comprehensive protocol statistics

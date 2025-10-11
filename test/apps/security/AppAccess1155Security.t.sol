@@ -26,12 +26,8 @@ contract AppAccess1155SecurityTest is Test {
     function setUp() public {
         appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, owner, admin);
         vault = new AppStakingVault(address(appToken), owner);
-        access = new AppAccess1155(
-            address(appToken),
-            address(vault),
-            owner,
-            "https://metadata.test/"
-        );
+        access =
+            new AppAccess1155(address(appToken), address(vault), owner, "https://metadata.test/");
 
         // Mint tokens to users
         vm.startPrank(admin);
@@ -51,7 +47,7 @@ contract AppAccess1155SecurityTest is Test {
 
         // Create malicious contract that attempts reentrancy
         ReentrancyAttacker attackContract = new ReentrancyAttacker(access, appToken);
-        
+
         vm.prank(admin);
         appToken.mint(address(attackContract), 1000 ether);
 
@@ -72,7 +68,7 @@ contract AppAccess1155SecurityTest is Test {
         // Attempt to purchase should fail due to insufficient balance, not overflow
         vm.startPrank(user1);
         appToken.approve(address(access), type(uint256).max);
-        
+
         vm.expectRevert(); // Will revert on burnFrom due to insufficient balance
         access.purchase(1, 2, bytes32(0)); // Would overflow if not protected
         vm.stopPrank();
@@ -292,7 +288,7 @@ contract AppAccess1155SecurityTest is Test {
 
         vm.startPrank(user1);
         appToken.approve(address(access), 1000 ether);
-        
+
         // Purchase up to cap
         access.purchase(1, 5, bytes32(0));
 
@@ -336,7 +332,7 @@ contract AppAccess1155SecurityTest is Test {
         access.checkFeatureAccess(user1, keccak256("premium"), 0);
 
         // Verify state hasn't changed
-        (, , , , , , uint64 minted, ) = access.items(1);
+        (,,,,,, uint64 minted,) = access.items(1);
         assertEq(minted, 0);
     }
 
@@ -369,7 +365,7 @@ contract AppAccess1155SecurityTest is Test {
     function test_Security_CanDeactivateAndReactivate() public {
         vm.startPrank(owner);
         access.setItem(1, 100 ether, false, true, 0, 0, 100, "ipfs://item1");
-        
+
         // Deactivate
         access.setItemActive(1, false);
         vm.stopPrank();
@@ -412,13 +408,10 @@ contract ReentrancyAttacker {
     }
 
     // Reentrancy attempt via ERC1155 callback
-    function onERC1155Received(
-        address,
-        address,
-        uint256 id,
-        uint256,
-        bytes memory
-    ) external returns (bytes4) {
+    function onERC1155Received(address, address, uint256 id, uint256, bytes memory)
+        external
+        returns (bytes4)
+    {
         if (attacking) {
             attacking = false;
             // Attempt reentrancy
@@ -427,4 +420,3 @@ contract ReentrancyAttacker {
         return this.onERC1155Received.selector;
     }
 }
-

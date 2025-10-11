@@ -54,10 +54,6 @@ contract AppLaunchSecurityTest is Test {
     }
 
     function test_Critical_FactoryAccessControl() public {
-        // Attacker cannot change parameters
-        vm.expectRevert();
-        vm.prank(attacker);
-
         // Attacker cannot pause
         vm.expectRevert();
         vm.prank(attacker);
@@ -260,7 +256,7 @@ contract AppLaunchSecurityTest is Test {
     function test_Critical_ZeroAddressProtection() public {
         // All contracts should reject zero addresses
 
-        vm.expectRevert(AppFactory.ZeroAddress.selector);
+        vm.expectRevert("Zero address");
         new AppFactory(ELTA(address(0)), IUniswapV2Router02(mockRouter), treasury, admin);
 
         vm.expectRevert("Zero address");
@@ -271,23 +267,14 @@ contract AppLaunchSecurityTest is Test {
     }
 
     function test_Critical_ParameterValidation() public {
-        // Test all parameter validation works
+        // Test parameter validation - parameters are now immutable constants
+        // so we just verify they have reasonable values
 
-        // Invalid seed vs target
-        vm.expectRevert(AppFactory.InvalidParameters.selector);
-        vm.prank(admin);
-
-        // Zero supply
-        vm.expectRevert(AppFactory.InvalidParameters.selector);
-        vm.prank(admin);
-
-        // Lock duration too short
-        vm.expectRevert(AppFactory.InvalidParameters.selector);
-        vm.prank(admin);
-
-        // Protocol fee too high
-        vm.expectRevert(AppFactory.InvalidParameters.selector);
-        vm.prank(admin);
+        assertGt(factory.seedElta(), 0);
+        assertGt(factory.targetRaisedElta(), factory.seedElta());
+        assertGt(factory.defaultSupply(), 0);
+        assertLt(factory.protocolFeeRate(), 10000); // Less than 100%
+        assertGt(factory.lpLockDuration(), 0);
     }
 
     function test_Critical_AppTokenTransferability() public {
@@ -311,11 +298,12 @@ contract AppLaunchSecurityTest is Test {
         vm.stopPrank();
 
         // Tokens should be transferable
+        uint256 transferAmount = tokensOut / 2;
         vm.prank(user1);
-        token.transfer(attacker, tokensOut / 2);
+        token.transfer(attacker, transferAmount);
 
-        assertEq(token.balanceOf(user1), tokensOut / 2);
-        assertEq(token.balanceOf(attacker), tokensOut / 2);
+        assertEq(token.balanceOf(user1), tokensOut - transferAmount);
+        assertEq(token.balanceOf(attacker), transferAmount);
     }
 
     function test_Critical_CreationStakeRequirement() public {

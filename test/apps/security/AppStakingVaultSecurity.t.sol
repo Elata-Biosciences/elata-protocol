@@ -41,19 +41,16 @@ contract AppStakingVaultSecurityTest is Test {
 
     function test_Security_ReentrancyProtection_Stake() public {
         MaliciousToken malToken = new MaliciousToken();
-        AppStakingVault malVault = new AppStakingVault(
-            address(malToken),
-            owner
-        );
+        AppStakingVault malVault = new AppStakingVault(address(malToken), owner);
 
         malToken.mint(attacker, 1000 ether);
 
         vm.startPrank(attacker);
         malToken.approve(address(malVault), 1000 ether);
-        
+
         // Set vault to attack
         malToken.setAttackTarget(address(malVault));
-        
+
         // Should revert due to reentrancy guard
         vm.expectRevert();
         malVault.stake(100 ether);
@@ -63,14 +60,14 @@ contract AppStakingVaultSecurityTest is Test {
     function test_Security_ReentrancyProtection_Unstake() public {
         // ReentrancyGuard prevents reentrancy on unstake
         // ERC20 transfers don't have callbacks, so we test the guard is present
-        
+
         vm.startPrank(user1);
         appToken.approve(address(vault), 1000 ether);
         vault.stake(1000 ether);
-        
+
         // Unstake should work normally
         vault.unstake(500 ether);
-        
+
         // Verify state is correct (guard worked)
         assertEq(vault.stakedOf(user1), 500 ether);
         vm.stopPrank();
@@ -158,10 +155,9 @@ contract AppStakingVaultSecurityTest is Test {
     // FUZZ TESTING
     // ────────────────────────────────────────────────────────────────────────────
 
-    function testFuzz_Security_StakeUnstakeInvariants(
-        uint256 stakeAmount,
-        uint256 unstakeAmount
-    ) public {
+    function testFuzz_Security_StakeUnstakeInvariants(uint256 stakeAmount, uint256 unstakeAmount)
+        public
+    {
         stakeAmount = bound(stakeAmount, 1, 10000 ether);
         unstakeAmount = bound(unstakeAmount, 1, stakeAmount);
 
@@ -179,17 +175,11 @@ contract AppStakingVaultSecurityTest is Test {
         assertEq(appToken.balanceOf(address(vault)), vault.totalStaked());
 
         // Invariant: changes should match
-        assertEq(
-            vaultBalanceBefore - appToken.balanceOf(address(vault)),
-            unstakeAmount
-        );
+        assertEq(vaultBalanceBefore - appToken.balanceOf(address(vault)), unstakeAmount);
         assertEq(totalStakedBefore - vault.totalStaked(), unstakeAmount);
     }
 
-    function testFuzz_Security_MultipleUsers(
-        uint256 user1Amount,
-        uint256 user2Amount
-    ) public {
+    function testFuzz_Security_MultipleUsers(uint256 user1Amount, uint256 user2Amount) public {
         user1Amount = bound(user1Amount, 1, 10000 ether);
         user2Amount = bound(user2Amount, 1, 10000 ether);
 
@@ -208,10 +198,7 @@ contract AppStakingVaultSecurityTest is Test {
         assertEq(vault.stakedOf(user1), user1Amount);
         assertEq(vault.stakedOf(user2), user2Amount);
         assertEq(vault.totalStaked(), user1Amount + user2Amount);
-        assertEq(
-            appToken.balanceOf(address(vault)),
-            user1Amount + user2Amount
-        );
+        assertEq(appToken.balanceOf(address(vault)), user1Amount + user2Amount);
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -265,19 +252,15 @@ contract MaliciousToken is IERC20 {
         _totalSupply += amount;
     }
 
-    function transferFrom(
-        address from,
-        address to,
-        uint256 amount
-    ) external returns (bool) {
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
         _balances[from] -= amount;
         _balances[to] += amount;
-        
+
         // Attempt reentrancy
         if (attackTarget != address(0)) {
             AppStakingVault(attackTarget).stake(1 ether);
         }
-        
+
         return true;
     }
 
@@ -300,11 +283,7 @@ contract MaliciousToken is IERC20 {
         return _totalSupply;
     }
 
-    function allowance(address, address spender)
-        external
-        view
-        returns (uint256)
-    {
+    function allowance(address, address spender) external view returns (uint256) {
         return type(uint256).max;
     }
 }
@@ -338,4 +317,3 @@ contract MaliciousReceiver {
         }
     }
 }
-

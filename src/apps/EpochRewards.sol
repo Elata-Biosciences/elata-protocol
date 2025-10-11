@@ -31,11 +31,11 @@ contract EpochRewards is Ownable, ReentrancyGuard {
     IERC20 public immutable APP;
 
     struct Epoch {
-        uint64 start;           // Epoch start time
-        uint64 end;             // Epoch end time (0 = no end)
-        bytes32 merkleRoot;     // Root of winners tree
-        uint256 totalFunded;    // Total tokens funded
-        uint256 totalClaimed;   // Total tokens claimed
+        uint64 start; // Epoch start time
+        uint64 end; // Epoch end time (0 = no end)
+        bytes32 merkleRoot; // Root of winners tree
+        uint256 totalFunded; // Total tokens funded
+        uint256 totalClaimed; // Total tokens claimed
     }
 
     /// @notice Current epoch ID (increments on startEpoch)
@@ -81,13 +81,8 @@ contract EpochRewards is Ownable, ReentrancyGuard {
         if (end != 0 && end <= start) revert InvalidWindow();
 
         epochId += 1;
-        epochs[epochId] = Epoch({
-            start: start,
-            end: end,
-            merkleRoot: 0,
-            totalFunded: 0,
-            totalClaimed: 0
-        });
+        epochs[epochId] =
+            Epoch({ start: start, end: end, merkleRoot: 0, totalFunded: 0, totalClaimed: 0 });
 
         emit EpochStarted(epochId, start, end);
     }
@@ -129,10 +124,7 @@ contract EpochRewards is Ownable, ReentrancyGuard {
      * @param proof Merkle proof of (msg.sender, amount)
      * @param amount Reward amount
      */
-    function claim(uint256 id, bytes32[] calldata proof, uint256 amount)
-        external
-        nonReentrant
-    {
+    function claim(uint256 id, bytes32[] calldata proof, uint256 amount) external nonReentrant {
         Epoch storage e = epochs[id];
 
         if (e.merkleRoot == 0) revert NotFinalized();
@@ -176,11 +168,7 @@ contract EpochRewards is Ownable, ReentrancyGuard {
      * @param id Epoch ID
      * @return utilizationBps Percentage of funded amount claimed (in bps)
      */
-    function getEpochUtilization(uint256 id)
-        external
-        view
-        returns (uint256 utilizationBps)
-    {
+    function getEpochUtilization(uint256 id) external view returns (uint256 utilizationBps) {
         Epoch memory e = epochs[id];
         if (e.totalFunded == 0) return 0;
         return (e.totalClaimed * 10000) / e.totalFunded;
@@ -191,11 +179,7 @@ contract EpochRewards is Ownable, ReentrancyGuard {
      * @param ids Array of epoch IDs
      * @return epochList Array of epochs
      */
-    function getEpochs(uint256[] calldata ids)
-        external
-        view
-        returns (Epoch[] memory epochList)
-    {
+    function getEpochs(uint256[] calldata ids) external view returns (Epoch[] memory epochList) {
         epochList = new Epoch[](ids.length);
         for (uint256 i = 0; i < ids.length; i++) {
             epochList[i] = epochs[ids[i]];
@@ -219,4 +203,3 @@ contract EpochRewards is Ownable, ReentrancyGuard {
         }
     }
 }
-

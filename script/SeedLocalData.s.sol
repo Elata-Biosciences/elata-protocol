@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Script, console2} from "forge-std/Script.sol";
-import {ELTA} from "../src/token/ELTA.sol";
-import {ElataXP} from "../src/experience/ElataXP.sol";
-import {VeELTA} from "../src/staking/VeELTA.sol";
-import {LotPool} from "../src/governance/LotPool.sol";
-import {AppFactory} from "../src/apps/AppFactory.sol";
-import {AppModuleFactory} from "../src/apps/AppModuleFactory.sol";
-import {AppToken} from "../src/apps/AppToken.sol";
-import {AppAccess1155} from "../src/apps/AppAccess1155.sol";
-import {AppStakingVault} from "../src/apps/AppStakingVault.sol";
+import { Script, console2 } from "forge-std/Script.sol";
+import { ELTA } from "../src/token/ELTA.sol";
+import { ElataXP } from "../src/experience/ElataXP.sol";
+import { VeELTA } from "../src/staking/VeELTA.sol";
+import { LotPool } from "../src/governance/LotPool.sol";
+import { AppFactory } from "../src/apps/AppFactory.sol";
+import { AppModuleFactory } from "../src/apps/AppModuleFactory.sol";
+import { AppToken } from "../src/apps/AppToken.sol";
+import { AppAccess1155 } from "../src/apps/AppAccess1155.sol";
+import { AppStakingVault } from "../src/apps/AppStakingVault.sol";
 
 /**
  * @title SeedLocalData
@@ -20,7 +20,6 @@ import {AppStakingVault} from "../src/apps/AppStakingVault.sol";
  * Contract addresses are auto-discovered from most recent deployment on the network
  */
 contract SeedLocalData is Script {
-
     struct TestApp {
         uint256 appId;
         address token;
@@ -41,7 +40,8 @@ contract SeedLocalData is Script {
 
     function run() external {
         // Use Anvil account #0
-        uint256 deployerPrivateKey = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
+        uint256 deployerPrivateKey =
+            0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
 
         vm.startBroadcast(deployerPrivateKey);
 
@@ -74,13 +74,13 @@ contract SeedLocalData is Script {
         console2.log("\n=================================================");
         console2.log("            SEED DATA COMPLETE");
         console2.log("=================================================\n");
-        
+
         _printSeedSummary(apps);
     }
 
     function _awardTestXP() internal {
         ElataXP xp = ElataXP(XP_ADDRESS);
-        
+
         // Test accounts
         address[] memory users = new address[](5);
         users[0] = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
@@ -91,13 +91,13 @@ contract SeedLocalData is Script {
 
         // Award different amounts of XP to simulate activity levels
         uint256[] memory xpAmounts = new uint256[](5);
-        xpAmounts[0] = 5000 ether;  // Power user
-        xpAmounts[1] = 3000 ether;  // Active user
-        xpAmounts[2] = 1500 ether;  // Regular user
-        xpAmounts[3] = 800 ether;   // Casual user
-        xpAmounts[4] = 300 ether;   // New user
+        xpAmounts[0] = 5000 ether; // Power user
+        xpAmounts[1] = 3000 ether; // Active user
+        xpAmounts[2] = 1500 ether; // Regular user
+        xpAmounts[3] = 800 ether; // Casual user
+        xpAmounts[4] = 300 ether; // New user
 
-        for (uint i = 0; i < users.length; i++) {
+        for (uint256 i = 0; i < users.length; i++) {
             xp.award(users[i], xpAmounts[i]);
             console2.log("       Awarded", xpAmounts[i] / 1 ether, "XP to", users[i]);
         }
@@ -106,24 +106,29 @@ contract SeedLocalData is Script {
     function _createStakingPositions() internal {
         ELTA elta = ELTA(ELTA_ADDRESS);
         VeELTA staking = VeELTA(STAKING_ADDRESS);
-        
+
         address deployer = msg.sender;
 
         // Create a few staking positions for the deployer
         uint256[] memory amounts = new uint256[](3);
-        amounts[0] = 10000 ether;  // 10K ELTA
-        amounts[1] = 5000 ether;   // 5K ELTA
-        amounts[2] = 2500 ether;   // 2.5K ELTA
+        amounts[0] = 10000 ether; // 10K ELTA
+        amounts[1] = 5000 ether; // 5K ELTA
+        amounts[2] = 2500 ether; // 2.5K ELTA
 
         uint256[] memory durations = new uint256[](3);
-        durations[0] = 104 weeks;  // 2 years
-        durations[1] = 52 weeks;   // 1 year
-        durations[2] = 26 weeks;   // 6 months
+        durations[0] = 104 weeks; // 2 years
+        durations[1] = 52 weeks; // 1 year
+        durations[2] = 26 weeks; // 6 months
 
-        for (uint i = 0; i < amounts.length; i++) {
+        for (uint256 i = 0; i < amounts.length; i++) {
             elta.approve(address(staking), amounts[i]);
             uint256 tokenId = staking.createLock(amounts[i], durations[i]);
-            console2.log("       Created lock #%s: %s ELTA for %s weeks", tokenId, amounts[i] / 1 ether, durations[i] / 1 weeks);
+            console2.log(
+                "       Created lock #%s: %s ELTA for %s weeks",
+                tokenId,
+                amounts[i] / 1 ether,
+                durations[i] / 1 weeks
+            );
         }
     }
 
@@ -194,7 +199,7 @@ contract SeedLocalData is Script {
         );
 
         // Get app token address (apps mapping returns the full struct as tuple)
-        (,app.token,,,,,,,,) = factory.apps(app.appId);
+        (, app.token,,,,,,,,) = factory.apps(app.appId);
         app.name = name;
         app.symbol = symbol;
 
@@ -204,8 +209,7 @@ contract SeedLocalData is Script {
         elta.approve(address(moduleFactory), 0); // No fee for now
 
         (app.access1155, app.stakingVault, app.rewards) = moduleFactory.deployModules(
-            app.token,
-            string.concat("https://metadata.elata.bio/", symbol, "/")
+            app.token, string.concat("https://metadata.elata.bio/", symbol, "/")
         );
 
         console2.log("       Deployed modules: Access, Staking, Rewards");
@@ -215,7 +219,7 @@ contract SeedLocalData is Script {
 
     function _configureAppEconomies(TestApp[] memory apps) internal {
         // Configure each app with items, prices, etc.
-        for (uint i = 0; i < apps.length; i++) {
+        for (uint256 i = 0; i < apps.length; i++) {
             _configureSingleApp(apps[i]);
         }
     }
@@ -228,36 +232,36 @@ contract SeedLocalData is Script {
         // Item 1: Basic Pass
         access.setItem(
             1,
-            10 ether,      // price: 10 tokens
-            false,         // not soulbound
-            true,          // active
-            0,             // no start time
-            0,             // no end time
-            10000,         // max supply
+            10 ether, // price: 10 tokens
+            false, // not soulbound
+            true, // active
+            0, // no start time
+            0, // no end time
+            10000, // max supply
             string.concat("ipfs://", app.symbol, "/basic-pass")
         );
 
         // Item 2: Premium Pass (soulbound)
         access.setItem(
             2,
-            50 ether,      // price: 50 tokens
-            true,          // soulbound
-            true,          // active
+            50 ether, // price: 50 tokens
+            true, // soulbound
+            true, // active
             0,
             0,
-            1000,          // limited supply
+            1000, // limited supply
             string.concat("ipfs://", app.symbol, "/premium-pass")
         );
 
         // Item 3: Legendary Pass (very rare, soulbound)
         access.setItem(
             3,
-            200 ether,     // price: 200 tokens
-            true,          // soulbound
-            true,          // active
+            200 ether, // price: 200 tokens
+            true, // soulbound
+            true, // active
             0,
             0,
-            100,           // very limited
+            100, // very limited
             string.concat("ipfs://", app.symbol, "/legendary-pass")
         );
 
@@ -267,9 +271,9 @@ contract SeedLocalData is Script {
         access.setFeatureGate(
             "premium_features",
             AppAccess1155.FeatureGate({
-                minStake: 100 ether,  // OR 100 tokens staked
-                requiredItem: 2,       // OR premium pass
-                requireBoth: false,    // Either one works
+                minStake: 100 ether, // OR 100 tokens staked
+                requiredItem: 2, // OR premium pass
+                requireBoth: false, // Either one works
                 active: true
             })
         );
@@ -312,11 +316,14 @@ contract SeedLocalData is Script {
         console2.log("- 5 test users with XP (300-5000 XP)");
         console2.log("- 3 staking positions (2.5K-10K ELTA)");
         console2.log("- 3 test apps with full economies:");
-        
-        for (uint i = 0; i < apps.length; i++) {
-            console2.log("  ", string.concat(vm.toString(i+1), ". ", apps[i].name, " (", apps[i].symbol, ")"));
+
+        for (uint256 i = 0; i < apps.length; i++) {
+            console2.log(
+                "  ",
+                string.concat(vm.toString(i + 1), ". ", apps[i].name, " (", apps[i].symbol, ")")
+            );
         }
-        
+
         console2.log("- 1 active funding round with 3 options");
         console2.log("");
         console2.log("Ready for development! Start the frontend:");
@@ -324,4 +331,3 @@ contract SeedLocalData is Script {
         console2.log("");
     }
 }
-

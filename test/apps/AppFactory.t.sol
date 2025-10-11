@@ -32,7 +32,7 @@ contract AppFactoryTest is Test {
         );
 
         factory = new AppFactory(elta, IUniswapV2Router02(mockRouter), treasury, admin);
-        
+
         // Deploy views contract for complex queries
         views = new AppFactoryViews(address(factory));
 

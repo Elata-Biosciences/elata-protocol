@@ -121,7 +121,7 @@ contract EpochRewardsTest is Test {
         rewards.fund(fundAmount);
         vm.stopPrank();
 
-        (, , , uint256 totalFunded, ) = rewards.epochs(1);
+        (,,, uint256 totalFunded,) = rewards.epochs(1);
         assertEq(totalFunded, fundAmount);
     }
 
@@ -136,7 +136,7 @@ contract EpochRewardsTest is Test {
         rewards.fund(10000 ether);
         vm.stopPrank();
 
-        (, , , uint256 totalFunded, ) = rewards.epochs(1);
+        (,,, uint256 totalFunded,) = rewards.epochs(1);
         assertEq(totalFunded, 15000 ether);
     }
 
@@ -178,7 +178,7 @@ contract EpochRewardsTest is Test {
         rewards.finalizeEpoch(root);
         vm.stopPrank();
 
-        (, , bytes32 storedRoot, , ) = rewards.epochs(1);
+        (,, bytes32 storedRoot,,) = rewards.epochs(1);
         assertEq(storedRoot, root);
     }
 
@@ -239,7 +239,7 @@ contract EpochRewardsTest is Test {
         assertEq(appToken.balanceOf(user1), user1Reward);
         assertTrue(rewards.claimed(1, user1));
 
-        (, , , , uint256 totalClaimed) = rewards.epochs(1);
+        (,,,, uint256 totalClaimed) = rewards.epochs(1);
         assertEq(totalClaimed, user1Reward);
     }
 
@@ -277,7 +277,7 @@ contract EpochRewardsTest is Test {
         assertEq(appToken.balanceOf(user2), 3000 ether);
         assertEq(appToken.balanceOf(user3), 2000 ether);
 
-        (, , , , uint256 totalClaimed) = rewards.epochs(1);
+        (,,,, uint256 totalClaimed) = rewards.epochs(1);
         assertEq(totalClaimed, 10000 ether);
     }
 
@@ -344,7 +344,7 @@ contract EpochRewardsTest is Test {
     function test_MultipleEpochsIsolation() public {
         // Create multiple epochs and verify they're isolated
         vm.startPrank(owner);
-        
+
         // Epoch 1
         rewards.startEpoch(0, uint64(block.timestamp + 7 days));
         assertEq(rewards.epochId(), 1);
@@ -383,4 +383,3 @@ contract EpochRewardsTest is Test {
         assertTrue(root1 != root2);
     }
 }
-

@@ -35,9 +35,9 @@ contract AppModuleFactory is Ownable {
     address public treasury;
 
     struct Modules {
-        address access1155;     // AppAccess1155 instance
-        address stakingVault;   // AppStakingVault instance
-        address epochRewards;   // EpochRewards instance
+        address access1155; // AppAccess1155 instance
+        address stakingVault; // AppStakingVault instance
+        address epochRewards; // EpochRewards instance
     }
 
     /// @notice Deployed modules by app token address
@@ -47,10 +47,7 @@ contract AppModuleFactory is Ownable {
     uint256 public createFeeELTA;
 
     event ModulesDeployed(
-        address indexed appToken,
-        address access1155,
-        address stakingVault,
-        address epochRewards
+        address indexed appToken, address access1155, address stakingVault, address epochRewards
     );
     event TreasurySet(address treasury);
     event FeeSet(uint256 fee);
@@ -64,9 +61,7 @@ contract AppModuleFactory is Ownable {
      * @param initialOwner Factory owner
      * @param treasury_ Protocol treasury address
      */
-    constructor(address elta, address initialOwner, address treasury_)
-        Ownable(initialOwner)
-    {
+    constructor(address elta, address initialOwner, address treasury_) Ownable(initialOwner) {
         ELTA = elta;
         treasury = treasury_;
     }
@@ -119,9 +114,7 @@ contract AppModuleFactory is Ownable {
 
         // Deploy modules (msg.sender becomes owner of all)
         staking = address(new AppStakingVault(appToken, msg.sender));
-        access1155 = address(
-            new AppAccess1155(appToken, staking, msg.sender, baseURI)
-        );
+        access1155 = address(new AppAccess1155(appToken, staking, msg.sender, baseURI));
         epochs = address(new EpochRewards(appToken, msg.sender));
 
         // Register modules
@@ -130,4 +123,3 @@ contract AppModuleFactory is Ownable {
         emit ModulesDeployed(appToken, access1155, staking, epochs);
     }
 }
-

@@ -27,25 +27,11 @@ contract AppModuleFactorySecurityTest is Test {
     uint256 public constant MAX_SUPPLY = 1_000_000_000 ether;
 
     function setUp() public {
-        elta = new ELTA(
-            "ELTA",
-            "ELTA",
-            factoryOwner,
-            factoryOwner,
-            1000000 ether,
-            77000000 ether
-        );
+        elta = new ELTA("ELTA", "ELTA", factoryOwner, factoryOwner, 1000000 ether, 77000000 ether);
 
         factory = new AppModuleFactory(address(elta), factoryOwner, treasury);
 
-        appToken = new AppToken(
-            "TestApp",
-            "TEST",
-            18,
-            MAX_SUPPLY,
-            appCreator,
-            admin
-        );
+        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin);
 
         // Mint ELTA to users
         vm.startPrank(factoryOwner);
@@ -91,10 +77,7 @@ contract AppModuleFactorySecurityTest is Test {
 
     function test_Security_DeployedModulesHaveCorrectOwner() public {
         vm.prank(appCreator);
-        (address access, address vault, ) = factory.deployModules(
-            address(appToken),
-            "https://test/"
-        );
+        (address access, address vault,) = factory.deployModules(address(appToken), "https://test/");
 
         // Both modules should be owned by app creator
         assertEq(AppAccess1155(access).owner(), appCreator);
@@ -103,10 +86,7 @@ contract AppModuleFactorySecurityTest is Test {
 
     function test_Security_DeployedModulesLinkedCorrectly() public {
         vm.prank(appCreator);
-        (address access, address vault, ) = factory.deployModules(
-            address(appToken),
-            "https://test/"
-        );
+        (address access, address vault,) = factory.deployModules(address(appToken), "https://test/");
 
         // Verify cross-references
         assertEq(address(AppAccess1155(access).APP()), address(appToken));
@@ -120,7 +100,7 @@ contract AppModuleFactorySecurityTest is Test {
 
     function test_Security_ELTAFeeCollectedCorrectly() public {
         uint256 fee = 50 ether;
-        
+
         vm.prank(factoryOwner);
         factory.setCreateFee(fee);
 
@@ -177,12 +157,10 @@ contract AppModuleFactorySecurityTest is Test {
 
     function test_Security_RegistryMappingCorrect() public {
         vm.prank(appCreator);
-        (address access, address vault, address epochs) = factory.deployModules(
-            address(appToken),
-            "https://test/"
-        );
+        (address access, address vault, address epochs) =
+            factory.deployModules(address(appToken), "https://test/");
 
-        (address storedAccess, address storedVault, address storedEpochs) = 
+        (address storedAccess, address storedVault, address storedEpochs) =
             factory.modulesByApp(address(appToken));
 
         assertEq(storedAccess, access);
@@ -192,26 +170,15 @@ contract AppModuleFactorySecurityTest is Test {
 
     function test_Security_MultipleAppsIsolated() public {
         // Create second app token
-        AppToken appToken2 = new AppToken(
-            "TestApp2",
-            "TEST2",
-            18,
-            MAX_SUPPLY,
-            appCreator,
-            admin
-        );
+        AppToken appToken2 = new AppToken("TestApp2", "TEST2", 18, MAX_SUPPLY, appCreator, admin);
 
         // Deploy for both apps
         vm.startPrank(appCreator);
-        (address access1, address vault1, ) = factory.deployModules(
-            address(appToken),
-            "https://app1/"
-        );
+        (address access1, address vault1,) =
+            factory.deployModules(address(appToken), "https://app1/");
 
-        (address access2, address vault2, ) = factory.deployModules(
-            address(appToken2),
-            "https://app2/"
-        );
+        (address access2, address vault2,) =
+            factory.deployModules(address(appToken2), "https://app2/");
         vm.stopPrank();
 
         // Verify they're different
@@ -286,15 +253,12 @@ contract AppModuleFactorySecurityTest is Test {
 
     function test_Security_DeployedContractsAreValid() public {
         vm.prank(appCreator);
-        (address access, address vault, ) = factory.deployModules(
-            address(appToken),
-            "https://test/"
-        );
+        (address access, address vault,) = factory.deployModules(address(appToken), "https://test/");
 
         // Verify contracts have code
         uint256 accessCodeSize;
         uint256 vaultCodeSize;
-        
+
         assembly {
             accessCodeSize := extcodesize(access)
             vaultCodeSize := extcodesize(vault)
@@ -326,4 +290,3 @@ contract FakeToken {
         return 1000000 ether;
     }
 }
-

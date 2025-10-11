@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IUniswapV2Router02} from "../../interfaces/IUniswapV2Router02.sol";
-import {AppToken} from "../AppToken.sol";
-import {AppBondingCurve} from "../AppBondingCurve.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IUniswapV2Router02 } from "../../interfaces/IUniswapV2Router02.sol";
+import { AppToken } from "../AppToken.sol";
+import { AppBondingCurve } from "../AppBondingCurve.sol";
 
 /**
  * @title AppDeploymentLib
@@ -36,14 +36,22 @@ library AppDeploymentLib {
         // Deploy token
         AppToken token = new AppToken(name, symbol, decimals, tokenSupply, creator, factory);
         tokenAddr = address(token);
-        
+
         // Deploy curve
         AppBondingCurve curve = new AppBondingCurve(
-            appId, factory, elta, token, router,
-            targetRaised, lpLockDuration, treasury, treasury, protocolFeeRate
+            appId,
+            factory,
+            elta,
+            token,
+            router,
+            targetRaised,
+            lpLockDuration,
+            treasury,
+            treasury,
+            protocolFeeRate
         );
         curveAddr = address(curve);
-        
+
         // Mint & configure
         uint256 creatorAmt = tokenSupply / 10;
         token.mint(creator, creatorAmt);
@@ -51,10 +59,9 @@ library AppDeploymentLib {
         token.revokeMinter(factory);
         token.grantRole(token.DEFAULT_ADMIN_ROLE(), creator);
         token.revokeRole(token.DEFAULT_ADMIN_ROLE(), factory);
-        
+
         // Initialize curve
         require(elta.transfer(curveAddr, seedElta), "Transfer failed");
         curve.initializeCurve(seedElta, tokenSupply - creatorAmt);
     }
 }
-

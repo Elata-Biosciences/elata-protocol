@@ -43,30 +43,16 @@ contract AppModulesIntegrationTest is Test {
         merkle = new Merkle();
 
         // Deploy ELTA
-        elta = new ELTA(
-            "ELTA",
-            "ELTA",
-            factoryOwner,
-            factoryOwner,
-            10000000 ether,
-            77000000 ether
-        );
+        elta = new ELTA("ELTA", "ELTA", factoryOwner, factoryOwner, 10000000 ether, 77000000 ether);
 
         // Deploy factory
         factory = new AppModuleFactory(address(elta), factoryOwner, treasury);
-        
+
         vm.prank(factoryOwner);
         factory.setCreateFee(CREATE_FEE);
 
         // Deploy app token
-        appToken = new AppToken(
-            "NeuroPong",
-            "NPONG",
-            18,
-            MAX_SUPPLY,
-            appCreator,
-            admin
-        );
+        appToken = new AppToken("NeuroPong", "NPONG", 18, MAX_SUPPLY, appCreator, admin);
 
         // Mint initial rewards treasury
         vm.prank(admin);
@@ -75,30 +61,20 @@ contract AppModulesIntegrationTest is Test {
         // Deploy modules
         vm.prank(factoryOwner);
         elta.mint(appCreator, 1000 ether);
-        
+
         vm.prank(appCreator);
         elta.approve(address(factory), CREATE_FEE);
 
         vm.prank(appCreator);
-        (address accessAddr, address vaultAddr, ) = factory.deployModules(
-            address(appToken),
-            "https://metadata.neuropong.game/"
-        );
+        (address accessAddr, address vaultAddr,) =
+            factory.deployModules(address(appToken), "https://metadata.neuropong.game/");
 
         access = AppAccess1155(accessAddr);
         vault = AppStakingVault(vaultAddr);
 
         // Deploy tournament and rewards
-        tournament = new Tournament(
-            address(appToken),
-            appCreator,
-            treasury,
-            10 ether,
-            0,
-            0,
-            250,
-            100
-        );
+        tournament =
+            new Tournament(address(appToken), appCreator, treasury, 10 ether, 0, 0, 250, 100);
 
         rewards = new EpochRewards(address(appToken), appCreator);
 
@@ -125,7 +101,7 @@ contract AppModulesIntegrationTest is Test {
         assertEq(elta.balanceOf(treasury), CREATE_FEE);
 
         // Verify registry
-        (address storedAccess, address storedVault, address storedEpochs) = 
+        (address storedAccess, address storedVault, address storedEpochs) =
             factory.modulesByApp(address(appToken));
         assertEq(storedAccess, address(access));
         assertEq(storedVault, address(vault));
@@ -156,7 +132,7 @@ contract AppModulesIntegrationTest is Test {
 
         // Verify purchase
         assertEq(access.balanceOf(player1, 1), 1);
-        
+
         // Verify tokens burned
         assertEq(appToken.totalSupply(), initialSupply - 100 ether);
 
@@ -187,11 +163,7 @@ contract AppModulesIntegrationTest is Test {
         );
 
         // Player1: No access (nothing)
-        bool hasAccess = access.checkFeatureAccess(
-            player1,
-            premiumFeature,
-            0
-        );
+        bool hasAccess = access.checkFeatureAccess(player1, premiumFeature, 0);
         assertFalse(hasAccess);
 
         // Player1: Stake but no pass (still no access)
@@ -200,11 +172,7 @@ contract AppModulesIntegrationTest is Test {
         vault.stake(1000 ether);
         vm.stopPrank();
 
-        hasAccess = access.checkFeatureAccess(
-            player1,
-            premiumFeature,
-            vault.stakedOf(player1)
-        );
+        hasAccess = access.checkFeatureAccess(player1, premiumFeature, vault.stakedOf(player1));
         assertFalse(hasAccess); // Need both
 
         // Player1: Buy pass
@@ -214,11 +182,7 @@ contract AppModulesIntegrationTest is Test {
         vm.stopPrank();
 
         // Now has access
-        hasAccess = access.checkFeatureAccess(
-            player1,
-            premiumFeature,
-            vault.stakedOf(player1)
-        );
+        hasAccess = access.checkFeatureAccess(player1, premiumFeature, vault.stakedOf(player1));
         assertTrue(hasAccess);
     }
 
@@ -250,9 +214,7 @@ contract AppModulesIntegrationTest is Test {
         vm.stopPrank();
 
         // Verify access
-        assertTrue(
-            access.checkFeatureAccess(player1, tourneyAccess, 100 ether)
-        );
+        assertTrue(access.checkFeatureAccess(player1, tourneyAccess, 100 ether));
 
         // Players enter tournament
         vm.prank(player1);
@@ -268,8 +230,7 @@ contract AppModulesIntegrationTest is Test {
         assertEq(tournament.pool(), 20 ether);
 
         // Verify tournament state
-        (bool isFinalized, bool isActive, uint256 pool, , , , , ) = 
-            tournament.getTournamentState();
+        (bool isFinalized, bool isActive, uint256 pool,,,,,) = tournament.getTournamentState();
         assertFalse(isFinalized);
         assertTrue(isActive);
         assertEq(pool, 20 ether);
@@ -286,17 +247,14 @@ contract AppModulesIntegrationTest is Test {
     function test_Integration_SeasonalRewardsFullFlow() public {
         // Owner starts season 1
         vm.startPrank(appCreator);
-        rewards.startEpoch(
-            uint64(block.timestamp),
-            uint64(block.timestamp + 30 days)
-        );
+        rewards.startEpoch(uint64(block.timestamp), uint64(block.timestamp + 30 days));
 
         // Fund with 50K tokens
         appToken.approve(address(rewards), 50000 ether);
         rewards.fund(50000 ether);
 
         // Verify epoch state
-        (uint64 start, uint64 end, bytes32 root, uint256 funded, uint256 claimed) = 
+        (uint64 start, uint64 end, bytes32 root, uint256 funded, uint256 claimed) =
             rewards.epochs(1);
         assertEq(start, uint64(block.timestamp));
         assertEq(end, uint64(block.timestamp + 30 days));
@@ -315,14 +273,7 @@ contract AppModulesIntegrationTest is Test {
 
     function test_Integration_MultipleAppsCoexist() public {
         // Deploy second app
-        AppToken app2 = new AppToken(
-            "BrainWaves",
-            "BWAVE",
-            18,
-            MAX_SUPPLY,
-            appCreator,
-            admin
-        );
+        AppToken app2 = new AppToken("BrainWaves", "BWAVE", 18, MAX_SUPPLY, appCreator, admin);
 
         // Mint ELTA for second deployment
         vm.prank(factoryOwner);
@@ -332,10 +283,8 @@ contract AppModulesIntegrationTest is Test {
         elta.approve(address(factory), CREATE_FEE);
 
         vm.prank(appCreator);
-        (address access2Addr, address vault2Addr, ) = factory.deployModules(
-            address(app2),
-            "https://metadata.brainwaves/"
-        );
+        (address access2Addr, address vault2Addr,) =
+            factory.deployModules(address(app2), "https://metadata.brainwaves/");
 
         AppAccess1155 access2 = AppAccess1155(access2Addr);
         AppStakingVault vault2 = AppStakingVault(vault2Addr);
@@ -356,15 +305,15 @@ contract AppModulesIntegrationTest is Test {
 
         // Player can interact with both
         vm.startPrank(player1);
-        
+
         // Buy from app1
         appToken.approve(address(access), 100 ether);
         access.purchase(1, 1, bytes32(0));
-        
+
         // Buy from app2
         app2.approve(address(access2), 200 ether);
         access2.purchase(1, 1, bytes32(0));
-        
+
         vm.stopPrank();
 
         assertEq(access.balanceOf(player1, 1), 1);
@@ -395,18 +344,14 @@ contract AppModulesIntegrationTest is Test {
         vm.stopPrank();
 
         // Now has access
-        assertTrue(
-            access.checkFeatureAccess(player1, premium, vault.stakedOf(player1))
-        );
+        assertTrue(access.checkFeatureAccess(player1, premium, vault.stakedOf(player1)));
 
         // Player1 unstakes partially
         vm.prank(player1);
         vault.unstake(500 ether);
 
         // Loses access
-        assertFalse(
-            access.checkFeatureAccess(player1, premium, vault.stakedOf(player1))
-        );
+        assertFalse(access.checkFeatureAccess(player1, premium, vault.stakedOf(player1)));
 
         // Stakes back
         vm.startPrank(player1);
@@ -415,9 +360,7 @@ contract AppModulesIntegrationTest is Test {
         vm.stopPrank();
 
         // Regains access
-        assertTrue(
-            access.checkFeatureAccess(player1, premium, vault.stakedOf(player1))
-        );
+        assertTrue(access.checkFeatureAccess(player1, premium, vault.stakedOf(player1)));
     }
 
     function test_Integration_EconomicLoop() public {
@@ -452,7 +395,7 @@ contract AppModulesIntegrationTest is Test {
         vm.stopPrank();
 
         // Verify epoch funded (claims tested in unit tests)
-        (,, , uint256 funded, ) = rewards.epochs(1);
+        (,,, uint256 funded,) = rewards.epochs(1);
         assertEq(funded, 10000 ether);
 
         // Net result: 200 burned from purchases
@@ -463,13 +406,13 @@ contract AppModulesIntegrationTest is Test {
     function test_Integration_TieredAccessSystem() public {
         // Setup tiered system
         vm.startPrank(appCreator);
-        
+
         // Bronze pass (cheap, transferable)
         access.setItem(1, 50 ether, false, true, 0, 0, 0, "ipfs://bronze");
-        
+
         // Silver pass (moderate, soulbound)
         access.setItem(2, 200 ether, true, true, 0, 0, 5000, "ipfs://silver");
-        
+
         // Gold pass (expensive, soulbound, limited)
         access.setItem(3, 500 ether, true, true, 0, 0, 1000, "ipfs://gold");
 
@@ -509,7 +452,7 @@ contract AppModulesIntegrationTest is Test {
 
         // Player1 progresses through tiers
         vm.startPrank(player1);
-        
+
         // Buy bronze
         appToken.approve(address(access), 50 ether);
         access.purchase(1, 1, bytes32(0));
@@ -520,26 +463,14 @@ contract AppModulesIntegrationTest is Test {
         access.purchase(2, 1, bytes32(0));
         appToken.approve(address(vault), 100 ether);
         vault.stake(100 ether);
-        assertTrue(
-            access.checkFeatureAccess(
-                player1,
-                keccak256("silver"),
-                vault.stakedOf(player1)
-            )
-        );
+        assertTrue(access.checkFeatureAccess(player1, keccak256("silver"), vault.stakedOf(player1)));
 
         // Buy gold + stake more
         appToken.approve(address(access), 500 ether);
         access.purchase(3, 1, bytes32(0));
         appToken.approve(address(vault), 400 ether);
         vault.stake(400 ether);
-        assertTrue(
-            access.checkFeatureAccess(
-                player1,
-                keccak256("gold"),
-                vault.stakedOf(player1)
-            )
-        );
+        assertTrue(access.checkFeatureAccess(player1, keccak256("gold"), vault.stakedOf(player1)));
         vm.stopPrank();
 
         // Verify all tier ownership
@@ -603,10 +534,7 @@ contract AppModulesIntegrationTest is Test {
 
         // Phase 5: End-of-season rewards
         vm.startPrank(appCreator);
-        rewards.startEpoch(
-            uint64(block.timestamp),
-            uint64(block.timestamp + 7 days)
-        );
+        rewards.startEpoch(uint64(block.timestamp), uint64(block.timestamp + 7 days));
         appToken.approve(address(rewards), 20000 ether);
         rewards.fund(20000 ether);
         rewards.finalizeEpoch(bytes32(uint256(2)));
@@ -617,7 +545,7 @@ contract AppModulesIntegrationTest is Test {
         // - Players staked (500 locked)
         // - Tournament ran (20 entry fees, with protocol/burn fees)
         // - Rewards funded (20000 from creator treasury)
-        
+
         // Verify all systems functional
         assertEq(access.balanceOf(player1, 1), 1); // Has pass
         assertEq(access.balanceOf(player2, 1), 1); // Has pass
@@ -680,14 +608,7 @@ contract AppModulesIntegrationTest is Test {
         uint256 treasuryBefore = elta.balanceOf(treasury);
 
         // Deploy another app (pays ELTA fee)
-        AppToken app2 = new AppToken(
-            "App2",
-            "APP2",
-            18,
-            MAX_SUPPLY,
-            appCreator,
-            admin
-        );
+        AppToken app2 = new AppToken("App2", "APP2", 18, MAX_SUPPLY, appCreator, admin);
 
         vm.prank(appCreator);
         elta.approve(address(factory), CREATE_FEE);
@@ -721,4 +642,3 @@ contract AppModulesIntegrationTest is Test {
         assertEq(appToken.balanceOf(treasury), treasuryBefore + expectedFee);
     }
 }
-

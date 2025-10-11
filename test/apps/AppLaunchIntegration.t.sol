@@ -39,7 +39,7 @@ contract AppLaunchIntegrationTest is Test {
         _setupMockUniswap();
 
         factory = new AppFactory(elta, IUniswapV2Router02(mockRouter), treasury, admin);
-        
+
         // Deploy views contract for complex queries
         views = new AppFactoryViews(address(factory));
 
@@ -122,7 +122,7 @@ contract AppLaunchIntegrationTest is Test {
         uint256 defaultSupply = factory.defaultSupply();
         uint256 creatorTreasury = (defaultSupply * 10) / 100; // 10% to creator
         uint256 curveSupply = defaultSupply - creatorTreasury; // 90% to curve
-        
+
         assertEq(token.name(), "NeuroRacing");
         assertEq(token.symbol(), "RACE");
         assertEq(token.totalSupply(), defaultSupply);
@@ -181,7 +181,7 @@ contract AppLaunchIntegrationTest is Test {
 
         uint256 defaultSupply = factory.defaultSupply();
         uint256 curveSupply = (defaultSupply * 90) / 100; // 90% to curve, 10% to creator
-        
+
         assertGt(eltaReserve, factory.seedElta()); // Should have more than seed
         assertEq(tokenReserve, curveSupply - totalTokensPurchased);
         assertGt(progress, 0);
@@ -294,16 +294,13 @@ contract AppLaunchIntegrationTest is Test {
     }
 
     function test_FactoryParameterUpdates() public {
-        // Test parameter updates and their effects
+        // Test that parameters are correctly set from factory constants
 
-        // Parameters are now immutable - test skipped
-        // vm.prank(admin);
-
-        // Create app with new parameters
-        uint256 newTotalCost = 200 ether + 20 ether; // seed + creation fee
+        // Create app with factory parameters
+        uint256 totalCost = factory.creationFee() + factory.seedElta();
 
         vm.startPrank(creator1);
-        elta.approve(address(factory), newTotalCost);
+        elta.approve(address(factory), totalCost);
         uint256 appId = factory.createApp("NewParams", "NEW", 0, "", "", "");
         vm.stopPrank();
 
@@ -311,11 +308,11 @@ contract AppLaunchIntegrationTest is Test {
         AppBondingCurve curve = AppBondingCurve(app.curve);
         AppToken token = AppToken(app.token);
 
-        // Verify new parameters applied
-        assertEq(curve.targetRaisedElta(), 50_000 ether);
-        assertEq(curve.protocolFeeRate(), 500);
-        assertEq(token.maxSupply(), 2_000_000_000 ether);
-        assertEq(curve.reserveElta(), 200 ether); // New seed amount
+        // Verify factory parameters applied correctly
+        assertEq(curve.targetRaisedElta(), factory.targetRaisedElta());
+        assertEq(curve.protocolFeeRate(), factory.protocolFeeRate());
+        assertEq(token.maxSupply(), factory.defaultSupply());
+        assertEq(curve.reserveElta(), factory.seedElta());
 
         console2.log("[OK] Parameter updates working correctly");
     }
@@ -385,10 +382,10 @@ contract AppLaunchIntegrationTest is Test {
 
         assertEq(appId, 0);
 
-        // Test unauthorized parameter changes
+        // Test unauthorized pause (parameters are immutable now)
         vm.expectRevert();
         vm.prank(creator1);
-        // factory.setParameters(100 ether, 1000 ether, 1_000_000 ether, 365 days, 18, 250, 10 ether);
+        factory.setPaused(true);
 
         console2.log("[OK] Security mechanisms verified");
     }
@@ -476,24 +473,18 @@ contract AppLaunchIntegrationTest is Test {
         console2.log("[OK] Error handling verified");
     }
 
-    function testFuzz_AppLaunchScenarios(
-        uint256 seedAmount,
-        uint256 targetAmount,
-        uint256 supply,
-        uint256 purchaseAmount
-    ) public {
+    function testFuzz_AppLaunchScenarios(uint256 supply, uint256 purchaseAmount) public {
         // Bound parameters to reasonable ranges
-        seedAmount = bound(seedAmount, 10 ether, 1000 ether);
-        targetAmount = bound(targetAmount, seedAmount * 2, seedAmount * 100);
         supply = bound(supply, 1_000_000 ether, 10_000_000_000 ether);
+
+        // Use factory's fixed parameters
+        uint256 seedAmount = factory.seedElta();
+        uint256 targetAmount = factory.targetRaisedElta();
+
         purchaseAmount = bound(purchaseAmount, 1 ether, (targetAmount - seedAmount) / 2);
 
-        // Update factory parameters
-        // Parameters are immutable
-        // vm.prank(admin);
-
-        // Create app with fuzzed parameters
-        uint256 totalCost = factory.creationFee() + seedAmount;
+        // Create app with fuzzed supply
+        uint256 totalCost = factory.creationFee() + factory.seedElta();
 
         vm.prank(treasury);
         elta.transfer(creator1, totalCost);
@@ -510,7 +501,7 @@ contract AppLaunchIntegrationTest is Test {
 
         uint256 creatorTreasury = (supply * 10) / 100;
         uint256 curveSupply = supply - creatorTreasury;
-        
+
         assertEq(token.maxSupply(), supply);
         assertEq(token.balanceOf(creator1), creatorTreasury); // Creator has 10%
         assertEq(curve.targetRaisedElta(), targetAmount);

@@ -229,7 +229,7 @@ contract TournamentSecurityTest is Test {
 
         vm.startPrank(user1);
         appToken.approve(address(tournament), ENTRY_FEE);
-        
+
         // Entry should fail (check via eligibility)
         (bool canEnter, uint8 reason) = tournament.checkEntryEligibility(user1);
         assertFalse(canEnter);
@@ -293,12 +293,12 @@ contract TournamentSecurityTest is Test {
 
     function test_Security_PoolAccounting() public {
         uint256 users = 10;
-        
+
         for (uint256 i = 0; i < users; i++) {
             address user = address(uint160(i + 1000));
             vm.prank(admin);
             appToken.mint(user, ENTRY_FEE);
-            
+
             vm.prank(user);
             appToken.approve(address(tournament), ENTRY_FEE);
             vm.prank(user);
@@ -329,21 +329,13 @@ contract TournamentSecurityTest is Test {
         protocolBps = bound(protocolBps, 0, 1000);
         burnBps = bound(burnBps, 0, 1500 - protocolBps); // Ensure total <= 15%
 
-        Tournament fuzzTourn = new Tournament(
-            address(appToken),
-            owner,
-            treasury,
-            1 ether,
-            0,
-            0,
-            protocolBps,
-            burnBps
-        );
+        Tournament fuzzTourn =
+            new Tournament(address(appToken), owner, treasury, 1 ether, 0, 0, protocolBps, burnBps);
 
         // Simulate pool
         vm.prank(admin);
         appToken.mint(address(fuzzTourn), poolAmount);
-        
+
         // Manually set pool (for testing)
         vm.store(
             address(fuzzTourn),
@@ -352,11 +344,7 @@ contract TournamentSecurityTest is Test {
         );
 
         // Calculate expected fees
-        (
-            uint256 protocolAmount,
-            uint256 burnAmount,
-            uint256 netAmount
-        ) = fuzzTourn.calculateFees();
+        (uint256 protocolAmount, uint256 burnAmount, uint256 netAmount) = fuzzTourn.calculateFees();
 
         uint256 expectedProtocol = (poolAmount * protocolBps) / 10000;
         uint256 expectedBurn = (poolAmount * burnBps) / 10000;
@@ -479,10 +467,10 @@ contract TournamentSecurityTest is Test {
         tournament.finalize(bytes32(0));
 
         uint256 expectedBurn = (ENTRY_FEE * 100) / 10000;
-        
+
         // Verify burn sink received tokens
         assertEq(appToken.balanceOf(burnSink), expectedBurn);
-        
+
         // Note: Total supply doesn't decrease with transfer to dead address
         // But tokens are effectively removed from circulation
     }
@@ -525,8 +513,7 @@ contract TournamentSecurityTest is Test {
 
         // Warp to active period
         vm.warp(block.timestamp + 150);
-        (, isActive, , , , , , ) = fuzzTourn.getTournamentState();
+        (, isActive,,,,,,) = fuzzTourn.getTournamentState();
         assertTrue(isActive);
     }
 }
-

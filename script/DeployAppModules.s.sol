@@ -45,18 +45,11 @@ contract DeployAppModules is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // 1. Deploy AppModuleFactory
-        AppModuleFactory factory = new AppModuleFactory(
-            eltaAddress,
-            deployer,
-            treasury
-        );
+        AppModuleFactory factory = new AppModuleFactory(eltaAddress, deployer, treasury);
         console.log("AppModuleFactory deployed at:", address(factory));
 
         // 2. Deploy TournamentFactory
-        TournamentFactory tournamentFactory = new TournamentFactory(
-            deployer,
-            treasury
-        );
+        TournamentFactory tournamentFactory = new TournamentFactory(deployer, treasury);
         console.log("TournamentFactory deployed at:", address(tournamentFactory));
 
         // 3. Set creation fee (optional)
@@ -105,17 +98,10 @@ contract DeployFullExample is Script {
         console.log("ELTA deployed at:", address(elta));
 
         // 2. Deploy factories
-        AppModuleFactory factory = new AppModuleFactory(
-            address(elta),
-            deployer,
-            treasury
-        );
+        AppModuleFactory factory = new AppModuleFactory(address(elta), deployer, treasury);
         console.log("AppModuleFactory deployed at:", address(factory));
 
-        TournamentFactory tournamentFactory = new TournamentFactory(
-            deployer,
-            treasury
-        );
+        TournamentFactory tournamentFactory = new TournamentFactory(deployer, treasury);
         console.log("TournamentFactory deployed at:", address(tournamentFactory));
 
         // 3. Simulate app creation (normally via AppFactory)
@@ -125,12 +111,7 @@ contract DeployFullExample is Script {
         // - Transfers admin role to creator
         // For this example, we manually create the token
         AppToken appToken = new AppToken(
-            "NeuroPong Token",
-            "NPONG",
-            18,
-            1_000_000_000 ether,
-            appCreator,
-            appCreator
+            "NeuroPong Token", "NPONG", 18, 1_000_000_000 ether, appCreator, appCreator
         );
         console.log("AppToken deployed at:", address(appToken));
 
@@ -139,10 +120,8 @@ contract DeployFullExample is Script {
         console.log("Minted 100M tokens (10%) to creator treasury");
 
         // 4. Deploy modules via AppModuleFactory
-        (address access1155, address stakingVault, address epochRewards) = factory.deployModules(
-            address(appToken),
-            "https://metadata.neuropong.game/"
-        );
+        (address access1155, address stakingVault, address epochRewards) =
+            factory.deployModules(address(appToken), "https://metadata.neuropong.game/");
         console.log("AppAccess1155 deployed at:", access1155);
         console.log("AppStakingVault deployed at:", stakingVault);
         console.log("EpochRewards deployed at:", epochRewards);
@@ -182,8 +161,7 @@ contract DeployFullExample is Script {
 
         // 8. Start first epoch for seasonal rewards
         EpochRewards(epochRewards).startEpoch(
-            uint64(block.timestamp),
-            uint64(block.timestamp + 30 days)
+            uint64(block.timestamp), uint64(block.timestamp + 30 days)
         );
         console.log("First 30-day epoch started");
 
@@ -214,4 +192,3 @@ contract DeployFullExample is Script {
         console.log("6. Winners and players claim their rewards");
     }
 }
-

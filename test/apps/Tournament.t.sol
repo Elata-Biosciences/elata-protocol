@@ -24,12 +24,7 @@ contract TournamentTest is Test {
     uint256 public constant MAX_SUPPLY = 1_000_000_000 ether;
 
     event Entered(address indexed user, uint256 fee);
-    event Finalized(
-        bytes32 winnersRoot,
-        uint256 netPool,
-        uint256 protocolFee,
-        uint256 burned
-    );
+    event Finalized(bytes32 winnersRoot, uint256 netPool, uint256 protocolFee, uint256 burned);
     event Claimed(address indexed user, uint256 amount);
 
     function setUp() public {
@@ -292,7 +287,7 @@ contract TournamentTest is Test {
         appToken.approve(address(tournament), ENTRY_FEE * 2);
         vm.prank(user1);
         tournament.enter();
-        
+
         vm.prank(user2);
         appToken.approve(address(tournament), ENTRY_FEE);
         vm.prank(user2);
@@ -323,7 +318,7 @@ contract TournamentTest is Test {
         appToken.approve(address(tournament), ENTRY_FEE);
         vm.prank(user1);
         tournament.enter();
-        
+
         vm.prank(user2);
         appToken.approve(address(tournament), ENTRY_FEE);
         vm.prank(user2);
@@ -391,4 +386,3 @@ contract TournamentTest is Test {
         assertEq(tournament.entryFee(), newFee);
     }
 }
-

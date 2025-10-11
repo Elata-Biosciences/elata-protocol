@@ -69,29 +69,29 @@ contract AppFactoryViews {
      */
     function getCreatorApps(address creator) external view returns (uint256[] memory) {
         IAppFactoryState factoryState = IAppFactoryState(factory);
-        
+
         // Get count by checking each appId (not ideal but works)
         uint256 appCount = factoryState.appCount();
         uint256 count = 0;
-        
+
         // Count apps by this creator
         for (uint256 i = 0; i < appCount; i++) {
-            (address appCreator,,,,,,,,, ) = factoryState.apps(i);
+            (address appCreator,,,,,,,,,) = factoryState.apps(i);
             if (appCreator == creator) count++;
         }
-        
+
         // Build array
         uint256[] memory result = new uint256[](count);
         uint256 index = 0;
-        
+
         for (uint256 i = 0; i < appCount; i++) {
-            (address appCreator,,,,,,,,, ) = factoryState.apps(i);
+            (address appCreator,,,,,,,,,) = factoryState.apps(i);
             if (appCreator == creator) {
                 result[index] = i;
                 index++;
             }
         }
-        
+
         return result;
     }
 
@@ -159,7 +159,7 @@ contract AppFactoryViews {
 
         // Count graduated apps
         for (uint256 i = 0; i < appCount; i++) {
-            (,,,,,, , bool isGrad,, ) = factoryState.apps(i);
+            (,,,,,,, bool isGrad,,) = factoryState.apps(i);
             if (isGrad) graduatedCount++;
         }
 
@@ -168,7 +168,7 @@ contract AppFactoryViews {
         uint256 index = 0;
 
         for (uint256 i = 0; i < appCount; i++) {
-            (,,,,,, , bool isGrad,, ) = factoryState.apps(i);
+            (,,,,,,, bool isGrad,,) = factoryState.apps(i);
             if (isGrad) {
                 graduatedList[index] = i;
                 index++;
@@ -199,7 +199,7 @@ contract AppFactoryViews {
         totalApps = factoryState.appCount();
 
         for (uint256 i = 0; i < totalApps; i++) {
-            (,,,,,, , bool graduated, uint256 totalRaised, ) = factoryState.apps(i);
+            (,,,,,,, bool graduated, uint256 totalRaised,) = factoryState.apps(i);
             if (graduated) {
                 graduatedApps++;
                 totalValueLocked += totalRaised;
@@ -215,18 +215,21 @@ contract AppFactoryViews {
  */
 interface IAppFactoryState {
     function appCount() external view returns (uint256);
-    function apps(uint256) external view returns (
-        address creator,
-        address token,
-        address curve,
-        address pair,
-        address locker,
-        uint64 createdAt,
-        uint64 graduatedAt,
-        bool graduated,
-        uint256 totalRaised,
-        uint256 finalSupply
-    );
+    function apps(uint256)
+        external
+        view
+        returns (
+            address creator,
+            address token,
+            address curve,
+            address pair,
+            address locker,
+            uint64 createdAt,
+            uint64 graduatedAt,
+            bool graduated,
+            uint256 totalRaised,
+            uint256 finalSupply
+        );
     function tokenToAppId(address) external view returns (uint256);
     function seedElta() external view returns (uint256);
     function creationFee() external view returns (uint256);
@@ -236,4 +239,3 @@ interface IAppFactoryState {
     function defaultDecimals() external view returns (uint8);
     function protocolFeeRate() external view returns (uint256);
 }
-

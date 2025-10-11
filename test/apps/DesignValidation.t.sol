@@ -31,24 +31,15 @@ contract DesignValidationTest is Test {
     uint256 public constant MAX_SUPPLY = 1_000_000_000 ether;
 
     function setUp() public {
-        elta = new ELTA(
-            "ELTA",
-            "ELTA",
-            factoryOwner,
-            factoryOwner,
-            10000000 ether,
-            77000000 ether
-        );
+        elta = new ELTA("ELTA", "ELTA", factoryOwner, factoryOwner, 10000000 ether, 77000000 ether);
 
         factory = new AppModuleFactory(address(elta), factoryOwner, treasury);
-        
+
         appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin);
 
         vm.prank(appCreator);
-        (address accessAddr, address vaultAddr, ) = factory.deployModules(
-            address(appToken),
-            "https://metadata.test/"
-        );
+        (address accessAddr, address vaultAddr,) =
+            factory.deployModules(address(appToken), "https://metadata.test/");
 
         access = AppAccess1155(accessAddr);
         vault = AppStakingVault(vaultAddr);
@@ -75,12 +66,12 @@ contract DesignValidationTest is Test {
 
         // VALIDATION: Supply decreased permanently
         assertEq(appToken.totalSupply(), initialSupply - 300 ether);
-        
+
         // VALIDATION: Tokens cannot be recovered
         // (no mint function available post-finalize)
         vm.prank(admin);
         appToken.finalizeMinting();
-        
+
         vm.expectRevert(AppToken.MintingAlreadyFinalized.selector);
         vm.prank(admin);
         appToken.mint(player, 1);
@@ -147,10 +138,10 @@ contract DesignValidationTest is Test {
 
         // Deploy modules
         AppToken app2 = new AppToken("App2", "APP2", 18, MAX_SUPPLY, appCreator, admin);
-        
+
         vm.prank(appCreator);
         elta.approve(address(factory), 100 ether);
-        
+
         vm.prank(appCreator);
         factory.deployModules(address(app2), "https://test/");
 
@@ -224,7 +215,7 @@ contract DesignValidationTest is Test {
         // Get code size
         uint256 accessSize;
         uint256 vaultSize;
-        
+
         assembly {
             accessSize := extcodesize(sload(access.slot))
             vaultSize := extcodesize(sload(vault.slot))
@@ -233,7 +224,7 @@ contract DesignValidationTest is Test {
         // VALIDATION: Contracts have actual code (not proxies)
         assertTrue(address(access).code.length > 0);
         assertTrue(address(vault).code.length > 0);
-        
+
         // VALIDATION: No upgrade functions exist
         // (ensured by compiler - no such functions in codebase)
     }
@@ -261,7 +252,7 @@ contract DesignValidationTest is Test {
     function test_Design_NoTransferTax() public {
         address sender = makeAddr("sender");
         address recipient = makeAddr("recipient");
-        
+
         vm.prank(admin);
         appToken.mint(sender, 1000 ether);
 
@@ -277,7 +268,7 @@ contract DesignValidationTest is Test {
         // VALIDATION: ERC20Permit is available
         assertTrue(appToken.DOMAIN_SEPARATOR() != bytes32(0));
         assertEq(appToken.nonces(player), 0);
-        
+
         // Permit functionality exists for gasless UX
     }
 
@@ -291,7 +282,7 @@ contract DesignValidationTest is Test {
         access.setItem(1, 100 ether, true, true, 0, 0, 100, "ipfs://item1");
 
         // VALIDATION: Single item views
-        (uint256 price, bool soulbound, bool active, , , , , ) = access.items(1);
+        (uint256 price, bool soulbound, bool active,,,,,) = access.items(1);
         assertEq(price, 100 ether);
         assertTrue(soulbound);
         assertTrue(active);
@@ -304,11 +295,7 @@ contract DesignValidationTest is Test {
         assertEq(items[0].price, 100 ether);
 
         // VALIDATION: Eligibility checks
-        (bool canPurchase, uint8 reason) = access.checkPurchaseEligibility(
-            player,
-            1,
-            1
-        );
+        (bool canPurchase, uint8 reason) = access.checkPurchaseEligibility(player, 1, 1);
         assertTrue(canPurchase);
         assertEq(reason, 0);
 
@@ -363,10 +350,8 @@ contract DesignValidationTest is Test {
         AppToken app2 = new AppToken("App2", "APP2", 18, MAX_SUPPLY, appCreator, admin);
 
         vm.prank(appCreator);
-        (address access2Addr, address vault2Addr, ) = factory.deployModules(
-            address(app2),
-            "https://metadata.app2/"
-        );
+        (address access2Addr, address vault2Addr,) =
+            factory.deployModules(address(app2), "https://metadata.app2/");
 
         AppAccess1155 access2 = AppAccess1155(access2Addr);
         AppStakingVault vault2 = AppStakingVault(vault2Addr);
@@ -393,16 +378,8 @@ contract DesignValidationTest is Test {
     // ────────────────────────────────────────────────────────────────────────────
 
     function test_Design_FeeCapEnforcement() public {
-        Tournament tourn = new Tournament(
-            address(appToken),
-            appCreator,
-            treasury,
-            10 ether,
-            0,
-            0,
-            0,
-            0
-        );
+        Tournament tourn =
+            new Tournament(address(appToken), appCreator, treasury, 10 ether, 0, 0, 0, 0);
 
         // VALIDATION: Max 15% total fees
         vm.prank(appCreator);
@@ -439,7 +416,7 @@ contract DesignValidationTest is Test {
         // VALIDATION: Can only decrease via burns
         vm.prank(appCreator);
         appToken.burn(1000 ether);
-        
+
         assertEq(appToken.totalSupply(), finalSupply - 1000 ether);
     }
 
@@ -457,29 +434,29 @@ contract DesignValidationTest is Test {
         // VALIDATION: Cannot purchase before start
         vm.startPrank(player);
         appToken.approve(address(access), 100 ether);
-        
+
         (bool canBuy, uint8 reason) = access.checkPurchaseEligibility(player, 1, 1);
         assertFalse(canBuy);
         assertEq(reason, 2); // Too early
-        
+
         vm.expectRevert(AppAccess1155.PurchaseTooEarly.selector);
         access.purchase(1, 1, bytes32(0));
         vm.stopPrank();
 
         // VALIDATION: Can purchase during window
         vm.warp(start + 50);
-        
+
         vm.startPrank(player);
         (canBuy, reason) = access.checkPurchaseEligibility(player, 1, 1);
         assertTrue(canBuy);
         assertEq(reason, 0);
-        
+
         access.purchase(1, 1, bytes32(0));
         vm.stopPrank();
 
         // VALIDATION: Cannot purchase after end
         vm.warp(end + 1);
-        
+
         vm.startPrank(player);
         appToken.approve(address(access), 100 ether);
         (canBuy, reason) = access.checkPurchaseEligibility(player, 1, 1);
@@ -537,31 +514,22 @@ contract DesignValidationTest is Test {
 
         // VALIDATION: More usage = more burn = more deflationary
         assertEq(appToken.totalSupply(), initialSupply - 600 ether);
-        
+
         // VALIDATION: This supports token value (basic economic principle)
         assertTrue(appToken.totalSupply() < initialSupply);
     }
 
     function test_Design_SustainableEmissions() public {
         // Create new token for this test to control supply
-        AppToken freshToken = new AppToken(
-            "FreshApp",
-            "FRESH",
-            18,
-            200000 ether,
-            appCreator,
-            appCreator
-        );
+        AppToken freshToken =
+            new AppToken("FreshApp", "FRESH", 18, 200000 ether, appCreator, appCreator);
 
-        EpochRewards epochRewards = new EpochRewards(
-            address(freshToken),
-            appCreator
-        );
+        EpochRewards epochRewards = new EpochRewards(address(freshToken), appCreator);
 
         // Mint exactly 100000 to creator
         vm.prank(appCreator);
         freshToken.mint(appCreator, 100000 ether);
-        
+
         // Finalize supply
         vm.prank(appCreator);
         freshToken.finalizeMinting();
@@ -575,7 +543,7 @@ contract DesignValidationTest is Test {
 
         // Fund from existing balance
         uint256 creatorBalance = freshToken.balanceOf(appCreator);
-        
+
         vm.startPrank(appCreator);
         freshToken.approve(address(epochRewards), 10000 ether);
         epochRewards.fund(10000 ether);
@@ -595,9 +563,9 @@ contract DesignValidationTest is Test {
         vm.prank(appCreator);
         vm.recordLogs();
         access.setItem(1, 100 ether, false, true, 0, 0, 100, "ipfs://item");
-        
+
         Vm.Log[] memory logs = vm.getRecordedLogs();
-        
+
         // VALIDATION: ItemConfigured event emitted
         assertTrue(logs.length > 0);
 
@@ -609,10 +577,9 @@ contract DesignValidationTest is Test {
         vm.stopPrank();
 
         logs = vm.getRecordedLogs();
-        
+
         // VALIDATION: Events emitted for indexing
         // Should include: Purchased event, Transfer events, etc.
         assertTrue(logs.length >= 1);
     }
 }
-

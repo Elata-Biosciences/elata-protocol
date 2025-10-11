@@ -20,12 +20,7 @@ contract AppAccess1155Test is Test {
     uint256 public constant MAX_SUPPLY = 1_000_000_000 ether;
 
     event ItemConfigured(uint256 indexed id, AppAccess1155.Item item);
-    event Purchased(
-        address indexed user,
-        uint256 indexed id,
-        uint256 amount,
-        uint256 cost
-    );
+    event Purchased(address indexed user, uint256 indexed id, uint256 amount, uint256 cost);
     event SoulboundToggled(uint256 indexed id, bool soulbound);
     event FeatureGateSet(bytes32 indexed featureId, AppAccess1155.FeatureGate gate);
 
@@ -37,12 +32,8 @@ contract AppAccess1155Test is Test {
         vault = new AppStakingVault(address(appToken), owner);
 
         // Deploy access control
-        access = new AppAccess1155(
-            address(appToken),
-            address(vault),
-            owner,
-            "https://metadata.test/"
-        );
+        access =
+            new AppAccess1155(address(appToken), address(vault), owner, "https://metadata.test/");
 
         // Mint tokens to users
         vm.startPrank(admin);
@@ -114,7 +105,7 @@ contract AppAccess1155Test is Test {
         access.setItemActive(1, false);
         vm.stopPrank();
 
-        (, , bool active, , , , , ) = access.items(1);
+        (,, bool active,,,,,) = access.items(1);
         assertFalse(active);
     }
 
@@ -128,7 +119,7 @@ contract AppAccess1155Test is Test {
         access.toggleSoulbound(1, true);
         vm.stopPrank();
 
-        (, bool soulbound, , , , , , ) = access.items(1);
+        (, bool soulbound,,,,,,) = access.items(1);
         assertTrue(soulbound);
     }
 
@@ -162,7 +153,7 @@ contract AppAccess1155Test is Test {
         assertEq(appToken.totalSupply(), initialSupply - cost);
 
         // Verify minted count
-        (, , , , , , uint64 minted, ) = access.items(1);
+        (,,,,,, uint64 minted,) = access.items(1);
         assertEq(minted, amount);
     }
 
@@ -362,4 +353,3 @@ contract AppAccess1155Test is Test {
         assertEq(access.balanceOf(user1, 1), amount);
     }
 }
-

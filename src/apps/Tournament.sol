@@ -69,12 +69,7 @@ contract Tournament is Ownable, ReentrancyGuard {
     mapping(address => bool) public claimed;
 
     event Entered(address indexed user, uint256 fee);
-    event Finalized(
-        bytes32 winnersRoot,
-        uint256 netPool,
-        uint256 protocolFee,
-        uint256 burned
-    );
+    event Finalized(bytes32 winnersRoot, uint256 netPool, uint256 protocolFee, uint256 burned);
     event Claimed(address indexed user, uint256 amount);
     event FeesSet(uint256 protocolFeeBps, uint256 burnFeeBps);
     event WindowSet(uint64 startTime, uint64 endTime);
@@ -222,10 +217,7 @@ contract Tournament is Ownable, ReentrancyGuard {
      * @param proof Merkle proof of (msg.sender, amount)
      * @param amount Prize amount to claim
      */
-    function claim(bytes32[] calldata proof, uint256 amount)
-        external
-        nonReentrant
-    {
+    function claim(bytes32[] calldata proof, uint256 amount) external nonReentrant {
         if (!finalized) revert NotFinalized();
         if (claimed[msg.sender]) revert AlreadyClaimed();
 
@@ -270,9 +262,8 @@ contract Tournament is Ownable, ReentrancyGuard {
         )
     {
         isFinalized = finalized;
-        isActive = !finalized &&
-                   (startTime == 0 || block.timestamp >= startTime) &&
-                   (endTime == 0 || block.timestamp <= endTime);
+        isActive = !finalized && (startTime == 0 || block.timestamp >= startTime)
+            && (endTime == 0 || block.timestamp <= endTime);
         currentPool = pool;
         entryFeeAmount = entryFee;
         protocolFee = protocolFeeBps;
@@ -315,4 +306,3 @@ contract Tournament is Ownable, ReentrancyGuard {
         netAmount = pool - protocolAmount - burnAmount;
     }
 }
-

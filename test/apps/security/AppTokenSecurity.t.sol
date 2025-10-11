@@ -66,36 +66,33 @@ contract AppTokenSecurityTest is Test {
 
     function test_Security_CapEnforcedIncrementally() public {
         vm.startPrank(admin);
-        
+
         // Mint 90% of cap
         token.mint(user1, (MAX_SUPPLY * 9) / 10);
-        
+
         // Mint 10% (should succeed)
         token.mint(user1, MAX_SUPPLY / 10);
-        
+
         // Any more should fail
         vm.expectRevert(AppToken.SupplyCapExceeded.selector);
         token.mint(user1, 1);
-        
+
         vm.stopPrank();
     }
 
-    function testFuzz_Security_SupplyNeverExceedsCap(
-        uint256 amount1,
-        uint256 amount2
-    ) public {
+    function testFuzz_Security_SupplyNeverExceedsCap(uint256 amount1, uint256 amount2) public {
         amount1 = bound(amount1, 1, MAX_SUPPLY);
         amount2 = bound(amount2, 1, MAX_SUPPLY);
 
         vm.startPrank(admin);
-        
+
         token.mint(user1, amount1);
-        
+
         if (amount1 + amount2 > MAX_SUPPLY) {
             vm.expectRevert(AppToken.SupplyCapExceeded.selector);
         }
         token.mint(user1, amount2);
-        
+
         vm.stopPrank();
 
         // Supply never exceeds cap
@@ -123,7 +120,7 @@ contract AppTokenSecurityTest is Test {
 
         // Cannot "unfinalize"
         // (no such function exists - ensuring design is correct)
-        
+
         // Verify still cannot mint
         vm.expectRevert(AppToken.MintingAlreadyFinalized.selector);
         vm.prank(admin);
@@ -206,10 +203,10 @@ contract AppTokenSecurityTest is Test {
         // Only DEFAULT_ADMIN_ROLE can grant roles
         bytes32 adminRole = token.DEFAULT_ADMIN_ROLE();
         assertFalse(token.hasRole(adminRole, attacker));
-        
+
         // Verify attacker doesn't have minter role
         assertFalse(token.hasRole(token.MINTER_ROLE(), attacker));
-        
+
         // Attempt to grant role (should revert)
         vm.prank(attacker);
         try token.grantRole(token.MINTER_ROLE(), attacker) {
@@ -217,7 +214,7 @@ contract AppTokenSecurityTest is Test {
         } catch {
             // Correctly reverted
         }
-        
+
         // Attacker still doesn't have minter role
         assertFalse(token.hasRole(token.MINTER_ROLE(), attacker));
     }
@@ -238,10 +235,9 @@ contract AppTokenSecurityTest is Test {
         assertEq(token.balanceOf(user1), 500 ether);
     }
 
-    function testFuzz_Security_TransferPreservesSupply(
-        uint256 mintAmount,
-        uint256 transferAmount
-    ) public {
+    function testFuzz_Security_TransferPreservesSupply(uint256 mintAmount, uint256 transferAmount)
+        public
+    {
         mintAmount = bound(mintAmount, 1, MAX_SUPPLY);
         transferAmount = bound(transferAmount, 0, mintAmount);
 
@@ -338,4 +334,3 @@ contract AppTokenSecurityTest is Test {
         assertEq(token.allowance(user1, attacker), 500 ether);
     }
 }
-

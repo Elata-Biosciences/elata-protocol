@@ -25,7 +25,7 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
 
     uint8 private immutable _decimals;
     uint256 public immutable maxSupply;
-    
+
     /// @notice Whether minting has been finalized (irreversible)
     bool public mintingFinalized;
 
@@ -91,7 +91,7 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
     function mint(address to, uint256 amount) external onlyRole(MINTER_ROLE) {
         if (mintingFinalized) revert MintingAlreadyFinalized();
         if (maxSupply > 0 && totalSupply() + amount > maxSupply) revert SupplyCapExceeded();
-        
+
         _mint(to, amount);
         emit Minted(to, amount);
     }

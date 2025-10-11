@@ -23,37 +23,20 @@ contract AppModuleFactoryTest is Test {
     uint256 public constant CREATE_FEE = 50 ether;
 
     event ModulesDeployed(
-        address indexed appToken,
-        address access1155,
-        address stakingVault,
-        address epochRewards
+        address indexed appToken, address access1155, address stakingVault, address epochRewards
     );
     event TreasurySet(address treasury);
     event FeeSet(uint256 fee);
 
     function setUp() public {
         // Deploy ELTA
-        elta = new ELTA(
-            "ELTA",
-            "ELTA",
-            factoryOwner,
-            factoryOwner,
-            1000000 ether,
-            77000000 ether
-        );
+        elta = new ELTA("ELTA", "ELTA", factoryOwner, factoryOwner, 1000000 ether, 77000000 ether);
 
         // Deploy factory
         factory = new AppModuleFactory(address(elta), factoryOwner, treasury);
 
         // Deploy app token
-        appToken = new AppToken(
-            "TestApp",
-            "TEST",
-            18,
-            MAX_SUPPLY,
-            appCreator,
-            admin
-        );
+        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin);
 
         // Mint ELTA to app creator for fees
         vm.prank(factoryOwner);
@@ -72,11 +55,7 @@ contract AppModuleFactoryTest is Test {
     }
 
     function test_DeploymentWithZeroELTA() public {
-        AppModuleFactory noFeeFactory = new AppModuleFactory(
-            address(0),
-            factoryOwner,
-            treasury
-        );
+        AppModuleFactory noFeeFactory = new AppModuleFactory(address(0), factoryOwner, treasury);
 
         assertEq(noFeeFactory.ELTA(), address(0));
     }
@@ -92,10 +71,8 @@ contract AppModuleFactoryTest is Test {
         emit ModulesDeployed(address(appToken), address(0), address(0), address(0));
 
         vm.prank(appCreator);
-        (address access1155, address staking, address epochs) = factory.deployModules(
-            address(appToken),
-            baseURI
-        );
+        (address access1155, address staking, address epochs) =
+            factory.deployModules(address(appToken), baseURI);
 
         // Verify addresses are non-zero
         assertTrue(access1155 != address(0));
@@ -121,10 +98,7 @@ contract AppModuleFactoryTest is Test {
 
     function test_EpochRewardsDeployment() public {
         vm.prank(appCreator);
-        (, , address epochs) = factory.deployModules(
-            address(appToken),
-            "https://test/"
-        );
+        (,, address epochs) = factory.deployModules(address(appToken), "https://test/");
 
         // Verify epoch rewards deployed correctly
         assertTrue(epochs != address(0));
@@ -221,28 +195,17 @@ contract AppModuleFactoryTest is Test {
 
     function test_MultipleAppsDeployModules() public {
         // Create second app token
-        AppToken appToken2 = new AppToken(
-            "TestApp2",
-            "TEST2",
-            18,
-            MAX_SUPPLY,
-            appCreator,
-            admin
-        );
+        AppToken appToken2 = new AppToken("TestApp2", "TEST2", 18, MAX_SUPPLY, appCreator, admin);
 
         // Deploy modules for first app
         vm.prank(appCreator);
-        (address access1, address stake1, address epochs1) = factory.deployModules(
-            address(appToken),
-            "https://app1.test/"
-        );
+        (address access1, address stake1, address epochs1) =
+            factory.deployModules(address(appToken), "https://app1.test/");
 
         // Deploy modules for second app
         vm.prank(appCreator);
-        (address access2, address stake2, address epochs2) = factory.deployModules(
-            address(appToken2),
-            "https://app2.test/"
-        );
+        (address access2, address stake2, address epochs2) =
+            factory.deployModules(address(appToken2), "https://app2.test/");
 
         // Verify both are registered correctly
         (address storedAccess1, address storedStake1, address storedEpochs1) =
@@ -265,10 +228,7 @@ contract AppModuleFactoryTest is Test {
     function test_DeployModulesAndConfigureItems() public {
         // Deploy modules
         vm.prank(appCreator);
-        (address access1155, , ) = factory.deployModules(
-            address(appToken),
-            "https://metadata.test/"
-        );
+        (address access1155,,) = factory.deployModules(address(appToken), "https://metadata.test/");
 
         // Configure an item
         vm.prank(appCreator);
@@ -284,8 +244,7 @@ contract AppModuleFactoryTest is Test {
         );
 
         // Verify item was configured
-        (uint256 price, , bool active, , , , , ) =
-            AppAccess1155(access1155).items(1);
+        (uint256 price,, bool active,,,,,) = AppAccess1155(access1155).items(1);
         assertEq(price, 100 ether);
         assertTrue(active);
     }
@@ -297,10 +256,8 @@ contract AppModuleFactoryTest is Test {
 
         // Deploy modules
         vm.prank(appCreator);
-        (, address stakingVault, ) = factory.deployModules(
-            address(appToken),
-            "https://metadata.test/"
-        );
+        (, address stakingVault,) =
+            factory.deployModules(address(appToken), "https://metadata.test/");
 
         // User stakes
         vm.startPrank(user1);
@@ -328,11 +285,7 @@ contract AppModuleFactoryTest is Test {
 
     function test_DeployModulesWithFactoryELTADisabled() public {
         // Factory with ELTA disabled
-        AppModuleFactory noEltaFactory = new AppModuleFactory(
-            address(0),
-            factoryOwner,
-            treasury
-        );
+        AppModuleFactory noEltaFactory = new AppModuleFactory(address(0), factoryOwner, treasury);
 
         vm.prank(factoryOwner);
         noEltaFactory.setCreateFee(100 ether); // Set fee (but ELTA is disabled)
@@ -342,4 +295,3 @@ contract AppModuleFactoryTest is Test {
         noEltaFactory.deployModules(address(appToken), "https://metadata.test/");
     }
 }
-

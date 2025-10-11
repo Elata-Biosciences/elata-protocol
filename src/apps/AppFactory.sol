@@ -41,7 +41,7 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
     IERC20 public immutable ELTA;
     IUniswapV2Router02 public immutable router;
     address public immutable treasury;
-    
+
     // Launch parameters (immutable for size optimization)
     uint256 public constant seedElta = 100 ether;
     uint256 public constant targetRaisedElta = 42_000 ether;
@@ -72,10 +72,7 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
 
     // Events
     event AppCreated(
-        uint256 indexed appId,
-        address indexed creator,
-        address indexed token,
-        address curve
+        uint256 indexed appId, address indexed creator, address indexed token, address curve
     );
 
     event AppGraduated(
@@ -94,7 +91,11 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
     error AppNotFound();
 
     constructor(IERC20 _elta, IUniswapV2Router02 _router, address _treasury, address _admin) {
-        require(address(_elta) != address(0) && address(_router) != address(0) && _treasury != address(0) && _admin != address(0), "Zero address");
+        require(
+            address(_elta) != address(0) && address(_router) != address(0)
+                && _treasury != address(0) && _admin != address(0),
+            "Zero address"
+        );
         ELTA = _elta;
         router = _router;
         treasury = _treasury;
@@ -119,20 +120,45 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         require(tokenSupply > 0, "Invalid supply");
 
         // Collect fees
-        require(ELTA.transferFrom(msg.sender, address(this), creationFee + seedElta), "Transfer failed");
+        require(
+            ELTA.transferFrom(msg.sender, address(this), creationFee + seedElta), "Transfer failed"
+        );
         if (creationFee > 0) {
             require(ELTA.transfer(treasury, creationFee), "Transfer failed");
         }
 
         // Deploy via library
         (address tokenAddr, address curveAddr) = AppDeploymentLib.deployTokenAndCurve(
-            name, symbol, defaultDecimals, tokenSupply, msg.sender, address(this),
-            appCount, ELTA, router, targetRaisedElta, lpLockDuration, treasury, protocolFeeRate, seedElta
+            name,
+            symbol,
+            defaultDecimals,
+            tokenSupply,
+            msg.sender,
+            address(this),
+            appCount,
+            ELTA,
+            router,
+            targetRaisedElta,
+            lpLockDuration,
+            treasury,
+            protocolFeeRate,
+            seedElta
         );
 
         // Register
         appId = appCount++;
-        apps[appId] = App(msg.sender, tokenAddr, curveAddr, address(0), address(0), uint64(block.timestamp), 0, false, 0, 0);
+        apps[appId] = App(
+            msg.sender,
+            tokenAddr,
+            curveAddr,
+            address(0),
+            address(0),
+            uint64(block.timestamp),
+            0,
+            false,
+            0,
+            0
+        );
         tokenToAppId[tokenAddr] = appId;
         emit AppCreated(appId, msg.sender, tokenAddr, curveAddr);
     }

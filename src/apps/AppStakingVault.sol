@@ -77,4 +77,3 @@ contract AppStakingVault is Ownable, ReentrancyGuard {
         emit Unstaked(msg.sender, amount, stakedOf[msg.sender]);
     }
 }
-

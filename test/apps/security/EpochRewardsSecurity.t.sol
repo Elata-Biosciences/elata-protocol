@@ -41,7 +41,7 @@ contract EpochRewardsSecurityTest is Test {
     function test_Security_EpochsAreIsolated() public {
         // Create two epochs
         vm.startPrank(owner);
-        
+
         rewards.startEpoch(0, uint64(block.timestamp + 7 days));
         appToken.approve(address(rewards), 5000 ether);
         rewards.fund(5000 ether);
@@ -51,7 +51,7 @@ contract EpochRewardsSecurityTest is Test {
         appToken.approve(address(rewards), 3000 ether);
         rewards.fund(3000 ether);
         rewards.finalizeEpoch(bytes32(uint256(2)));
-        
+
         vm.stopPrank();
 
         // Verify epochs have different data
@@ -81,7 +81,7 @@ contract EpochRewardsSecurityTest is Test {
 
         // Try to claim with proof from epoch 1 but for epoch 2
         bytes32[] memory proof = merkle.getProof(data1, 0);
-        
+
         vm.expectRevert(EpochRewards.NotFinalized.selector);
         vm.prank(user1);
         rewards.claim(2, proof, 5000 ether);
@@ -90,12 +90,12 @@ contract EpochRewardsSecurityTest is Test {
     function test_Security_CannotReuseClaimAcrossEpochs() public {
         // Create two identical epochs
         vm.startPrank(owner);
-        
+
         // Epoch 1
         rewards.startEpoch(0, uint64(block.timestamp + 7 days));
         appToken.approve(address(rewards), 10000 ether);
         rewards.fund(5000 ether);
-        
+
         bytes32[] memory data = new bytes32[](2);
         data[0] = keccak256(abi.encodePacked(user1, uint256(2500 ether)));
         data[1] = keccak256(abi.encodePacked(user2, uint256(2500 ether)));
@@ -243,16 +243,16 @@ contract EpochRewardsSecurityTest is Test {
         rewards.startEpoch(0, uint64(block.timestamp + 7 days));
         appToken.approve(address(rewards), 10000 ether);
         rewards.fund(10000 ether);
-        
+
         // Finalize with dummy root
         rewards.finalizeEpoch(bytes32(uint256(1)));
         vm.stopPrank();
 
         // Verify initial state
-        (,, , uint256 funded, uint256 claimed) = rewards.epochs(1);
+        (,,, uint256 funded, uint256 claimed) = rewards.epochs(1);
         assertEq(funded, 10000 ether);
         assertEq(claimed, 0);
-        
+
         // Claimed amount tracked even if proof is wrong
         // (actual claim will fail but we're testing the accounting logic)
     }
@@ -260,14 +260,14 @@ contract EpochRewardsSecurityTest is Test {
     function test_Security_FundingAccumulatesCorrectly() public {
         vm.startPrank(owner);
         rewards.startEpoch(0, uint64(block.timestamp + 7 days));
-        
+
         appToken.approve(address(rewards), 10000 ether);
         rewards.fund(3000 ether);
         rewards.fund(4000 ether);
         rewards.fund(3000 ether);
         vm.stopPrank();
 
-        (,, , uint256 funded, ) = rewards.epochs(1);
+        (,,, uint256 funded,) = rewards.epochs(1);
         assertEq(funded, 10000 ether);
     }
 
@@ -283,7 +283,7 @@ contract EpochRewardsSecurityTest is Test {
         rewards.getCurrentEpochId();
         rewards.isEpochClaimable(1);
         rewards.getEpochUtilization(1);
-        
+
         uint256[] memory ids = new uint256[](1);
         ids[0] = 1;
         rewards.getEpochs(ids);
@@ -294,7 +294,7 @@ contract EpochRewardsSecurityTest is Test {
 
         // State should be unchanged
         assertEq(rewards.epochId(), 1);
-        (,, bytes32 root, , ) = rewards.epochs(1);
+        (,, bytes32 root,,) = rewards.epochs(1);
         assertEq(root, 0);
     }
 
@@ -311,11 +311,11 @@ contract EpochRewardsSecurityTest is Test {
 
         // Manually update claimed amount to test calculation
         // (In reality, claims would update this via valid Merkle proofs)
-        
+
         // Test utilization calculation formula
-        (,, , uint256 funded, ) = rewards.epochs(1);
+        (,,, uint256 funded,) = rewards.epochs(1);
         assertEq(funded, 10000 ether);
-        
+
         // 0% utilization with 0 claimed
         assertEq(rewards.getEpochUtilization(1), 0);
     }
@@ -344,7 +344,7 @@ contract EpochRewardsSecurityTest is Test {
 
     function test_Security_CannotClaimNonexistentEpoch() public {
         bytes32[] memory proof = new bytes32[](0);
-        
+
         vm.expectRevert(EpochRewards.NotFinalized.selector);
         vm.prank(user1);
         rewards.claim(999, proof, 1000 ether);
@@ -400,7 +400,7 @@ contract EpochRewardsSecurityTest is Test {
 
         // Verify only claimed once
         assertTrue(rewards.claimed(1, user1));
-        (,, , , uint256 totalClaimed) = rewards.epochs(1);
+        (,,,, uint256 totalClaimed) = rewards.epochs(1);
         assertEq(totalClaimed, 3000 ether);
     }
 
@@ -411,16 +411,16 @@ contract EpochRewardsSecurityTest is Test {
     function test_Security_MultipleFundingCallsAccumulate() public {
         vm.startPrank(owner);
         rewards.startEpoch(0, uint64(block.timestamp + 7 days));
-        
+
         appToken.approve(address(rewards), type(uint256).max);
-        
+
         uint256 fundAmount = 1000 ether;
         for (uint256 i = 0; i < 10; i++) {
             rewards.fund(fundAmount);
         }
         vm.stopPrank();
 
-        (,, , uint256 funded, ) = rewards.epochs(1);
+        (,,, uint256 funded,) = rewards.epochs(1);
         assertEq(funded, fundAmount * 10);
     }
 
@@ -477,4 +477,3 @@ contract EpochRewardsSecurityTest is Test {
         assertFalse(statuses[1]);
     }
 }
-

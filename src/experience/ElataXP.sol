@@ -23,8 +23,9 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl {
     mapping(address => uint256) public operatorNonces;
 
     // EIP-712 typehash for struct used in updateBySig (off-chain XP award authorization).
-    bytes32 public constant XPUPDATE_TYPEHASH =
-        keccak256("XPUpdate(address operator,address user,uint256 amount,uint256 nonce,uint256 deadline)");
+    bytes32 public constant XPUPDATE_TYPEHASH = keccak256(
+        "XPUpdate(address operator,address user,uint256 amount,uint256 nonce,uint256 deadline)"
+    );
 
     // Events for minting and burning XP:
     event XPAwarded(address indexed user, uint256 amount);
@@ -59,14 +60,14 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl {
     function award(address to, uint256 amount) external onlyRole(XP_OPERATOR_ROLE) {
         if (to == address(0)) revert Errors.ZeroAddress();
         if (amount == 0) revert Errors.InvalidAmount();
-        
+
         _mint(to, amount);
-        
+
         // Auto-delegate to self to enable checkpoint tracking
         if (delegates(to) == address(0)) {
             _delegate(to, to);
         }
-        
+
         emit XPAwarded(to, amount);
     }
 
@@ -107,13 +108,14 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl {
         bytes32 s
     ) external {
         if (block.timestamp > deadline) revert Errors.SignatureExpired();
-        if (amount == 0 || user == address(0) || operator == address(0)) revert Errors.InvalidAmount();
+        if (amount == 0 || user == address(0) || operator == address(0)) {
+            revert Errors.InvalidAmount();
+        }
 
         // Construct the struct hash and message digest as per EIP-712
         uint256 currentNonce = operatorNonces[operator];
-        bytes32 structHash = keccak256(
-            abi.encode(XPUPDATE_TYPEHASH, operator, user, amount, currentNonce, deadline)
-        );
+        bytes32 structHash =
+            keccak256(abi.encode(XPUPDATE_TYPEHASH, operator, user, amount, currentNonce, deadline));
         bytes32 hash = _hashTypedDataV4(structHash);
 
         // Recover the signer
@@ -158,12 +160,7 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl {
     /**
      * @dev Required override for multiple inheritance
      */
-    function nonces(address owner)
-        public
-        view
-        override(ERC20Permit, Nonces)
-        returns (uint256)
-    {
+    function nonces(address owner) public view override(ERC20Permit, Nonces) returns (uint256) {
         return super.nonces(owner);
     }
 }
