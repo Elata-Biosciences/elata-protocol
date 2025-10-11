@@ -1,0 +1,31 @@
+# Code Owners for Elata Protocol
+# These owners will be automatically requested for review when PRs modify these files
+
+# Default owner for everything (unless overridden below)
+* @wkyleg
+
+# Core Protocol Contracts (require careful review)
+/src/token/ @wkyleg
+/src/staking/ @wkyleg
+/src/governance/ @wkyleg
+/src/rewards/ @wkyleg
+
+# App Ecosystem (can expand team as project grows)
+/src/apps/ @wkyleg
+
+# Critical Infrastructure
+/.github/ @wkyleg
+/foundry.toml @wkyleg
+/remappings.txt @wkyleg
+
+# Deployment Scripts (extra caution)
+/script/ @wkyleg
+/scripts/ @wkyleg
+
+# Tests (more lenient - encourage contributions)
+/test/ @wkyleg
+
+# Documentation (welcome community contributions)
+/docs/ @wkyleg
+*.md @wkyleg
+
