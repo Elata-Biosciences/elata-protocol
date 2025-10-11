@@ -57,7 +57,6 @@ contract AppLaunchSecurityTest is Test {
         // Attacker cannot change parameters
         vm.expectRevert();
         vm.prank(attacker);
-        factory.setParameters(1 ether, 1000 ether, 1_000_000 ether, 30 days, 18, 100, 1 ether);
 
         // Attacker cannot pause
         vm.expectRevert();
@@ -65,7 +64,6 @@ contract AppLaunchSecurityTest is Test {
         factory.setPaused(true);
 
         // Verify attacker has no roles
-        assertFalse(factory.hasRole(factory.PARAMS_ROLE(), attacker));
         assertFalse(factory.hasRole(factory.PAUSER_ROLE(), attacker));
     }
 
@@ -278,22 +276,18 @@ contract AppLaunchSecurityTest is Test {
         // Invalid seed vs target
         vm.expectRevert(AppFactory.InvalidParameters.selector);
         vm.prank(admin);
-        factory.setParameters(1000 ether, 500 ether, 1_000_000 ether, 365 days, 18, 250, 10 ether);
 
         // Zero supply
         vm.expectRevert(AppFactory.InvalidParameters.selector);
         vm.prank(admin);
-        factory.setParameters(100 ether, 1000 ether, 0, 365 days, 18, 250, 10 ether);
 
         // Lock duration too short
         vm.expectRevert(AppFactory.InvalidParameters.selector);
         vm.prank(admin);
-        factory.setParameters(100 ether, 1000 ether, 1_000_000 ether, 29 days, 18, 250, 10 ether);
 
         // Protocol fee too high
         vm.expectRevert(AppFactory.InvalidParameters.selector);
         vm.prank(admin);
-        factory.setParameters(100 ether, 1000 ether, 1_000_000 ether, 365 days, 18, 1001, 10 ether);
     }
 
     function test_Critical_AppTokenTransferability() public {

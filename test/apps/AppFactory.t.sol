@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import { ELTA } from "../../src/token/ELTA.sol";
 import { AppFactory } from "../../src/apps/AppFactory.sol";
+import { AppFactoryViews } from "../../src/apps/AppFactoryViews.sol";
 import { AppToken } from "../../src/apps/AppToken.sol";
 import { AppBondingCurve } from "../../src/apps/AppBondingCurve.sol";
 import { IUniswapV2Router02 } from "../../src/interfaces/IUniswapV2Router02.sol";
@@ -11,6 +12,7 @@ import { IUniswapV2Router02 } from "../../src/interfaces/IUniswapV2Router02.sol"
 contract AppFactoryTest is Test {
     ELTA public elta;
     AppFactory public factory;
+    AppFactoryViews public views;
 
     address public admin = makeAddr("admin");
     address public treasury = makeAddr("treasury");
@@ -30,6 +32,9 @@ contract AppFactoryTest is Test {
         );
 
         factory = new AppFactory(elta, IUniswapV2Router02(mockRouter), treasury, admin);
+        
+        // Deploy views contract for complex queries
+        views = new AppFactoryViews(address(factory));
 
         // Give creator some ELTA
         vm.prank(treasury);
@@ -81,13 +86,13 @@ contract AppFactoryTest is Test {
         assertEq(token.appCreator(), creator);
         assertEq(token.totalSupply(), factory.defaultSupply());
 
-        // Check creator apps mapping
-        uint256[] memory creatorApps = factory.getCreatorApps(creator);
+        // Check creator apps mapping (use views contract)
+        uint256[] memory creatorApps = views.getCreatorApps(creator);
         assertEq(creatorApps.length, 1);
         assertEq(creatorApps[0], appId);
 
         // Check token to app mapping
-        assertEq(factory.getAppIdFromToken(app.token), appId);
+        assertEq(factory.tokenToAppId(app.token), appId);
     }
 
     function test_RevertWhen_CreateAppPaused() public {
@@ -106,42 +111,15 @@ contract AppFactoryTest is Test {
         factory.createApp("Test", "TEST", 0, "", "", "");
     }
 
-    function test_SetParameters() public {
-        vm.prank(admin);
-        factory.setParameters(
-            200 ether, // seedElta
-            50_000 ether, // targetRaised
-            2_000_000_000 ether, // defaultSupply
-            365 days * 3, // lpLockDuration
-            18, // defaultDecimals
-            500, // protocolFeeRate (5%)
-            20 ether // creationFee
-        );
-
-        assertEq(factory.seedElta(), 200 ether);
-        assertEq(factory.targetRaisedElta(), 50_000 ether);
-        assertEq(factory.defaultSupply(), 2_000_000_000 ether);
-        assertEq(factory.lpLockDuration(), 365 days * 3);
+    // Parameters are now immutable (constants) for contract size optimization
+    function test_ParametersAreImmutable() public view {
+        assertEq(factory.seedElta(), 100 ether);
+        assertEq(factory.targetRaisedElta(), 42_000 ether);
+        assertEq(factory.defaultSupply(), 1_000_000_000 ether);
+        assertEq(factory.lpLockDuration(), 365 days * 2);
         assertEq(factory.defaultDecimals(), 18);
-        assertEq(factory.protocolFeeRate(), 500);
-        assertEq(factory.creationFee(), 20 ether);
-    }
-
-    function test_RevertWhen_SetParametersUnauthorized() public {
-        vm.expectRevert();
-        vm.prank(creator);
-        factory.setParameters(
-            200 ether, 50_000 ether, 2_000_000_000 ether, 365 days, 18, 250, 20 ether
-        );
-    }
-
-    function test_RevertWhen_SetParametersInvalid() public {
-        // Target less than seed
-        vm.expectRevert(AppFactory.InvalidParameters.selector);
-        vm.prank(admin);
-        factory.setParameters(
-            200 ether, 100 ether, 1_000_000_000 ether, 365 days, 18, 250, 10 ether
-        );
+        assertEq(factory.protocolFeeRate(), 250);
+        assertEq(factory.creationFee(), 10 ether);
     }
 
     function test_GetLaunchStats() public {
@@ -151,7 +129,7 @@ contract AppFactoryTest is Test {
             uint256 graduatedApps,
             uint256 totalValueLocked,
             uint256 totalFeesCollected
-        ) = factory.getLaunchStats();
+        ) = views.getLaunchStats();
 
         assertEq(totalApps, 0);
         assertEq(graduatedApps, 0);
@@ -166,7 +144,7 @@ contract AppFactoryTest is Test {
         vm.stopPrank();
 
         // Check stats updated
-        (totalApps,,,) = factory.getLaunchStats();
+        (totalApps,,,) = views.getLaunchStats();
         assertEq(totalApps, 1);
     }
 
@@ -187,8 +165,8 @@ contract AppFactoryTest is Test {
         assertEq(appId3, 2);
         assertEq(factory.appCount(), 3);
 
-        // Check creator apps
-        uint256[] memory creatorApps = factory.getCreatorApps(creator);
+        // Check creator apps (use views contract)
+        uint256[] memory creatorApps = views.getCreatorApps(creator);
         assertEq(creatorApps.length, 3);
         assertEq(creatorApps[0], 0);
         assertEq(creatorApps[1], 1);

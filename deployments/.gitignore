@@ -1,0 +1,11 @@
+# Keep the directory but ignore all deployment files except committed ones
+*.json
+!.gitignore
+!.gitkeep
+
+# Only commit production/testnet deployments
+!sepolia.json
+!mainnet.json
+!base.json
+!base-sepolia.json
+

@@ -6,7 +6,7 @@ This repository contains the smart contracts that power Elata's token, staking, 
 
 > **Scope of this repo**: Token economics + staking + XP + funding governance. (ZORP experiment data contracts live in a separate repository.)
 
-## 🚀 Live dApp
+##  Live dApp
 
 Production: [app.elata.bio](https://app.elata.bio)
 
@@ -14,7 +14,7 @@ Production: [app.elata.bio](https://app.elata.bio)
 
 ---
 
-## 💡 What problem does the protocol solve?
+##  What problem does the protocol solve?
 
 ```mermaid
 graph LR
@@ -25,9 +25,9 @@ graph LR
     end
     
     subgraph "Elata Solution"
-        S1[Weekly Funding<br/>⚡ Community-driven]
+        S1[Weekly Funding<br/> Community-driven]
         S2[Decentralized Voting<br/>🗳️ XP-weighted]
-        S3[Aligned Incentives<br/>✅ Usage-based rewards]
+        S3[Aligned Incentives<br/> Usage-based rewards]
     end
     
     T1 -.->|Replaces| S1
@@ -55,11 +55,11 @@ Think of it as an **app & research economy** where usage and participation deter
 
 ---
 
-## 🔁 Economic flywheel
+##  Economic flywheel
 
 ```mermaid
 graph TD
-    A[Users Play EEG Apps<br/>🎮 Engagement] --> B[Generate Data & Usage<br/>📊 Value Creation]
+    A[Users Play EEG Apps<br/> Engagement] --> B[Generate Data & Usage<br/> Value Creation]
     B --> C[Protocol Captures Fees<br/>💰 Revenue Generation]
     C --> D[Community Directs Funding<br/>🗳️ XP-weighted Voting]
     D --> E[Fund Research & Development<br/>🔬 Innovation]
@@ -68,7 +68,7 @@ graph TD
     
     C --> G[Distribute Yields to Stakers<br/>💎 Real Returns]
     G --> H[Attract Long-term Holders<br/>🤝 Stable Governance]
-    H --> I[Quality Governance Decisions<br/>🏛️ Protocol Evolution]
+    H --> I[Quality Governance Decisions<br/> Protocol Evolution]
     I --> D
     
     style A fill:#e1f5fe
@@ -89,27 +89,27 @@ graph TD
 
 ---
 
-## 🧱 Contract architecture
+##  Contract architecture
 
 ```mermaid
 graph TB
     subgraph "Core Protocol"
-        ELTA[ELTA Token<br/>🪙 Governance & Utility<br/>77M Supply Cap]
-        VE[VeELTA<br/>🔒 Multi-position Staking<br/>NFT-based, 1w-2y locks]
-        XP[ElataXP<br/>🏅 Experience Points<br/>Permanent, soulbound]
-        LP[LotPool<br/>💧 Funding Rounds<br/>XP-weighted voting]
+        ELTA[ELTA Token<br/> Governance & Utility<br/>77M Supply Cap]
+        VE[VeELTA<br/> Multi-position Staking<br/>NFT-based, 1w-2y locks]
+        XP[ElataXP<br/> Experience Points<br/>Permanent, soulbound]
+        LP[LotPool<br/> Funding Rounds<br/>XP-weighted voting]
     end
     
     subgraph "Advanced Features"
-        RD[RewardsDistributor<br/>🎁 Staker Rewards<br/>Merkle tree, 7d epochs]
-        GOV[ElataGovernor<br/>🏛️ Onchain Governance<br/>4% quorum, 1d delay]
-        TL[ElataTimelock<br/>⏰ Execution Delays<br/>48h standard, 6h emergency]
-        STATS[ProtocolStats<br/>📊 Frontend Utils<br/>Batch queries]
+        RD[RewardsDistributor<br/> Staker Rewards<br/>Merkle tree, 7d epochs]
+        GOV[ElataGovernor<br/> Onchain Governance<br/>4% quorum, 1d delay]
+        TL[ElataTimelock<br/> Execution Delays<br/>48h standard, 6h emergency]
+        STATS[ProtocolStats<br/> Frontend Utils<br/>Batch queries]
     end
     
     subgraph "App Ecosystem"
-        AF[AppFactory<br/>🏭 Token Launcher<br/>Bonding curves, LP locking]
-        AMF[AppModuleFactory<br/>🔧 Utility Deployer<br/>Staking, NFTs, Rewards]
+        AF[AppFactory<br/> Token Launcher<br/>Bonding curves, LP locking]
+        AMF[AppModuleFactory<br/> Utility Deployer<br/>Staking, NFTs, Rewards]
         TF[TournamentFactory<br/>🏆 Tournament Creator<br/>Competition infrastructure]
     end
     
@@ -173,17 +173,17 @@ graph TB
 ```mermaid
 graph TD
     subgraph "App Token Launch"
-        AF[AppFactory<br/>🏭 Permissionless Launcher]
+        AF[AppFactory<br/> Permissionless Launcher]
         ABC[AppBondingCurve<br/>📈 Fair Price Discovery]
-        AT[AppToken<br/>🪙 Individual App Tokens]
-        LL[LpLocker<br/>🔒 Liquidity Protection]
+        AT[AppToken<br/> Individual App Tokens]
+        LL[LpLocker<br/> Liquidity Protection]
     end
     
     subgraph "Launch Process"
-        CREATE[Developer Creates App<br/>💡 Stakes 100 ELTA]
-        CURVE[Bonding Curve Sale<br/>📊 Price increases with demand]
+        CREATE[Developer Creates App<br/> Stakes 100 ELTA]
+        CURVE[Bonding Curve Sale<br/> Price increases with demand]
         GRADUATE[Auto-Graduation<br/>🎓 At 42k ELTA raised]
-        LIQUIDITY[DEX Liquidity<br/>💧 Locked for 2 years]
+        LIQUIDITY[DEX Liquidity<br/> Locked for 2 years]
     end
     
     Developer[👨‍💻 Developer] --> AF
@@ -271,7 +271,7 @@ sequenceDiagram
 ```
 
 
-## 🪙 Token economics deep dive
+##  Token economics deep dive
 
 ### ELTA Token Mechanics
 
@@ -288,11 +288,11 @@ MINTER_ROLE                   // Role-gated minting up to cap
 - **Remaining**: 67,000,000 ELTA available for future minting (role-gated)
 
 **Key Properties**
-- ✅ **No transfer fees** → DEX/aggregator compatible
-- ✅ **ERC20Votes** → Onchain governance ready
-- ✅ **ERC20Permit** → Gasless approvals
-- ✅ **Burnable** → Deflationary pressure
-- ✅ **Non-upgradeable** → Immutable, trustless
+-  **No transfer fees** → DEX/aggregator compatible
+-  **ERC20Votes** → Onchain governance ready
+-  **ERC20Permit** → Gasless approvals
+-  **Burnable** → Deflationary pressure
+-  **Non-upgradeable** → Immutable, trustless
 
 ### Value Accrual Mechanisms
 
@@ -630,7 +630,7 @@ graph LR
     subgraph "Voting Power Calculation"
         INPUT[Locked Amount × Time Remaining<br/>÷ MAX_LOCK]
         DECAY[Linear Decay Over Time<br/>📉 Continuous Reduction]
-        OUTPUT[Current Voting Power<br/>⚡ Governance Influence]
+        OUTPUT[Current Voting Power<br/> Governance Influence]
     end
     
     INPUT --> DECAY --> OUTPUT
@@ -674,7 +674,7 @@ EMERGENCY_UNLOCK_PENALTY = 50%  // Discourages abuse
 - **Lock periods** up to 2 years for balanced commitment
 
 
-## 🏅 ElataXP — Participation without speculation
+##  ElataXP — Participation without speculation
 
 ### Basic XP System
 
@@ -712,7 +712,7 @@ XP_OPERATOR_ROLE  // Required to award/revoke XP
 ```mermaid
 graph LR
     subgraph "XP Flow"
-        AWARD[XP Awarded<br/>📋 Operator/Signature]
+        AWARD[XP Awarded<br/> Operator/Signature]
         HOLD[XP Balance<br/>💎 Permanent Reputation]
         VOTE[Voting Power<br/>🗳️ Snapshot-based]
         REVOKE[XP Revoked<br/>⚠️ Admin Only]
@@ -730,7 +730,7 @@ graph LR
 
 ---
 
-## 💧 LotPool — XP-weighted funding rounds
+##  LotPool — XP-weighted funding rounds
 
 ### Mechanism
 
@@ -774,10 +774,10 @@ Results:
 ```
 
 **Properties**:
-- ✅ **Sybil-resistant** via XP (must be earned on-chain)
-- ✅ **Transparent** (all votes and payouts on-chain)
-- ✅ **Modular** (recipients can be PIs, escrow contracts, dev grants)
-- ✅ **Snapshot-based** (prevents double-voting or manipulation)
+-  **Sybil-resistant** via XP (must be earned on-chain)
+-  **Transparent** (all votes and payouts on-chain)
+-  **Modular** (recipients can be PIs, escrow contracts, dev grants)
+-  **Snapshot-based** (prevents double-voting or manipulation)
 
 ### Funding Round Flow
 
@@ -805,7 +805,7 @@ sequenceDiagram
 ```
 
 
-## 🧮 Technical specifications
+##  Technical specifications
 
 ### Contract Constants
 
@@ -839,14 +839,14 @@ RewardsDistributor.EPOCH_DURATION = 7 days   // Weekly cycles
 graph TD
     subgraph "Low Cost Operations (<100K gas)"
         LC1[ELTA Transfer: 56K<br/>💰 Standard token transfer]
-        LC2[ELTA Mint: 67K<br/>🏭 With supply cap check]
-        LC3[VeELTA Lock: 88K<br/>🔒 Position creation]
+        LC2[ELTA Mint: 67K<br/> With supply cap check]
+        LC3[VeELTA Lock: 88K<br/> Position creation]
         LC5[LotPool Vote: 86K<br/>🗳️ XP allocation]
-        LC6[Reward Claim: 80K<br/>🎁 Merkle verification]
+        LC6[Reward Claim: 80K<br/> Merkle verification]
     end
     
     subgraph "Medium Cost Operations (100K-300K gas)"
-        MC1[XP Award: 189K<br/>🏅 With auto-delegation]
+        MC1[XP Award: 189K<br/> With auto-delegation]
         MC2[Multi-lock Create: 256K<br/>🎯 NFT + delegation]
     end
     
@@ -877,20 +877,20 @@ graph TD
 | Contract | Size | Deploy Cost | Category | Status |
 |----------|------|-------------|----------|--------|
 | **Core Tokenomics** ||||
-| ELTA | 13.3KB | 2.3M gas | Token | ✅ Optimal |
-| VeELTA | 13.8KB | 3.0M gas | Staking | ✅ Optimal |
-| ElataXP | 8.2KB | 1.8M gas | Reputation | ✅ Optimal |
-| LotPool | 5.5KB | 1.1M gas | Funding | ✅ Optimal |
-| RewardsDistributor | 7.4KB | 1.1M gas | Rewards | ✅ Optimal |
-| ElataGovernor | 16.6KB | 3.2M gas | Governance | ✅ Acceptable |
+| ELTA | 13.3KB | 2.3M gas | Token |  Optimal |
+| VeELTA | 13.8KB | 3.0M gas | Staking |  Optimal |
+| ElataXP | 8.2KB | 1.8M gas | Reputation |  Optimal |
+| LotPool | 5.5KB | 1.1M gas | Funding |  Optimal |
+| RewardsDistributor | 7.4KB | 1.1M gas | Rewards |  Optimal |
+| ElataGovernor | 16.6KB | 3.2M gas | Governance |  Acceptable |
 | **App Ecosystem** ||||
-| AppFactory | 14.2KB | 2.9M gas | Factory | ✅ Optimal |
-| AppModuleFactory | 6.8KB | 1.4M gas | Factory | ✅ Optimal |
-| TournamentFactory | 5.2KB | 1.0M gas | Factory | ✅ Optimal |
+| AppFactory | 14.2KB | 2.9M gas | Factory |  Optimal |
+| AppModuleFactory | 6.8KB | 1.4M gas | Factory |  Optimal |
+| TournamentFactory | 5.2KB | 1.0M gas | Factory |  Optimal |
 
 ---
 
-## 🔧 Developer integration
+##  Developer integration
 
 ### Launching a Complete App
 
@@ -982,7 +982,7 @@ lotPool.finalize(roundId, keccak256("EXP-123"), 10000e18);
 ```
 
 
-## 🛡️ Security & design principles
+##  Security & design principles
 
 ### Core Security Features
 
@@ -1003,29 +1003,67 @@ lotPool.finalize(roundId, keccak256("EXP-123"), 10000e18);
 
 ---
 
-## 🧪 Build, test, deploy
+##  Build, test, deploy
 
 ### Prerequisites
 
 - [Foundry](https://book.getfoundry.sh/) - Ethereum development toolkit
+- [Node.js](https://nodejs.org/) v18+ - For frontend and scripts
 - [Git](https://git-scm.com/) - Version control
 
-### Quick Start
+###  Local Development (Recommended for testing)
+
+**Get started in 60 seconds!**
 
 ```bash
 # Clone and setup
 git clone https://github.com/Elata-Biosciences/elata-protocol
 cd elata-protocol
+
+# Install dependencies
 forge install
-forge build
+npm install
 
+# Start local blockchain with all contracts + test data
+npm run dev
+
+# In another terminal, start the frontend
+npm run dev:frontend
+```
+
+This automatically:
+-  Starts Anvil (local blockchain)
+-  Deploys ALL protocol contracts
+-  Seeds test data (apps, XP, staking, funding rounds)
+-  Generates frontend configuration
+-  Funds test accounts with ELTA
+
+**See [QUICKSTART.md](QUICKSTART.md) for details** or the [full local development guide](docs/LOCAL_DEVELOPMENT.md).
+
+### Testing
+
+```bash
 # Run comprehensive test suite (112 tests, 100% pass rate)
-forge test --gas-report
+npm test
 
-# Deploy to testnet
+# With gas report
+npm run test:gas
+
+# Run specific test
+forge test --match-test testStakingLock
+```
+
+### Deploying to Testnet
+
+```bash
+# Setup environment
 export ADMIN_MSIG=0xYourGnosisSafe
 export INITIAL_TREASURY=0xYourTreasury
-forge script script/Deploy.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast --verify
+export SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY
+export ETHERSCAN_API_KEY=YOUR_API_KEY
+
+# Deploy to Sepolia
+npm run deploy:sepolia
 ```
 
 ### Test Coverage
@@ -1061,7 +1099,7 @@ forge test -vvv
 
 ---
 
-## ❓ FAQ (for tokenomics-minded readers)
+##  FAQ (for tokenomics-minded readers)
 
 **Q: Why no "reward token" or emissions?**
 A: Emissions tokens tend to inflate and collapse without strong sinks. Elata routes **real protocol fees** to veELTA stakers and uses **buyback & burn**—value tracks actual usage.
@@ -1080,9 +1118,9 @@ A: Simplicity and reliability. Permanent XP provides clear accounting and predic
 
 ---
 
-## 🚀 Production readiness
+##  Production readiness
 
-### ✅ **Ready for Mainnet**
+###  **Ready for Mainnet**
 
 - **All core contracts** compile and pass 112 comprehensive tests
 - **Gas costs optimized** for Ethereum mainnet usage
@@ -1090,7 +1128,7 @@ A: Simplicity and reliability. Permanent XP provides clear accounting and predic
 - **Non-upgradeable** design for trustlessness and immutability
 - **Professional documentation** and deployment infrastructure
 
-### 📋 **Next Steps**
+###  **Next Steps**
 
 1. **External security audit** of all contracts
 2. **Testnet deployment** with community testing
@@ -1100,19 +1138,19 @@ A: Simplicity and reliability. Permanent XP provides clear accounting and predic
 
 ---
 
-## 📄 License
+##  License
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-## 🧠 One-liner summary
+##  One-liner summary
 
 > **Elata Protocol makes neurotech economical**: earn XP by contributing, steer funding with XP, capture real protocol yield by locking ELTA, and build the Internet of Brains together.
 
 ---
 
-**Ready to revolutionize precision psychiatry through decentralized coordination.** 🧠⚡
+**Ready to revolutionize precision psychiatry through decentralized coordination.** 
 
 *For technical architecture details, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)*  
 *For deployment instructions, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)*  

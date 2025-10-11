@@ -42,6 +42,10 @@ gas_snapshots/
 
 # Local development
 .local/
+anvil.log
+.anvil.pid
+anvil-state.json
+deployments/local.json
 
 # Backup files
 *.backup
