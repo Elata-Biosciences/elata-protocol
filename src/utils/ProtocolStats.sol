@@ -87,12 +87,12 @@ contract ProtocolStats {
 
     /**
      * @notice Gets detailed information about user's lock position
-     * @dev In V2, each user has one lock position (not multiple NFTs)
+     * @dev Each user has one lock position
      * @param user User address
      * @return Array of position summaries (single element or empty)
      */
     function getUserPositions(address user) external view returns (PositionSummary[] memory) {
-        // V2: Single lock per user
+        // Single lock per user
         (uint256 principal, uint64 unlockTime, uint256 veBalance, bool isExpired) =
             staking.getLockDetails(user);
 
@@ -102,14 +102,14 @@ contract ProtocolStats {
 
         PositionSummary[] memory positions = new PositionSummary[](1);
         positions[0] = PositionSummary({
-            tokenId: 0, // No tokenId in V2
+            tokenId: 0, // No tokenId (ERC20 model, not NFT)
             amount: principal,
-            startTime: 0, // Not tracked in simplified model
+            startTime: 0, // Not tracked
             endTime: unlockTime,
             votingPower: veBalance,
-            delegate: user, // V2 uses self-delegation only
+            delegate: user, // Self-delegation
             isExpired: isExpired,
-            emergencyUnlocked: false, // Not tracked in V2
+            emergencyUnlocked: false, // Not tracked
             timeRemaining: isExpired ? 0 : (unlockTime - uint64(block.timestamp))
         });
 
@@ -220,7 +220,7 @@ contract ProtocolStats {
     // Internal helper functions
 
     function _getPositionSummary(uint256 tokenId) internal view returns (PositionSummary memory) {
-        // V2: No longer used (kept for backwards compatibility, always returns empty)
+        // Not used (kept for interface compatibility, always returns empty)
         return PositionSummary({
             tokenId: tokenId,
             amount: 0,
@@ -235,7 +235,7 @@ contract ProtocolStats {
     }
 
     function _getTotalStaked(address user) internal view returns (uint256) {
-        // V2: Single lock per user - get principal from lock
+        // Single lock per user - get principal from lock
         (uint256 principal,,,) = staking.getLockDetails(user);
         return principal;
     }
@@ -252,7 +252,7 @@ contract ProtocolStats {
     }
 
     function _getTotalRewardsDistributed() internal view returns (uint256) {
-        // V2: Track via veEpochs sum (simplified - only ELTA rewards now)
+        // Track via veEpochs sum (ELTA rewards only)
         uint256 epochCount = rewards.getEpochCount();
         uint256 totalDistributed = 0;
 

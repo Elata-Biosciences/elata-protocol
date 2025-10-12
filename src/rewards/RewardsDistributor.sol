@@ -8,15 +8,10 @@ import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol"
 import { Errors } from "../utils/Errors.sol";
 
 /**
- * @title RewardsDistributor V2
+ * @title RewardsDistributor
  * @author Elata Biosciences
  * @notice Central revenue hub with 70/15/15 split and on-chain snapshot rewards
  * @dev Universal entry point for all protocol ELTA revenues
- *
- * Key Changes from V1:
- * - Merkle-based claims → on-chain snapshot claims
- * - Single revenue sink → 70/15/15 split (app stakers / veELTA / treasury)
- * - Off-chain computation → pure on-chain pro-rata math
  *
  * Revenue Flow:
  * 1. All ELTA revenues call deposit()

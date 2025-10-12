@@ -11,17 +11,10 @@ import { Nonces } from "@openzeppelin/contracts/utils/Nonces.sol";
 import { Errors } from "../utils/Errors.sol";
 
 /**
- * @title AppStakingVault V2
+ * @title AppStakingVault
  * @author Elata Protocol
  * @notice Per-app staking vault with snapshot-enabled ERC20Votes shares
  * @dev Non-transferable stake-share tokens for feature gating and rewards
- *
- * Key Changes from V1:
- * - Simple balances → ERC20Votes stake-shares
- * - stakedOf mapping → balanceOf() (ERC20)
- * - totalStaked → totalSupply() (ERC20)
- * - Added: getPastVotes() for snapshot rewards
- * - Added: stakeFor() for factory auto-staking
  *
  * Architecture:
  * - Users stake app tokens, receive non-transferable share tokens 1:1

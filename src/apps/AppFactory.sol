@@ -14,16 +14,10 @@ import { AppBondingCurve, IAppFactory } from "./AppBondingCurve.sol";
 import { AppDeploymentLib } from "./libraries/AppDeploymentLib.sol";
 
 /**
- * @title AppFactory V2
+ * @title AppFactory
  * @author Elata Biosciences
  * @notice Permissionless factory for launching app tokens with auto-staked creator shares
  * @dev Central registry and launch mechanism for the Elata app ecosystem
- *
- * Key Changes from V1:
- * - Added vault deployment for each app
- * - Creator share 10% → 50% (auto-staked in vault)
- * - Integration with AppRewardsDistributor for rewards
- * - Integration with AppFeeRouter for revenue forwarding
  *
  * Features:
  * - Permissionless app token creation
@@ -181,21 +175,23 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         // Deploy token, vault, and curve via library
         (address tokenAddr, address vaultAddr, address curveAddr) = AppDeploymentLib
             .deployTokenVaultAndCurve(
-            name,
-            symbol,
-            defaultDecimals,
-            tokenSupply,
-            msg.sender, // creator
-            address(this), // factory
-            appCount, // appId
-            ELTA,
-            router,
-            targetRaisedElta,
-            lpLockDuration,
-            treasury,
-            protocolFeeRate,
-            appFeeRouter,
-            seedElta
+            AppDeploymentLib.DeploymentParams({
+                name: name,
+                symbol: symbol,
+                decimals: defaultDecimals,
+                tokenSupply: tokenSupply,
+                creator: msg.sender,
+                factory: address(this),
+                appId: appCount,
+                elta: ELTA,
+                router: router,
+                targetRaised: targetRaisedElta,
+                lpLockDuration: lpLockDuration,
+                treasury: treasury,
+                protocolFeeRate: protocolFeeRate,
+                appFeeRouter: appFeeRouter,
+                seedElta: seedElta
+            })
         );
 
         // Auto-stake creator share (50% of supply)

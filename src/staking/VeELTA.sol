@@ -12,16 +12,10 @@ import { Errors } from "../utils/Errors.sol";
 import { IVeEltaVotes } from "../interfaces/IVeEltaVotes.sol";
 
 /**
- * @title VeELTA (Vote-Escrowed ELTA) V2
+ * @title VeELTA (Vote-Escrowed ELTA)
  * @author Elata Biosciences
  * @notice Non-transferable ERC20Votes token representing voting power from locked ELTA
  * @dev Snapshot-enabled for on-chain reward distribution and governance
- *
- * Key Changes from V1:
- * - ERC721 NFT locks → ERC20Votes balances (non-transferable)
- * - Multiple positions → single lock per user
- * - Continuous time-decay → fixed voting power until action
- * - Merkle rewards → on-chain snapshot rewards
  *
  * Architecture:
  * - Users lock ELTA for a duration (MIN_LOCK to MAX_LOCK)
