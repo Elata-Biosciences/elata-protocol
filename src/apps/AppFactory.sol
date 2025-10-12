@@ -172,31 +172,31 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
             require(ELTA.transfer(treasury, creationFee), "Transfer failed");
         }
 
-        // Deploy token, vault, and curve via library
-        (address tokenAddr, address vaultAddr, address curveAddr) = AppDeploymentLib
-            .deployTokenVaultAndCurve(
-            AppDeploymentLib.DeploymentParams({
-                name: name,
-                symbol: symbol,
-                decimals: defaultDecimals,
-                tokenSupply: tokenSupply,
-                creator: msg.sender,
-                factory: address(this),
-                appId: appCount,
-                elta: ELTA,
-                router: router,
-                targetRaised: targetRaisedElta,
-                lpLockDuration: lpLockDuration,
-                treasury: treasury,
-                protocolFeeRate: protocolFeeRate,
-                appFeeRouter: appFeeRouter,
-                seedElta: seedElta
-            })
+        // Deploy contracts via library (reduces AppFactory size)
+        address tokenAddr = AppDeploymentLib.deployToken(
+            name, symbol, defaultDecimals, tokenSupply, msg.sender, address(this)
+        );
+        address vaultAddr = AppDeploymentLib.deployVault(name, symbol, tokenAddr, address(this));
+        address curveAddr = AppDeploymentLib.deployCurve(
+            appCount, address(this), ELTA, tokenAddr, router, targetRaisedElta,
+            lpLockDuration, msg.sender, treasury, protocolFeeRate, appFeeRouter
         );
 
-        // Auto-stake creator share (50% of supply)
+        // Configure token & curve
         uint256 creatorShare = tokenSupply / 2;
+        uint256 curveShare = tokenSupply - creatorShare;
+        
         AppToken token = AppToken(tokenAddr);
+        token.mint(address(this), creatorShare);
+        token.mint(curveAddr, curveShare);
+        token.revokeMinter(address(this));
+        token.grantRole(token.DEFAULT_ADMIN_ROLE(), msg.sender);
+        token.revokeRole(token.DEFAULT_ADMIN_ROLE(), address(this));
+
+        require(ELTA.transfer(curveAddr, seedElta), "Transfer failed");
+        AppBondingCurve(curveAddr).initializeCurve(seedElta, curveShare);
+
+        // Auto-stake creator share (50% of supply)
         AppStakingVault vault = AppStakingVault(vaultAddr);
 
         // Approve vault to pull tokens from factory
