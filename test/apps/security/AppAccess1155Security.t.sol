@@ -25,7 +25,7 @@ contract AppAccess1155SecurityTest is Test {
 
     function setUp() public {
         appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, owner, admin);
-        vault = new AppStakingVault(address(appToken), owner);
+        vault = new AppStakingVault("TestApp", "TAPP", appToken, owner);
         access =
             new AppAccess1155(address(appToken), address(vault), owner, "https://metadata.test/");
 

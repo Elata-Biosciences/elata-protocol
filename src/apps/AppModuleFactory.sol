@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IOwnable } from "./Interfaces.sol";
 import { AppAccess1155 } from "./AppAccess1155.sol";
 import { AppStakingVault } from "./AppStakingVault.sol";
@@ -113,7 +114,10 @@ contract AppModuleFactory is Ownable {
         }
 
         // Deploy modules (msg.sender becomes owner of all)
-        staking = address(new AppStakingVault(appToken, msg.sender));
+        // Get token name and symbol for vault
+        string memory tokenName = ERC20(appToken).name();
+        string memory tokenSymbol = ERC20(appToken).symbol();
+        staking = address(new AppStakingVault(tokenName, tokenSymbol, IERC20(appToken), msg.sender));
         access1155 = address(new AppAccess1155(appToken, staking, msg.sender, baseURI));
         epochs = address(new EpochRewards(appToken, msg.sender));
 

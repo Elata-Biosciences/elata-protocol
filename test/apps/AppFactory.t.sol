@@ -8,6 +8,9 @@ import { AppFactoryViews } from "../../src/apps/AppFactoryViews.sol";
 import { AppToken } from "../../src/apps/AppToken.sol";
 import { AppBondingCurve } from "../../src/apps/AppBondingCurve.sol";
 import { IUniswapV2Router02 } from "../../src/interfaces/IUniswapV2Router02.sol";
+import { IAppFeeRouter } from "../../src/interfaces/IAppFeeRouter.sol";
+import { IAppRewardsDistributor } from "../../src/interfaces/IAppRewardsDistributor.sol";
+import { MockAppFeeRouter, MockAppRewardsDistributor } from "../mocks/MockContracts.sol";
 
 contract AppFactoryTest is Test {
     ELTA public elta;
@@ -22,8 +25,15 @@ contract AppFactoryTest is Test {
     // Mock Uniswap router (for testing)
     address public mockRouter = makeAddr("mockRouter");
 
+    MockAppFeeRouter public mockFeeRouter;
+    MockAppRewardsDistributor public mockAppRewards;
+
     function setUp() public {
         elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 77_000_000 ether);
+
+        // Deploy mocks
+        mockFeeRouter = new MockAppFeeRouter();
+        mockAppRewards = new MockAppRewardsDistributor();
 
         // For testing, we'll use a mock router address
         // In production, this would be the actual Uniswap router
@@ -31,7 +41,14 @@ contract AppFactoryTest is Test {
             mockRouter, abi.encodeWithSignature("factory()"), abi.encode(makeAddr("mockFactory"))
         );
 
-        factory = new AppFactory(elta, IUniswapV2Router02(mockRouter), treasury, admin);
+        factory = new AppFactory(
+            elta,
+            IUniswapV2Router02(mockRouter),
+            treasury,
+            IAppFeeRouter(address(mockFeeRouter)),
+            IAppRewardsDistributor(address(mockAppRewards)),
+            admin
+        );
 
         // Deploy views contract for complex queries
         views = new AppFactoryViews(address(factory));

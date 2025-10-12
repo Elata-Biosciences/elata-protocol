@@ -99,14 +99,9 @@ contract DeployLocal is Script {
         console.log("Mock Uniswap Factory deployed at:", address(uniFactory));
         console.log("Mock Uniswap Router deployed at:", address(uniRouter));
 
-        // Deploy AppFactory
-        AppFactory appFactory = new AppFactory(
-            elta,
-            IUniswapV2Router02(address(uniRouter)),
-            deployer, // treasury
-            deployer // admin
-        );
-        console.log("AppFactory deployed at:", address(appFactory));
+        // NOTE: AppFactory deployment commented out - use script/Deploy.sol instead
+        // AppFactory now requires AppFeeRouter and AppRewardsDistributor
+        // For full deployment, use: forge script script/Deploy.sol:Deploy --fork-url http://localhost:8545 --broadcast
 
         // Mint additional ELTA to some test accounts for easier testing
         address[] memory testAccounts = new address[](3);
@@ -127,12 +122,15 @@ contract DeployLocal is Script {
         console.log("Chain ID: 31337");
         console.log("\nContract Addresses:");
         console.log("ELTA:", address(elta));
-        console.log("AppFactory:", address(appFactory));
+        // console.log("AppFactory:", address(appFactory));
         console.log("UniswapV2Router:", address(uniRouter));
         console.log("\nUpdate your .env.local with these addresses:");
         console.log("NEXT_PUBLIC_ELTA_ADDRESS_LOCALHOST=%s", address(elta));
-        console.log("NEXT_PUBLIC_APP_FACTORY_ADDRESS_LOCALHOST=%s", address(appFactory));
+        // console.log("NEXT_PUBLIC_APP_FACTORY_ADDRESS_LOCALHOST=%s", address(appFactory));
         console.log("NEXT_PUBLIC_UNISWAP_ROUTER_ADDRESS_LOCALHOST=%s", address(uniRouter));
+        console.log(
+            "\nNOTE: Use DeployEconomicUpgrade.s.sol for full deployment with new architecture"
+        );
 
         console.log("\nTest accounts with ELTA:");
         console.log("Deployer: %s (1M ELTA)", deployer);

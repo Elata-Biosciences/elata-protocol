@@ -19,4 +19,7 @@ library Errors {
     error DuplicateOption();
     error SignatureExpired();
     error InvalidSignature();
+    error NonTransferable();
+    error ContractPaused();
+    error InvalidSplit();
 }

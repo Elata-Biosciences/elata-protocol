@@ -93,19 +93,22 @@ contract CoreSecurityVerificationTest is Test {
 
         vm.startPrank(user1);
         elta.approve(address(staking), 100_000 ether);
-        uint256 tokenId = staking.createLock(100_000 ether, 52 weeks);
+        // V2 API: lock() instead of createLock(), no tokenId
+        staking.lock(100_000 ether, uint64(block.timestamp + 52 weeks));
         vm.stopPrank();
 
-        // Verify position exists
-        assertEq(staking.ownerOf(tokenId), user1);
+        // Verify position exists (V2: check veELTA balance)
+        assertGt(staking.balanceOf(user1), 0);
 
-        // Try to transfer position - should fail
-        vm.expectRevert(Errors.TransfersDisabled.selector);
+        // Try to transfer veELTA - should fail (non-transferable ERC20)
+        uint256 user1Balance = staking.balanceOf(user1);
+
+        vm.expectRevert(Errors.NonTransferable.selector);
         vm.prank(user1);
-        staking.transferFrom(user1, attacker, tokenId);
+        staking.transfer(attacker, user1Balance);
 
-        // Position should still belong to user1
-        assertEq(staking.ownerOf(tokenId), user1);
+        // Balance should still belong to user1
+        assertEq(staking.balanceOf(user1), user1Balance);
     }
 
     function test_Critical_VotingDoubleSpending() public {
@@ -154,24 +157,25 @@ contract CoreSecurityVerificationTest is Test {
 
         vm.startPrank(user1);
         elta.approve(address(staking), 100_000 ether);
-        uint256 tokenId = staking.createLock(100_000 ether, 52 weeks);
+        // V2 API: lock() instead of createLock(), no tokenId
+        staking.lock(100_000 ether, uint64(block.timestamp + 52 weeks));
 
-        // Try to withdraw before expiry - should fail
+        // Try to unlock before expiry - should fail
         vm.expectRevert(Errors.LockNotExpired.selector);
-        staking.withdraw(tokenId);
+        staking.unlock();
 
         vm.stopPrank();
 
         // Fast forward past expiry
         vm.warp(block.timestamp + 53 weeks);
 
-        // Now withdrawal should work
+        // Now unlock should work
         vm.prank(user1);
-        staking.withdraw(tokenId);
+        staking.unlock();
 
-        // Verify position was withdrawn
-        (uint128 amount,,,,) = staking.positions(tokenId);
-        assertEq(amount, 0);
+        // Verify lock was cleared (V2: check lock details)
+        (uint256 principal,,,) = staking.getLockDetails(user1);
+        assertEq(principal, 0);
     }
 
     function test_Critical_AdminFunctionsWork() public {
@@ -202,36 +206,9 @@ contract CoreSecurityVerificationTest is Test {
     }
 
     function test_Critical_VotingPowerCalculation() public {
-        // Test that voting power is calculated correctly and cannot be manipulated
-
-        vm.prank(treasury);
-        elta.transfer(user1, 1_000_000 ether);
-
-        vm.startPrank(user1);
-        elta.approve(address(staking), 1_000_000 ether);
-
-        // Create position with max lock duration
-        uint256 tokenId = staking.createLock(1_000_000 ether, staking.MAX_LOCK());
-
-        // Voting power should equal locked amount for max lock
-        uint256 votingPower = staking.getPositionVotingPower(tokenId);
-        assertEq(votingPower, 1_000_000 ether);
-
-        // Fast forward halfway
-        vm.warp(block.timestamp + staking.MAX_LOCK() / 2);
-
-        // Voting power should be approximately half
-        uint256 halfwayPower = staking.getPositionVotingPower(tokenId);
-        assertApproxEqRel(halfwayPower, 500_000 ether, 0.01e18);
-
-        // Fast forward to expiry
-        vm.warp(block.timestamp + staking.MAX_LOCK() / 2);
-
-        // Voting power should be zero
-        uint256 expiredPower = staking.getPositionVotingPower(tokenId);
-        assertEq(expiredPower, 0);
-
-        vm.stopPrank();
+        // NOTE: V2 does NOT have continuous voting power decay
+        // Voting power is fixed until user actions
+        // See test/unit/VeELTA.t.sol for V2 boost mechanism tests
     }
 
     function test_Critical_XPDecayMechanism() public {
@@ -255,36 +232,8 @@ contract CoreSecurityVerificationTest is Test {
     }
 
     function test_Critical_EmergencyMechanisms() public {
-        // Test emergency mechanisms work correctly
-
-        vm.prank(treasury);
-        elta.transfer(user1, 100_000 ether);
-
-        vm.startPrank(user1);
-        elta.approve(address(staking), 100_000 ether);
-        uint256 tokenId = staking.createLock(100_000 ether, 52 weeks);
-        vm.stopPrank();
-
-        // Emergency unlock should be disabled by default
-        assertFalse(staking.emergencyUnlockEnabled());
-
-        // Try emergency unlock when disabled - should fail
-        vm.expectRevert(Errors.NotAuthorized.selector);
-        vm.prank(admin);
-        staking.emergencyUnlock(tokenId);
-
-        // Enable emergency unlock
-        vm.prank(admin);
-        staking.setEmergencyUnlockEnabled(true);
-        assertTrue(staking.emergencyUnlockEnabled());
-
-        // Now emergency unlock should work
-        uint256 initialBalance = elta.balanceOf(user1);
-        vm.prank(admin);
-        staking.emergencyUnlock(tokenId);
-
-        // Should receive 50% (penalty applied)
-        uint256 expectedReturn = 100_000 ether - (100_000 ether * 5000) / 10000;
-        assertEq(elta.balanceOf(user1), initialBalance + expectedReturn);
+        // NOTE: V2 does NOT have emergency unlock mechanism
+        // Users must wait for lock expiry to unlock
+        // See test/unit/VeELTA.t.sol for V2-specific unlock tests
     }
 }

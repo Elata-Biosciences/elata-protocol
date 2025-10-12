@@ -8,6 +8,9 @@ import { AppToken } from "../../src/apps/AppToken.sol";
 import { AppBondingCurve } from "../../src/apps/AppBondingCurve.sol";
 import { LpLocker } from "../../src/apps/LpLocker.sol";
 import { IUniswapV2Router02 } from "../../src/interfaces/IUniswapV2Router02.sol";
+import { IAppFeeRouter } from "../../src/interfaces/IAppFeeRouter.sol";
+import { IAppRewardsDistributor } from "../../src/interfaces/IAppRewardsDistributor.sol";
+import { MockAppFeeRouter, MockAppRewardsDistributor } from "../mocks/MockContracts.sol";
 
 /**
  * @title App Launch Security Tests
@@ -33,7 +36,18 @@ contract AppLaunchSecurityTest is Test {
             mockRouter, abi.encodeWithSignature("factory()"), abi.encode(makeAddr("mockFactory"))
         );
 
-        factory = new AppFactory(elta, IUniswapV2Router02(mockRouter), treasury, admin);
+        // Deploy mocks
+        MockAppFeeRouter mockFeeRouter = new MockAppFeeRouter();
+        MockAppRewardsDistributor mockAppRewards = new MockAppRewardsDistributor();
+
+        factory = new AppFactory(
+            elta,
+            IUniswapV2Router02(mockRouter),
+            treasury,
+            IAppFeeRouter(address(mockFeeRouter)),
+            IAppRewardsDistributor(address(mockAppRewards)),
+            admin
+        );
 
         // Distribute ELTA
         vm.startPrank(treasury);
@@ -104,7 +118,8 @@ contract AppLaunchSecurityTest is Test {
         // The ReentrancyGuard should prevent multiple entries
 
         vm.startPrank(user1);
-        elta.approve(address(curve), 1000 ether);
+        // Approve with 1% trading fee
+        elta.approve(address(curve), 1000 ether * 101 / 100);
         uint256 tokensOut = curve.buy(1000 ether, 0);
         vm.stopPrank();
 
@@ -152,7 +167,8 @@ contract AppLaunchSecurityTest is Test {
         uint256 expectedFee = (purchaseAmount * factory.protocolFeeRate()) / 10000;
 
         vm.startPrank(user1);
-        elta.approve(address(curve), purchaseAmount);
+        // Approve with 1% trading fee
+        elta.approve(address(curve), purchaseAmount * 101 / 100);
         curve.buy(purchaseAmount, 0);
         vm.stopPrank();
 
@@ -246,7 +262,8 @@ contract AppLaunchSecurityTest is Test {
         uint256 expectedTokens = curve.getTokensOut(eltaIn);
 
         vm.startPrank(user1);
-        elta.approve(address(curve), eltaIn);
+        // Approve with 1% fee
+        elta.approve(address(curve), eltaIn * 101 / 100);
         uint256 actualTokens = curve.buy(eltaIn, expectedTokens);
         vm.stopPrank();
 
@@ -256,8 +273,19 @@ contract AppLaunchSecurityTest is Test {
     function test_Critical_ZeroAddressProtection() public {
         // All contracts should reject zero addresses
 
+        // Deploy mocks first (before expectRevert)
+        MockAppFeeRouter mockFee = new MockAppFeeRouter();
+        MockAppRewardsDistributor mockRewards = new MockAppRewardsDistributor();
+
         vm.expectRevert("Zero address");
-        new AppFactory(ELTA(address(0)), IUniswapV2Router02(mockRouter), treasury, admin);
+        new AppFactory(
+            ELTA(address(0)),
+            IUniswapV2Router02(mockRouter),
+            treasury,
+            IAppFeeRouter(address(mockFee)),
+            IAppRewardsDistributor(address(mockRewards)),
+            admin
+        );
 
         vm.expectRevert("Zero address");
         new AppToken("Test", "TEST", 18, 1000 ether, address(0), admin);
@@ -293,7 +321,8 @@ contract AppLaunchSecurityTest is Test {
 
         // Buy tokens
         vm.startPrank(user1);
-        elta.approve(address(curve), 1000 ether);
+        // Approve with 1% trading fee
+        elta.approve(address(curve), 1000 ether * 101 / 100);
         uint256 tokensOut = curve.buy(1000 ether, 0);
         vm.stopPrank();
 

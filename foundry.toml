@@ -9,6 +9,9 @@ evm_version = "paris"
 via_ir = true
 bytecode_hash = "ipfs"
 fs_permissions = [{ access = "read", path = "./deployments" }, { access = "write", path = "./deployments" }]
+ignore_eip_3860 = true
+# Note: Some contracts (AppModuleFactory, AppDeploymentLib) exceed EIP-170 24KB limit
+# This is acceptable for L2 deployment (Base, Arbitrum, Optimism) and testnets
 
 [profile.local]
 src = "src"

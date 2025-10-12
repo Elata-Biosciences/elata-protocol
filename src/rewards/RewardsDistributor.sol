@@ -5,284 +5,221 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { VeELTA } from "../staking/VeELTA.sol";
 import { Errors } from "../utils/Errors.sol";
 
 /**
  * @title RewardsDistributor
  * @author Elata Biosciences
- * @notice Distributes rewards to veELTA stakers based on their voting power
- * @dev Uses a merkle tree approach for gas-efficient reward distribution
+ * @notice Central revenue hub with 70/15/15 split and on-chain snapshot rewards
+ * @dev Universal entry point for all protocol ELTA revenues
+ *
+ * Revenue Flow:
+ * 1. All ELTA revenues call deposit()
+ * 2. Split: 70% → AppRewardsDistributor (app stakers)
+ *           15% → veELTA epoch (snapshot-based claims)
+ *           15% → Treasury (immediate transfer)
+ * 3. Users claim veELTA rewards via claimVe() using getPastVotes()
+ *
+ * Architecture:
+ * - deposit(): Accept ELTA and split 70/15/15
+ * - claimVe(): On-chain pro-rata claims for veELTA stakers
+ * - No Merkle roots, no off-chain computation
+ * - Snapshot at deposit block ensures fairness
  *
  * Features:
- * - Time-weighted reward distribution based on veELTA voting power
- * - Multiple reward tokens support
- * - Merkle tree proofs for gas-efficient claims
- * - Epoch-based reward cycles
- * - Emergency pause functionality
- *
- * Security:
- * - Reentrancy protection on all external functions
- * - Role-based access control for admin functions
- * - Merkle proof verification for claim validation
- * - Time-locked reward cycles to prevent manipulation
+ * - Pure on-chain reward distribution
+ * - ERC20Votes snapshot integration
+ * - Gas-bounded claims (max 100 epochs)
+ * - Cursor tracking for efficiency
+ * - Emergency pause capability
  */
+import { IVeEltaVotes } from "../interfaces/IVeEltaVotes.sol";
+import { IAppRewardsDistributor } from "../interfaces/IAppRewardsDistributor.sol";
+
 contract RewardsDistributor is ReentrancyGuard, AccessControl {
     using SafeERC20 for IERC20;
 
     bytes32 public constant DISTRIBUTOR_ROLE = keccak256("DISTRIBUTOR_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 public constant TREASURY_ROLE = keccak256("TREASURY_ROLE");
 
-    VeELTA public immutable veELTA;
+    error InvalidSplit();
+    error OnlyWhenNotPaused();
 
-    /// @notice Duration of each reward epoch (1 week)
-    uint256 public constant EPOCH_DURATION = 7 days;
+    IERC20 public immutable ELTA;
+    IVeEltaVotes public immutable veELTA;
+    IAppRewardsDistributor public immutable appRewardsDistributor;
 
-    /// @notice Minimum time lock for reward distribution
-    uint256 public constant MIN_DISTRIBUTION_DELAY = 1 days;
+    address public treasury;
 
-    struct RewardEpoch {
-        uint256 startTime;
-        uint256 endTime;
-        uint256 totalRewards;
-        uint256 totalVotingPower;
-        bytes32 merkleRoot;
-        mapping(address => bool) claimed;
-        bool finalized;
-        bool paused;
+    /// @notice Split configuration in basis points (must sum to 10,000)
+    uint256 public constant BIPS_APP = 7000; // 70%
+    uint256 public constant BIPS_VEELTA = 1500; // 15%
+    uint256 public constant BIPS_TREASURY = 1500; // 15%
+
+    /// @notice veELTA reward epochs
+    struct Epoch {
+        uint256 blockNumber; // Snapshot block
+        uint256 amount; // ELTA allocated to veELTA stakers
     }
 
-    struct RewardToken {
-        IERC20 token;
-        uint256 totalDistributed;
-        bool active;
-    }
+    Epoch[] public veEpochs;
 
-    /// @notice Current epoch number
-    uint256 public currentEpoch;
+    /// @notice User claim cursor for veELTA epochs
+    mapping(address => uint256) public lastClaimed;
 
-    /// @notice Mapping of epoch number to reward epoch data
-    mapping(uint256 => RewardEpoch) public epochs;
-
-    /// @notice Mapping of token address to reward token info
-    mapping(address => RewardToken) public rewardTokens;
-
-    /// @notice Array of active reward token addresses
-    address[] public activeTokens;
-
-    /// @notice Total rewards claimed by user across all epochs
-    mapping(address => uint256) public totalClaimed;
-
-    /// @notice Paused state for emergency stops
+    /// @notice Paused state
     bool public paused;
 
-    event EpochStarted(uint256 indexed epoch, uint256 startTime, uint256 endTime);
-    event EpochFinalized(uint256 indexed epoch, bytes32 merkleRoot, uint256 totalRewards);
-    event RewardClaimed(
-        address indexed user, uint256 indexed epoch, address indexed token, uint256 amount
+    event RevenueSplit(
+        uint256 indexed blockNumber,
+        uint256 totalAmount,
+        uint256 appAmount,
+        uint256 veAmount,
+        uint256 treasuryAmount
     );
-    event RewardTokenAdded(address indexed token);
-    event RewardTokenRemoved(address indexed token);
-    event RewardsDeposited(address indexed token, uint256 amount, uint256 epoch);
+    event VeEpochCreated(uint256 indexed epochId, uint256 blockNumber, uint256 amount);
+    event VeRewardsClaimed(
+        address indexed user, uint256 fromEpoch, uint256 toEpoch, uint256 amount
+    );
+    event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury);
     event EmergencyPause(bool paused);
 
-    error EpochNotFinalized();
-    error EpochAlreadyFinalized();
-    error EpochNotStarted();
-    error AlreadyClaimed();
-    error InvalidProof();
-    error InvalidEpoch();
-    error TokenNotActive();
-    error DistributionTooEarly();
-    error ContractPaused();
-
     /**
-     * @notice Initializes the rewards distributor
-     * @param _veELTA Address of the VeELTA staking contract
-     * @param _admin Address that will receive admin roles
+     * @notice Initialize rewards distributor
+     * @param _elta ELTA token address
+     * @param _veELTA veELTA voting token address
+     * @param _appRewardsDistributor App rewards distributor address
+     * @param _treasury Treasury address
+     * @param _admin Admin address for roles
      */
-    constructor(VeELTA _veELTA, address _admin) {
-        if (address(_veELTA) == address(0) || _admin == address(0)) {
-            revert Errors.ZeroAddress();
-        }
+    constructor(
+        IERC20 _elta,
+        IVeEltaVotes _veELTA,
+        IAppRewardsDistributor _appRewardsDistributor,
+        address _treasury,
+        address _admin
+    ) {
+        if (address(_elta) == address(0)) revert Errors.ZeroAddress();
+        if (address(_veELTA) == address(0)) revert Errors.ZeroAddress();
+        if (address(_appRewardsDistributor) == address(0)) revert Errors.ZeroAddress();
+        if (_treasury == address(0)) revert Errors.ZeroAddress();
+        if (_admin == address(0)) revert Errors.ZeroAddress();
 
+        // Validate split adds to 100%
+        if (BIPS_APP + BIPS_VEELTA + BIPS_TREASURY != 10_000) revert InvalidSplit();
+
+        ELTA = _elta;
         veELTA = _veELTA;
+        appRewardsDistributor = _appRewardsDistributor;
+        treasury = _treasury;
+
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         _grantRole(DISTRIBUTOR_ROLE, _admin);
         _grantRole(PAUSER_ROLE, _admin);
-
-        // Start the first epoch
-        _startNewEpoch();
+        _grantRole(TREASURY_ROLE, _admin);
     }
 
     /**
-     * @notice Modifier to check if contract is not paused
+     * @notice Modifier to check if not paused
      */
     modifier whenNotPaused() {
-        if (paused) revert ContractPaused();
+        if (paused) revert OnlyWhenNotPaused();
         _;
     }
 
     /**
-     * @notice Adds a new reward token
-     * @param token Address of the ERC20 token to add as reward
+     * @notice Universal entry for all protocol ELTA revenues
+     * @dev Splits 70% app / 15% veELTA / 15% treasury
+     * @param amount Total ELTA revenue to distribute
      */
-    function addRewardToken(IERC20 token) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (address(token) == address(0)) revert Errors.ZeroAddress();
-        if (rewardTokens[address(token)].active) return; // Already active
-
-        rewardTokens[address(token)] =
-            RewardToken({ token: token, totalDistributed: 0, active: true });
-
-        activeTokens.push(address(token));
-        emit RewardTokenAdded(address(token));
-    }
-
-    /**
-     * @notice Removes a reward token (stops future distributions)
-     * @param token Address of the token to remove
-     */
-    function removeRewardToken(address token) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (!rewardTokens[token].active) return;
-
-        rewardTokens[token].active = false;
-
-        // Remove from active tokens array
-        for (uint256 i = 0; i < activeTokens.length; i++) {
-            if (activeTokens[i] == token) {
-                activeTokens[i] = activeTokens[activeTokens.length - 1];
-                activeTokens.pop();
-                break;
-            }
-        }
-
-        emit RewardTokenRemoved(token);
-    }
-
-    /**
-     * @notice Deposits rewards for the current epoch
-     * @param token Address of the reward token
-     * @param amount Amount of tokens to deposit
-     */
-    function depositRewards(address token, uint256 amount)
-        external
-        onlyRole(DISTRIBUTOR_ROLE)
-        whenNotPaused
-    {
-        if (!rewardTokens[token].active) revert TokenNotActive();
+    function deposit(uint256 amount) external nonReentrant whenNotPaused {
         if (amount == 0) revert Errors.InvalidAmount();
 
-        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+        ELTA.safeTransferFrom(msg.sender, address(this), amount);
 
-        // Deposit to current active epoch (currentEpoch - 1)
-        uint256 activeEpoch = currentEpoch > 0 ? currentEpoch - 1 : 0;
-        RewardEpoch storage epoch = epochs[activeEpoch];
-        epoch.totalRewards += amount;
+        // Calculate splits
+        uint256 appAmount = (amount * BIPS_APP) / 10_000;
+        uint256 veAmount = (amount * BIPS_VEELTA) / 10_000;
+        uint256 treasuryAmount = amount - appAmount - veAmount; // Avoid rounding issues
 
-        rewardTokens[token].totalDistributed += amount;
+        // 1) Distribute to app stakers (70%)
+        ELTA.approve(address(appRewardsDistributor), appAmount);
+        appRewardsDistributor.distribute(appAmount);
 
-        emit RewardsDeposited(token, amount, activeEpoch);
+        // 2) Record veELTA epoch (15%)
+        veEpochs.push(Epoch({ blockNumber: block.number, amount: veAmount }));
+        emit VeEpochCreated(veEpochs.length - 1, block.number, veAmount);
+
+        // 3) Transfer to treasury (15%)
+        ELTA.safeTransfer(treasury, treasuryAmount);
+
+        emit RevenueSplit(block.number, amount, appAmount, veAmount, treasuryAmount);
     }
 
     /**
-     * @notice Finalizes the current epoch and starts a new one
-     * @param merkleRoot Merkle root of the reward distribution tree
+     * @notice Claim veELTA rewards across epochs
+     * @dev Uses on-chain snapshots via getPastVotes()
+     * @param fromEpoch Starting epoch index
+     * @param toEpoch Ending epoch index (exclusive)
      */
-    function finalizeEpoch(bytes32 merkleRoot) external onlyRole(DISTRIBUTOR_ROLE) whenNotPaused {
-        // Finalize the previous epoch (currentEpoch - 1)
-        uint256 epochToFinalize = currentEpoch > 0 ? currentEpoch - 1 : 0;
-        RewardEpoch storage epoch = epochs[epochToFinalize];
+    function claimVe(uint256 fromEpoch, uint256 toEpoch) external nonReentrant whenNotPaused {
+        uint256 totalEpochs = veEpochs.length;
+        if (fromEpoch >= totalEpochs) return;
 
-        if (epoch.finalized) revert EpochAlreadyFinalized();
-        if (block.timestamp < epoch.endTime + MIN_DISTRIBUTION_DELAY) {
-            revert DistributionTooEarly();
+        uint256 endEpoch = toEpoch > totalEpochs ? totalEpochs : toEpoch;
+
+        // Gas-bounded loop (max 100 epochs)
+        uint256 maxEpoch = fromEpoch + 100;
+        if (endEpoch > maxEpoch) endEpoch = maxEpoch;
+
+        uint256 totalClaim;
+
+        for (uint256 i = fromEpoch; i < endEpoch; ++i) {
+            Epoch storage epoch = veEpochs[i];
+
+            uint256 userVotes = veELTA.getPastVotes(msg.sender, epoch.blockNumber);
+            if (userVotes == 0) continue;
+
+            uint256 totalVotes = veELTA.getPastTotalSupply(epoch.blockNumber);
+            if (totalVotes == 0) continue;
+
+            // Pro-rata calculation
+            totalClaim += (epoch.amount * userVotes) / totalVotes;
         }
 
-        // Calculate total voting power at epoch end
-        // This would typically be done off-chain and verified here
-        epoch.totalVotingPower = _calculateTotalVotingPower(epoch.endTime);
-        epoch.merkleRoot = merkleRoot;
-        epoch.finalized = true;
+        lastClaimed[msg.sender] = endEpoch;
 
-        emit EpochFinalized(epochToFinalize, merkleRoot, epoch.totalRewards);
+        if (totalClaim > 0) {
+            ELTA.safeTransfer(msg.sender, totalClaim);
+        }
 
-        // Start next epoch
-        _startNewEpoch();
+        emit VeRewardsClaimed(msg.sender, fromEpoch, endEpoch, totalClaim);
     }
 
     /**
-     * @notice Claims rewards for a specific epoch
-     * @param epoch Epoch number to claim rewards for
-     * @param amount Amount of rewards to claim
-     * @param merkleProof Merkle proof for the claim
+     * @notice Convenience function to claim from last claimed to latest
+     * @dev Automatically uses lastClaimed cursor
      */
-    function claimRewards(uint256 epoch, uint256 amount, bytes32[] calldata merkleProof)
-        external
-        nonReentrant
-        whenNotPaused
-    {
-        if (epoch >= currentEpoch) revert InvalidEpoch();
-
-        RewardEpoch storage rewardEpoch = epochs[epoch];
-        if (!rewardEpoch.finalized) revert EpochNotFinalized();
-        if (rewardEpoch.claimed[msg.sender]) revert AlreadyClaimed();
-
-        // Verify merkle proof
-        bytes32 leaf = keccak256(abi.encodePacked(msg.sender, amount));
-        if (!_verifyProof(merkleProof, rewardEpoch.merkleRoot, leaf)) {
-            revert InvalidProof();
-        }
-
-        rewardEpoch.claimed[msg.sender] = true;
-        totalClaimed[msg.sender] += amount;
-
-        // Distribute rewards proportionally across active tokens
-        _distributeRewards(msg.sender, amount, epoch);
-
-        emit RewardClaimed(msg.sender, epoch, address(0), amount);
+    function claimVeFromLast() external {
+        uint256 fromEpoch = lastClaimed[msg.sender];
+        uint256 toEpoch = veEpochs.length;
+        this.claimVe(fromEpoch, toEpoch);
     }
 
     /**
-     * @notice Claims rewards for multiple epochs in a single transaction
-     * @param epochIds Array of epoch numbers
-     * @param amounts Array of reward amounts
-     * @param merkleProofs Array of merkle proofs
+     * @notice Update treasury address (governance only)
+     * @param newTreasury New treasury address
      */
-    function claimMultipleEpochs(
-        uint256[] calldata epochIds,
-        uint256[] calldata amounts,
-        bytes32[][] calldata merkleProofs
-    ) external nonReentrant whenNotPaused {
-        if (epochIds.length != amounts.length || amounts.length != merkleProofs.length) {
-            revert Errors.ArrayLengthMismatch();
-        }
+    function setTreasury(address newTreasury) external onlyRole(TREASURY_ROLE) {
+        if (newTreasury == address(0)) revert Errors.ZeroAddress();
 
-        for (uint256 i = 0; i < epochIds.length; i++) {
-            uint256 epoch = epochIds[i];
-            uint256 amount = amounts[i];
-            bytes32[] calldata proof = merkleProofs[i];
-
-            if (epoch >= currentEpoch) revert InvalidEpoch();
-
-            RewardEpoch storage rewardEpoch = epochs[epoch];
-            if (!rewardEpoch.finalized) revert EpochNotFinalized();
-            if (rewardEpoch.claimed[msg.sender]) continue; // Skip already claimed
-
-            bytes32 leaf = keccak256(abi.encodePacked(msg.sender, amount));
-            if (!_verifyProof(proof, rewardEpoch.merkleRoot, leaf)) {
-                revert InvalidProof();
-            }
-
-            rewardEpoch.claimed[msg.sender] = true;
-            totalClaimed[msg.sender] += amount;
-
-            _distributeRewards(msg.sender, amount, epoch);
-            emit RewardClaimed(msg.sender, epoch, address(0), amount);
-        }
+        emit TreasuryUpdated(treasury, newTreasury);
+        treasury = newTreasury;
     }
 
     /**
-     * @notice Emergency pause/unpause function
+     * @notice Emergency pause/unpause
      * @param _paused New pause state
      */
     function setPaused(bool _paused) external onlyRole(PAUSER_ROLE) {
@@ -291,261 +228,92 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
     }
 
     /**
-     * @notice Gets the current epoch information
-     * @return epoch Current epoch number
-     * @return startTime Epoch start time
-     * @return endTime Epoch end time
-     * @return totalRewards Total rewards for the epoch
-     * @return finalized Whether the epoch is finalized
+     * @notice Get total number of veELTA epochs
+     * @return Number of epochs
      */
-    function getCurrentEpoch()
+    function getEpochCount() external view returns (uint256) {
+        return veEpochs.length;
+    }
+
+    /**
+     * @notice Get unclaimed epoch range for a user
+     * @param user User address
+     * @return fromEpoch Starting epoch
+     * @return toEpoch Ending epoch (exclusive)
+     */
+    function getUnclaimedRange(address user)
         external
         view
-        returns (
-            uint256 epoch,
-            uint256 startTime,
-            uint256 endTime,
-            uint256 totalRewards,
-            bool finalized
-        )
+        returns (uint256 fromEpoch, uint256 toEpoch)
     {
-        // Current active epoch is currentEpoch - 1 (since _startNewEpoch increments)
-        uint256 activeEpoch = currentEpoch > 0 ? currentEpoch - 1 : 0;
-        RewardEpoch storage current = epochs[activeEpoch];
-        return (
-            activeEpoch, current.startTime, current.endTime, current.totalRewards, current.finalized
-        );
+        fromEpoch = lastClaimed[user];
+        toEpoch = veEpochs.length;
     }
 
     /**
-     * @notice Checks if a user has claimed rewards for a specific epoch
+     * @notice Estimate pending veELTA rewards for a user
+     * @dev View function estimation; may differ from actual claim due to rounding
      * @param user User address
-     * @param epoch Epoch number
-     * @return Whether the user has claimed rewards for the epoch
+     * @return estimated Estimated claimable amount
      */
-    function hasClaimed(address user, uint256 epoch) external view returns (bool) {
-        return epochs[epoch].claimed[user];
-    }
+    function estimatePendingVeRewards(address user) external view returns (uint256 estimated) {
+        uint256 fromEpoch = lastClaimed[user];
+        uint256 endEpoch = veEpochs.length;
 
-    /**
-     * @notice Gets the list of active reward tokens
-     * @return Array of active token addresses
-     */
-    function getActiveTokens() external view returns (address[] memory) {
-        return activeTokens;
-    }
+        // Cap at 100 epochs for gas safety
+        if (endEpoch > fromEpoch + 100) endEpoch = fromEpoch + 100;
 
-    /**
-     * @notice Calculates pending rewards for a user across all unclaimed epochs
-     * @param user User address
-     * @return Total pending rewards (requires off-chain calculation for accuracy)
-     */
-    function pendingRewards(address user) external view returns (uint256) {
-        // This is a simplified calculation - in practice, this would require
-        // off-chain computation based on voting power at each epoch
-        uint256 totalPending = 0;
+        for (uint256 i = fromEpoch; i < endEpoch; ++i) {
+            Epoch storage epoch = veEpochs[i];
 
-        for (uint256 i = 0; i < currentEpoch; i++) {
-            if (epochs[i].finalized && !epochs[i].claimed[user]) {
-                // Simplified calculation - actual implementation would use merkle tree data
-                totalPending += _estimateUserRewards(user, i);
-            }
+            uint256 userVotes = veELTA.getPastVotes(user, epoch.blockNumber);
+            if (userVotes == 0) continue;
+
+            uint256 totalVotes = veELTA.getPastTotalSupply(epoch.blockNumber);
+            if (totalVotes == 0) continue;
+
+            estimated += (epoch.amount * userVotes) / totalVotes;
         }
-
-        return totalPending;
     }
 
     /**
-     * @notice Gets user's reward claim history
-     * @param user User address
-     * @return claimedEpochs Array of epochs where user has claimed
-     * @return userTotalClaimed Total amount claimed across all epochs
+     * @notice Get epoch details
+     * @param epochId Epoch index
+     * @return blockNumber Snapshot block
+     * @return amount ELTA allocated
      */
-    function getUserRewardHistory(address user)
+    function getEpoch(uint256 epochId)
         external
         view
-        returns (uint256[] memory claimedEpochs, uint256 userTotalClaimed)
+        returns (uint256 blockNumber, uint256 amount)
     {
-        // Count claimed epochs
-        uint256 claimedCount = 0;
-        for (uint256 i = 0; i < currentEpoch; i++) {
-            if (epochs[i].claimed[user]) {
-                claimedCount++;
-            }
-        }
-
-        // Build array of claimed epochs
-        claimedEpochs = new uint256[](claimedCount);
-        uint256 index = 0;
-        for (uint256 i = 0; i < currentEpoch; i++) {
-            if (epochs[i].claimed[user]) {
-                claimedEpochs[index] = i;
-                index++;
-            }
-        }
-
-        userTotalClaimed = totalClaimed[user];
+        if (epochId >= veEpochs.length) return (0, 0);
+        Epoch storage epoch = veEpochs[epochId];
+        return (epoch.blockNumber, epoch.amount);
     }
 
     /**
-     * @notice Gets detailed epoch information
-     * @param epochId Epoch ID
-     * @return startTime Epoch start time
-     * @return endTime Epoch end time
-     * @return totalRewards Total rewards in epoch
-     * @return totalVotingPower Total voting power snapshot
-     * @return finalized Whether epoch is finalized
-     * @return merkleRoot Merkle root for claims
+     * @notice Get multiple epochs in batch
+     * @param startId Starting epoch index
+     * @param count Number of epochs to fetch
+     * @return epochs Array of epochs
      */
-    function getEpochDetails(uint256 epochId)
+    function getEpochsBatch(uint256 startId, uint256 count)
         external
         view
-        returns (
-            uint256 startTime,
-            uint256 endTime,
-            uint256 totalRewards,
-            uint256 totalVotingPower,
-            bool finalized,
-            bytes32 merkleRoot
-        )
+        returns (Epoch[] memory epochs)
     {
-        RewardEpoch storage epoch = epochs[epochId];
-        return (
-            epoch.startTime,
-            epoch.endTime,
-            epoch.totalRewards,
-            epoch.totalVotingPower,
-            epoch.finalized,
-            epoch.merkleRoot
-        );
-    }
+        uint256 totalEpochs = veEpochs.length;
+        if (startId >= totalEpochs) return new Epoch[](0);
 
-    /**
-     * @notice Gets reward token information
-     * @param token Token address
-     * @return isActive Whether token is active for rewards
-     * @return totalDistributed Total amount distributed of this token
-     */
-    function getRewardTokenInfo(address token)
-        external
-        view
-        returns (bool isActive, uint256 totalDistributed)
-    {
-        RewardToken storage rewardToken = rewardTokens[token];
-        return (rewardToken.active, rewardToken.totalDistributed);
-    }
+        uint256 endId = startId + count;
+        if (endId > totalEpochs) endId = totalEpochs;
 
-    /**
-     * @notice Gets time until next epoch finalization
-     * @return timeRemaining Time in seconds until current epoch can be finalized
-     */
-    function getTimeUntilFinalization() external view returns (uint256 timeRemaining) {
-        RewardEpoch storage current = epochs[currentEpoch];
-        uint256 finalizationTime = current.endTime + MIN_DISTRIBUTION_DELAY;
+        uint256 actualCount = endId - startId;
+        epochs = new Epoch[](actualCount);
 
-        if (block.timestamp >= finalizationTime) return 0;
-        return finalizationTime - block.timestamp;
-    }
-
-    /**
-     * @dev Starts a new reward epoch
-     */
-    function _startNewEpoch() internal {
-        uint256 startTime = block.timestamp;
-        uint256 endTime = startTime + EPOCH_DURATION;
-
-        RewardEpoch storage epoch = epochs[currentEpoch];
-        epoch.startTime = startTime;
-        epoch.endTime = endTime;
-        epoch.totalRewards = 0;
-        epoch.totalVotingPower = 0;
-        epoch.merkleRoot = bytes32(0);
-        epoch.finalized = false;
-        epoch.paused = false;
-
-        emit EpochStarted(currentEpoch, startTime, endTime);
-        currentEpoch++;
-    }
-
-    /**
-     * @dev Distributes rewards to user across active tokens
-     * @param user User address
-     * @param totalAmount Total reward amount to distribute
-     * @param epoch Epoch number
-     */
-    function _distributeRewards(address user, uint256 totalAmount, uint256 epoch) internal {
-        if (activeTokens.length == 0) return;
-
-        // Distribute equally across all active tokens for simplicity
-        // In practice, this could be weighted based on token deposits
-        uint256 amountPerToken = totalAmount / activeTokens.length;
-        uint256 remainder = totalAmount % activeTokens.length;
-
-        for (uint256 i = 0; i < activeTokens.length; i++) {
-            address tokenAddr = activeTokens[i];
-            uint256 amount = amountPerToken;
-
-            // Give remainder to first token
-            if (i == 0) amount += remainder;
-
-            if (amount > 0) {
-                IERC20(tokenAddr).safeTransfer(user, amount);
-                emit RewardClaimed(user, epoch, tokenAddr, amount);
-            }
+        for (uint256 i; i < actualCount; ++i) {
+            epochs[i] = veEpochs[startId + i];
         }
-    }
-
-    /**
-     * @dev Verifies a merkle proof
-     * @param proof Merkle proof
-     * @param root Merkle root
-     * @param leaf Leaf to verify
-     * @return Whether the proof is valid
-     */
-    function _verifyProof(bytes32[] memory proof, bytes32 root, bytes32 leaf)
-        internal
-        pure
-        returns (bool)
-    {
-        bytes32 computedHash = leaf;
-
-        for (uint256 i = 0; i < proof.length; i++) {
-            bytes32 proofElement = proof[i];
-            if (computedHash <= proofElement) {
-                computedHash = keccak256(abi.encodePacked(computedHash, proofElement));
-            } else {
-                computedHash = keccak256(abi.encodePacked(proofElement, computedHash));
-            }
-        }
-
-        return computedHash == root;
-    }
-
-    /**
-     * @dev Calculates total voting power at a specific timestamp
-     * @param timestamp Timestamp to calculate voting power at
-     * @return Total voting power (simplified implementation)
-     */
-    function _calculateTotalVotingPower(uint256 timestamp) internal view returns (uint256) {
-        // This is a placeholder - in practice, this would aggregate
-        // voting power across all veELTA holders at the given timestamp
-        // This requires either historical tracking or off-chain computation
-        return 1000000 * 1e18; // Placeholder value
-    }
-
-    /**
-     * @dev Estimates user rewards for a given epoch (simplified)
-     * @param user User address
-     * @param epoch Epoch number
-     * @return Estimated reward amount
-     */
-    function _estimateUserRewards(address user, uint256 epoch) internal view returns (uint256) {
-        // Simplified estimation - actual implementation would use historical data
-        RewardEpoch storage rewardEpoch = epochs[epoch];
-        if (!rewardEpoch.finalized || rewardEpoch.totalVotingPower == 0) return 0;
-
-        // This is a placeholder calculation
-        uint256 userVotingPower = veELTA.getUserVotingPower(user);
-        return (rewardEpoch.totalRewards * userVotingPower) / rewardEpoch.totalVotingPower;
     }
 }

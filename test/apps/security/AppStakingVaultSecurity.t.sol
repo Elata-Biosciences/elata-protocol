@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import { AppStakingVault } from "../../../src/apps/AppStakingVault.sol";
 import { AppToken } from "../../../src/apps/AppToken.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Errors } from "../../../src/utils/Errors.sol";
 
 /**
  * @title AppStakingVaultSecurityTest
@@ -25,7 +26,7 @@ contract AppStakingVaultSecurityTest is Test {
 
     function setUp() public {
         appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, owner, admin);
-        vault = new AppStakingVault(address(appToken), owner);
+        vault = new AppStakingVault("TestApp", "TAPP", appToken, owner);
 
         // Mint tokens to users
         vm.startPrank(admin);
@@ -41,7 +42,7 @@ contract AppStakingVaultSecurityTest is Test {
 
     function test_Security_ReentrancyProtection_Stake() public {
         MaliciousToken malToken = new MaliciousToken();
-        AppStakingVault malVault = new AppStakingVault(address(malToken), owner);
+        AppStakingVault malVault = new AppStakingVault("MalApp", "MAL", malToken, owner);
 
         malToken.mint(attacker, 1000 ether);
 
@@ -115,7 +116,7 @@ contract AppStakingVaultSecurityTest is Test {
         vm.prank(user1);
         vault.stake(1000 ether);
 
-        vm.expectRevert(AppStakingVault.InsufficientStake.selector);
+        vm.expectRevert(AppStakingVault.Insufficient.selector);
         vm.prank(user1);
         vault.unstake(1001 ether);
     }
@@ -140,13 +141,13 @@ contract AppStakingVaultSecurityTest is Test {
     // ────────────────────────────────────────────────────────────────────────────
 
     function test_Security_CannotStakeZero() public {
-        vm.expectRevert(AppStakingVault.ZeroAmount.selector);
+        vm.expectRevert(Errors.InvalidAmount.selector);
         vm.prank(user1);
         vault.stake(0);
     }
 
     function test_Security_CannotUnstakeZero() public {
-        vm.expectRevert(AppStakingVault.ZeroAmount.selector);
+        vm.expectRevert(Errors.InvalidAmount.selector);
         vm.prank(user1);
         vault.unstake(0);
     }

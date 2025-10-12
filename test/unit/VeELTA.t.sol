@@ -6,8 +6,17 @@ import { VeELTA } from "../../src/staking/VeELTA.sol";
 import { ELTA } from "../../src/token/ELTA.sol";
 import { Errors } from "../../src/utils/Errors.sol";
 
+/**
+ * @title VeELTA V2 Tests
+ * @notice Unit tests for ERC20Votes-based veELTA
+ * @dev V2 architecture: ERC721 NFT → ERC20Votes (non-transferable)
+ *      - Single lock per user
+ *      - Duration boost (1x to 2x)
+ *      - No continuous decay
+ *      - Snapshot-enabled
+ */
 contract VeELTATest is Test {
-    VeELTA public staking;
+    VeELTA public veElta;
     ELTA public elta;
 
     address public admin = makeAddr("admin");
@@ -15,223 +24,230 @@ contract VeELTATest is Test {
     address public user1 = makeAddr("user1");
     address public user2 = makeAddr("user2");
 
-    event LockCreated(
-        address indexed user, uint256 indexed tokenId, uint256 amount, uint256 start, uint256 end
+    event Locked(address indexed user, uint256 amount, uint64 unlockTime, uint256 veELTA);
+    event AmountIncreased(
+        address indexed user, uint256 addAmount, uint256 newPrincipal, uint256 newVeELTA
     );
-    event LockIncreased(uint256 indexed tokenId, uint256 addedAmount, uint256 newAmount);
-    event LockExtended(uint256 indexed tokenId, uint256 oldEnd, uint256 newEnd);
-    event PositionsMerged(
-        uint256 indexed fromTokenId, uint256 indexed toTokenId, uint256 totalAmount
+    event LockExtended(
+        address indexed user, uint64 oldUnlockTime, uint64 newUnlockTime, uint256 newVeELTA
     );
-    event PositionSplit(
-        uint256 indexed originalTokenId, uint256 indexed newTokenId, uint256 splitAmount
-    );
-    event VotingPowerDelegated(uint256 indexed tokenId, address indexed from, address indexed to);
+    event Unlocked(address indexed user, uint256 principal, uint256 veELTABurned);
 
     function setUp() public {
-        elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 77_000_000 ether);
-        staking = new VeELTA(elta, admin);
+        elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 0);
+        veElta = new VeELTA(elta, admin);
 
-        // Give users some ELTA
+        // Fund users
         vm.startPrank(treasury);
-        elta.transfer(user1, 50_000 ether);
-        elta.transfer(user2, 30_000 ether);
+        elta.transfer(user1, 100_000 ether);
+        elta.transfer(user2, 100_000 ether);
         vm.stopPrank();
+
+        // Approvals
+        vm.prank(user1);
+        elta.approve(address(veElta), type(uint256).max);
+        vm.prank(user2);
+        elta.approve(address(veElta), type(uint256).max);
     }
 
-    function test_Deployment() public {
-        assertEq(address(staking.ELTA()), address(elta));
-        assertEq(staking.name(), "Vote-Escrowed ELTA");
-        assertEq(staking.symbol(), "veELTA");
-        assertEq(staking.MIN_LOCK(), 1 weeks);
-        assertEq(staking.MAX_LOCK(), 104 weeks); // 2 years
-        assertEq(staking.EMERGENCY_UNLOCK_PENALTY(), 5000);
-        assertEq(staking.nextTokenId(), 1);
-
-        assertTrue(staking.hasRole(staking.DEFAULT_ADMIN_ROLE(), admin));
-        assertTrue(staking.hasRole(staking.MANAGER_ROLE(), admin));
-        assertTrue(staking.hasRole(staking.EMERGENCY_ROLE(), admin));
+    function test_Deployment() public view {
+        assertEq(address(veElta.ELTA()), address(elta));
+        assertEq(veElta.name(), "veELTA Voting Power");
+        assertEq(veElta.symbol(), "veELTA");
+        assertEq(veElta.MIN_LOCK(), 7 days);
+        assertEq(veElta.MAX_LOCK(), 730 days);
     }
 
-    function test_CreateLock() public {
+    function test_Lock_MaxDuration() public {
         uint256 amount = 1000 ether;
-        uint256 lockDuration = 52 weeks;
+        uint64 unlockTime = uint64(block.timestamp + 730 days);
 
-        vm.startPrank(user1);
-        elta.approve(address(staking), amount);
+        vm.expectEmit(true, false, false, false);
+        emit Locked(user1, amount, unlockTime, 2000 ether);
 
-        vm.expectEmit(true, true, false, true);
-        emit LockCreated(user1, 1, amount, block.timestamp, block.timestamp + lockDuration);
+        vm.prank(user1);
+        veElta.lock(amount, unlockTime);
 
-        uint256 tokenId = staking.createLock(amount, lockDuration);
-        vm.stopPrank();
+        // Check lock details
+        (uint256 principal, uint64 storedUnlockTime, uint256 veBalance,) =
+            veElta.getLockDetails(user1);
+        assertEq(principal, amount);
+        assertEq(storedUnlockTime, unlockTime);
 
-        assertEq(tokenId, 1);
-        assertEq(staking.ownerOf(tokenId), user1);
-        assertEq(staking.balanceOf(user1), 1);
-
-        (uint128 lockAmount, uint64 start, uint64 end, address delegate, bool emergencyUnlocked) =
-            staking.positions(tokenId);
-
-        assertEq(lockAmount, amount);
-        assertEq(start, block.timestamp);
-        assertEq(end, block.timestamp + lockDuration);
-        assertEq(delegate, user1);
-        assertFalse(emergencyUnlocked);
-
-        // Check voting power
-        uint256 expectedVotingPower = (amount * lockDuration) / staking.MAX_LOCK();
-        assertEq(staking.getPositionVotingPower(tokenId), expectedVotingPower);
-        assertEq(staking.getUserVotingPower(user1), expectedVotingPower);
-        assertEq(staking.getDelegatedVotingPower(user1), expectedVotingPower);
+        // Max lock = 2x boost
+        assertEq(veBalance, amount * 2);
+        assertEq(veElta.balanceOf(user1), amount * 2);
     }
 
-    function test_CreateMultipleLocks() public {
-        vm.startPrank(user1);
-        elta.approve(address(staking), 30_000 ether);
+    function test_Lock_MinDuration() public {
+        uint256 amount = 1000 ether;
+        uint64 unlockTime = uint64(block.timestamp + 8 days); // MIN_LOCK + 1
 
-        uint256 tokenId1 = staking.createLock(10_000 ether, 52 weeks);
-        uint256 tokenId2 = staking.createLock(15_000 ether, 104 weeks);
-        uint256 tokenId3 = staking.createLock(5_000 ether, 26 weeks);
-        vm.stopPrank();
+        vm.prank(user1);
+        veElta.lock(amount, unlockTime);
 
-        assertEq(staking.balanceOf(user1), 3);
-        assertEq(tokenId1, 1);
-        assertEq(tokenId2, 2);
-        assertEq(tokenId3, 3);
-
-        // Check total voting power
-        uint256 totalVotingPower = staking.getUserVotingPower(user1);
-        assertGt(totalVotingPower, 0);
-
-        uint256[] memory positions = staking.getUserPositions(user1);
-        assertEq(positions.length, 3);
-        assertEq(positions[0], tokenId1);
-        assertEq(positions[1], tokenId2);
-        assertEq(positions[2], tokenId3);
+        // Close to min lock has small boost (linear interpolation)
+        // 8 days / 730 days * 1e18 boost range ≈ 1.01x
+        assertGt(veElta.balanceOf(user1), amount);
+        assertLt(veElta.balanceOf(user1), amount * 11 / 10); // Less than 1.1x
     }
 
-    function test_MergePositions() public {
-        vm.startPrank(user1);
-        elta.approve(address(staking), 30_000 ether);
+    function test_Lock_RevertIfTooShort() public {
+        uint64 tooShort = uint64(block.timestamp + 6 days);
 
-        uint256 tokenId1 = staking.createLock(10_000 ether, 52 weeks);
-        uint256 tokenId2 = staking.createLock(15_000 ether, 78 weeks);
-
-        vm.expectEmit(true, true, false, true);
-        emit PositionsMerged(tokenId1, tokenId2, 25_000 ether);
-
-        staking.mergePositions(tokenId1, tokenId2);
-        vm.stopPrank();
-
-        // tokenId1 should be burned
-        vm.expectRevert();
-        staking.ownerOf(tokenId1);
-
-        // tokenId2 should have combined amount and longer duration
-        (uint128 amount,, uint64 end,,) = staking.positions(tokenId2);
-        assertEq(amount, 25_000 ether);
-        assertEq(end, block.timestamp + 78 weeks); // Takes the longer duration
-
-        assertEq(staking.balanceOf(user1), 1); // Only one position remaining
+        vm.prank(user1);
+        vm.expectRevert(Errors.LockTooShort.selector);
+        veElta.lock(1000 ether, tooShort);
     }
 
-    function test_SplitPosition() public {
-        vm.startPrank(user1);
-        elta.approve(address(staking), 20_000 ether);
+    function test_Lock_RevertIfTooLong() public {
+        uint64 tooLong = uint64(block.timestamp + 731 days);
 
-        uint256 originalTokenId = staking.createLock(20_000 ether, 52 weeks);
-        uint256 splitAmount = 8_000 ether;
-
-        vm.expectEmit(true, true, false, true);
-        emit PositionSplit(originalTokenId, 2, splitAmount);
-
-        uint256 newTokenId = staking.splitPosition(originalTokenId, splitAmount);
-        vm.stopPrank();
-
-        assertEq(newTokenId, 2);
-        assertEq(staking.balanceOf(user1), 2);
-
-        // Check original position
-        (uint128 originalAmount,,,,) = staking.positions(originalTokenId);
-        assertEq(originalAmount, 12_000 ether);
-
-        // Check new position
-        (uint128 newAmount, uint64 start, uint64 end, address delegate,) =
-            staking.positions(newTokenId);
-        assertEq(newAmount, splitAmount);
-        assertEq(delegate, user1);
-        assertEq(end, block.timestamp + 52 weeks);
+        vm.prank(user1);
+        vm.expectRevert(Errors.LockTooLong.selector);
+        veElta.lock(1000 ether, tooLong);
     }
 
-    function test_DelegatePosition() public {
+    function test_Lock_RevertIfAlreadyExists() public {
         vm.startPrank(user1);
-        elta.approve(address(staking), 10_000 ether);
+        veElta.lock(1000 ether, uint64(block.timestamp + 365 days));
 
-        uint256 tokenId = staking.createLock(10_000 ether, 52 weeks);
-        uint256 votingPower = staking.getPositionVotingPower(tokenId);
-
-        vm.expectEmit(true, true, true, false);
-        emit VotingPowerDelegated(tokenId, user1, user2);
-
-        staking.delegatePosition(tokenId, user2);
-        vm.stopPrank();
-
-        // Check delegation
-        (,,, address delegate,) = staking.positions(tokenId);
-        assertEq(delegate, user2);
-        assertEq(staking.getDelegatedVotingPower(user1), 0);
-        assertEq(staking.getDelegatedVotingPower(user2), votingPower);
-    }
-
-    function test_Withdraw() public {
-        vm.startPrank(user1);
-        elta.approve(address(staking), 10_000 ether);
-
-        uint256 tokenId = staking.createLock(10_000 ether, 52 weeks);
-
-        // Fast forward past lock end
-        vm.warp(block.timestamp + 53 weeks);
-
-        uint256 initialBalance = elta.balanceOf(user1);
-
-        staking.withdraw(tokenId);
-        vm.stopPrank();
-
-        assertEq(elta.balanceOf(user1), initialBalance + 10_000 ether);
-        assertEq(staking.balanceOf(user1), 0);
-
-        // Position should be cleared
-        (uint128 amount,,,,) = staking.positions(tokenId);
-        assertEq(amount, 0);
-    }
-
-    function test_RevertWhen_TransferPosition() public {
-        vm.startPrank(user1);
-        elta.approve(address(staking), 10_000 ether);
-
-        uint256 tokenId = staking.createLock(10_000 ether, 52 weeks);
-
-        vm.expectRevert(Errors.TransfersDisabled.selector);
-        staking.transferFrom(user1, user2, tokenId);
+        vm.expectRevert(VeELTA.LockExists.selector);
+        veElta.lock(500 ether, uint64(block.timestamp + 365 days));
         vm.stopPrank();
     }
 
-    function testFuzz_CreateLock(uint256 amount, uint256 duration) public {
-        amount = bound(amount, 1 ether, 50_000 ether);
-        duration = bound(duration, staking.MIN_LOCK(), staking.MAX_LOCK());
+    function test_IncreaseAmount() public {
+        // Create initial lock
+        vm.prank(user1);
+        veElta.lock(1000 ether, uint64(block.timestamp + 365 days));
 
-        vm.startPrank(user1);
-        elta.approve(address(staking), amount);
+        uint256 initialVeBalance = veElta.balanceOf(user1);
 
-        uint256 tokenId = staking.createLock(amount, duration);
-        vm.stopPrank();
+        // Increase amount
+        vm.expectEmit(true, false, false, false);
+        emit AmountIncreased(user1, 500 ether, 1500 ether, 0);
 
-        assertEq(staking.ownerOf(tokenId), user1);
+        vm.prank(user1);
+        veElta.increaseAmount(500 ether);
 
-        (uint128 lockAmount, uint64 start, uint64 end,,) = staking.positions(tokenId);
-        assertEq(lockAmount, amount);
-        assertEq(start, block.timestamp);
-        assertEq(end, block.timestamp + duration);
+        // Check updated lock
+        (uint256 principal,,,) = veElta.getLockDetails(user1);
+        assertEq(principal, 1500 ether);
+
+        // veELTA balance should increase
+        assertGt(veElta.balanceOf(user1), initialVeBalance);
+    }
+
+    function test_ExtendLock() public {
+        // Create initial lock for 1 year
+        uint64 initialUnlock = uint64(block.timestamp + 365 days);
+        vm.prank(user1);
+        veElta.lock(1000 ether, initialUnlock);
+
+        uint256 initialVeBalance = veElta.balanceOf(user1);
+
+        // Extend to 2 years
+        uint64 newUnlock = uint64(block.timestamp + 730 days);
+
+        vm.expectEmit(true, false, false, false);
+        emit LockExtended(user1, initialUnlock, newUnlock, 0);
+
+        vm.prank(user1);
+        veElta.extendLock(newUnlock);
+
+        // Check updated unlock time
+        (, uint64 unlockTime,,) = veElta.getLockDetails(user1);
+        assertEq(unlockTime, newUnlock);
+
+        // veELTA balance should increase (longer duration = higher boost)
+        assertGt(veElta.balanceOf(user1), initialVeBalance);
+    }
+
+    function test_Unlock() public {
+        uint64 unlockTime = uint64(block.timestamp + 365 days);
+        uint256 lockAmount = 1000 ether;
+
+        vm.prank(user1);
+        veElta.lock(lockAmount, unlockTime);
+
+        // Can't unlock before expiry
+        vm.prank(user1);
+        vm.expectRevert(Errors.LockNotExpired.selector);
+        veElta.unlock();
+
+        // Fast forward past expiry
+        vm.warp(unlockTime + 1);
+
+        uint256 user1BalanceBefore = elta.balanceOf(user1);
+        uint256 veBalanceBefore = veElta.balanceOf(user1);
+
+        vm.expectEmit(true, false, false, false);
+        emit Unlocked(user1, lockAmount, veBalanceBefore);
+
+        vm.prank(user1);
+        veElta.unlock();
+
+        // Check ELTA returned 1:1
+        assertEq(elta.balanceOf(user1), user1BalanceBefore + lockAmount);
+
+        // veELTA balance burned
+        assertEq(veElta.balanceOf(user1), 0);
+
+        // Lock cleared
+        (uint256 principal,,,) = veElta.getLockDetails(user1);
+        assertEq(principal, 0);
+    }
+
+    function test_NonTransferable() public {
+        vm.prank(user1);
+        veElta.lock(1000 ether, uint64(block.timestamp + 365 days));
+
+        uint256 user1Balance = veElta.balanceOf(user1);
+
+        // Try to transfer veELTA - should fail
+        vm.prank(user1);
+        vm.expectRevert(Errors.NonTransferable.selector);
+        veElta.transfer(user2, user1Balance);
+
+        // Balance unchanged
+        assertEq(veElta.balanceOf(user1), user1Balance);
+        assertEq(veElta.balanceOf(user2), 0);
+    }
+
+    function test_Snapshots_GetPastVotes() public {
+        vm.roll(100);
+
+        vm.prank(user1);
+        veElta.lock(1000 ether, uint64(block.timestamp + 730 days));
+
+        // Roll forward after lock to ensure checkpoint is created
+        vm.roll(101);
+
+        uint256 veBalance = veElta.getVotes(user1);
+
+        // Roll forward more to make checkpoint well in past
+        vm.roll(200);
+
+        // Should be able to query past votes at block 101
+        uint256 pastVotes = veElta.getPastVotes(user1, 101);
+        assertEq(pastVotes, veBalance);
+    }
+
+    function test_AdminMint() public {
+        vm.prank(admin);
+        veElta.mint(user1, 1000 ether);
+
+        assertEq(veElta.balanceOf(user1), 1000 ether);
+    }
+
+    function test_AdminBurn() public {
+        vm.prank(admin);
+        veElta.mint(user1, 1000 ether);
+
+        vm.prank(admin);
+        veElta.burn(user1, 500 ether);
+
+        assertEq(veElta.balanceOf(user1), 500 ether);
     }
 }
