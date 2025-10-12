@@ -6,6 +6,7 @@ import { ELTA } from "../../src/token/ELTA.sol";
 import { AppFactory } from "../../src/apps/AppFactory.sol";
 import { AppFactoryViews } from "../../src/apps/AppFactoryViews.sol";
 import { AppToken } from "../../src/apps/AppToken.sol";
+import { AppStakingVault } from "../../src/apps/AppStakingVault.sol";
 import { AppBondingCurve } from "../../src/apps/AppBondingCurve.sol";
 import { LpLocker } from "../../src/apps/LpLocker.sol";
 import { IUniswapV2Router02 } from "../../src/interfaces/IUniswapV2Router02.sol";
@@ -134,14 +135,17 @@ contract AppLaunchIntegrationTest is Test {
         // Verify token details
         AppToken token = AppToken(app.token);
         uint256 defaultSupply = factory.defaultSupply();
-        uint256 creatorTreasury = (defaultSupply * 10) / 100; // 10% to creator
-        uint256 curveSupply = defaultSupply - creatorTreasury; // 90% to curve
+        uint256 creatorStaked = defaultSupply / 2; // 50% auto-staked to creator
+        uint256 curveSupply = defaultSupply - creatorStaked; // 50% to curve
 
         assertEq(token.name(), "NeuroRacing");
         assertEq(token.symbol(), "RACE");
         assertEq(token.totalSupply(), defaultSupply);
-        assertEq(token.balanceOf(creator1), creatorTreasury); // Creator has 10%
-        assertEq(token.balanceOf(app.curve), curveSupply); // Curve has 90%
+        
+        // V2: Creator's 50% is auto-staked in vault (not liquid)
+        AppStakingVault vault = AppStakingVault(app.vault);
+        assertEq(vault.balanceOf(creator1), creatorStaked); // Creator has 50% staked
+        assertEq(token.balanceOf(app.curve), curveSupply); // Curve has 50%
 
         console2.log("[OK] App created successfully");
     }
@@ -173,7 +177,8 @@ contract AppLaunchIntegrationTest is Test {
             uint256 priceBefore = curve.getCurrentPrice();
 
             vm.startPrank(buyer);
-            elta.approve(address(curve), amount);
+            // Approve amount + 1% trading fee (fee paid ON TOP)
+            elta.approve(address(curve), amount * 101 / 100);
             uint256 tokensOut = curve.buy(amount, expectedTokens);
             vm.stopPrank();
 
@@ -194,7 +199,7 @@ contract AppLaunchIntegrationTest is Test {
         (uint256 eltaReserve, uint256 tokenReserve,,,, uint256 progress) = curve.getCurveState();
 
         uint256 defaultSupply = factory.defaultSupply();
-        uint256 curveSupply = (defaultSupply * 90) / 100; // 90% to curve, 10% to creator
+        uint256 curveSupply = defaultSupply / 2; // V2: 50% to curve, 50% auto-staked
 
         assertGt(eltaReserve, factory.seedElta()); // Should have more than seed
         assertEq(tokenReserve, curveSupply - totalTokensPurchased);
@@ -252,8 +257,9 @@ contract AppLaunchIntegrationTest is Test {
 
         // Investors can buy from different curves simultaneously
         vm.startPrank(investor1);
-        elta.approve(address(curve1), 500 ether);
-        elta.approve(address(curve2), 500 ether);
+        // Approve with 1% fee on top
+        elta.approve(address(curve1), 500 ether * 101 / 100);
+        elta.approve(address(curve2), 500 ether * 101 / 100);
 
         uint256 tokens1 = curve1.buy(500 ether, 0);
         uint256 tokens2 = curve2.buy(500 ether, 0);
@@ -295,7 +301,8 @@ contract AppLaunchIntegrationTest is Test {
         uint256 expectedProtocolFee = (purchaseAmount * factory.protocolFeeRate()) / 10000;
 
         vm.startPrank(investor1);
-        elta.approve(address(curve), purchaseAmount);
+        // Approve with 1% fee
+        elta.approve(address(curve), purchaseAmount * 101 / 100);
         curve.buy(purchaseAmount, 0);
         vm.stopPrank();
 
@@ -421,15 +428,17 @@ contract AppLaunchIntegrationTest is Test {
         uint256 creationGas = gasBefore - gasAfter;
         console2.log("App creation gas:", creationGas);
 
-        // Gas should be reasonable (less than 5M)
-        assertLt(creationGas, 5_000_000);
+        // V2: Gas increased due to vault deployment and auto-staking
+        // Threshold updated from 5M to 7M (includes vault + stake + registration)
+        assertLt(creationGas, 7_000_000);
 
         // Test purchase gas costs
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
 
         vm.startPrank(investor1);
-        elta.approve(address(curve), 100 ether);
+        // Approve with 1% fee
+        elta.approve(address(curve), 100 ether * 101 / 100);
 
         gasBefore = gasleft();
         curve.buy(100 ether, 0);
@@ -465,6 +474,7 @@ contract AppLaunchIntegrationTest is Test {
 
         // Test buying with insufficient approval
         vm.startPrank(investor1);
+        // Approve only 50 ELTA (not enough for 100 ELTA trade + 1% fee)
         elta.approve(address(curve), 50 ether);
 
         vm.expectRevert();
@@ -477,7 +487,8 @@ contract AppLaunchIntegrationTest is Test {
         uint256 expectedTokens = curve.getTokensOut(eltaIn);
 
         vm.startPrank(investor1);
-        elta.approve(address(curve), eltaIn);
+        // Approve with 1% fee
+        elta.approve(address(curve), eltaIn * 101 / 100);
 
         vm.expectRevert(AppBondingCurve.InsufficientOutput.selector);
         curve.buy(eltaIn, expectedTokens + 1); // Set minimum too high
@@ -512,22 +523,24 @@ contract AppLaunchIntegrationTest is Test {
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
         AppToken token = AppToken(app.token);
+        AppStakingVault vault = AppStakingVault(app.vault);
 
-        uint256 creatorTreasury = (supply * 10) / 100;
-        uint256 curveSupply = supply - creatorTreasury;
+        uint256 creatorStaked = supply / 2; // 50% auto-staked
+        uint256 curveSupply = supply - creatorStaked;
 
         assertEq(token.maxSupply(), supply);
-        assertEq(token.balanceOf(creator1), creatorTreasury); // Creator has 10%
+        assertEq(vault.balanceOf(creator1), creatorStaked); // Creator has 50% staked
         assertEq(curve.targetRaisedElta(), targetAmount);
         assertEq(curve.reserveElta(), seedAmount);
-        assertEq(curve.reserveToken(), curveSupply); // Curve has 90%
+        assertEq(curve.reserveToken(), curveSupply); // Curve has 50%
 
         // Test purchase with fuzzed amount
         vm.prank(treasury);
         elta.transfer(investor1, purchaseAmount);
 
         vm.startPrank(investor1);
-        elta.approve(address(curve), purchaseAmount);
+        // Approve with 1% fee
+        elta.approve(address(curve), purchaseAmount * 101 / 100);
         uint256 tokensOut = curve.buy(purchaseAmount, 0);
         vm.stopPrank();
 

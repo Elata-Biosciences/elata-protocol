@@ -118,7 +118,8 @@ contract AppLaunchSecurityTest is Test {
         // The ReentrancyGuard should prevent multiple entries
 
         vm.startPrank(user1);
-        elta.approve(address(curve), 1000 ether);
+        // Approve with 1% trading fee
+        elta.approve(address(curve), 1000 ether * 101 / 100);
         uint256 tokensOut = curve.buy(1000 ether, 0);
         vm.stopPrank();
 
@@ -166,7 +167,8 @@ contract AppLaunchSecurityTest is Test {
         uint256 expectedFee = (purchaseAmount * factory.protocolFeeRate()) / 10000;
 
         vm.startPrank(user1);
-        elta.approve(address(curve), purchaseAmount);
+        // Approve with 1% trading fee
+        elta.approve(address(curve), purchaseAmount * 101 / 100);
         curve.buy(purchaseAmount, 0);
         vm.stopPrank();
 
@@ -260,7 +262,8 @@ contract AppLaunchSecurityTest is Test {
         uint256 expectedTokens = curve.getTokensOut(eltaIn);
 
         vm.startPrank(user1);
-        elta.approve(address(curve), eltaIn);
+        // Approve with 1% fee
+        elta.approve(address(curve), eltaIn * 101 / 100);
         uint256 actualTokens = curve.buy(eltaIn, expectedTokens);
         vm.stopPrank();
 
@@ -269,10 +272,12 @@ contract AppLaunchSecurityTest is Test {
 
     function test_Critical_ZeroAddressProtection() public {
         // All contracts should reject zero addresses
-
-        vm.expectRevert("Zero address");
+        
+        // Deploy mocks first (before expectRevert)
         MockAppFeeRouter mockFee = new MockAppFeeRouter();
         MockAppRewardsDistributor mockRewards = new MockAppRewardsDistributor();
+
+        vm.expectRevert("Zero address");
         new AppFactory(
             ELTA(address(0)),
             IUniswapV2Router02(mockRouter),
@@ -316,7 +321,8 @@ contract AppLaunchSecurityTest is Test {
 
         // Buy tokens
         vm.startPrank(user1);
-        elta.approve(address(curve), 1000 ether);
+        // Approve with 1% trading fee
+        elta.approve(address(curve), 1000 ether * 101 / 100);
         uint256 tokensOut = curve.buy(1000 ether, 0);
         vm.stopPrank();
 

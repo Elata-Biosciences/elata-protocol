@@ -101,12 +101,14 @@ contract CoreSecurityVerificationTest is Test {
         assertGt(staking.balanceOf(user1), 0);
 
         // Try to transfer veELTA - should fail (non-transferable ERC20)
+        uint256 user1Balance = staking.balanceOf(user1);
+        
         vm.expectRevert(Errors.NonTransferable.selector);
         vm.prank(user1);
-        staking.transfer(attacker, staking.balanceOf(user1));
+        staking.transfer(attacker, user1Balance);
 
         // Balance should still belong to user1
-        assertGt(staking.balanceOf(user1), 0);
+        assertEq(staking.balanceOf(user1), user1Balance);
     }
 
     function test_Critical_VotingDoubleSpending() public {
