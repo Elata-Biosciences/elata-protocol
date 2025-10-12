@@ -178,14 +178,23 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         );
         address vaultAddr = AppDeploymentLib.deployVault(name, symbol, tokenAddr, address(this));
         address curveAddr = AppDeploymentLib.deployCurve(
-            appCount, address(this), ELTA, tokenAddr, router, targetRaisedElta,
-            lpLockDuration, msg.sender, treasury, protocolFeeRate, appFeeRouter
+            appCount,
+            address(this),
+            ELTA,
+            tokenAddr,
+            router,
+            targetRaisedElta,
+            lpLockDuration,
+            msg.sender,
+            treasury,
+            protocolFeeRate,
+            appFeeRouter
         );
 
         // Configure token & curve
         uint256 creatorShare = tokenSupply / 2;
         uint256 curveShare = tokenSupply - creatorShare;
-        
+
         AppToken token = AppToken(tokenAddr);
         token.mint(address(this), creatorShare);
         token.mint(curveAddr, curveShare);

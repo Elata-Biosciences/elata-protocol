@@ -63,4 +63,3 @@ library AppDeploymentLib {
         return address(curve);
     }
 }
-
