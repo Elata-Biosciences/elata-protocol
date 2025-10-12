@@ -102,7 +102,7 @@ contract CoreSecurityVerificationTest is Test {
 
         // Try to transfer veELTA - should fail (non-transferable ERC20)
         uint256 user1Balance = staking.balanceOf(user1);
-        
+
         vm.expectRevert(Errors.NonTransferable.selector);
         vm.prank(user1);
         staking.transfer(attacker, user1Balance);

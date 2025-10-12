@@ -272,7 +272,7 @@ contract AppLaunchSecurityTest is Test {
 
     function test_Critical_ZeroAddressProtection() public {
         // All contracts should reject zero addresses
-        
+
         // Deploy mocks first (before expectRevert)
         MockAppFeeRouter mockFee = new MockAppFeeRouter();
         MockAppRewardsDistributor mockRewards = new MockAppRewardsDistributor();

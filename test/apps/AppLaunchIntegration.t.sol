@@ -141,7 +141,7 @@ contract AppLaunchIntegrationTest is Test {
         assertEq(token.name(), "NeuroRacing");
         assertEq(token.symbol(), "RACE");
         assertEq(token.totalSupply(), defaultSupply);
-        
+
         // V2: Creator's 50% is auto-staked in vault (not liquid)
         AppStakingVault vault = AppStakingVault(app.vault);
         assertEq(vault.balanceOf(creator1), creatorStaked); // Creator has 50% staked
