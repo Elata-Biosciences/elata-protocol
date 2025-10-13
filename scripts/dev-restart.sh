@@ -24,3 +24,4 @@ bash "$SCRIPT_DIR/dev-local.sh"
 echo -e "${GREEN}Environment restarted!${NC}"
 
 
+
