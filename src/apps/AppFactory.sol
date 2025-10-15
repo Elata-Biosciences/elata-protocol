@@ -8,6 +8,8 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 import { IUniswapV2Router02 } from "../interfaces/IUniswapV2Router02.sol";
 import { IAppFeeRouter } from "../interfaces/IAppFeeRouter.sol";
 import { IAppRewardsDistributor } from "../interfaces/IAppRewardsDistributor.sol";
+import { IRewardsDistributor } from "../interfaces/IRewardsDistributor.sol";
+import { IElataXP } from "../interfaces/IElataXP.sol";
 import { AppToken } from "./AppToken.sol";
 import { AppStakingVault } from "./AppStakingVault.sol";
 import { AppBondingCurve, IAppFactory } from "./AppBondingCurve.sol";
@@ -45,6 +47,9 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
     address public immutable treasury;
     IAppFeeRouter public immutable appFeeRouter;
     IAppRewardsDistributor public immutable appRewardsDistributor;
+    IRewardsDistributor public immutable rewardsDistributor;
+    IElataXP public immutable elataXP;
+    address public immutable governance;
 
     // Launch parameters (immutable for size optimization)
     uint256 public constant seedElta = 100 ether;
@@ -52,7 +57,6 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
     uint256 public constant defaultSupply = 1_000_000_000 ether;
     uint256 public constant lpLockDuration = 365 days * 2;
     uint8 public constant defaultDecimals = 18;
-    uint256 public constant protocolFeeRate = 250;
     uint256 public constant creationFee = 10 ether;
 
     bool public paused;
@@ -107,6 +111,9 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
      * @param _treasury Treasury address
      * @param _appFeeRouter Fee router for trading fees
      * @param _appRewardsDistributor App rewards distributor
+     * @param _rewardsDistributor Main rewards distributor
+     * @param _elataXP ElataXP token address
+     * @param _governance Governance address
      * @param _admin Admin address for roles
      */
     constructor(
@@ -115,12 +122,17 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         address _treasury,
         IAppFeeRouter _appFeeRouter,
         IAppRewardsDistributor _appRewardsDistributor,
+        IRewardsDistributor _rewardsDistributor,
+        IElataXP _elataXP,
+        address _governance,
         address _admin
     ) {
         require(
             address(_elta) != address(0) && address(_router) != address(0)
                 && _treasury != address(0) && address(_appFeeRouter) != address(0)
-                && address(_appRewardsDistributor) != address(0) && _admin != address(0),
+                && address(_appRewardsDistributor) != address(0)
+                && address(_rewardsDistributor) != address(0) && address(_elataXP) != address(0)
+                && _governance != address(0) && _admin != address(0),
             "Zero address"
         );
 
@@ -129,6 +141,9 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         treasury = _treasury;
         appFeeRouter = _appFeeRouter;
         appRewardsDistributor = _appRewardsDistributor;
+        rewardsDistributor = _rewardsDistributor;
+        elataXP = _elataXP;
+        governance = _governance;
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         _grantRole(PAUSER_ROLE, _admin);
@@ -174,7 +189,16 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
 
         // Deploy contracts via library (reduces AppFactory size)
         address tokenAddr = AppDeploymentLib.deployToken(
-            name, symbol, defaultDecimals, tokenSupply, msg.sender, address(this)
+            name,
+            symbol,
+            defaultDecimals,
+            tokenSupply,
+            msg.sender,
+            address(this),
+            governance,
+            address(appRewardsDistributor),
+            address(rewardsDistributor),
+            treasury
         );
         address vaultAddr = AppDeploymentLib.deployVault(name, symbol, tokenAddr, address(this));
         address curveAddr = AppDeploymentLib.deployCurve(
@@ -187,8 +211,9 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
             lpLockDuration,
             msg.sender,
             treasury,
-            protocolFeeRate,
-            appFeeRouter
+            appFeeRouter,
+            elataXP,
+            governance
         );
 
         // Configure token & curve
@@ -196,6 +221,13 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         uint256 curveShare = tokenSupply - creatorShare;
 
         AppToken token = AppToken(tokenAddr);
+
+        // Set vault address on token (for fee exemptions)
+        token.setVault(vaultAddr);
+
+        // Mark bonding curve as exempt from transfer fees
+        token.setTransferFeeExempt(curveAddr, true);
+
         token.mint(address(this), creatorShare);
         token.mint(curveAddr, curveShare);
         token.revokeMinter(address(this));
@@ -217,8 +249,8 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         // Transfer vault ownership to creator AFTER auto-staking
         vault.transferOwnership(msg.sender);
 
-        // Register vault in rewards distributor
-        appRewardsDistributor.registerApp(vaultAddr);
+        // Register vault in rewards distributor with token mapping
+        appRewardsDistributor.registerApp(vaultAddr, tokenAddr);
 
         // Register app
         appId = appCount++;
@@ -300,5 +332,29 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
      */
     function getAppIdByToken(address token) external view returns (uint256) {
         return tokenToAppId[token];
+    }
+
+    /**
+     * @notice Get app launch status and early access info
+     * @param appId App ID
+     * @return isInEarlyAccess Whether app is in early access period
+     * @return earlyAccessEndsAt Timestamp when early access ends
+     * @return xpRequired Minimum XP required for early access
+     */
+    function getAppLaunchStatus(uint256 appId)
+        external
+        view
+        returns (bool isInEarlyAccess, uint256 earlyAccessEndsAt, uint256 xpRequired)
+    {
+        require(appId < appCount, "Invalid app");
+        App storage app = apps[appId];
+        AppBondingCurve curve = AppBondingCurve(app.curve);
+
+        uint256 launchTime = curve.launchTimestamp();
+        uint256 duration = curve.earlyBuyDuration();
+
+        isInEarlyAccess = block.timestamp < launchTime + duration;
+        earlyAccessEndsAt = launchTime + duration;
+        xpRequired = curve.xpMinForEarlyBuy();
     }
 }

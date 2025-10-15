@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IUniswapV2Router02 } from "../../interfaces/IUniswapV2Router02.sol";
 import { IAppFeeRouter } from "../../interfaces/IAppFeeRouter.sol";
+import { IElataXP } from "../../interfaces/IElataXP.sol";
 import { AppToken } from "../AppToken.sol";
 import { AppBondingCurve } from "../AppBondingCurve.sol";
 import { AppStakingVault } from "../AppStakingVault.sol";
@@ -20,9 +21,24 @@ library AppDeploymentLib {
         uint8 decimals,
         uint256 supply,
         address creator,
-        address factory
+        address factory,
+        address governance,
+        address appRewardsDistributor,
+        address rewardsDistributor,
+        address treasury
     ) external returns (address) {
-        AppToken token = new AppToken(name, symbol, decimals, supply, creator, factory);
+        AppToken token = new AppToken(
+            name,
+            symbol,
+            decimals,
+            supply,
+            creator,
+            factory,
+            governance,
+            appRewardsDistributor,
+            rewardsDistributor,
+            treasury
+        );
         return address(token);
     }
 
@@ -44,8 +60,9 @@ library AppDeploymentLib {
         uint256 lpLockDuration,
         address creator,
         address treasury,
-        uint256 protocolFeeRate,
-        IAppFeeRouter appFeeRouter
+        IAppFeeRouter appFeeRouter,
+        IElataXP elataXP,
+        address governance
     ) external returns (address) {
         AppBondingCurve curve = new AppBondingCurve(
             appId,
@@ -57,8 +74,9 @@ library AppDeploymentLib {
             lpLockDuration,
             creator,
             treasury,
-            protocolFeeRate,
-            appFeeRouter
+            appFeeRouter,
+            elataXP,
+            governance
         );
         return address(curve);
     }

@@ -31,7 +31,18 @@ contract AppModuleFactorySecurityTest is Test {
 
         factory = new AppModuleFactory(address(elta), factoryOwner, treasury);
 
-        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin);
+        appToken = new AppToken(
+            "TestApp",
+            "TEST",
+            18,
+            MAX_SUPPLY,
+            appCreator,
+            admin,
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
 
         // Mint ELTA to users
         vm.startPrank(factoryOwner);
@@ -170,7 +181,18 @@ contract AppModuleFactorySecurityTest is Test {
 
     function test_Security_MultipleAppsIsolated() public {
         // Create second app token
-        AppToken appToken2 = new AppToken("TestApp2", "TEST2", 18, MAX_SUPPLY, appCreator, admin);
+        AppToken appToken2 = new AppToken(
+            "TestApp2",
+            "TEST2",
+            18,
+            MAX_SUPPLY,
+            appCreator,
+            admin,
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
 
         // Deploy for both apps
         vm.startPrank(appCreator);

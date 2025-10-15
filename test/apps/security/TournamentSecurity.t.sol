@@ -27,7 +27,18 @@ contract TournamentSecurityTest is Test {
     uint256 public constant MAX_SUPPLY = 1_000_000_000 ether;
 
     function setUp() public {
-        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, owner, admin);
+        appToken = new AppToken(
+            "TestApp",
+            "TEST",
+            18,
+            MAX_SUPPLY,
+            owner,
+            admin,
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
         merkle = new Merkle();
 
         tournament = new Tournament(
@@ -195,8 +206,9 @@ contract TournamentSecurityTest is Test {
         vm.prank(owner);
         tournament.finalize(bytes32(0));
 
-        // Verify fees
-        assertEq(appToken.balanceOf(treasury), expectedProtocol);
+        // Verify fees (account for 1% transfer fee on treasury transfer)
+        uint256 expectedProtocolAfterFee = (expectedProtocol * 99) / 100;
+        assertEq(appToken.balanceOf(treasury), expectedProtocolAfterFee);
         assertEq(tournament.pool(), expectedNet);
     }
 
@@ -467,9 +479,11 @@ contract TournamentSecurityTest is Test {
         tournament.finalize(bytes32(0));
 
         uint256 expectedBurn = (ENTRY_FEE * 100) / 10000;
+        // Account for 1% transfer fee: expectedBurn * 0.99
+        uint256 expectedBurnAfterFee = (expectedBurn * 99) / 100;
 
-        // Verify burn sink received tokens
-        assertEq(appToken.balanceOf(burnSink), expectedBurn);
+        // Verify burn sink received tokens (after transfer fee)
+        assertEq(appToken.balanceOf(burnSink), expectedBurnAfterFee);
 
         // Note: Total supply doesn't decrease with transfer to dead address
         // But tokens are effectively removed from circulation

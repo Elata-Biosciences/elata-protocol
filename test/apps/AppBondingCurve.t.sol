@@ -7,11 +7,26 @@ import { AppToken } from "../../src/apps/AppToken.sol";
 import { AppBondingCurve } from "../../src/apps/AppBondingCurve.sol";
 import { IUniswapV2Router02 } from "../../src/interfaces/IUniswapV2Router02.sol";
 import { IAppFeeRouter } from "../../src/interfaces/IAppFeeRouter.sol";
+import { IElataXP } from "../../src/interfaces/IElataXP.sol";
+
+// Mock XP token
+contract MockElataXP is IElataXP {
+    mapping(address => uint256) public balances;
+
+    function balanceOf(address account) external view override returns (uint256) {
+        return balances[account];
+    }
+
+    function setBalance(address account, uint256 balance) external {
+        balances[account] = balance;
+    }
+}
 
 contract AppBondingCurveTest is Test {
     ELTA public elta;
     AppToken public appToken;
     AppBondingCurve public curve;
+    MockElataXP public mockXP;
 
     address public admin = makeAddr("admin");
     address public treasury = makeAddr("treasury");
@@ -19,6 +34,9 @@ contract AppBondingCurveTest is Test {
     address public creator = makeAddr("creator");
     address public buyer1 = makeAddr("buyer1");
     address public buyer2 = makeAddr("buyer2");
+    address public governance = makeAddr("governance");
+    address public mockAppRewards = makeAddr("mockAppRewards");
+    address public mockRewards = makeAddr("mockRewards");
 
     address public mockRouter = makeAddr("mockRouter");
 
@@ -28,7 +46,20 @@ contract AppBondingCurveTest is Test {
 
     function setUp() public {
         elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 77_000_000 ether);
-        appToken = new AppToken("TestApp", "TEST", 18, TOKEN_SUPPLY, creator, factory);
+        mockXP = new MockElataXP();
+
+        appToken = new AppToken(
+            "TestApp",
+            "TEST",
+            18,
+            TOKEN_SUPPLY,
+            creator,
+            factory,
+            governance,
+            mockAppRewards,
+            mockRewards,
+            treasury
+        );
 
         // Mock router calls
         vm.mockCall(
@@ -45,8 +76,9 @@ contract AppBondingCurveTest is Test {
             365 days, // lpLockDuration
             treasury, // lpBeneficiary
             treasury, // treasury
-            250, // 2.5% protocol fee
-            IAppFeeRouter(address(0)) // No fee router in tests
+            IAppFeeRouter(address(0)), // No fee router in tests
+            mockXP,
+            governance
         );
 
         // Setup: mint tokens to curve and initialize
@@ -66,6 +98,10 @@ contract AppBondingCurveTest is Test {
         elta.transfer(buyer1, 50_000 ether);
         elta.transfer(buyer2, 50_000 ether);
         vm.stopPrank();
+
+        // Give buyers XP to pass XP gating
+        mockXP.setBalance(buyer1, 1000 ether);
+        mockXP.setBalance(buyer2, 1000 ether);
     }
 
     function test_Deployment() public {
@@ -102,11 +138,14 @@ contract AppBondingCurveTest is Test {
         vm.stopPrank();
 
         assertEq(tokensOut, expectedTokens);
-        assertEq(tokensAfter - tokensBefore, expectedTokens);
-        // Account for protocol fee (2.5% deducted)
-        uint256 protocolFee = (eltaIn * 250) / 10000; // 2.5%
-        uint256 actualEltaAdded = eltaIn - protocolFee;
-        assertEq(curve.reserveElta(), SEED_ELTA + actualEltaAdded);
+        // Account for 1% transfer fee - buyer receives 99% of tokens
+        uint256 actualReceived = tokensAfter - tokensBefore;
+        uint256 expectedReceived = (expectedTokens * 99) / 100;
+
+        // Allow for small rounding differences
+        assertApproxEqRel(actualReceived, expectedReceived, 0.01e18); // 0.01% tolerance
+        // No protocol fee deducted - all ELTA goes to reserves
+        assertEq(curve.reserveElta(), SEED_ELTA + eltaIn);
     }
 
     function test_BuyWithSlippageProtection() public {
@@ -165,20 +204,7 @@ contract AppBondingCurveTest is Test {
         curve.buy(0, 0);
     }
 
-    function test_ProtocolFeeCollection() public {
-        uint256 eltaIn = 1000 ether;
-        uint256 protocolFee = (eltaIn * curve.protocolFeeRate()) / 10000;
-
-        uint256 treasuryBefore = elta.balanceOf(treasury);
-
-        vm.startPrank(buyer1);
-        elta.approve(address(curve), eltaIn);
-        curve.buy(eltaIn, 0);
-        vm.stopPrank();
-
-        uint256 treasuryAfter = elta.balanceOf(treasury);
-        assertEq(treasuryAfter - treasuryBefore, protocolFee);
-    }
+    // Removed test_ProtocolFeeCollection - legacy protocol fee removed in favor of unified 70/15/15 split
 
     function testFuzz_BuyTokens(uint256 eltaAmount) public {
         // Bound to reasonable range

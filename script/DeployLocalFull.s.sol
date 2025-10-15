@@ -192,12 +192,12 @@ contract DeployLocalFull is Script {
         // ===== STEP 8: Deploy App Launch Framework =====
         console2.log("[8/10] Deploying App Factories...");
         // NOTE: AppFactory deployment commented out - use script/Deploy.sol
-        // AppFactory now requires AppFeeRouter and AppRewardsDistributor
+        // AppFactory now requires AppFeeRouter, AppRewardsDistributor, RewardsDistributor, ElataXP, and Governance
         // result.appFactory = new AppFactory(...);
-        console2.log("       AppFactory deployment skipped (use DeployEconomicUpgrade.s.sol)");
-
-        result.appFactoryViews = new AppFactoryViews(address(result.appFactory));
-        console2.log("       AppFactoryViews deployed at:", address(result.appFactoryViews));
+        // result.appFactoryViews = new AppFactoryViews(address(result.appFactory));
+        console2.log(
+            "       AppFactory & AppFactoryViews deployment skipped (use script/Deploy.sol)"
+        );
 
         result.appModuleFactory =
             new AppModuleFactory(address(result.token), result.deployer, result.treasury);

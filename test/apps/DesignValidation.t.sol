@@ -35,7 +35,18 @@ contract DesignValidationTest is Test {
 
         factory = new AppModuleFactory(address(elta), factoryOwner, treasury);
 
-        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin);
+        appToken = new AppToken(
+            "TestApp",
+            "TEST",
+            18,
+            MAX_SUPPLY,
+            appCreator,
+            admin,
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
 
         vm.prank(appCreator);
         (address accessAddr, address vaultAddr,) =
@@ -46,6 +57,10 @@ contract DesignValidationTest is Test {
 
         vm.prank(admin);
         appToken.mint(player, 10000 ether);
+
+        // Make vault exempt from transfer fees to avoid circular fee issues
+        vm.prank(admin);
+        appToken.setTransferFeeExempt(address(vault), true);
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -93,9 +108,12 @@ contract DesignValidationTest is Test {
         // VALIDATION: Supply unchanged
         assertEq(appToken.totalSupply(), initialSupply);
 
-        // Unstake
+        // Get actual staked amount (accounting for transfer fee)
+        uint256 actualStaked = vault.stakedOf(player);
+
+        // Unstake the actual amount
         vm.prank(player);
-        vault.unstake(1000 ether);
+        vault.unstake(actualStaked);
 
         // VALIDATION: Still unchanged
         assertEq(appToken.totalSupply(), initialSupply);
@@ -137,7 +155,18 @@ contract DesignValidationTest is Test {
         uint256 treasuryBefore = elta.balanceOf(treasury);
 
         // Deploy modules
-        AppToken app2 = new AppToken("App2", "APP2", 18, MAX_SUPPLY, appCreator, admin);
+        AppToken app2 = new AppToken(
+            "App2",
+            "APP2",
+            18,
+            MAX_SUPPLY,
+            appCreator,
+            admin,
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
 
         vm.prank(appCreator);
         elta.approve(address(factory), 100 ether);
@@ -173,9 +202,10 @@ contract DesignValidationTest is Test {
         vm.prank(appCreator);
         tourn.finalize(bytes32(0));
 
-        // VALIDATION: Protocol fee captured
+        // VALIDATION: Protocol fee captured (account for 1% transfer fee)
         uint256 expectedFee = (10 ether * 250) / 10000;
-        assertEq(appToken.balanceOf(treasury), treasuryBefore + expectedFee);
+        uint256 expectedFeeAfterTransfer = (expectedFee * 99) / 100; // 1% transfer fee
+        assertEq(appToken.balanceOf(treasury), treasuryBefore + expectedFeeAfterTransfer);
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -249,7 +279,7 @@ contract DesignValidationTest is Test {
     // DESIGN ASSUMPTION: Clean Token Economics
     // ────────────────────────────────────────────────────────────────────────────
 
-    function test_Design_NoTransferTax() public {
+    function test_Design_TransferFeeApplied() public {
         address sender = makeAddr("sender");
         address recipient = makeAddr("recipient");
 
@@ -259,9 +289,9 @@ contract DesignValidationTest is Test {
         vm.prank(sender);
         appToken.transfer(recipient, 500 ether);
 
-        // VALIDATION: No tax - recipient gets exact amount
-        assertEq(appToken.balanceOf(recipient), 500 ether);
-        assertEq(appToken.balanceOf(sender), 500 ether);
+        // VALIDATION: 1% transfer fee applied - recipient gets 99%
+        assertEq(appToken.balanceOf(recipient), 495 ether); // 500 * 0.99
+        assertEq(appToken.balanceOf(sender), 500 ether); // sender pays full amount
     }
 
     function test_Design_PermitGaslessApprovals() public {
@@ -347,7 +377,18 @@ contract DesignValidationTest is Test {
 
     function test_Design_PerAppIsolation() public {
         // Deploy second app
-        AppToken app2 = new AppToken("App2", "APP2", 18, MAX_SUPPLY, appCreator, admin);
+        AppToken app2 = new AppToken(
+            "App2",
+            "APP2",
+            18,
+            MAX_SUPPLY,
+            appCreator,
+            admin,
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
 
         vm.prank(appCreator);
         (address access2Addr, address vault2Addr,) =
@@ -482,7 +523,11 @@ contract DesignValidationTest is Test {
             18,
             MAX_SUPPLY,
             player, // Different owner
-            admin
+            admin,
+            address(1),
+            address(1),
+            address(1),
+            address(1)
         );
 
         vm.expectRevert(AppModuleFactory.NotTokenOwner.selector);
@@ -521,8 +566,18 @@ contract DesignValidationTest is Test {
 
     function test_Design_SustainableEmissions() public {
         // Create new token for this test to control supply
-        AppToken freshToken =
-            new AppToken("FreshApp", "FRESH", 18, 200000 ether, appCreator, appCreator);
+        AppToken freshToken = new AppToken(
+            "FreshApp",
+            "FRESH",
+            18,
+            200000 ether,
+            appCreator,
+            appCreator,
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
 
         EpochRewards epochRewards = new EpochRewards(address(freshToken), appCreator);
 

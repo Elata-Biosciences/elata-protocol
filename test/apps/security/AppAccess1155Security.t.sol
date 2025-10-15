@@ -24,7 +24,18 @@ contract AppAccess1155SecurityTest is Test {
     uint256 public constant MAX_SUPPLY = 1_000_000_000 ether;
 
     function setUp() public {
-        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, owner, admin);
+        appToken = new AppToken(
+            "TestApp",
+            "TEST",
+            18,
+            MAX_SUPPLY,
+            owner,
+            admin,
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
         vault = new AppStakingVault("TestApp", "TAPP", appToken, owner);
         access =
             new AppAccess1155(address(appToken), address(vault), owner, "https://metadata.test/");

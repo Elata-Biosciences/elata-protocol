@@ -15,6 +15,10 @@ contract AppAccess1155Test is Test {
     address public user1 = makeAddr("user1");
     address public user2 = makeAddr("user2");
     address public admin = makeAddr("admin");
+    address public governance = makeAddr("governance");
+    address public treasury = makeAddr("treasury");
+    address public mockAppRewards = makeAddr("mockAppRewards");
+    address public mockRewards = makeAddr("mockRewards");
 
     uint256 public constant ITEM_PRICE = 100 ether;
     uint256 public constant MAX_SUPPLY = 1_000_000_000 ether;
@@ -26,7 +30,18 @@ contract AppAccess1155Test is Test {
 
     function setUp() public {
         // Deploy app token
-        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, owner, admin);
+        appToken = new AppToken(
+            "TestApp",
+            "TEST",
+            18,
+            MAX_SUPPLY,
+            owner,
+            admin,
+            governance,
+            mockAppRewards,
+            mockRewards,
+            treasury
+        );
 
         // Deploy staking vault
         vault = new AppStakingVault("TestApp", "TAPP", appToken, owner);
