@@ -5,14 +5,14 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IUniswapV2Router02 } from "../../interfaces/IUniswapV2Router02.sol";
 import { IAppFeeRouter } from "../../interfaces/IAppFeeRouter.sol";
 import { IElataXP } from "../../interfaces/IElataXP.sol";
-import { AppToken } from "../AppToken.sol";
-import { AppBondingCurve } from "../AppBondingCurve.sol";
-import { AppStakingVault } from "../AppStakingVault.sol";
+import { AppTokenDeployer } from "./AppTokenDeployer.sol";
+import { AppVaultDeployer } from "./AppVaultDeployer.sol";
+import { AppCurveDeployer } from "./AppCurveDeployer.sol";
 
 /**
  * @title AppDeploymentLib
  * @notice Minimal library for deploying app contracts
- * @dev Keeps deployments separate to reduce AppFactory size
+ * @dev Delegates to specialized deployer libraries to reduce size
  */
 library AppDeploymentLib {
     function deployToken(
@@ -27,7 +27,7 @@ library AppDeploymentLib {
         address rewardsDistributor,
         address treasury
     ) external returns (address) {
-        AppToken token = new AppToken(
+        return AppTokenDeployer.deployToken(
             name,
             symbol,
             decimals,
@@ -39,15 +39,13 @@ library AppDeploymentLib {
             rewardsDistributor,
             treasury
         );
-        return address(token);
     }
 
     function deployVault(string calldata name, string calldata symbol, address token, address owner)
         external
         returns (address)
     {
-        AppStakingVault vault = new AppStakingVault(name, symbol, IERC20(token), owner);
-        return address(vault);
+        return AppVaultDeployer.deployVault(name, symbol, token, owner);
     }
 
     function deployCurve(
@@ -64,11 +62,11 @@ library AppDeploymentLib {
         IElataXP elataXP,
         address governance
     ) external returns (address) {
-        AppBondingCurve curve = new AppBondingCurve(
+        return AppCurveDeployer.deployCurve(
             appId,
             factory,
             elta,
-            AppToken(token),
+            token,
             router,
             targetRaised,
             lpLockDuration,
@@ -78,6 +76,5 @@ library AppDeploymentLib {
             elataXP,
             governance
         );
-        return address(curve);
     }
 }
