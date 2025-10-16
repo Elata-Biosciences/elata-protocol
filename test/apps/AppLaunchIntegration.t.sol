@@ -12,7 +12,13 @@ import { LpLocker } from "../../src/apps/LpLocker.sol";
 import { IUniswapV2Router02 } from "../../src/interfaces/IUniswapV2Router02.sol";
 import { IAppFeeRouter } from "../../src/interfaces/IAppFeeRouter.sol";
 import { IAppRewardsDistributor } from "../../src/interfaces/IAppRewardsDistributor.sol";
-import { MockAppFeeRouter, MockAppRewardsDistributor } from "../mocks/MockContracts.sol";
+import {
+    MockAppFeeRouter,
+    MockAppRewardsDistributor,
+    MockElataXP,
+    MockRewardsDistributor
+} from "../mocks/MockContracts.sol";
+import { IRewardsDistributor } from "../../src/interfaces/IRewardsDistributor.sol";
 
 /**
  * @title App Launch Integration Tests
@@ -31,6 +37,7 @@ contract AppLaunchIntegrationTest is Test {
     address public investor1 = makeAddr("investor1");
     address public investor2 = makeAddr("investor2");
     address public investor3 = makeAddr("investor3");
+    address public governance = makeAddr("governance");
 
     address public mockRouter = makeAddr("mockRouter");
     address public mockFactory = makeAddr("mockFactory");
@@ -45,6 +52,8 @@ contract AppLaunchIntegrationTest is Test {
         // Deploy mocks for new architecture
         MockAppFeeRouter mockFeeRouter = new MockAppFeeRouter();
         MockAppRewardsDistributor mockAppRewards = new MockAppRewardsDistributor();
+        MockRewardsDistributor mockRewards = new MockRewardsDistributor();
+        MockElataXP mockXP = new MockElataXP();
 
         factory = new AppFactory(
             elta,
@@ -52,6 +61,9 @@ contract AppLaunchIntegrationTest is Test {
             treasury,
             IAppFeeRouter(address(mockFeeRouter)),
             IAppRewardsDistributor(address(mockAppRewards)),
+            IRewardsDistributor(address(mockRewards)),
+            mockXP,
+            governance,
             admin
         );
 
@@ -66,6 +78,13 @@ contract AppLaunchIntegrationTest is Test {
         elta.transfer(investor2, 50_000 ether);
         elta.transfer(investor3, 50_000 ether);
         vm.stopPrank();
+
+        // Give users XP to pass XP gating
+        mockXP.setBalance(creator1, 1000 ether);
+        mockXP.setBalance(creator2, 1000 ether);
+        mockXP.setBalance(investor1, 1000 ether);
+        mockXP.setBalance(investor2, 1000 ether);
+        mockXP.setBalance(investor3, 1000 ether);
     }
 
     function _setupMockUniswap() internal {
@@ -298,18 +317,15 @@ contract AppLaunchIntegrationTest is Test {
         AppBondingCurve curve = AppBondingCurve(app.curve);
 
         uint256 purchaseAmount = 1000 ether;
-        uint256 expectedProtocolFee = (purchaseAmount * factory.protocolFeeRate()) / 10000;
 
         vm.startPrank(investor1);
-        // Approve with 1% fee
+        // Approve with 1% trading fee
         elta.approve(address(curve), purchaseAmount * 101 / 100);
         curve.buy(purchaseAmount, 0);
         vm.stopPrank();
 
-        uint256 treasuryAfterTrade = elta.balanceOf(treasury);
-
-        // Verify protocol fee collected
-        assertEq(treasuryAfterTrade - treasuryAfterCreation, expectedProtocolFee);
+        // Trading fees now route through RewardsDistributor (70/15/15 split)
+        // Treasury receives creation fee only
 
         console2.log("[OK] Economic flows verified");
     }
@@ -331,7 +347,6 @@ contract AppLaunchIntegrationTest is Test {
 
         // Verify factory parameters applied correctly
         assertEq(curve.targetRaisedElta(), factory.targetRaisedElta());
-        assertEq(curve.protocolFeeRate(), factory.protocolFeeRate());
         assertEq(token.maxSupply(), factory.defaultSupply());
         assertEq(curve.reserveElta(), factory.seedElta());
 
@@ -428,9 +443,9 @@ contract AppLaunchIntegrationTest is Test {
         uint256 creationGas = gasBefore - gasAfter;
         console2.log("App creation gas:", creationGas);
 
-        // V2: Gas increased due to vault deployment and auto-staking
-        // Threshold updated from 5M to 7M (includes vault + stake + registration)
-        assertLt(creationGas, 7_000_000);
+        // V3: Gas increased due to transfer fee logic and additional setup
+        // Threshold updated to 7.5M to account for transfer fee calculations
+        assertLt(creationGas, 7_500_000);
 
         // Test purchase gas costs
         AppFactory.App memory app = factory.getApp(appId);

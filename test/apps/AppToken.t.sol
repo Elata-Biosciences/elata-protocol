@@ -21,7 +21,18 @@ contract AppTokenTest is Test {
     event Minted(address indexed to, uint256 amount);
 
     function setUp() public {
-        token = new AppToken("TestApp Token", "TEST", 18, MAX_SUPPLY, creator, admin);
+        token = new AppToken(
+            "TestApp Token",
+            "TEST",
+            18,
+            MAX_SUPPLY,
+            creator,
+            admin,
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
     }
 
     function test_Deployment() public {
@@ -38,15 +49,39 @@ contract AppTokenTest is Test {
 
     function test_RevertWhen_DeploymentZeroAddress() public {
         vm.expectRevert("Zero address");
-        new AppToken("Test", "TEST", 18, MAX_SUPPLY, address(0), admin);
+        new AppToken(
+            "Test",
+            "TEST",
+            18,
+            MAX_SUPPLY,
+            address(0),
+            admin,
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
 
         vm.expectRevert("Zero address");
-        new AppToken("Test", "TEST", 18, MAX_SUPPLY, creator, address(0));
+        new AppToken(
+            "Test",
+            "TEST",
+            18,
+            MAX_SUPPLY,
+            creator,
+            address(0),
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
     }
 
     function test_RevertWhen_DeploymentInvalidSupply() public {
         vm.expectRevert("Invalid supply");
-        new AppToken("Test", "TEST", 18, 0, creator, admin);
+        new AppToken(
+            "Test", "TEST", 18, 0, creator, admin, address(1), address(1), address(1), address(1)
+        );
     }
 
     function test_Mint() public {
@@ -154,8 +189,9 @@ contract AppTokenTest is Test {
         vm.prank(user1);
         token.transfer(user2, 200 ether);
 
-        assertEq(token.balanceOf(user1), 800 ether);
-        assertEq(token.balanceOf(user2), 700 ether);
+        // Account for 1% transfer fee
+        assertEq(token.balanceOf(user1), 800 ether); // Sender pays full amount
+        assertEq(token.balanceOf(user2), 500 ether + 198 ether); // 500 + 198 (99% of 200)
 
         // Test approval and transferFrom
         vm.prank(user1);
@@ -164,8 +200,9 @@ contract AppTokenTest is Test {
         vm.prank(user2);
         token.transferFrom(user1, user2, 300 ether);
 
-        assertEq(token.balanceOf(user1), 500 ether);
-        assertEq(token.balanceOf(user2), 1000 ether);
+        // Account for 1% transfer fee on transferFrom
+        assertEq(token.balanceOf(user1), 500 ether); // Sender pays full amount
+        assertEq(token.balanceOf(user2), 500 ether + 198 ether + 297 ether); // 500 + 198 + 297 (99% of 300)
     }
 
     function test_BurnFrom() public {

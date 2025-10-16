@@ -105,20 +105,29 @@ contract DeployFullExample is Script {
         console.log("TournamentFactory deployed at:", address(tournamentFactory));
 
         // 3. Simulate app creation (normally via AppFactory)
-        // In production, creator calls appFactory.createApp() which:
-        // - Deploys AppToken
-        // - Mints 10% to creator, 90% to bonding curve
-        // - Transfers admin role to creator
-        // For this example, we manually create the token
-        AppToken appToken = new AppToken(
-            "NeuroPong Token", "NPONG", 18, 1_000_000_000 ether, appCreator, appCreator
-        );
-        console.log("AppToken deployed at:", address(appToken));
+        // TODO: Update AppToken constructor - see MIGRATION_GUIDE.md
+        // Need to add: governance, appRewardsDistributor, rewardsDistributor, treasury
+        // AppToken appToken = new AppToken(
+        //     "NeuroPong Token", "NPONG", 18, 1_000_000_000 ether, appCreator, appCreator
+        // );
+        // console.log("AppToken deployed at:", address(appToken));
 
         // Mint creator treasury (10%)
-        appToken.mint(appCreator, 100_000_000 ether);
-        console.log("Minted 100M tokens (10%) to creator treasury");
+        // appToken.mint(appCreator, 100_000_000 ether);
+        console.log("AppToken deployment DISABLED - needs migration (see MIGRATION_GUIDE.md)");
 
+        // Skip module deployment until AppToken is properly deployed
+
+        console.log("\n=== Deployment Summary ===");
+        console.log("ELTA:", address(elta));
+        console.log("AppModuleFactory:", address(factory));
+        console.log("TournamentFactory:", address(tournamentFactory));
+        console.log("\nNote: App deployment disabled - see MIGRATION_GUIDE.md for updates needed");
+
+        vm.stopBroadcast();
+        return;
+
+        /* COMMENTED OUT - Needs AppToken migration
         // 4. Deploy modules via AppModuleFactory
         (address access1155, address stakingVault, address epochRewards) =
             factory.deployModules(address(appToken), "https://metadata.neuropong.game/");
@@ -190,5 +199,6 @@ contract DeployFullExample is Script {
         console.log("4. Creator finalizes tournament with winners Merkle root");
         console.log("5. Creator finalizes epoch with rewards Merkle root");
         console.log("6. Winners and players claim their rewards");
+        */
     }
 }

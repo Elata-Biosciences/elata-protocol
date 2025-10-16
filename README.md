@@ -345,20 +345,56 @@ Token Distribution:
 ├── 50% → Auto-staked for creator (aligned incentives, earns rewards immediately)
 └── 50% → Bonding curve (public sale, fair price discovery)
 
+🆕 XP-Gated Launch (First 6 Hours):
+├── Early Access: Only users with ≥100 XP can buy
+├── Sybil Protection: Must earn XP through protocol participation
+└── After 6 Hours: Open to all users
+
 Trading Fees (ON TOP of trade):
 ├── Trading Fee: 1% → AppFeeRouter → RewardsDistributor
 │   ├── 70% → App token stakers
 │   ├── 15% → veELTA stakers
 │   └── 15% → Treasury
 └── Graduation: At 42k ELTA raised → Auto-create locked DEX liquidity (2 years)
+
+🆕 App Token Transfer Fees:
+├── Transfer Fee: 1% (default, capped at 2%, governance-adjustable)
+│   ├── 70% → App token stakers (in app token)
+│   ├── 15% → veELTA stakers (in app token)
+│   └── 15% → Treasury (in app token)
+├── Exemptions: Bonding curve, staking vault, factory (automatic)
+└── Benefits: Rewards long-term holders, discourages dumping
 ```
 
 **Economic Benefits:**
 - **Creator Alignment**: 50% auto-staked prevents dumps, aligns with long-term success
+- **Fair Launches**: XP gating rewards protocol participants with early access
 - **ELTA Demand**: Every app launch requires ELTA; all trading uses ELTA
 - **Protocol Revenue**: 1% trading fee on all bonding curve volume
+- **Continuous Rewards**: 1% transfer fee creates ongoing yield for stakers
 - **Ecosystem Growth**: More apps = more ELTA utility and rewards for stakers
-- **Real Yield**: App stakers earn 70% of protocol revenues in ELTA
+- **Real Yield**: App stakers earn 70% of protocol revenues in both ELTA and app tokens
+
+### Protocol Enhancement Details
+
+**XP-Gated Early Access:**
+- Protects against bots and snipers
+- Rewards early protocol participants
+- Creates natural price discovery
+- Governance-configurable (XP minimum & duration)
+- View functions: `canUserBuy()`, `getEarlyAccessInfo()`
+
+**Unified Fee Routing:**
+- All protocol fees flow through RewardsDistributor
+- Consistent 70/15/15 split across all revenue sources
+- On-chain snapshot-based claims (no Merkle trees)
+- Gas-efficient pro-rata distribution
+
+**Multi-Token Rewards:**
+- Distributors accept both ELTA and app tokens
+- Separate epoch tracking prevents mixing
+- Stakers earn in multiple assets
+- Treasury receives diversified revenue
 
 ---
 
@@ -386,7 +422,10 @@ Beyond fair token launches, Elata provides utility modules that make app tokens 
 - Irreversible `finalizeMinting()` to lock supply permanently
 - Burnable for deflationary mechanics
 - `owner()` function for factory integration
-- No transfer fees (DEX compatible)
+- 🆕 **1% transfer fee** (default, governance-adjustable, capped at 2%)
+  - 70% to app stakers, 15% to veELTA, 15% to treasury
+  - Smart exemption system (bonding curve, vault, factory auto-exempt)
+  - View functions: `getTransferFeeInfo()`, `calculateTransferFee()`
 
 **AppAccess1155** (Items & Passes):
 - ERC1155 multi-token standard for in-app items
@@ -704,6 +743,7 @@ MAX_LOCK = 730 days   // Maximum lock period (2 years)
 - **Community governance**: XP for proposal creation/voting
 
 **How it's used**:
+- **🆕 Early Access** (first 6 hours of app launches require ≥100 XP)
 - **LotPool voting** (funding experiments) via block-based snapshots
 - **App store boosts** (minimum XP for premium features)
 - **Reputation system** (proof of sustained contribution)

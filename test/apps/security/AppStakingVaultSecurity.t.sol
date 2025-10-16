@@ -25,7 +25,18 @@ contract AppStakingVaultSecurityTest is Test {
     uint256 public constant MAX_SUPPLY = 1_000_000_000 ether;
 
     function setUp() public {
-        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, owner, admin);
+        appToken = new AppToken(
+            "TestApp",
+            "TEST",
+            18,
+            MAX_SUPPLY,
+            owner,
+            admin,
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
         vault = new AppStakingVault("TestApp", "TAPP", appToken, owner);
 
         // Mint tokens to users
@@ -33,6 +44,9 @@ contract AppStakingVaultSecurityTest is Test {
         appToken.mint(user1, 10000 ether);
         appToken.mint(user2, 10000 ether);
         appToken.mint(attacker, 10000 ether);
+
+        // Make vault exempt from transfer fees to avoid circular fee issues
+        appToken.setTransferFeeExempt(address(vault), true);
         vm.stopPrank();
     }
 

@@ -20,7 +20,18 @@ contract AppTokenSecurityTest is Test {
     uint256 public constant MAX_SUPPLY = 1_000_000_000 ether;
 
     function setUp() public {
-        token = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, creator, admin);
+        token = new AppToken(
+            "TestApp",
+            "TEST",
+            18,
+            MAX_SUPPLY,
+            creator,
+            admin,
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -223,16 +234,16 @@ contract AppTokenSecurityTest is Test {
     // TRANSFER SECURITY
     // ────────────────────────────────────────────────────────────────────────────
 
-    function test_Security_NoTransferTax() public {
+    function test_Security_TransferFeeApplied() public {
         vm.prank(admin);
         token.mint(user1, 1000 ether);
 
         vm.prank(user1);
         token.transfer(attacker, 500 ether);
 
-        // Recipient gets exact amount (no tax)
-        assertEq(token.balanceOf(attacker), 500 ether);
-        assertEq(token.balanceOf(user1), 500 ether);
+        // Recipient gets 99% due to 1% transfer fee (500 * 0.99 = 495)
+        assertEq(token.balanceOf(attacker), 495 ether);
+        assertEq(token.balanceOf(user1), 500 ether); // Sender pays full amount
     }
 
     function testFuzz_Security_TransferPreservesSupply(uint256 mintAmount, uint256 transferAmount)
@@ -313,11 +324,12 @@ contract AppTokenSecurityTest is Test {
         vm.prank(admin);
         token.finalizeMinting();
 
-        // Transfers should still work
+        // Transfers should still work (with transfer fee applied)
         vm.prank(user1);
         token.transfer(attacker, 500 ether);
 
-        assertEq(token.balanceOf(attacker), 500 ether);
+        // Recipient gets 99% due to 1% transfer fee (500 * 0.99 = 495)
+        assertEq(token.balanceOf(attacker), 495 ether);
     }
 
     function test_Security_CanApproveAfterFinalize() public {

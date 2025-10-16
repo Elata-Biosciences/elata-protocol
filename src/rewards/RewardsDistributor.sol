@@ -68,6 +68,13 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
     /// @notice User claim cursor for veELTA epochs
     mapping(address => uint256) public lastClaimed;
 
+    /// @notice Token-denominated veELTA epochs (token => epochs)
+    /// @dev For app token transfer fees distributed to veELTA holders
+    mapping(IERC20 => Epoch[]) public tokenEpochs;
+
+    /// @notice User claim cursor for token epochs (user => token => lastClaimedIndex)
+    mapping(address => mapping(IERC20 => uint256)) public tokenLastClaimed;
+
     /// @notice Paused state
     bool public paused;
 
@@ -81,6 +88,16 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
     event VeEpochCreated(uint256 indexed epochId, uint256 blockNumber, uint256 amount);
     event VeRewardsClaimed(
         address indexed user, uint256 fromEpoch, uint256 toEpoch, uint256 amount
+    );
+    event VeTokenEpochCreated(
+        address indexed token, uint256 indexed epochId, uint256 blockNumber, uint256 amount
+    );
+    event VeTokenRewardsClaimed(
+        address indexed user,
+        address indexed token,
+        uint256 fromEpoch,
+        uint256 toEpoch,
+        uint256 amount
     );
     event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury);
     event EmergencyPause(bool paused);
@@ -205,6 +222,81 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
         uint256 fromEpoch = lastClaimed[msg.sender];
         uint256 toEpoch = veEpochs.length;
         this.claimVe(fromEpoch, toEpoch);
+    }
+
+    /**
+     * @notice Deposit arbitrary ERC20 tokens as veELTA rewards (from app token transfer fees)
+     * @dev Called by AppToken when transfer fees are collected for veELTA share
+     * @param token Token address
+     * @param amount Amount to deposit
+     */
+    function depositVeInToken(IERC20 token, uint256 amount) external whenNotPaused {
+        if (amount == 0) revert Errors.InvalidAmount();
+        require(address(token) != address(0), "Zero token");
+
+        token.safeTransferFrom(msg.sender, address(this), amount);
+
+        tokenEpochs[token].push(Epoch({ blockNumber: block.number, amount: amount }));
+
+        emit VeTokenEpochCreated(
+            address(token), tokenEpochs[token].length - 1, block.number, amount
+        );
+    }
+
+    /**
+     * @notice Claim veELTA rewards in a specific token
+     * @dev Uses on-chain snapshots via getPastVotes()
+     * @param token Token to claim
+     * @param fromEpoch Starting epoch index
+     * @param toEpoch Ending epoch index (exclusive)
+     */
+    function claimVeToken(IERC20 token, uint256 fromEpoch, uint256 toEpoch)
+        external
+        nonReentrant
+        whenNotPaused
+    {
+        Epoch[] storage epochs = tokenEpochs[token];
+        uint256 totalEpochs = epochs.length;
+        if (fromEpoch >= totalEpochs) return;
+
+        uint256 endEpoch = toEpoch > totalEpochs ? totalEpochs : toEpoch;
+
+        // Gas-bounded loop (max 100 epochs)
+        uint256 maxEpoch = fromEpoch + 100;
+        if (endEpoch > maxEpoch) endEpoch = maxEpoch;
+
+        uint256 totalClaim;
+
+        for (uint256 i = fromEpoch; i < endEpoch; ++i) {
+            Epoch storage epoch = epochs[i];
+
+            uint256 userVotes = veELTA.getPastVotes(msg.sender, epoch.blockNumber);
+            if (userVotes == 0) continue;
+
+            uint256 totalVotes = veELTA.getPastTotalSupply(epoch.blockNumber);
+            if (totalVotes == 0) continue;
+
+            // Pro-rata calculation
+            totalClaim += (epoch.amount * userVotes) / totalVotes;
+        }
+
+        tokenLastClaimed[msg.sender][token] = endEpoch;
+
+        if (totalClaim > 0) {
+            token.safeTransfer(msg.sender, totalClaim);
+        }
+
+        emit VeTokenRewardsClaimed(msg.sender, address(token), fromEpoch, endEpoch, totalClaim);
+    }
+
+    /**
+     * @notice Convenience function to claim token rewards from last claimed to latest
+     * @param token Token to claim
+     */
+    function claimVeTokenFromLast(IERC20 token) external {
+        uint256 fromEpoch = tokenLastClaimed[msg.sender][token];
+        uint256 toEpoch = tokenEpochs[token].length;
+        this.claimVeToken(token, fromEpoch, toEpoch);
     }
 
     /**

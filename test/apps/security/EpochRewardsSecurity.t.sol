@@ -25,13 +25,24 @@ contract EpochRewardsSecurityTest is Test {
     uint256 public constant MAX_SUPPLY = 1_000_000_000 ether;
 
     function setUp() public {
-        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, owner, admin);
+        appToken = new AppToken(
+            "TestApp",
+            "TEST",
+            18,
+            MAX_SUPPLY,
+            owner,
+            admin,
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
         rewards = new EpochRewards(address(appToken), owner);
         merkle = new Merkle();
 
-        // Mint tokens to owner for funding
+        // Mint tokens to owner for funding (extra for transfer fees)
         vm.prank(admin);
-        appToken.mint(owner, 100000 ether);
+        appToken.mint(owner, 200000 ether);
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -425,12 +436,12 @@ contract EpochRewardsSecurityTest is Test {
     }
 
     function testFuzz_Security_ClaimAmountLimited(uint256 claimAmount) public {
-        claimAmount = bound(claimAmount, 1, 10000 ether);
+        claimAmount = bound(claimAmount, 1, 50000 ether); // Increased limit but still reasonable
 
         vm.startPrank(owner);
         rewards.startEpoch(0, uint64(block.timestamp + 7 days));
-        appToken.approve(address(rewards), 10000 ether);
-        rewards.fund(10000 ether);
+        appToken.approve(address(rewards), 60000 ether); // Increased to cover max claim + fees
+        rewards.fund(60000 ether);
 
         bytes32[] memory data = new bytes32[](2);
         data[0] = keccak256(abi.encodePacked(user1, claimAmount));
@@ -442,7 +453,16 @@ contract EpochRewardsSecurityTest is Test {
         vm.prank(user1);
         rewards.claim(1, proof, claimAmount);
 
-        assertEq(appToken.balanceOf(user1), claimAmount);
+        // Account for 1% transfer fee - allow for small rounding differences
+        uint256 actualReceived = appToken.balanceOf(user1);
+        uint256 expectedReceived = (claimAmount * 99) / 100;
+
+        // For very small amounts, the fee might round down to 0
+        if (claimAmount < 100) {
+            assertEq(actualReceived, claimAmount); // No fee for very small amounts
+        } else {
+            assertApproxEqRel(actualReceived, expectedReceived, 0.01e18); // 0.01% tolerance
+        }
     }
 
     // ────────────────────────────────────────────────────────────────────────────

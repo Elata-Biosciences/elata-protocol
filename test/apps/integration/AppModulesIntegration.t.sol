@@ -52,7 +52,18 @@ contract AppModulesIntegrationTest is Test {
         factory.setCreateFee(CREATE_FEE);
 
         // Deploy app token
-        appToken = new AppToken("NeuroPong", "NPONG", 18, MAX_SUPPLY, appCreator, admin);
+        appToken = new AppToken(
+            "NeuroPong",
+            "NPONG",
+            18,
+            MAX_SUPPLY,
+            appCreator,
+            admin,
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
 
         // Mint initial rewards treasury
         vm.prank(admin);
@@ -83,6 +94,9 @@ contract AppModulesIntegrationTest is Test {
         appToken.mint(player1, 10000 ether);
         appToken.mint(player2, 10000 ether);
         appToken.mint(player3, 10000 ether);
+
+        // Make vault exempt from transfer fees to avoid circular fee issues
+        appToken.setTransferFeeExempt(address(vault), true);
         vm.stopPrank();
     }
 
@@ -239,9 +253,10 @@ contract AppModulesIntegrationTest is Test {
         vm.prank(appCreator);
         tournament.finalize(bytes32(uint256(1)));
 
-        // Verify protocol fees collected
+        // Verify protocol fees collected (account for 1% transfer fee)
         uint256 expectedProtocol = (20 ether * 250) / 10000;
-        assertEq(appToken.balanceOf(treasury), expectedProtocol);
+        uint256 expectedProtocolAfterFee = (expectedProtocol * 99) / 100;
+        assertEq(appToken.balanceOf(treasury), expectedProtocolAfterFee);
     }
 
     function test_Integration_SeasonalRewardsFullFlow() public {
@@ -273,7 +288,18 @@ contract AppModulesIntegrationTest is Test {
 
     function test_Integration_MultipleAppsCoexist() public {
         // Deploy second app
-        AppToken app2 = new AppToken("BrainWaves", "BWAVE", 18, MAX_SUPPLY, appCreator, admin);
+        AppToken app2 = new AppToken(
+            "BrainWaves",
+            "BWAVE",
+            18,
+            MAX_SUPPLY,
+            appCreator,
+            admin,
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
 
         // Mint ELTA for second deployment
         vm.prank(factoryOwner);
@@ -608,7 +634,18 @@ contract AppModulesIntegrationTest is Test {
         uint256 treasuryBefore = elta.balanceOf(treasury);
 
         // Deploy another app (pays ELTA fee)
-        AppToken app2 = new AppToken("App2", "APP2", 18, MAX_SUPPLY, appCreator, admin);
+        AppToken app2 = new AppToken(
+            "App2",
+            "APP2",
+            18,
+            MAX_SUPPLY,
+            appCreator,
+            admin,
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
 
         vm.prank(appCreator);
         elta.approve(address(factory), CREATE_FEE);
@@ -637,8 +674,9 @@ contract AppModulesIntegrationTest is Test {
         vm.prank(appCreator);
         tournament.finalize(bytes32(0));
 
-        // Protocol fee should be in treasury
+        // Protocol fee should be in treasury (account for 1% transfer fee)
         uint256 expectedFee = (20 ether * 250) / 10000;
-        assertEq(appToken.balanceOf(treasury), treasuryBefore + expectedFee);
+        uint256 expectedFeeAfterTransfer = (expectedFee * 99) / 100;
+        assertEq(appToken.balanceOf(treasury), treasuryBefore + expectedFeeAfterTransfer);
     }
 }

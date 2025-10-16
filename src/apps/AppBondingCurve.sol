@@ -10,6 +10,7 @@ import { IUniswapV2Pair } from "../interfaces/IUniswapV2Pair.sol";
 import { AppToken } from "./AppToken.sol";
 import { LpLocker } from "./LpLocker.sol";
 import { IAppFeeRouter } from "../interfaces/IAppFeeRouter.sol";
+import { IElataXP } from "../interfaces/IElataXP.sol";
 
 interface IAppFactory {
     function onAppGraduated(
@@ -71,13 +72,20 @@ contract AppBondingCurve is ReentrancyGuard {
     uint256 public immutable lpLockDuration;
     address public immutable lpBeneficiary;
     address public immutable treasury;
-    uint256 public immutable protocolFeeRate; // basis points (e.g., 250 = 2.5%)
-    IAppFeeRouter public immutable appFeeRouter; // New fee router for protocol revenues
+    IAppFeeRouter public immutable appFeeRouter; // Fee router for protocol revenues
+
+    // XP gating configuration
+    IElataXP public immutable elataXP;
+    uint256 public immutable launchTimestamp;
+    uint256 public xpMinForEarlyBuy = 100e18; // governance-configurable (default 100 XP)
+    uint256 public earlyBuyDuration = 6 hours; // governance-configurable (default 6 hours)
+    address public governance;
 
     // Events
     event CurveInitialized(
         uint256 indexed appId, uint256 seedElta, uint256 tokenSupply, uint256 initialK
     );
+    event XPGateUpdated(uint256 minXP, uint256 duration);
     event TokensPurchased(
         uint256 indexed appId,
         address indexed buyer,
@@ -96,7 +104,6 @@ contract AppBondingCurve is ReentrancyGuard {
         uint256 totalRaisedElta,
         uint256 tokensToLp
     );
-    event ProtocolFeeCollected(uint256 indexed appId, uint256 amount);
 
     error AlreadyGraduated();
     error NotGraduated();
@@ -105,6 +112,8 @@ contract AppBondingCurve is ReentrancyGuard {
     error NotInitialized();
     error OnlyFactory();
     error InvalidAmount();
+    error InsufficientXP();
+    error OnlyGovernance();
 
     modifier onlyFactory() {
         if (msg.sender != appFactory) revert OnlyFactory();
@@ -127,8 +136,9 @@ contract AppBondingCurve is ReentrancyGuard {
      * @param _lpLockDuration Duration to lock LP tokens
      * @param _lpBeneficiary Address to receive LP tokens after lock
      * @param _treasury Protocol treasury address
-     * @param _protocolFeeRate Protocol fee rate in basis points
      * @param _appFeeRouter App fee router for revenue forwarding
+     * @param _elataXP ElataXP token address for early access gating
+     * @param _governance Governance address for XP gate configuration
      */
     constructor(
         uint256 _appId,
@@ -140,8 +150,9 @@ contract AppBondingCurve is ReentrancyGuard {
         uint256 _lpLockDuration,
         address _lpBeneficiary,
         address _treasury,
-        uint256 _protocolFeeRate,
-        IAppFeeRouter _appFeeRouter
+        IAppFeeRouter _appFeeRouter,
+        IElataXP _elataXP,
+        address _governance
     ) {
         require(_factory != address(0), "Zero factory");
         require(address(_elta) != address(0), "Zero ELTA");
@@ -150,7 +161,8 @@ contract AppBondingCurve is ReentrancyGuard {
         require(_targetRaisedElta > 0, "Zero target");
         require(_lpBeneficiary != address(0), "Zero beneficiary");
         require(_treasury != address(0), "Zero treasury");
-        require(_protocolFeeRate <= 1000, "Fee too high"); // Max 10%
+        require(address(_elataXP) != address(0), "Zero XP");
+        require(_governance != address(0), "Zero governance");
         // appFeeRouter can be address(0) to disable fee forwarding
 
         appId = _appId;
@@ -163,8 +175,10 @@ contract AppBondingCurve is ReentrancyGuard {
         lpLockDuration = _lpLockDuration;
         lpBeneficiary = _lpBeneficiary;
         treasury = _treasury;
-        protocolFeeRate = _protocolFeeRate;
         appFeeRouter = _appFeeRouter;
+        elataXP = _elataXP;
+        governance = _governance;
+        launchTimestamp = block.timestamp;
     }
 
     /**
@@ -252,6 +266,13 @@ contract AppBondingCurve is ReentrancyGuard {
         if (eltaIn == 0) revert ZeroInput();
         if (reserveElta == 0) revert NotInitialized();
 
+        // XP gating for early launch window
+        if (block.timestamp < launchTimestamp + earlyBuyDuration) {
+            if (elataXP.balanceOf(msg.sender) < xpMinForEarlyBuy) {
+                revert InsufficientXP();
+            }
+        }
+
         // Calculate maximum ELTA we can accept before hitting target
         uint256 remainingToTarget =
             targetRaisedElta > reserveElta ? targetRaisedElta - reserveElta : 0;
@@ -269,29 +290,17 @@ contract AppBondingCurve is ReentrancyGuard {
             tradingFee = (actualEltaIn * appFeeRouter.feeBps()) / 10_000;
         }
 
-        // Take protocol fee if configured (legacy treasury fee)
-        uint256 protocolFee = 0;
-        if (protocolFeeRate > 0) {
-            protocolFee = (actualEltaIn * protocolFeeRate) / 10000;
-            actualEltaIn -= protocolFee;
-        }
-
         // Pull ELTA from buyer: curve amount + trading fee
-        ELTA.safeTransferFrom(msg.sender, address(this), eltaIn + tradingFee);
+        ELTA.safeTransferFrom(msg.sender, address(this), actualEltaIn + tradingFee);
 
         // Forward trading fee to RewardsDistributor via router (70/15/15 split)
+        // FIXED: Use address(this) as payer since we already pulled the fee
         if (tradingFee > 0) {
             ELTA.approve(address(appFeeRouter), tradingFee);
-            appFeeRouter.takeAndForwardFee(msg.sender, actualEltaIn);
+            appFeeRouter.takeAndForwardFee(address(this), tradingFee);
         }
 
-        // Send protocol fee to treasury (legacy)
-        if (protocolFee > 0) {
-            ELTA.safeTransfer(treasury, protocolFee);
-            emit ProtocolFeeCollected(appId, protocolFee);
-        }
-
-        // Update reserves with net ELTA (after legacy protocol fee)
+        // Update reserves with ELTA (no more legacy protocol fee deduction)
         reserveElta += actualEltaIn;
         reserveToken -= tokensOut;
 
@@ -306,7 +315,7 @@ contract AppBondingCurve is ReentrancyGuard {
         );
 
         // Refund excess ELTA if any
-        uint256 refund = eltaIn - actualEltaIn - protocolFee;
+        uint256 refund = eltaIn - actualEltaIn;
         if (refund > 0) {
             ELTA.safeTransfer(msg.sender, refund);
         }
@@ -404,5 +413,46 @@ contract AppBondingCurve is ReentrancyGuard {
         // Clear reserves (all moved to LP)
         reserveElta = 0;
         reserveToken = 0;
+    }
+
+    /**
+     * @notice Set XP gating parameters (governance only)
+     * @param _minXP Minimum XP required for early access
+     * @param _duration Duration of early access period in seconds
+     */
+    function setXPGate(uint256 _minXP, uint256 _duration) external {
+        if (msg.sender != governance) revert OnlyGovernance();
+        xpMinForEarlyBuy = _minXP;
+        earlyBuyDuration = _duration;
+        emit XPGateUpdated(_minXP, _duration);
+    }
+
+    /**
+     * @notice Check if a user can buy tokens
+     * @param user User address to check
+     * @return canBuy Whether the user can buy
+     */
+    function canUserBuy(address user) external view returns (bool canBuy) {
+        if (graduated) return false;
+        if (block.timestamp >= launchTimestamp + earlyBuyDuration) return true;
+        return elataXP.balanceOf(user) >= xpMinForEarlyBuy;
+    }
+
+    /**
+     * @notice Get early access information
+     * @return launchTime App launch timestamp
+     * @return duration Early access duration in seconds
+     * @return xpMin Minimum XP required
+     * @return isActive Whether early access is currently active
+     */
+    function getEarlyAccessInfo()
+        external
+        view
+        returns (uint256 launchTime, uint256 duration, uint256 xpMin, bool isActive)
+    {
+        launchTime = launchTimestamp;
+        duration = earlyBuyDuration;
+        xpMin = xpMinForEarlyBuy;
+        isActive = block.timestamp < launchTimestamp + duration;
     }
 }
