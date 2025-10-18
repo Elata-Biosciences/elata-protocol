@@ -93,10 +93,11 @@ contract ELTA is ERC20, ERC20Burnable, ERC20Permit, ERC20Votes, AccessControl {
      * @dev Enforces supply cap when minting (from == address(0))
      * @dev Updates vote checkpoints for governance functionality
      */
-    function _update(address from, address to, uint256 value)
-        internal
-        override(ERC20, ERC20Votes)
-    {
+    function _update(
+        address from,
+        address to,
+        uint256 value
+    ) internal override(ERC20, ERC20Votes) {
         if (from == address(0)) {
             // Minting: check supply cap
             if (MAX_SUPPLY != 0 && (totalSupply() + value > MAX_SUPPLY)) {
@@ -112,7 +113,9 @@ contract ELTA is ERC20, ERC20Burnable, ERC20Permit, ERC20Votes, AccessControl {
      * @return The current nonce value
      * @dev Required override due to multiple inheritance from ERC20Permit and Nonces
      */
-    function nonces(address owner) public view override(ERC20Permit, Nonces) returns (uint256) {
+    function nonces(
+        address owner
+    ) public view override(ERC20Permit, Nonces) returns (uint256) {
         return super.nonces(owner);
     }
 }

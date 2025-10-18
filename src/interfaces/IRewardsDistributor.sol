@@ -12,7 +12,9 @@ interface IRewardsDistributor {
      * @notice Deposit ELTA revenues and split 70/15/15
      * @param amount Total ELTA to deposit and split
      */
-    function deposit(uint256 amount) external;
+    function deposit(
+        uint256 amount
+    ) external;
 
     /**
      * @notice Deposit arbitrary ERC20 tokens as veELTA rewards

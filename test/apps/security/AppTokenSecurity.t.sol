@@ -246,9 +246,10 @@ contract AppTokenSecurityTest is Test {
         assertEq(token.balanceOf(user1), 500 ether); // Sender pays full amount
     }
 
-    function testFuzz_Security_TransferPreservesSupply(uint256 mintAmount, uint256 transferAmount)
-        public
-    {
+    function testFuzz_Security_TransferPreservesSupply(
+        uint256 mintAmount,
+        uint256 transferAmount
+    ) public {
         mintAmount = bound(mintAmount, 1, MAX_SUPPLY);
         transferAmount = bound(transferAmount, 0, mintAmount);
 

@@ -18,7 +18,9 @@ contract MockAppFeeRouter is IAppFeeRouter {
         // Do nothing in mock
     }
 
-    function calculateFee(uint256 amount) external view override returns (uint256) {
+    function calculateFee(
+        uint256 amount
+    ) external view override returns (uint256) {
         return (amount * feeBps) / 10_000;
     }
 }
@@ -30,7 +32,9 @@ contract MockAppFeeRouter is IAppFeeRouter {
 contract MockAppRewardsDistributor is IAppRewardsDistributor {
     address[] public registered;
 
-    function registerApp(address vault) external override {
+    function registerApp(
+        address vault
+    ) external override {
         registered.push(vault);
     }
 
@@ -38,7 +42,9 @@ contract MockAppRewardsDistributor is IAppRewardsDistributor {
         registered.push(vault);
     }
 
-    function distribute(uint256) external pure override {
+    function distribute(
+        uint256
+    ) external pure override {
         // Do nothing in mock
     }
 
@@ -66,7 +72,9 @@ contract MockAppRewardsDistributor is IAppRewardsDistributor {
 contract MockElataXP is IElataXP {
     mapping(address => uint256) public balances;
 
-    function balanceOf(address account) external view override returns (uint256) {
+    function balanceOf(
+        address account
+    ) external view override returns (uint256) {
         return balances[account];
     }
 
@@ -84,7 +92,9 @@ contract MockRewardsDistributor is IRewardsDistributor {
         // Do nothing in mock
     }
 
-    function deposit(uint256) external pure override {
+    function deposit(
+        uint256
+    ) external pure override {
         // Do nothing in mock
     }
 }

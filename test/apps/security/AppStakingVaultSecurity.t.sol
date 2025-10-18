@@ -170,9 +170,10 @@ contract AppStakingVaultSecurityTest is Test {
     // FUZZ TESTING
     // ────────────────────────────────────────────────────────────────────────────
 
-    function testFuzz_Security_StakeUnstakeInvariants(uint256 stakeAmount, uint256 unstakeAmount)
-        public
-    {
+    function testFuzz_Security_StakeUnstakeInvariants(
+        uint256 stakeAmount,
+        uint256 unstakeAmount
+    ) public {
         stakeAmount = bound(stakeAmount, 1, 10000 ether);
         unstakeAmount = bound(unstakeAmount, 1, stakeAmount);
 
@@ -258,7 +259,9 @@ contract MaliciousToken is IERC20 {
     address public attackTarget;
     uint256 private _totalSupply;
 
-    function setAttackTarget(address target) external {
+    function setAttackTarget(
+        address target
+    ) external {
         attackTarget = target;
     }
 
@@ -290,7 +293,9 @@ contract MaliciousToken is IERC20 {
         return true;
     }
 
-    function balanceOf(address account) external view returns (uint256) {
+    function balanceOf(
+        address account
+    ) external view returns (uint256) {
         return _balances[account];
     }
 
@@ -314,12 +319,16 @@ contract MaliciousReceiver {
         token = _token;
     }
 
-    function doStake(uint256 amount) external {
+    function doStake(
+        uint256 amount
+    ) external {
         token.approve(address(vault), amount);
         vault.stake(amount);
     }
 
-    function attackUnstake(uint256 amount) external {
+    function attackUnstake(
+        uint256 amount
+    ) external {
         attacking = true;
         vault.unstake(amount);
     }

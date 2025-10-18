@@ -72,10 +72,10 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @param _elta ELTA token address
      * @param _admin Admin address for roles
      */
-    constructor(IERC20 _elta, address _admin)
-        ERC20("veELTA Voting Power", "veELTA")
-        ERC20Permit("veELTA Voting Power")
-    {
+    constructor(
+        IERC20 _elta,
+        address _admin
+    ) ERC20("veELTA Voting Power", "veELTA") ERC20Permit("veELTA Voting Power") {
         if (address(_elta) == address(0) || _admin == address(0)) {
             revert Errors.ZeroAddress();
         }
@@ -121,7 +121,9 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @dev Recalculates voting power based on remaining duration
      * @param amount Additional ELTA to lock
      */
-    function increaseAmount(uint256 amount) external {
+    function increaseAmount(
+        uint256 amount
+    ) external {
         Lock memory userLock = locks[msg.sender];
         if (userLock.principal == 0) revert Errors.NoActiveLock();
         if (block.timestamp >= userLock.unlockTime) revert LockExpired();
@@ -154,7 +156,9 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @dev Recalculates voting power based on new duration
      * @param newUnlockTime New unlock timestamp (must be > current)
      */
-    function extendLock(uint64 newUnlockTime) external {
+    function extendLock(
+        uint64 newUnlockTime
+    ) external {
         Lock memory userLock = locks[msg.sender];
         if (userLock.principal == 0) revert Errors.NoActiveLock();
         if (newUnlockTime <= userLock.unlockTime) revert InvalidUnlockTime();
@@ -235,7 +239,9 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @param duration Lock duration in seconds
      * @return boost Boost multiplier (1e18 = 1x)
      */
-    function _calculateBoost(uint256 duration) internal pure returns (uint256 boost) {
+    function _calculateBoost(
+        uint256 duration
+    ) internal pure returns (uint256 boost) {
         if (duration >= MAX_LOCK) return BOOST_MAX;
         if (duration <= MIN_LOCK) return BOOST_MIN;
 
@@ -251,7 +257,9 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @return veBalance Current veELTA balance
      * @return isExpired Whether lock has expired
      */
-    function getLockDetails(address user)
+    function getLockDetails(
+        address user
+    )
         external
         view
         returns (uint256 principal, uint64 unlockTime, uint256 veBalance, bool isExpired)
@@ -269,11 +277,9 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @return unlockable Whether user can unlock now
      * @return timeRemaining Seconds until unlock (0 if expired)
      */
-    function canUnlock(address user)
-        external
-        view
-        returns (bool unlockable, uint256 timeRemaining)
-    {
+    function canUnlock(
+        address user
+    ) external view returns (bool unlockable, uint256 timeRemaining) {
         Lock memory userLock = locks[user];
         if (userLock.principal == 0) return (false, 0);
 
@@ -287,10 +293,11 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
     /**
      * @dev Override to make tokens non-transferable (soulbound)
      */
-    function _update(address from, address to, uint256 amount)
-        internal
-        override(ERC20, ERC20Votes)
-    {
+    function _update(
+        address from,
+        address to,
+        uint256 amount
+    ) internal override(ERC20, ERC20Votes) {
         // Allow minting (from == 0) and burning (to == 0)
         // Block transfers between users
         if (from != address(0) && to != address(0)) {
@@ -302,7 +309,9 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
     /**
      * @dev Required override for Nonces
      */
-    function nonces(address owner) public view override(ERC20Permit, Nonces) returns (uint256) {
+    function nonces(
+        address owner
+    ) public view override(ERC20Permit, Nonces) returns (uint256) {
         return super.nonces(owner);
     }
 }

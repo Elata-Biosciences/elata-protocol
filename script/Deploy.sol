@@ -233,7 +233,9 @@ contract Deploy is Script {
     /**
      * @dev Configures initial permissions and roles
      */
-    function _configurePermissions(ProtocolContracts memory protocol) internal {
+    function _configurePermissions(
+        ProtocolContracts memory protocol
+    ) internal {
         // Governance: Grant proposer/executor roles to governor
         protocol.timelock.grantRole(protocol.timelock.PROPOSER_ROLE(), address(protocol.governor));
         protocol.timelock.grantRole(protocol.timelock.EXECUTOR_ROLE(), address(protocol.governor));
@@ -257,7 +259,9 @@ contract Deploy is Script {
     /**
      * @dev Saves deployment addresses to JSON file
      */
-    function _saveDeploymentAddresses(ProtocolContracts memory protocol) internal {
+    function _saveDeploymentAddresses(
+        ProtocolContracts memory protocol
+    ) internal {
         string memory json = "deploymentData";
 
         vm.serializeAddress(json, "elta", address(protocol.token));
@@ -304,7 +308,9 @@ contract Deploy is Script {
     /**
      * @dev Logs all deployment addresses for verification
      */
-    function _logDeployment(ProtocolContracts memory protocol) internal view {
+    function _logDeployment(
+        ProtocolContracts memory protocol
+    ) internal view {
         console2.log("\n=== DEPLOYMENT COMPLETE ===");
         console2.log("ELTA Token:              ", address(protocol.token));
         console2.log("ElataXP:                 ", address(protocol.xp));

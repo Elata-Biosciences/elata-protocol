@@ -155,7 +155,9 @@ contract Tournament is Ownable, ReentrancyGuard {
      * @notice Set entry fee
      * @param fee New entry fee
      */
-    function setEntryFee(uint256 fee) external onlyOwner {
+    function setEntryFee(
+        uint256 fee
+    ) external onlyOwner {
         if (finalized) revert AlreadyFinalized();
         entryFee = fee;
         emit EntryFeeSet(fee);
@@ -190,7 +192,9 @@ contract Tournament is Ownable, ReentrancyGuard {
      * @dev Applies protocol and burn fees, sets net pool
      * @param winnersRoot_ Merkle root of (address, amount) pairs
      */
-    function finalize(bytes32 winnersRoot_) external onlyOwner nonReentrant {
+    function finalize(
+        bytes32 winnersRoot_
+    ) external onlyOwner nonReentrant {
         if (finalized) revert AlreadyFinalized();
         finalized = true;
 
@@ -276,13 +280,12 @@ contract Tournament is Ownable, ReentrancyGuard {
      * @notice Check if user can enter tournament
      * @param user User address
      * @return canEnter Whether user can enter
-     * @return reason Reason code (0=can enter, 1=already entered, 2=not started, 3=ended, 4=finalized)
+     * @return reason Reason code (0=can enter, 1=already entered, 2=not started, 3=ended,
+     * 4=finalized)
      */
-    function checkEntryEligibility(address user)
-        external
-        view
-        returns (bool canEnter, uint8 reason)
-    {
+    function checkEntryEligibility(
+        address user
+    ) external view returns (bool canEnter, uint8 reason) {
         if (entered[user]) return (false, 1);
         if (finalized) return (false, 4);
         if (startTime != 0 && block.timestamp < startTime) return (false, 2);

@@ -82,7 +82,9 @@ contract AppFeeRouter {
      * @notice Update fee rate (governance only)
      * @param newBps New fee rate in basis points
      */
-    function setFeeBps(uint256 newBps) external {
+    function setFeeBps(
+        uint256 newBps
+    ) external {
         if (msg.sender != governance) revert OnlyGovernance();
         if (newBps > MAX_FEE_BPS) revert FeeTooHigh();
 
@@ -94,7 +96,9 @@ contract AppFeeRouter {
      * @notice Transfer governance to new address
      * @param newGovernance New governance address
      */
-    function transferGovernance(address newGovernance) external {
+    function transferGovernance(
+        address newGovernance
+    ) external {
         if (msg.sender != governance) revert OnlyGovernance();
         require(newGovernance != address(0), "Zero address");
 
@@ -107,7 +111,9 @@ contract AppFeeRouter {
      * @param amount Amount to calculate fee for
      * @return fee Fee amount
      */
-    function calculateFee(uint256 amount) external view returns (uint256 fee) {
+    function calculateFee(
+        uint256 amount
+    ) external view returns (uint256 fee) {
         fee = (amount * feeBps) / 10_000;
     }
 }

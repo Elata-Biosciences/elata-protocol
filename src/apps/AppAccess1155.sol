@@ -76,10 +76,12 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
      * @param owner_ Contract owner (app creator)
      * @param baseURI Base URI for ERC1155 metadata
      */
-    constructor(address appToken, address stakingVault, address owner_, string memory baseURI)
-        ERC1155(baseURI)
-        Ownable(owner_)
-    {
+    constructor(
+        address appToken,
+        address stakingVault,
+        address owner_,
+        string memory baseURI
+    ) ERC1155(baseURI) Ownable(owner_) {
         APP = IAppToken(appToken);
         STAKING = stakingVault;
     }
@@ -199,11 +201,12 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
      * @notice Enforce soulbound restrictions on transfers
      * @dev Reverts if attempting to transfer a soulbound item
      */
-    function _update(address from, address to, uint256[] memory ids, uint256[] memory values)
-        internal
-        virtual
-        override
-    {
+    function _update(
+        address from,
+        address to,
+        uint256[] memory ids,
+        uint256[] memory values
+    ) internal virtual override {
         // Allow minting (from == 0) and burning (to == 0)
         if (from != address(0) && to != address(0)) {
             for (uint256 i = 0; i < ids.length; i++) {
@@ -224,7 +227,9 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
      * @param id Item ID
      * @return Metadata URI
      */
-    function uri(uint256 id) public view override returns (string memory) {
+    function uri(
+        uint256 id
+    ) public view override returns (string memory) {
         string memory per = _idURIs[id];
         return bytes(per).length > 0 ? per : super.uri(id);
     }
@@ -240,11 +245,11 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
      * @param userStake User's current stake amount (pass from StakingVault)
      * @return hasAccess Whether user meets requirements
      */
-    function checkFeatureAccess(address user, bytes32 featureId, uint256 userStake)
-        external
-        view
-        returns (bool hasAccess)
-    {
+    function checkFeatureAccess(
+        address user,
+        bytes32 featureId,
+        uint256 userStake
+    ) external view returns (bool hasAccess) {
         FeatureGate memory gate = gates[featureId];
 
         if (!gate.active) return false;
@@ -271,13 +276,14 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
      * @param id Item ID
      * @param amount Amount to purchase
      * @return canPurchase Whether purchase is valid
-     * @return reason Reason if cannot purchase (0=can purchase, 1=inactive, 2=early, 3=late, 4=supply)
+     * @return reason Reason if cannot purchase (0=can purchase, 1=inactive, 2=early, 3=late,
+     * 4=supply)
      */
-    function checkPurchaseEligibility(address user, uint256 id, uint256 amount)
-        external
-        view
-        returns (bool canPurchase, uint8 reason)
-    {
+    function checkPurchaseEligibility(
+        address user,
+        uint256 id,
+        uint256 amount
+    ) external view returns (bool canPurchase, uint8 reason) {
         Item memory it = items[id];
 
         if (!it.active) return (false, 1);
@@ -303,7 +309,9 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
      * @param id Item ID
      * @return remaining Remaining supply (0 if unlimited)
      */
-    function getRemainingSupply(uint256 id) external view returns (uint256 remaining) {
+    function getRemainingSupply(
+        uint256 id
+    ) external view returns (uint256 remaining) {
         Item memory it = items[id];
         if (it.maxSupply == 0) return type(uint256).max;
         return it.maxSupply > it.minted ? it.maxSupply - it.minted : 0;
@@ -314,7 +322,9 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
      * @param ids Array of item IDs
      * @return itemList Array of items
      */
-    function getItems(uint256[] calldata ids) external view returns (Item[] memory itemList) {
+    function getItems(
+        uint256[] calldata ids
+    ) external view returns (Item[] memory itemList) {
         itemList = new Item[](ids.length);
         for (uint256 i = 0; i < ids.length; i++) {
             itemList[i] = items[ids[i]];
@@ -326,11 +336,9 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
      * @param featureIds Array of feature IDs
      * @return gateList Array of gates
      */
-    function getFeatureGates(bytes32[] calldata featureIds)
-        external
-        view
-        returns (FeatureGate[] memory gateList)
-    {
+    function getFeatureGates(
+        bytes32[] calldata featureIds
+    ) external view returns (FeatureGate[] memory gateList) {
         gateList = new FeatureGate[](featureIds.length);
         for (uint256 i = 0; i < featureIds.length; i++) {
             gateList[i] = gates[featureIds[i]];

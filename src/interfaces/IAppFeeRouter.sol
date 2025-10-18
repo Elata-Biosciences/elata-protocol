@@ -24,5 +24,7 @@ interface IAppFeeRouter {
      * @param amount Amount to calculate fee for
      * @return fee Fee amount
      */
-    function calculateFee(uint256 amount) external view returns (uint256 fee);
+    function calculateFee(
+        uint256 amount
+    ) external view returns (uint256 fee);
 }

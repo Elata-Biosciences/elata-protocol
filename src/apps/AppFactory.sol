@@ -153,7 +153,9 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
      * @notice Pause/unpause app creation
      * @param _paused New pause state
      */
-    function setPaused(bool _paused) external onlyRole(PAUSER_ROLE) {
+    function setPaused(
+        bool _paused
+    ) external onlyRole(PAUSER_ROLE) {
         paused = _paused;
     }
 
@@ -274,7 +276,8 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
 
         // NOTE: Metadata must be set by creator in separate transaction
         // token.updateMetadata() requires msg.sender == appCreator
-        // Creator can call AppToken(tokenAddr).updateMetadata(description, imageURI, website) after launch
+        // Creator can call AppToken(tokenAddr).updateMetadata(description, imageURI, website) after
+        // launch
     }
 
     /**
@@ -313,7 +316,9 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
      * @param appId App ID
      * @return App struct
      */
-    function getApp(uint256 appId) external view returns (App memory) {
+    function getApp(
+        uint256 appId
+    ) external view returns (App memory) {
         return apps[appId];
     }
 
@@ -330,7 +335,9 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
      * @param token Token address
      * @return App ID
      */
-    function getAppIdByToken(address token) external view returns (uint256) {
+    function getAppIdByToken(
+        address token
+    ) external view returns (uint256) {
         return tokenToAppId[token];
     }
 
@@ -341,11 +348,9 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
      * @return earlyAccessEndsAt Timestamp when early access ends
      * @return xpRequired Minimum XP required for early access
      */
-    function getAppLaunchStatus(uint256 appId)
-        external
-        view
-        returns (bool isInEarlyAccess, uint256 earlyAccessEndsAt, uint256 xpRequired)
-    {
+    function getAppLaunchStatus(
+        uint256 appId
+    ) external view returns (bool isInEarlyAccess, uint256 earlyAccessEndsAt, uint256 xpRequired) {
         require(appId < appCount, "Invalid app");
         App storage app = apps[appId];
         AppBondingCurve curve = AppBondingCurve(app.curve);

@@ -13,7 +13,9 @@ import { IElataXP } from "../../src/interfaces/IElataXP.sol";
 contract MockElataXP is IElataXP {
     mapping(address => uint256) public balances;
 
-    function balanceOf(address account) external view override returns (uint256) {
+    function balanceOf(
+        address account
+    ) external view override returns (uint256) {
         return balances[account];
     }
 
@@ -204,9 +206,12 @@ contract AppBondingCurveTest is Test {
         curve.buy(0, 0);
     }
 
-    // Removed test_ProtocolFeeCollection - legacy protocol fee removed in favor of unified 70/15/15 split
+    // Removed test_ProtocolFeeCollection - legacy protocol fee removed in favor of unified 70/15/15
+    // split
 
-    function testFuzz_BuyTokens(uint256 eltaAmount) public {
+    function testFuzz_BuyTokens(
+        uint256 eltaAmount
+    ) public {
         // Bound to reasonable range
         eltaAmount = bound(eltaAmount, 1 ether, 10_000 ether);
 

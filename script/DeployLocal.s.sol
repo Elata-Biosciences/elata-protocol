@@ -53,11 +53,10 @@ contract MockUniswapV2Router {
         return amounts;
     }
 
-    function getAmountsOut(uint256 amountIn, address[] calldata path)
-        external
-        pure
-        returns (uint256[] memory amounts)
-    {
+    function getAmountsOut(
+        uint256 amountIn,
+        address[] calldata path
+    ) external pure returns (uint256[] memory amounts) {
         amounts = new uint256[](path.length);
         amounts[0] = amountIn;
         // Simple 1:1 mock exchange rate
@@ -101,7 +100,8 @@ contract DeployLocal is Script {
 
         // NOTE: AppFactory deployment commented out - use script/Deploy.sol instead
         // AppFactory now requires AppFeeRouter and AppRewardsDistributor
-        // For full deployment, use: forge script script/Deploy.sol:Deploy --fork-url http://localhost:8545 --broadcast
+        // For full deployment, use: forge script script/Deploy.sol:Deploy --fork-url
+        // http://localhost:8545 --broadcast
 
         // Mint additional ELTA to some test accounts for easier testing
         address[] memory testAccounts = new address[](3);

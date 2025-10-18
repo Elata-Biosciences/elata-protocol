@@ -219,7 +219,9 @@ contract AppStakingVaultTest is Test {
     // FUZZ TESTS
     // ────────────────────────────────────────────────────────────────────────────
 
-    function testFuzz_Stake(uint256 amount) public {
+    function testFuzz_Stake(
+        uint256 amount
+    ) public {
         amount = bound(amount, 1, 10000 ether);
 
         vm.startPrank(user1);

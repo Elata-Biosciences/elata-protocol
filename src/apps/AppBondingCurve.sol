@@ -205,7 +205,9 @@ contract AppBondingCurve is ReentrancyGuard {
      * @param eltaIn Amount of ELTA to spend
      * @return tokensOut Amount of tokens that would be received
      */
-    function getTokensOut(uint256 eltaIn) public view returns (uint256 tokensOut) {
+    function getTokensOut(
+        uint256 eltaIn
+    ) public view returns (uint256 tokensOut) {
         if (graduated || eltaIn == 0 || reserveElta == 0) return 0;
 
         // Constant product: x * y = k
@@ -225,7 +227,9 @@ contract AppBondingCurve is ReentrancyGuard {
      * @param tokensDesired Amount of tokens desired
      * @return eltaIn Amount of ELTA needed
      */
-    function getEltaInForTokens(uint256 tokensDesired) public view returns (uint256 eltaIn) {
+    function getEltaInForTokens(
+        uint256 tokensDesired
+    ) public view returns (uint256 eltaIn) {
         if (graduated || tokensDesired == 0 || tokensDesired >= reserveToken) return 0;
 
         // Reverse calculation: y - newY = tokensDesired
@@ -257,12 +261,10 @@ contract AppBondingCurve is ReentrancyGuard {
      * @param minTokensOut Minimum tokens expected (slippage protection)
      * @return tokensOut Actual tokens received
      */
-    function buy(uint256 eltaIn, uint256 minTokensOut)
-        external
-        nonReentrant
-        notGraduated
-        returns (uint256 tokensOut)
-    {
+    function buy(
+        uint256 eltaIn,
+        uint256 minTokensOut
+    ) external nonReentrant notGraduated returns (uint256 tokensOut) {
         if (eltaIn == 0) revert ZeroInput();
         if (reserveElta == 0) revert NotInitialized();
 
@@ -432,7 +434,9 @@ contract AppBondingCurve is ReentrancyGuard {
      * @param user User address to check
      * @return canBuy Whether the user can buy
      */
-    function canUserBuy(address user) external view returns (bool canBuy) {
+    function canUserBuy(
+        address user
+    ) external view returns (bool canBuy) {
         if (graduated) return false;
         if (block.timestamp >= launchTimestamp + earlyBuyDuration) return true;
         return elataXP.balanceOf(user) >= xpMinForEarlyBuy;

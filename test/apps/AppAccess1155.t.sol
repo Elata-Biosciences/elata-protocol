@@ -352,7 +352,9 @@ contract AppAccess1155Test is Test {
     // FUZZ TESTS
     // ────────────────────────────────────────────────────────────────────────────
 
-    function testFuzz_Purchase(uint256 amount) public {
+    function testFuzz_Purchase(
+        uint256 amount
+    ) public {
         amount = bound(amount, 1, 100);
 
         vm.prank(owner);

@@ -47,6 +47,8 @@ tab_width = 4
 bracket_spacing = true
 quote_style = "double"
 number_underscore = "preserve"
+multiline_func_header = "params_first"
+wrap_comments = true
 
 [rpc_endpoints]
 mainnet = "${MAINNET_RPC_URL}"

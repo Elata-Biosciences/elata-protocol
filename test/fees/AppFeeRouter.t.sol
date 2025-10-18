@@ -11,11 +11,15 @@ contract MockRewardsDistributor is IRewardsDistributor {
     IERC20 public immutable eltaToken;
     uint256 public totalDeposited;
 
-    constructor(IERC20 _elta) {
+    constructor(
+        IERC20 _elta
+    ) {
         eltaToken = _elta;
     }
 
-    function deposit(uint256 amount) external {
+    function deposit(
+        uint256 amount
+    ) external {
         eltaToken.transferFrom(msg.sender, address(this), amount);
         totalDeposited += amount;
     }
@@ -170,7 +174,9 @@ contract AppFeeRouterTest is Test {
         assertEq(feeRouter.calculateFee(10 ether), 0.1 ether);
     }
 
-    function testFuzz_TakeAndForwardFee(uint256 grossAmount) public {
+    function testFuzz_TakeAndForwardFee(
+        uint256 grossAmount
+    ) public {
         grossAmount = bound(grossAmount, 1, 1_000_000 ether);
 
         // Fund trader if needed
@@ -193,7 +199,9 @@ contract AppFeeRouterTest is Test {
         assertEq(rewardsDistributor.totalDeposited(), expectedFee);
     }
 
-    function testFuzz_SetFeeBps(uint256 newBps) public {
+    function testFuzz_SetFeeBps(
+        uint256 newBps
+    ) public {
         newBps = bound(newBps, 0, feeRouter.MAX_FEE_BPS());
 
         vm.prank(governance);

@@ -71,7 +71,9 @@ contract AppModuleFactory is Ownable {
      * @notice Set protocol treasury address
      * @param t New treasury address
      */
-    function setTreasury(address t) external onlyOwner {
+    function setTreasury(
+        address t
+    ) external onlyOwner {
         treasury = t;
         emit TreasurySet(t);
     }
@@ -80,7 +82,9 @@ contract AppModuleFactory is Ownable {
      * @notice Set ELTA creation fee
      * @param fee New fee amount in ELTA
      */
-    function setCreateFee(uint256 fee) external onlyOwner {
+    function setCreateFee(
+        uint256 fee
+    ) external onlyOwner {
         createFeeELTA = fee;
         emit FeeSet(fee);
     }
@@ -94,10 +98,10 @@ contract AppModuleFactory is Ownable {
      * @return staking Address of deployed AppStakingVault
      * @return epochs Address of deployed EpochRewards
      */
-    function deployModules(address appToken, string calldata baseURI)
-        external
-        returns (address access1155, address staking, address epochs)
-    {
+    function deployModules(
+        address appToken,
+        string calldata baseURI
+    ) external returns (address access1155, address staking, address epochs) {
         // Verify caller is token owner
         if (IOwnable(appToken).owner() != msg.sender) {
             revert NotTokenOwner();

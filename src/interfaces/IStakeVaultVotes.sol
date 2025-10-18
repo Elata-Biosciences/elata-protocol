@@ -25,5 +25,7 @@ interface IStakeVaultVotes {
      * @param account Address to check
      * @return Current staked balance
      */
-    function balanceOf(address account) external view returns (uint256);
+    function balanceOf(
+        address account
+    ) external view returns (uint256);
 }

@@ -169,7 +169,9 @@ contract AppLaunchIntegrationTest is Test {
         console2.log("[OK] App created successfully");
     }
 
-    function _testBondingCurvePhase(uint256 appId) internal {
+    function _testBondingCurvePhase(
+        uint256 appId
+    ) internal {
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
         AppToken token = AppToken(app.token);
@@ -211,7 +213,8 @@ contract AppLaunchIntegrationTest is Test {
             totalTokensPurchased += tokensOut;
             totalEltaSpent += amount;
 
-            // console2.log("Purchase", i + 1, "completed:", amount / 1e18, "ELTA for", tokensOut / 1e18, "tokens");
+            // console2.log("Purchase", i + 1, "completed:", amount / 1e18, "ELTA for", tokensOut /
+            // 1e18, "tokens");
         }
 
         // Verify curve state

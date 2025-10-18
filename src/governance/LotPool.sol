@@ -55,7 +55,9 @@ contract LotPool is AccessControl {
         _grantRole(MANAGER_ROLE, admin);
     }
 
-    function getRound(uint256 roundId)
+    function getRound(
+        uint256 roundId
+    )
         external
         view
         returns (
@@ -75,12 +77,15 @@ contract LotPool is AccessControl {
     }
 
     /// @notice Fund the pool (ELTA) prior to or during an active round.
-    function fund(uint256 amount) external {
+    function fund(
+        uint256 amount
+    ) external {
         if (amount == 0) revert Errors.InvalidAmount();
         ELTA.safeTransferFrom(msg.sender, address(this), amount);
     }
 
-    /// @notice Start a new round: captures current block for XP snapshot; defines options & recipients.
+    /// @notice Start a new round: captures current block for XP snapshot; defines options &
+    /// recipients.
     function startRound(
         bytes32[] calldata options,
         address[] calldata recipients,
@@ -159,11 +164,10 @@ contract LotPool is AccessControl {
      * @return usedXP XP already used in this round
      * @return remainingXP XP still available for voting
      */
-    function getUserVotingStatus(address user, uint256 roundId)
-        external
-        view
-        returns (uint256 availableXP, uint256 usedXP, uint256 remainingXP)
-    {
+    function getUserVotingStatus(
+        address user,
+        uint256 roundId
+    ) external view returns (uint256 availableXP, uint256 usedXP, uint256 remainingXP) {
         Round storage r = _rounds[roundId];
         availableXP = XP.getPastXP(user, r.snapshotBlock);
         usedXP = r.used[user];
@@ -176,11 +180,9 @@ contract LotPool is AccessControl {
      * @return options Array of option IDs
      * @return votes Array of vote counts for each option
      */
-    function getRoundVotes(uint256 roundId)
-        external
-        view
-        returns (bytes32[] memory options, uint256[] memory votes)
-    {
+    function getRoundVotes(
+        uint256 roundId
+    ) external view returns (bytes32[] memory options, uint256[] memory votes) {
         Round storage r = _rounds[roundId];
         options = r.options;
         votes = new uint256[](options.length);
@@ -205,7 +207,9 @@ contract LotPool is AccessControl {
      * @param roundId Round ID
      * @return Whether the round is active
      */
-    function isRoundActive(uint256 roundId) external view returns (bool) {
+    function isRoundActive(
+        uint256 roundId
+    ) external view returns (bool) {
         Round storage r = _rounds[roundId];
         return block.timestamp >= r.start && block.timestamp <= r.end && !r.finalized;
     }
@@ -215,17 +219,20 @@ contract LotPool is AccessControl {
      * @param roundId Round ID
      * @return Time remaining in seconds (0 if expired)
      */
-    function getRoundTimeRemaining(uint256 roundId) external view returns (uint256) {
+    function getRoundTimeRemaining(
+        uint256 roundId
+    ) external view returns (uint256) {
         Round storage r = _rounds[roundId];
         if (block.timestamp >= r.end || r.finalized) return 0;
         return r.end - block.timestamp;
     }
 
     /// @notice Finalize a round and pay out `amount` ELTA to the winner's recipient.
-    function finalize(uint256 roundId, bytes32 winner, uint256 amount)
-        external
-        onlyRole(MANAGER_ROLE)
-    {
+    function finalize(
+        uint256 roundId,
+        bytes32 winner,
+        uint256 amount
+    ) external onlyRole(MANAGER_ROLE) {
         Round storage r = _rounds[roundId];
         if (r.finalized) revert();
         if (block.timestamp <= r.end) revert Errors.VotingClosed();

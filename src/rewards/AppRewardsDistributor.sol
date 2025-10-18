@@ -127,7 +127,9 @@ contract AppRewardsDistributor is AccessControl {
      * @notice Legacy registerApp for backward compatibility
      * @param vault Address of AppStakingVault
      */
-    function registerApp(address vault) external onlyRole(FACTORY_ROLE) {
+    function registerApp(
+        address vault
+    ) external onlyRole(FACTORY_ROLE) {
         if (isVault[vault]) revert VaultExists();
 
         isVault[vault] = true;
@@ -154,7 +156,9 @@ contract AppRewardsDistributor is AccessControl {
      * @dev Vault remains in registry for historical claims but gets no new rewards
      * @param vault Vault address
      */
-    function removeApp(address vault) external onlyRole(GOVERNANCE_ROLE) {
+    function removeApp(
+        address vault
+    ) external onlyRole(GOVERNANCE_ROLE) {
         if (!isVault[vault]) revert UnknownVault();
 
         isActive[vault] = false;
@@ -166,7 +170,9 @@ contract AppRewardsDistributor is AccessControl {
      * @dev Called by RewardsDistributor with 70% of protocol revenue
      * @param amount Total ELTA to distribute
      */
-    function distribute(uint256 amount) external {
+    function distribute(
+        uint256 amount
+    ) external {
         ELTA.safeTransferFrom(msg.sender, address(this), amount);
 
         uint256 totalWeight;
@@ -316,7 +322,9 @@ contract AppRewardsDistributor is AccessControl {
      * @param vault Vault address
      * @return Number of epochs
      */
-    function getEpochCount(address vault) external view returns (uint256) {
+    function getEpochCount(
+        address vault
+    ) external view returns (uint256) {
         return epochs[vault].length;
     }
 
@@ -327,11 +335,10 @@ contract AppRewardsDistributor is AccessControl {
      * @return fromEpoch Starting epoch to claim
      * @return toEpoch Ending epoch (exclusive)
      */
-    function getUnclaimedRange(address user, address vault)
-        external
-        view
-        returns (uint256 fromEpoch, uint256 toEpoch)
-    {
+    function getUnclaimedRange(
+        address user,
+        address vault
+    ) external view returns (uint256 fromEpoch, uint256 toEpoch) {
         fromEpoch = userCursor[user][vault];
         toEpoch = epochs[vault].length;
     }
@@ -402,11 +409,10 @@ contract AppRewardsDistributor is AccessControl {
      * @param vault Vault address
      * @return estimated Estimated claimable amount
      */
-    function estimatePendingRewards(address user, address vault)
-        external
-        view
-        returns (uint256 estimated)
-    {
+    function estimatePendingRewards(
+        address user,
+        address vault
+    ) external view returns (uint256 estimated) {
         AppEpoch[] storage vaultEpochs = epochs[vault];
         uint256 fromEpoch = userCursor[user][vault];
         uint256 endEpoch = vaultEpochs.length;

@@ -189,7 +189,9 @@ contract ELTATest is Test {
         elta.mint(user1, 1000 ether);
     }
 
-    function testFuzz_MintWithinCap(uint256 amount) public {
+    function testFuzz_MintWithinCap(
+        uint256 amount
+    ) public {
         amount = bound(amount, 1, MAX_SUPPLY - INITIAL_MINT);
 
         vm.prank(admin);
@@ -199,7 +201,9 @@ contract ELTATest is Test {
         assertEq(elta.totalSupply(), INITIAL_MINT + amount);
     }
 
-    function testFuzz_Transfer(uint256 amount) public {
+    function testFuzz_Transfer(
+        uint256 amount
+    ) public {
         amount = bound(amount, 1, INITIAL_MINT);
 
         vm.prank(treasury);

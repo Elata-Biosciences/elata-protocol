@@ -59,7 +59,9 @@ contract LpLocker {
      * @notice Lock LP tokens in this contract
      * @param amount Amount of LP tokens to lock
      */
-    function lockLp(uint256 amount) external {
+    function lockLp(
+        uint256 amount
+    ) external {
         require(amount > 0, "Zero amount");
 
         bool success = IUniswapV2Pair(lpToken).transfer(address(this), amount);

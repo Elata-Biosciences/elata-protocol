@@ -12,7 +12,9 @@ interface IAppRewardsDistributor {
      * @notice Register a new app vault to receive rewards
      * @param vault Address of the AppStakingVault
      */
-    function registerApp(address vault) external;
+    function registerApp(
+        address vault
+    ) external;
 
     /**
      * @notice Register a new app vault with token mapping
@@ -25,7 +27,9 @@ interface IAppRewardsDistributor {
      * @notice Distribute ELTA rewards across active vaults
      * @param amount Total ELTA to distribute
      */
-    function distribute(uint256 amount) external;
+    function distribute(
+        uint256 amount
+    ) external;
 
     /**
      * @notice Deposit app tokens as rewards for a specific app

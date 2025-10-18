@@ -435,7 +435,9 @@ contract EpochRewardsSecurityTest is Test {
         assertEq(funded, fundAmount * 10);
     }
 
-    function testFuzz_Security_ClaimAmountLimited(uint256 claimAmount) public {
+    function testFuzz_Security_ClaimAmountLimited(
+        uint256 claimAmount
+    ) public {
         claimAmount = bound(claimAmount, 1, 50000 ether); // Increased limit but still reasonable
 
         vm.startPrank(owner);

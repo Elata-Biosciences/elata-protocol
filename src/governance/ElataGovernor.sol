@@ -56,7 +56,9 @@ contract ElataGovernor is
      * @notice Initializes the Elata Governor
      * @param _token Address of the ELTA token (voting token)
      */
-    constructor(IVotes _token)
+    constructor(
+        IVotes _token
+    )
         Governor("Elata Governor")
         GovernorSettings(
             1 days, /* voting delay */
@@ -119,7 +121,9 @@ contract ElataGovernor is
      * @param proposalId ID of the proposal
      * @return Voting period in seconds
      */
-    function proposalVotingPeriod(uint256 proposalId) public view returns (uint256) {
+    function proposalVotingPeriod(
+        uint256 proposalId
+    ) public view returns (uint256) {
         if (emergencyProposals[proposalId]) {
             return EMERGENCY_VOTING_PERIOD;
         }
@@ -139,7 +143,9 @@ contract ElataGovernor is
      * @param proposalId ID of the proposal
      * @return Whether the proposal is marked as emergency
      */
-    function isEmergencyProposal(uint256 proposalId) public view returns (bool) {
+    function isEmergencyProposal(
+        uint256 proposalId
+    ) public view returns (bool) {
         return emergencyProposals[proposalId];
     }
 
@@ -148,7 +154,9 @@ contract ElataGovernor is
      * @param proposalId ID of the proposal
      * @return Whether the proposal has been executed
      */
-    function isExecuted(uint256 proposalId) public view returns (bool) {
+    function isExecuted(
+        uint256 proposalId
+    ) public view returns (bool) {
         return executed[proposalId];
     }
 
@@ -170,12 +178,9 @@ contract ElataGovernor is
         return super.votingPeriod();
     }
 
-    function quorum(uint256 blockNumber)
-        public
-        view
-        override(Governor, GovernorVotesQuorumFraction)
-        returns (uint256)
-    {
+    function quorum(
+        uint256 blockNumber
+    ) public view override(Governor, GovernorVotesQuorumFraction) returns (uint256) {
         return super.quorum(blockNumber);
     }
 

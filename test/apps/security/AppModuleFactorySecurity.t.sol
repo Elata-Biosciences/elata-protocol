@@ -250,7 +250,9 @@ contract AppModuleFactorySecurityTest is Test {
     // FUZZ TESTS
     // ────────────────────────────────────────────────────────────────────────────
 
-    function testFuzz_Security_FeeAmountCorrect(uint256 feeAmount) public {
+    function testFuzz_Security_FeeAmountCorrect(
+        uint256 feeAmount
+    ) public {
         feeAmount = bound(feeAmount, 0, 10000 ether);
 
         vm.prank(factoryOwner);

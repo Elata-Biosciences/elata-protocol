@@ -202,7 +202,8 @@ contract AppTokenTest is Test {
 
         // Account for 1% transfer fee on transferFrom
         assertEq(token.balanceOf(user1), 500 ether); // Sender pays full amount
-        assertEq(token.balanceOf(user2), 500 ether + 198 ether + 297 ether); // 500 + 198 + 297 (99% of 300)
+        assertEq(token.balanceOf(user2), 500 ether + 198 ether + 297 ether); // 500 + 198 + 297 (99%
+            // of 300)
     }
 
     function test_BurnFrom() public {
@@ -222,7 +223,9 @@ contract AppTokenTest is Test {
         assertEq(token.allowance(user1, user2), 200 ether);
     }
 
-    function testFuzz_Mint(uint256 amount) public {
+    function testFuzz_Mint(
+        uint256 amount
+    ) public {
         amount = bound(amount, 1, MAX_SUPPLY);
 
         vm.prank(admin);

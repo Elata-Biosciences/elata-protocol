@@ -175,7 +175,9 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
      * @notice Revoke minter role (makes supply fixed)
      * @param account Address to revoke minter role from
      */
-    function revokeMinter(address account) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function revokeMinter(
+        address account
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _revokeRole(MINTER_ROLE, account);
     }
 
@@ -183,7 +185,9 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
      * @notice Set the app vault address (called by factory after vault creation)
      * @param _vault Vault address
      */
-    function setVault(address _vault) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setVault(
+        address _vault
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (appVault != address(0)) revert VaultAlreadySet();
         require(_vault != address(0), "Zero vault");
         appVault = _vault;
@@ -194,7 +198,9 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
      * @notice Set transfer fee in basis points (governance only)
      * @param newBps New fee rate (0-200 = 0-2%)
      */
-    function setTransferFeeBps(uint16 newBps) external {
+    function setTransferFeeBps(
+        uint16 newBps
+    ) external {
         if (msg.sender != governance) revert OnlyGovernance();
         if (newBps > MAX_TRANSFER_FEE_BPS) revert FeeTooHigh();
         emit TransferFeeUpdated(transferFeeBps, newBps);
@@ -236,11 +242,9 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
      * @return fee Fee amount
      * @return netAmount Amount after fee
      */
-    function calculateTransferFee(uint256 amount)
-        external
-        view
-        returns (uint256 fee, uint256 netAmount)
-    {
+    function calculateTransferFee(
+        uint256 amount
+    ) external view returns (uint256 fee, uint256 netAmount) {
         fee = (amount * transferFeeBps) / 10_000;
         netAmount = amount - fee;
     }

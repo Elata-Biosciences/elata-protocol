@@ -77,7 +77,9 @@ contract TournamentFactory is Ownable {
      * @notice Set protocol treasury address
      * @param treasury_ New treasury address
      */
-    function setTreasury(address treasury_) external onlyOwner {
+    function setTreasury(
+        address treasury_
+    ) external onlyOwner {
         treasury = treasury_;
         emit TreasurySet(treasury_);
     }
@@ -102,10 +104,12 @@ contract TournamentFactory is Ownable {
      * @param endTime Tournament end time (0 = no end)
      * @return tournament Address of deployed tournament
      */
-    function createTournament(address appToken, uint256 entryFee, uint64 startTime, uint64 endTime)
-        external
-        returns (address tournament)
-    {
+    function createTournament(
+        address appToken,
+        uint256 entryFee,
+        uint64 startTime,
+        uint64 endTime
+    ) external returns (address tournament) {
         return createTournamentWithFees(
             appToken, entryFee, startTime, endTime, defaultProtocolFeeBps, defaultBurnFeeBps
         );
@@ -180,7 +184,9 @@ contract TournamentFactory is Ownable {
      * @param appToken App token address
      * @return Array of tournament addresses
      */
-    function getAppTournaments(address appToken) external view returns (address[] memory) {
+    function getAppTournaments(
+        address appToken
+    ) external view returns (address[] memory) {
         return tournamentsByApp[appToken];
     }
 
@@ -189,7 +195,9 @@ contract TournamentFactory is Ownable {
      * @param creator Creator address
      * @return Array of tournament addresses
      */
-    function getCreatorTournaments(address creator) external view returns (address[] memory) {
+    function getCreatorTournaments(
+        address creator
+    ) external view returns (address[] memory) {
         return tournamentsByCreator[creator];
     }
 
@@ -206,11 +214,9 @@ contract TournamentFactory is Ownable {
      * @param tournamentId Tournament ID
      * @return Tournament info struct
      */
-    function getTournamentInfo(uint256 tournamentId)
-        external
-        view
-        returns (TournamentInfo memory)
-    {
+    function getTournamentInfo(
+        uint256 tournamentId
+    ) external view returns (TournamentInfo memory) {
         return tournaments[tournamentId];
     }
 }

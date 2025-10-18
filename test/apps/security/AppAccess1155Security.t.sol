@@ -419,10 +419,13 @@ contract ReentrancyAttacker {
     }
 
     // Reentrancy attempt via ERC1155 callback
-    function onERC1155Received(address, address, uint256 id, uint256, bytes memory)
-        external
-        returns (bytes4)
-    {
+    function onERC1155Received(
+        address,
+        address,
+        uint256 id,
+        uint256,
+        bytes memory
+    ) external returns (bytes4) {
         if (attacking) {
             attacking = false;
             // Attempt reentrancy

@@ -235,7 +235,9 @@ contract ElataXPTest is Test {
         assertEq(xp.totalSupply(), amount1 + amount2 + amount3);
     }
 
-    function testFuzz_Award(uint256 amount) public {
+    function testFuzz_Award(
+        uint256 amount
+    ) public {
         amount = bound(amount, 1, type(uint128).max);
 
         vm.prank(admin);

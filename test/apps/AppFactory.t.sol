@@ -19,7 +19,9 @@ import { MockAppFeeRouter, MockAppRewardsDistributor } from "../mocks/MockContra
 contract MockElataXP is IElataXP {
     mapping(address => uint256) public balances;
 
-    function balanceOf(address account) external view override returns (uint256) {
+    function balanceOf(
+        address account
+    ) external view override returns (uint256) {
         return balances[account];
     }
 
@@ -30,7 +32,9 @@ contract MockElataXP is IElataXP {
 
 // Mock RewardsDistributor
 contract MockRewardsDistributor is IRewardsDistributor {
-    function deposit(uint256) external pure { }
+    function deposit(
+        uint256
+    ) external pure { }
     function depositVeInToken(IERC20, uint256) external pure { }
 }
 

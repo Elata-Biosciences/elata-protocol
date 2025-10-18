@@ -24,7 +24,9 @@ contract AppFactoryViews {
         uint256 finalSupply;
     }
 
-    constructor(address _factory) {
+    constructor(
+        address _factory
+    ) {
         require(_factory != address(0), "Zero address");
         factory = _factory;
     }
@@ -34,7 +36,9 @@ contract AppFactoryViews {
      * @param appId App ID
      * @return App struct
      */
-    function getApp(uint256 appId) external view returns (App memory) {
+    function getApp(
+        uint256 appId
+    ) external view returns (App memory) {
         (
             address creator,
             address token,
@@ -67,7 +71,9 @@ contract AppFactoryViews {
      * @param creator Creator address
      * @return Array of app IDs
      */
-    function getCreatorApps(address creator) external view returns (uint256[] memory) {
+    function getCreatorApps(
+        address creator
+    ) external view returns (uint256[] memory) {
         IAppFactoryState factoryState = IAppFactoryState(factory);
 
         // Get count by checking each appId (not ideal but works)
@@ -100,7 +106,9 @@ contract AppFactoryViews {
      * @param token Token address
      * @return App ID
      */
-    function getAppIdFromToken(address token) external view returns (uint256) {
+    function getAppIdFromToken(
+        address token
+    ) external view returns (uint256) {
         return IAppFactoryState(factory).tokenToAppId(token);
     }
 
@@ -215,7 +223,9 @@ contract AppFactoryViews {
  */
 interface IAppFactoryState {
     function appCount() external view returns (uint256);
-    function apps(uint256)
+    function apps(
+        uint256
+    )
         external
         view
         returns (
@@ -230,7 +240,9 @@ interface IAppFactoryState {
             uint256 totalRaised,
             uint256 finalSupply
         );
-    function tokenToAppId(address) external view returns (uint256);
+    function tokenToAppId(
+        address
+    ) external view returns (uint256);
     function seedElta() external view returns (uint256);
     function creationFee() external view returns (uint256);
     function targetRaisedElta() external view returns (uint256);

@@ -28,7 +28,9 @@ import { IUniswapV2Router02 } from "../src/interfaces/IUniswapV2Router02.sol";
 contract MockUniswapV2Router {
     address public immutable factory;
 
-    constructor(address _factory) {
+    constructor(
+        address _factory
+    ) {
         factory = _factory;
     }
 
@@ -59,11 +61,10 @@ contract MockUniswapV2Router {
         return amounts;
     }
 
-    function getAmountsOut(uint256 amountIn, address[] calldata path)
-        external
-        pure
-        returns (uint256[] memory amounts)
-    {
+    function getAmountsOut(
+        uint256 amountIn,
+        address[] calldata path
+    ) external pure returns (uint256[] memory amounts) {
         amounts = new uint256[](path.length);
         amounts[0] = amountIn;
         amounts[path.length - 1] = amountIn; // 1:1 for simplicity
@@ -178,7 +179,8 @@ contract DeployLocalFull is Script {
         console2.log("[6/10] Deploying Rewards Distributor...");
         // NOTE: RewardsDistributor deployment commented out - use script/Deploy.sol
         // RewardsDistributor now requires VeELTA, AppRewardsDistributor, and treasury
-        // For full deployment, use: forge script script/Deploy.sol:Deploy --fork-url http://localhost:8545 --broadcast
+        // For full deployment, use: forge script script/Deploy.sol:Deploy --fork-url
+        // http://localhost:8545 --broadcast
         // result.rewards = new RewardsDistributor(...);
         console2.log("       RewardsDistributor deployed at:", address(result.rewards));
 
@@ -192,7 +194,8 @@ contract DeployLocalFull is Script {
         // ===== STEP 8: Deploy App Launch Framework =====
         console2.log("[8/10] Deploying App Factories...");
         // NOTE: AppFactory deployment commented out - use script/Deploy.sol
-        // AppFactory now requires AppFeeRouter, AppRewardsDistributor, RewardsDistributor, ElataXP, and Governance
+        // AppFactory now requires AppFeeRouter, AppRewardsDistributor, RewardsDistributor, ElataXP,
+        // and Governance
         // result.appFactory = new AppFactory(...);
         // result.appFactoryViews = new AppFactoryViews(address(result.appFactory));
         console2.log(
@@ -227,7 +230,9 @@ contract DeployLocalFull is Script {
         return result;
     }
 
-    function _deployTimelock(address admin) internal returns (TimelockController) {
+    function _deployTimelock(
+        address admin
+    ) internal returns (TimelockController) {
         address[] memory proposers = new address[](1);
         proposers[0] = address(0); // Will be set to governor
 
@@ -237,7 +242,9 @@ contract DeployLocalFull is Script {
         return new ElataTimelock(TIMELOCK_DELAY, proposers, executors, admin);
     }
 
-    function _configurePermissions(DeploymentResult memory result) internal {
+    function _configurePermissions(
+        DeploymentResult memory result
+    ) internal {
         // Grant governor roles on timelock
         result.timelock.grantRole(result.timelock.PROPOSER_ROLE(), address(result.governor));
         result.timelock.grantRole(result.timelock.EXECUTOR_ROLE(), address(result.governor));
@@ -250,7 +257,9 @@ contract DeployLocalFull is Script {
         result.xp.grantRole(result.xp.XP_OPERATOR_ROLE(), address(result.funding));
     }
 
-    function _setupTestAccounts(ELTA token) internal returns (address[] memory accounts) {
+    function _setupTestAccounts(
+        ELTA token
+    ) internal returns (address[] memory accounts) {
         // Anvil's default test accounts (deterministic)
         accounts = new address[](5);
         accounts[0] = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8; // Account #1
@@ -267,7 +276,9 @@ contract DeployLocalFull is Script {
         return accounts;
     }
 
-    function _logDeploymentSummary(DeploymentResult memory result) internal view {
+    function _logDeploymentSummary(
+        DeploymentResult memory result
+    ) internal view {
         console2.log("\n=================================================");
         console2.log("         DEPLOYMENT COMPLETE - SUMMARY");
         console2.log("=================================================\n");
@@ -316,7 +327,9 @@ contract DeployLocalFull is Script {
         console2.log("=================================================\n");
     }
 
-    function _writeDeploymentJson(DeploymentResult memory result) internal {
+    function _writeDeploymentJson(
+        DeploymentResult memory result
+    ) internal {
         // Build JSON string manually (Solidity doesn't have native JSON)
         string memory json = string.concat(
             "{\n",

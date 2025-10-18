@@ -13,7 +13,8 @@ import { Errors } from "../utils/Errors.sol";
  * @title ElataXP
  * @author Elata Biosciences
  * @notice Non-transferable experience points token for the Elata ecosystem.
- * @dev ERC20 with no transfers allowed. Supports role-based mint/burn and off-chain signature-based awards.
+ * @dev ERC20 with no transfers allowed. Supports role-based mint/burn and off-chain signature-based
+ * awards.
  * Extends ERC20Votes for governance integration (XP can be used for voting weight).
  */
 contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl {
@@ -35,7 +36,9 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @notice Constructor to initialize XP token.
      * @param admin The address that will have the default admin role and operator role initially.
      */
-    constructor(address admin) ERC20("Elata XP", "XP") ERC20Permit("Elata XP") {
+    constructor(
+        address admin
+    ) ERC20("Elata XP", "XP") ERC20Permit("Elata XP") {
         if (admin == address(0)) revert Errors.ZeroAddress();
         // Setup roles
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
@@ -95,8 +98,10 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @param v Sig v component.
      * @param r Sig r component.
      * @param s Sig s component.
-     * @dev Anyone can call this (typically the user), but it requires a valid signature from an authorized operator.
-     * The operator must have XP_OPERATOR_ROLE. The signature is one-time use per operator (nonce is consumed).
+     * @dev Anyone can call this (typically the user), but it requires a valid signature from an
+     * authorized operator.
+     * The operator must have XP_OPERATOR_ROLE. The signature is one-time use per operator (nonce is
+     * consumed).
      */
     function updateBySig(
         address operator,
@@ -149,10 +154,11 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl {
     /**
      * @dev Override to disable transfers (soulbound)
      */
-    function _update(address from, address to, uint256 value)
-        internal
-        override(ERC20, ERC20Votes)
-    {
+    function _update(
+        address from,
+        address to,
+        uint256 value
+    ) internal override(ERC20, ERC20Votes) {
         if (from != address(0) && to != address(0)) revert Errors.TransfersDisabled();
         super._update(from, to, value);
     }
@@ -160,7 +166,9 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl {
     /**
      * @dev Required override for multiple inheritance
      */
-    function nonces(address owner) public view override(ERC20Permit, Nonces) returns (uint256) {
+    function nonces(
+        address owner
+    ) public view override(ERC20Permit, Nonces) returns (uint256) {
         return super.nonces(owner);
     }
 }

@@ -200,7 +200,8 @@ contract SeedLocalData is Script {
         );
 
         // Get app token address (apps mapping returns the full struct as tuple)
-        // App struct: creator, token, vault, curve, pair, locker, createdAt, graduatedAt, graduated, totalRaised, finalSupply
+        // App struct: creator, token, vault, curve, pair, locker, createdAt, graduatedAt,
+        // graduated, totalRaised, finalSupply
         (, app.token,,,,,,,,,) = factory.apps(app.appId);
         app.name = name;
         app.symbol = symbol;
@@ -219,14 +220,18 @@ contract SeedLocalData is Script {
         return app;
     }
 
-    function _configureAppEconomies(TestApp[] memory apps) internal {
+    function _configureAppEconomies(
+        TestApp[] memory apps
+    ) internal {
         // Configure each app with items, prices, etc.
         for (uint256 i = 0; i < apps.length; i++) {
             _configureSingleApp(apps[i]);
         }
     }
 
-    function _configureSingleApp(TestApp memory app) internal {
+    function _configureSingleApp(
+        TestApp memory app
+    ) internal {
         AppAccess1155 access = AppAccess1155(app.access1155);
 
         // Create tiered items for each app
@@ -312,7 +317,9 @@ contract SeedLocalData is Script {
         console2.log("       Funded pool with", fundingAmount / 1 ether, "ELTA");
     }
 
-    function _printSeedSummary(TestApp[] memory apps) internal pure {
+    function _printSeedSummary(
+        TestApp[] memory apps
+    ) internal pure {
         console2.log("SUMMARY:");
         console2.log("--------");
         console2.log("- 5 test users with XP (300-5000 XP)");
