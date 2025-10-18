@@ -21,9 +21,12 @@ fi
 
 # 2. Build check
 echo "🔨 Building contracts..."
-if ! forge build; then
-    echo "❌ Build failed!"
-    exit 1
+if ! forge build --sizes 2>/dev/null; then
+    echo "⚠️  Some contracts exceed EIP-170 limit (acceptable for L2 deployment)"
+    if ! forge build; then
+        echo "❌ Build failed!"
+        exit 1
+    fi
 fi
 echo "✓ Build successful (some contracts >24KB, acceptable for L2)"
 
