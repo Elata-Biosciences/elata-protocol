@@ -16,8 +16,6 @@ jobs:
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: stable
 
       - name: Check formatting
         run: forge fmt --check
@@ -32,8 +30,6 @@ jobs:
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: stable
 
       - name: Build contracts
         run: forge build --sizes || (echo "⚠️  Some contracts exceed EIP-170 limit (acceptable for L2 deployment)" && forge build)
@@ -48,8 +44,6 @@ jobs:
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: stable
 
       - name: Run tests
         run: forge test -vv
@@ -64,8 +58,6 @@ jobs:
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: stable
 
       - name: Run security tests
         run: |
@@ -82,8 +74,6 @@ jobs:
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: stable
 
       - name: Generate gas report
         run: forge test --gas-report
@@ -114,8 +104,6 @@ jobs:
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: stable
 
       - name: Run coverage
         run: forge coverage --ir-minimum --no-match-path "script/**/*.sol" --report lcov
