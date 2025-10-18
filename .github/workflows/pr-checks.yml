@@ -18,7 +18,10 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
 
       - name: Check formatting
-        run: forge fmt --check
+        run: |
+          forge fmt src/ --check
+          forge fmt test/ --check
+          forge fmt script/ --check
 
   build:
     name: Build
