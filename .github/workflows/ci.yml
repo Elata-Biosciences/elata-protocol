@@ -49,10 +49,7 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
 
       - name: Check code formatting
-        run: |
-          forge fmt src/ --check
-          forge fmt test/ --check
-          forge fmt script/ --check
+        run: forge fmt --check
 
       - name: Run gas report
         run: forge test --gas-report
