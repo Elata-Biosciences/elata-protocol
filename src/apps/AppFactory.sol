@@ -1,19 +1,34 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import { IUniswapV2Router02 } from "../interfaces/IUniswapV2Router02.sol";
-import { IAppFeeRouter } from "../interfaces/IAppFeeRouter.sol";
-import { IAppRewardsDistributor } from "../interfaces/IAppRewardsDistributor.sol";
-import { IRewardsDistributor } from "../interfaces/IRewardsDistributor.sol";
-import { IElataXP } from "../interfaces/IElataXP.sol";
-import { AppToken } from "./AppToken.sol";
-import { AppStakingVault } from "./AppStakingVault.sol";
-import { AppBondingCurve, IAppFactory } from "./AppBondingCurve.sol";
-import { AppDeploymentLib } from "./libraries/AppDeploymentLib.sol";
+import { IERC20 } from
+    "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from
+    "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { AccessControl } from
+    "@openzeppelin/contracts/access/AccessControl.sol";
+import { ReentrancyGuard } from
+    "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { IUniswapV2Router02 } from
+    "../interfaces/IUniswapV2Router02.sol";
+import { IAppFeeRouter } from
+    "../interfaces/IAppFeeRouter.sol";
+import { IAppRewardsDistributor } from
+    "../interfaces/IAppRewardsDistributor.sol";
+import { IRewardsDistributor } from
+    "../interfaces/IRewardsDistributor.sol";
+import { IElataXP } from
+    "../interfaces/IElataXP.sol";
+import { AppToken } from
+    "./AppToken.sol";
+import { AppStakingVault } from
+    "./AppStakingVault.sol";
+import {
+    AppBondingCurve,
+    IAppFactory
+} from "./AppBondingCurve.sol";
+import { AppDeploymentLib } from
+    "./libraries/AppDeploymentLib.sol";
 
 /**
  * @title AppFactory
@@ -37,27 +52,45 @@ import { AppDeploymentLib } from "./libraries/AppDeploymentLib.sol";
  * - Automated liquidity provision on graduation
  * - LP token locking for security
  */
-contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
+contract AppFactory is
+    AccessControl,
+    ReentrancyGuard,
+    IAppFactory
+{
     using SafeERC20 for IERC20;
 
-    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 public constant
+        PAUSER_ROLE =
+            keccak256("PAUSER_ROLE");
 
     IERC20 public immutable ELTA;
-    IUniswapV2Router02 public immutable router;
+    IUniswapV2Router02 public immutable
+        router;
     address public immutable treasury;
-    IAppFeeRouter public immutable appFeeRouter;
-    IAppRewardsDistributor public immutable appRewardsDistributor;
-    IRewardsDistributor public immutable rewardsDistributor;
+    IAppFeeRouter public immutable
+        appFeeRouter;
+    IAppRewardsDistributor
+        public
+        immutable appRewardsDistributor;
+    IRewardsDistributor public immutable
+        rewardsDistributor;
     IElataXP public immutable elataXP;
     address public immutable governance;
 
     // Launch parameters (immutable for size optimization)
-    uint256 public constant seedElta = 100 ether;
-    uint256 public constant targetRaisedElta = 42_000 ether;
-    uint256 public constant defaultSupply = 1_000_000_000 ether;
-    uint256 public constant lpLockDuration = 365 days * 2;
-    uint8 public constant defaultDecimals = 18;
-    uint256 public constant creationFee = 10 ether;
+    uint256 public constant seedElta =
+        100 ether;
+    uint256 public constant
+        targetRaisedElta = 42_000 ether;
+    uint256 public constant
+        defaultSupply =
+            1_000_000_000 ether;
+    uint256 public constant
+        lpLockDuration = 365 days * 2;
+    uint8 public constant
+        defaultDecimals = 18;
+    uint256 public constant
+        creationFee = 10 ether;
 
     bool public paused;
 
@@ -77,7 +110,8 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
 
     uint256 public appCount;
     mapping(uint256 => App) public apps;
-    mapping(address => uint256) public tokenToAppId;
+    mapping(address => uint256) public
+        tokenToAppId;
 
     // Events
     event AppCreated(
@@ -121,18 +155,31 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         IUniswapV2Router02 _router,
         address _treasury,
         IAppFeeRouter _appFeeRouter,
-        IAppRewardsDistributor _appRewardsDistributor,
-        IRewardsDistributor _rewardsDistributor,
+        IAppRewardsDistributor
+            _appRewardsDistributor,
+        IRewardsDistributor
+            _rewardsDistributor,
         IElataXP _elataXP,
         address _governance,
         address _admin
     ) {
         require(
-            address(_elta) != address(0) && address(_router) != address(0)
-                && _treasury != address(0) && address(_appFeeRouter) != address(0)
-                && address(_appRewardsDistributor) != address(0)
-                && address(_rewardsDistributor) != address(0) && address(_elataXP) != address(0)
-                && _governance != address(0) && _admin != address(0),
+            address(_elta) != address(0)
+                && address(_router)
+                    != address(0)
+                && _treasury != address(0)
+                && address(_appFeeRouter)
+                    != address(0)
+                && address(
+                    _appRewardsDistributor
+                ) != address(0)
+                && address(
+                    _rewardsDistributor
+                ) != address(0)
+                && address(_elataXP)
+                    != address(0)
+                && _governance != address(0)
+                && _admin != address(0),
             "Zero address"
         );
 
@@ -140,12 +187,16 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         router = _router;
         treasury = _treasury;
         appFeeRouter = _appFeeRouter;
-        appRewardsDistributor = _appRewardsDistributor;
-        rewardsDistributor = _rewardsDistributor;
+        appRewardsDistributor =
+            _appRewardsDistributor;
+        rewardsDistributor =
+            _rewardsDistributor;
         elataXP = _elataXP;
         governance = _governance;
 
-        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        _grantRole(
+            DEFAULT_ADMIN_ROLE, _admin
+        );
         _grantRole(PAUSER_ROLE, _admin);
     }
 
@@ -153,9 +204,10 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
      * @notice Pause/unpause app creation
      * @param _paused New pause state
      */
-    function setPaused(
-        bool _paused
-    ) external onlyRole(PAUSER_ROLE) {
+    function setPaused(bool _paused)
+        external
+        onlyRole(PAUSER_ROLE)
+    {
         paused = _paused;
     }
 
@@ -176,21 +228,41 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         string calldata description,
         string calldata imageURI,
         string calldata website
-    ) external nonReentrant returns (uint256 appId) {
+    )
+        external
+        nonReentrant
+        returns (uint256 appId)
+    {
         if (paused) revert Paused();
-        uint256 tokenSupply = supply == 0 ? defaultSupply : supply;
-        require(tokenSupply > 0, "Invalid supply");
+        uint256 tokenSupply = supply
+            == 0 ? defaultSupply : supply;
+        require(
+            tokenSupply > 0,
+            "Invalid supply"
+        );
 
         // Collect creation fees
         require(
-            ELTA.transferFrom(msg.sender, address(this), creationFee + seedElta), "Transfer failed"
+            ELTA.transferFrom(
+                msg.sender,
+                address(this),
+                creationFee + seedElta
+            ),
+            "Transfer failed"
         );
         if (creationFee > 0) {
-            require(ELTA.transfer(treasury, creationFee), "Transfer failed");
+            require(
+                ELTA.transfer(
+                    treasury,
+                    creationFee
+                ),
+                "Transfer failed"
+            );
         }
 
         // Deploy contracts via library (reduces AppFactory size)
-        address tokenAddr = AppDeploymentLib.deployToken(
+        address tokenAddr =
+        AppDeploymentLib.deployToken(
             name,
             symbol,
             defaultDecimals,
@@ -198,12 +270,21 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
             msg.sender,
             address(this),
             governance,
-            address(appRewardsDistributor),
+            address(
+                appRewardsDistributor
+            ),
             address(rewardsDistributor),
             treasury
         );
-        address vaultAddr = AppDeploymentLib.deployVault(name, symbol, tokenAddr, address(this));
-        address curveAddr = AppDeploymentLib.deployCurve(
+        address vaultAddr =
+        AppDeploymentLib.deployVault(
+            name,
+            symbol,
+            tokenAddr,
+            address(this)
+        );
+        address curveAddr =
+        AppDeploymentLib.deployCurve(
             appCount,
             address(this),
             ELTA,
@@ -219,40 +300,75 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         );
 
         // Configure token & curve
-        uint256 creatorShare = tokenSupply / 2;
-        uint256 curveShare = tokenSupply - creatorShare;
+        uint256 creatorShare =
+            tokenSupply / 2;
+        uint256 curveShare =
+            tokenSupply - creatorShare;
 
-        AppToken token = AppToken(tokenAddr);
+        AppToken token =
+            AppToken(tokenAddr);
 
         // Set vault address on token (for fee exemptions)
         token.setVault(vaultAddr);
 
         // Mark bonding curve as exempt from transfer fees
-        token.setTransferFeeExempt(curveAddr, true);
+        token.setTransferFeeExempt(
+            curveAddr, true
+        );
 
-        token.mint(address(this), creatorShare);
-        token.mint(curveAddr, curveShare);
-        token.revokeMinter(address(this));
-        token.grantRole(token.DEFAULT_ADMIN_ROLE(), msg.sender);
-        token.revokeRole(token.DEFAULT_ADMIN_ROLE(), address(this));
+        token.mint(
+            address(this), creatorShare
+        );
+        token.mint(
+            curveAddr, curveShare
+        );
+        token.revokeMinter(
+            address(this)
+        );
+        token.grantRole(
+            token.DEFAULT_ADMIN_ROLE(),
+            msg.sender
+        );
+        token.revokeRole(
+            token.DEFAULT_ADMIN_ROLE(),
+            address(this)
+        );
 
-        require(ELTA.transfer(curveAddr, seedElta), "Transfer failed");
-        AppBondingCurve(curveAddr).initializeCurve(seedElta, curveShare);
+        require(
+            ELTA.transfer(
+                curveAddr, seedElta
+            ),
+            "Transfer failed"
+        );
+        AppBondingCurve(curveAddr)
+            .initializeCurve(
+            seedElta, curveShare
+        );
 
         // Auto-stake creator share (50% of supply)
-        AppStakingVault vault = AppStakingVault(vaultAddr);
+        AppStakingVault vault =
+            AppStakingVault(vaultAddr);
 
         // Approve vault to pull tokens from factory
-        token.approve(vaultAddr, creatorShare);
+        token.approve(
+            vaultAddr, creatorShare
+        );
 
         // Stake on behalf of creator (factory is still owner at this point)
-        vault.stakeFor(msg.sender, creatorShare);
+        vault.stakeFor(
+            msg.sender, creatorShare
+        );
 
         // Transfer vault ownership to creator AFTER auto-staking
-        vault.transferOwnership(msg.sender);
+        vault.transferOwnership(
+            msg.sender
+        );
 
         // Register vault in rewards distributor with token mapping
-        appRewardsDistributor.registerApp(vaultAddr, tokenAddr);
+        appRewardsDistributor
+            .registerApp(
+            vaultAddr, tokenAddr
+        );
 
         // Register app
         appId = appCount++;
@@ -263,7 +379,9 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
             curve: curveAddr,
             pair: address(0),
             locker: address(0),
-            createdAt: uint64(block.timestamp),
+            createdAt: uint64(
+                block.timestamp
+            ),
             graduatedAt: 0,
             graduated: false,
             totalRaised: 0,
@@ -272,7 +390,14 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
 
         tokenToAppId[tokenAddr] = appId;
 
-        emit AppCreated(appId, msg.sender, tokenAddr, vaultAddr, curveAddr, creatorShare);
+        emit AppCreated(
+            appId,
+            msg.sender,
+            tokenAddr,
+            vaultAddr,
+            curveAddr,
+            creatorShare
+        );
 
         // NOTE: Metadata must be set by creator in separate transaction
         // token.updateMetadata() requires msg.sender == appCreator
@@ -297,18 +422,34 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         uint256 totalRaisedElta,
         uint256 finalSupply
     ) external override {
-        require(appId < appCount, "Invalid app");
+        require(
+            appId < appCount,
+            "Invalid app"
+        );
         App storage app = apps[appId];
-        require(msg.sender == app.curve, "Only curve");
+        require(
+            msg.sender == app.curve,
+            "Only curve"
+        );
 
         app.pair = pair;
         app.locker = locker;
-        app.graduatedAt = uint64(block.timestamp);
+        app.graduatedAt =
+            uint64(block.timestamp);
         app.graduated = true;
-        app.totalRaised = totalRaisedElta;
+        app.totalRaised =
+            totalRaisedElta;
         app.finalSupply = finalSupply;
 
-        emit AppGraduated(appId, app.token, pair, locker, unlockAt, totalRaisedElta, finalSupply);
+        emit AppGraduated(
+            appId,
+            app.token,
+            pair,
+            locker,
+            unlockAt,
+            totalRaisedElta,
+            finalSupply
+        );
     }
 
     /**
@@ -316,9 +457,11 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
      * @param appId App ID
      * @return App struct
      */
-    function getApp(
-        uint256 appId
-    ) external view returns (App memory) {
+    function getApp(uint256 appId)
+        external
+        view
+        returns (App memory)
+    {
         return apps[appId];
     }
 
@@ -326,7 +469,11 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
      * @notice Get app count
      * @return Total number of apps
      */
-    function getAppCount() external view returns (uint256) {
+    function getAppCount()
+        external
+        view
+        returns (uint256)
+    {
         return appCount;
     }
 
@@ -350,16 +497,34 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
      */
     function getAppLaunchStatus(
         uint256 appId
-    ) external view returns (bool isInEarlyAccess, uint256 earlyAccessEndsAt, uint256 xpRequired) {
-        require(appId < appCount, "Invalid app");
+    )
+        external
+        view
+        returns (
+            bool isInEarlyAccess,
+            uint256 earlyAccessEndsAt,
+            uint256 xpRequired
+        )
+    {
+        require(
+            appId < appCount,
+            "Invalid app"
+        );
         App storage app = apps[appId];
-        AppBondingCurve curve = AppBondingCurve(app.curve);
+        AppBondingCurve curve =
+            AppBondingCurve(app.curve);
 
-        uint256 launchTime = curve.launchTimestamp();
-        uint256 duration = curve.earlyBuyDuration();
+        uint256 launchTime =
+            curve.launchTimestamp();
+        uint256 duration =
+            curve.earlyBuyDuration();
 
-        isInEarlyAccess = block.timestamp < launchTime + duration;
-        earlyAccessEndsAt = launchTime + duration;
-        xpRequired = curve.xpMinForEarlyBuy();
+        isInEarlyAccess = block
+            .timestamp
+            < launchTime + duration;
+        earlyAccessEndsAt =
+            launchTime + duration;
+        xpRequired =
+            curve.xpMinForEarlyBuy();
     }
 }

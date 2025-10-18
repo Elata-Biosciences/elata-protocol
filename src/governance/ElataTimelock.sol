@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { TimelockController } from "@openzeppelin/contracts/governance/TimelockController.sol";
+import { TimelockController } from
+    "@openzeppelin/contracts/governance/TimelockController.sol";
 
 /**
  * @title ElataTimelock
@@ -21,12 +22,16 @@ import { TimelockController } from "@openzeppelin/contracts/governance/TimelockC
  * - Cancellation mechanism for emergency situations
  * - Transparent operation queuing and execution
  */
-contract ElataTimelock is TimelockController {
+contract ElataTimelock is
+    TimelockController
+{
     /// @notice Standard delay for governance operations (48 hours)
-    uint256 public constant STANDARD_DELAY = 48 hours;
+    uint256 public constant
+        STANDARD_DELAY = 48 hours;
 
     /// @notice Emergency delay for critical operations (6 hours)
-    uint256 public constant EMERGENCY_DELAY = 6 hours;
+    uint256 public constant
+        EMERGENCY_DELAY = 6 hours;
 
     /**
      * @notice Initializes the Elata Timelock
@@ -40,5 +45,12 @@ contract ElataTimelock is TimelockController {
         address[] memory proposers,
         address[] memory executors,
         address admin
-    ) TimelockController(minDelay, proposers, executors, admin) { }
+    )
+        TimelockController(
+            minDelay,
+            proposers,
+            executors,
+            admin
+        )
+    { }
 }

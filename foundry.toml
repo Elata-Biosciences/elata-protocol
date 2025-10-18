@@ -42,13 +42,12 @@ ignore_eip_3860 = true
 # CI profile: optimize for gas efficiency and size constraints
 
 [fmt]
-line_length = 100
+line_length = 40
 tab_width = 4
 bracket_spacing = true
 quote_style = "double"
 number_underscore = "preserve"
-multiline_func_header = "params_first"
-wrap_comments = true
+single_line_statement_blocks = "single"
 
 [rpc_endpoints]
 mainnet = "${MAINNET_RPC_URL}"

@@ -2,14 +2,22 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Script.sol";
-import { AppToken } from "../src/apps/AppToken.sol";
-import { AppModuleFactory } from "../src/apps/AppModuleFactory.sol";
-import { TournamentFactory } from "../src/apps/TournamentFactory.sol";
-import { AppAccess1155 } from "../src/apps/AppAccess1155.sol";
-import { AppStakingVault } from "../src/apps/AppStakingVault.sol";
-import { Tournament } from "../src/apps/Tournament.sol";
-import { EpochRewards } from "../src/apps/EpochRewards.sol";
-import { ELTA } from "../src/token/ELTA.sol";
+import { AppToken } from
+    "../src/apps/AppToken.sol";
+import { AppModuleFactory } from
+    "../src/apps/AppModuleFactory.sol";
+import { TournamentFactory } from
+    "../src/apps/TournamentFactory.sol";
+import { AppAccess1155 } from
+    "../src/apps/AppAccess1155.sol";
+import { AppStakingVault } from
+    "../src/apps/AppStakingVault.sol";
+import { Tournament } from
+    "../src/apps/Tournament.sol";
+import { EpochRewards } from
+    "../src/apps/EpochRewards.sol";
+import { ELTA } from
+    "../src/token/ELTA.sol";
 
 /**
  * @title DeployAppModules
@@ -25,47 +33,101 @@ contract DeployAppModules is Script {
     address public eltaAddress;
     address public treasury;
     address public appCreator;
-    uint256 public createFeeELTA = 50 ether;
+    uint256 public createFeeELTA =
+        50 ether;
 
     function setUp() public {
         // Load from environment or use defaults
-        eltaAddress = vm.envOr("ELTA_ADDRESS", address(0));
-        treasury = vm.envOr("TREASURY_ADDRESS", msg.sender);
-        appCreator = vm.envOr("APP_CREATOR", msg.sender);
+        eltaAddress = vm.envOr(
+            "ELTA_ADDRESS", address(0)
+        );
+        treasury = vm.envOr(
+            "TREASURY_ADDRESS",
+            msg.sender
+        );
+        appCreator = vm.envOr(
+            "APP_CREATOR", msg.sender
+        );
     }
 
     function run() public {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address deployer = vm.addr(deployerPrivateKey);
+        uint256 deployerPrivateKey =
+            vm.envUint("PRIVATE_KEY");
+        address deployer =
+            vm.addr(deployerPrivateKey);
 
-        console.log("Deploying App Modules with deployer:", deployer);
-        console.log("ELTA Address:", eltaAddress);
-        console.log("Treasury:", treasury);
+        console.log(
+            "Deploying App Modules with deployer:",
+            deployer
+        );
+        console.log(
+            "ELTA Address:", eltaAddress
+        );
+        console.log(
+            "Treasury:", treasury
+        );
 
-        vm.startBroadcast(deployerPrivateKey);
+        vm.startBroadcast(
+            deployerPrivateKey
+        );
 
         // 1. Deploy AppModuleFactory
-        AppModuleFactory factory = new AppModuleFactory(eltaAddress, deployer, treasury);
-        console.log("AppModuleFactory deployed at:", address(factory));
+        AppModuleFactory factory = new AppModuleFactory(
+            eltaAddress,
+            deployer,
+            treasury
+        );
+        console.log(
+            "AppModuleFactory deployed at:",
+            address(factory)
+        );
 
         // 2. Deploy TournamentFactory
-        TournamentFactory tournamentFactory = new TournamentFactory(deployer, treasury);
-        console.log("TournamentFactory deployed at:", address(tournamentFactory));
+        TournamentFactory
+            tournamentFactory = new TournamentFactory(
+                deployer, treasury
+            );
+        console.log(
+            "TournamentFactory deployed at:",
+            address(tournamentFactory)
+        );
 
         // 3. Set creation fee (optional)
-        if (createFeeELTA > 0 && eltaAddress != address(0)) {
-            factory.setCreateFee(createFeeELTA);
-            console.log("Set createFeeELTA to:", createFeeELTA);
+        if (
+            createFeeELTA > 0
+                && eltaAddress != address(0)
+        ) {
+            factory.setCreateFee(
+                createFeeELTA
+            );
+            console.log(
+                "Set createFeeELTA to:",
+                createFeeELTA
+            );
         }
 
         vm.stopBroadcast();
 
         // Log deployment info
-        console.log("\n=== Deployment Complete ===");
-        console.log("AppModuleFactory:", address(factory));
-        console.log("TournamentFactory:", address(tournamentFactory));
-        console.log("Treasury:", factory.treasury());
-        console.log("Create Fee:", factory.createFeeELTA());
+        console.log(
+            "\n=== Deployment Complete ==="
+        );
+        console.log(
+            "AppModuleFactory:",
+            address(factory)
+        );
+        console.log(
+            "TournamentFactory:",
+            address(tournamentFactory)
+        );
+        console.log(
+            "Treasury:",
+            factory.treasury()
+        );
+        console.log(
+            "Create Fee:",
+            factory.createFeeELTA()
+        );
     }
 }
 
@@ -76,15 +138,26 @@ contract DeployAppModules is Script {
  */
 contract DeployFullExample is Script {
     function run() public {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address deployer = vm.addr(deployerPrivateKey);
-        address treasury = vm.envOr("TREASURY_ADDRESS", deployer);
+        uint256 deployerPrivateKey =
+            vm.envUint("PRIVATE_KEY");
+        address deployer =
+            vm.addr(deployerPrivateKey);
+        address treasury = vm.envOr(
+            "TREASURY_ADDRESS", deployer
+        );
         address appCreator = deployer;
 
-        console.log("Deploying Full App Example");
-        console.log("Deployer/App Creator:", deployer);
+        console.log(
+            "Deploying Full App Example"
+        );
+        console.log(
+            "Deployer/App Creator:",
+            deployer
+        );
 
-        vm.startBroadcast(deployerPrivateKey);
+        vm.startBroadcast(
+            deployerPrivateKey
+        );
 
         // 1. Deploy or use existing ELTA
         ELTA elta = new ELTA(
@@ -95,14 +168,30 @@ contract DeployFullExample is Script {
             10_000_000 ether, // Initial mint
             77_000_000 ether // Max supply
         );
-        console.log("ELTA deployed at:", address(elta));
+        console.log(
+            "ELTA deployed at:",
+            address(elta)
+        );
 
         // 2. Deploy factories
-        AppModuleFactory factory = new AppModuleFactory(address(elta), deployer, treasury);
-        console.log("AppModuleFactory deployed at:", address(factory));
+        AppModuleFactory factory = new AppModuleFactory(
+            address(elta),
+            deployer,
+            treasury
+        );
+        console.log(
+            "AppModuleFactory deployed at:",
+            address(factory)
+        );
 
-        TournamentFactory tournamentFactory = new TournamentFactory(deployer, treasury);
-        console.log("TournamentFactory deployed at:", address(tournamentFactory));
+        TournamentFactory
+            tournamentFactory = new TournamentFactory(
+                deployer, treasury
+            );
+        console.log(
+            "TournamentFactory deployed at:",
+            address(tournamentFactory)
+        );
 
         // 3. Simulate app creation (normally via AppFactory)
         // TODO: Update AppToken constructor - see MIGRATION_GUIDE.md
@@ -114,15 +203,29 @@ contract DeployFullExample is Script {
 
         // Mint creator treasury (10%)
         // appToken.mint(appCreator, 100_000_000 ether);
-        console.log("AppToken deployment DISABLED - needs migration (see MIGRATION_GUIDE.md)");
+        console.log(
+            "AppToken deployment DISABLED - needs migration (see MIGRATION_GUIDE.md)"
+        );
 
         // Skip module deployment until AppToken is properly deployed
 
-        console.log("\n=== Deployment Summary ===");
-        console.log("ELTA:", address(elta));
-        console.log("AppModuleFactory:", address(factory));
-        console.log("TournamentFactory:", address(tournamentFactory));
-        console.log("\nNote: App deployment disabled - see MIGRATION_GUIDE.md for updates needed");
+        console.log(
+            "\n=== Deployment Summary ==="
+        );
+        console.log(
+            "ELTA:", address(elta)
+        );
+        console.log(
+            "AppModuleFactory:",
+            address(factory)
+        );
+        console.log(
+            "TournamentFactory:",
+            address(tournamentFactory)
+        );
+        console.log(
+            "\nNote: App deployment disabled - see MIGRATION_GUIDE.md for updates needed"
+        );
 
         vm.stopBroadcast();
         return;

@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { ERC1155 } from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import { IAppToken } from "./Interfaces.sol";
+import { ERC1155 } from
+    "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import { Ownable } from
+    "@openzeppelin/contracts/access/Ownable.sol";
+import { ReentrancyGuard } from
+    "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { IAppToken } from
+    "./Interfaces.sol";
 
 /**
  * @title AppAccess1155
@@ -24,7 +28,11 @@ import { IAppToken } from "./Interfaces.sol";
  * 2. Users purchase items (burns app tokens)
  * 3. Apps read feature gates and balances for access control
  */
-contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
+contract AppAccess1155 is
+    ERC1155,
+    Ownable,
+    ReentrancyGuard
+{
     struct Item {
         uint256 price; // per unit in app tokens
         bool soulbound; // non-transferable if true
@@ -50,18 +58,34 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
     address public immutable STAKING;
 
     /// @notice Item configurations by ID
-    mapping(uint256 => Item) public items;
+    mapping(uint256 => Item) public
+        items;
 
     /// @notice Per-item URI overrides
-    mapping(uint256 => string) private _idURIs;
+    mapping(uint256 => string) private
+        _idURIs;
 
     /// @notice Feature gates by feature ID
-    mapping(bytes32 => FeatureGate) public gates;
+    mapping(bytes32 => FeatureGate)
+        public gates;
 
-    event ItemConfigured(uint256 indexed id, Item item);
-    event Purchased(address indexed user, uint256 indexed id, uint256 amount, uint256 cost);
-    event SoulboundToggled(uint256 indexed id, bool soulbound);
-    event FeatureGateSet(bytes32 indexed featureId, FeatureGate gate);
+    event ItemConfigured(
+        uint256 indexed id, Item item
+    );
+    event Purchased(
+        address indexed user,
+        uint256 indexed id,
+        uint256 amount,
+        uint256 cost
+    );
+    event SoulboundToggled(
+        uint256 indexed id,
+        bool soulbound
+    );
+    event FeatureGateSet(
+        bytes32 indexed featureId,
+        FeatureGate gate
+    );
 
     error ItemInactive();
     error PurchaseTooEarly();
@@ -81,7 +105,10 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
         address stakingVault,
         address owner_,
         string memory baseURI
-    ) ERC1155(baseURI) Ownable(owner_) {
+    )
+        ERC1155(baseURI)
+        Ownable(owner_)
+    {
         APP = IAppToken(appToken);
         STAKING = stakingVault;
     }
@@ -122,7 +149,9 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
             uri_: perIdURI
         });
         _idURIs[id] = perIdURI;
-        emit ItemConfigured(id, items[id]);
+        emit ItemConfigured(
+            id, items[id]
+        );
     }
 
     /**
@@ -130,9 +159,14 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
      * @param id Item ID
      * @param active New active status
      */
-    function setItemActive(uint256 id, bool active) external onlyOwner {
+    function setItemActive(
+        uint256 id,
+        bool active
+    ) external onlyOwner {
         items[id].active = active;
-        emit ItemConfigured(id, items[id]);
+        emit ItemConfigured(
+            id, items[id]
+        );
     }
 
     /**
@@ -140,9 +174,14 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
      * @param id Item ID
      * @param soulbound New soulbound status
      */
-    function toggleSoulbound(uint256 id, bool soulbound) external onlyOwner {
+    function toggleSoulbound(
+        uint256 id,
+        bool soulbound
+    ) external onlyOwner {
         items[id].soulbound = soulbound;
-        emit SoulboundToggled(id, soulbound);
+        emit SoulboundToggled(
+            id, soulbound
+        );
     }
 
     /**
@@ -150,9 +189,14 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
      * @param featureId Unique identifier for the feature
      * @param gate Gate configuration
      */
-    function setFeatureGate(bytes32 featureId, FeatureGate calldata gate) external onlyOwner {
+    function setFeatureGate(
+        bytes32 featureId,
+        FeatureGate calldata gate
+    ) external onlyOwner {
         gates[featureId] = gate;
-        emit FeatureGateSet(featureId, gate);
+        emit FeatureGateSet(
+            featureId, gate
+        );
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -165,20 +209,32 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
      * @param id Item ID to purchase
      * @param amount Quantity to purchase
      */
-    function purchase(uint256 id, uint256 amount, bytes32 /* reason */ ) external nonReentrant {
+    function purchase(
+        uint256 id,
+        uint256 amount,
+        bytes32 /* reason */
+    ) external nonReentrant {
         Item memory it = items[id];
 
         // Validate purchase conditions
-        if (!it.active) revert ItemInactive();
-        if (it.startTime != 0 && block.timestamp < it.startTime) {
-            revert PurchaseTooEarly();
+        if (!it.active) {
+            revert ItemInactive();
         }
-        if (it.endTime != 0 && block.timestamp > it.endTime) {
-            revert PurchaseTooLate();
-        }
-        if (it.maxSupply != 0 && it.minted + amount > it.maxSupply) {
-            revert SupplyExceeded();
-        }
+        if (
+            it.startTime != 0
+                && block.timestamp
+                    < it.startTime
+        ) revert PurchaseTooEarly();
+        if (
+            it.endTime != 0
+                && block.timestamp
+                    > it.endTime
+        ) revert PurchaseTooLate();
+        if (
+            it.maxSupply != 0
+                && it.minted + amount
+                    > it.maxSupply
+        ) revert SupplyExceeded();
 
         uint256 cost = it.price * amount;
 
@@ -186,10 +242,15 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
         APP.burnFrom(msg.sender, cost);
 
         // Mint items to user
-        _mint(msg.sender, id, amount, "");
-        items[id].minted += uint64(amount);
+        _mint(
+            msg.sender, id, amount, ""
+        );
+        items[id].minted +=
+            uint64(amount);
 
-        emit Purchased(msg.sender, id, amount, cost);
+        emit Purchased(
+            msg.sender, id, amount, cost
+        );
         // NOTE: reason is emitted for off-chain tracking (e.g., XP integration)
     }
 
@@ -208,14 +269,27 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
         uint256[] memory values
     ) internal virtual override {
         // Allow minting (from == 0) and burning (to == 0)
-        if (from != address(0) && to != address(0)) {
-            for (uint256 i = 0; i < ids.length; i++) {
-                if (items[ids[i]].soulbound) {
-                    revert SoulboundTransfer();
+        if (
+            from != address(0)
+                && to != address(0)
+        ) {
+            for (
+                uint256 i = 0;
+                i < ids.length;
+                i++
+            ) {
+                if (
+                    items[ids[i]]
+                        .soulbound
+                ) {
+                    revert
+                        SoulboundTransfer();
                 }
             }
         }
-        super._update(from, to, ids, values);
+        super._update(
+            from, to, ids, values
+        );
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -227,11 +301,16 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
      * @param id Item ID
      * @return Metadata URI
      */
-    function uri(
-        uint256 id
-    ) public view override returns (string memory) {
+    function uri(uint256 id)
+        public
+        view
+        override
+        returns (string memory)
+    {
         string memory per = _idURIs[id];
-        return bytes(per).length > 0 ? per : super.uri(id);
+        return bytes(per).length > 0
+            ? per
+            : super.uri(id);
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -249,13 +328,23 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
         address user,
         bytes32 featureId,
         uint256 userStake
-    ) external view returns (bool hasAccess) {
-        FeatureGate memory gate = gates[featureId];
+    )
+        external
+        view
+        returns (bool hasAccess)
+    {
+        FeatureGate memory gate =
+            gates[featureId];
 
         if (!gate.active) return false;
 
-        bool meetsStake = userStake >= gate.minStake;
-        bool hasItem = gate.requiredItem > 0 && balanceOf(user, gate.requiredItem) > 0;
+        bool meetsStake =
+            userStake >= gate.minStake;
+        bool hasItem = gate.requiredItem
+            > 0
+            && balanceOf(
+                user, gate.requiredItem
+            ) > 0;
 
         // If no item required (requiredItem == 0), only check stake
         if (gate.requiredItem == 0) {
@@ -283,13 +372,34 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
         address user,
         uint256 id,
         uint256 amount
-    ) external view returns (bool canPurchase, uint8 reason) {
+    )
+        external
+        view
+        returns (
+            bool canPurchase,
+            uint8 reason
+        )
+    {
         Item memory it = items[id];
 
-        if (!it.active) return (false, 1);
-        if (it.startTime != 0 && block.timestamp < it.startTime) return (false, 2);
-        if (it.endTime != 0 && block.timestamp > it.endTime) return (false, 3);
-        if (it.maxSupply != 0 && it.minted + amount > it.maxSupply) return (false, 4);
+        if (!it.active) {
+            return (false, 1);
+        }
+        if (
+            it.startTime != 0
+                && block.timestamp
+                    < it.startTime
+        ) return (false, 2);
+        if (
+            it.endTime != 0
+                && block.timestamp
+                    > it.endTime
+        ) return (false, 3);
+        if (
+            it.maxSupply != 0
+                && it.minted + amount
+                    > it.maxSupply
+        ) return (false, 4);
 
         return (true, 0);
     }
@@ -300,7 +410,14 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
      * @param amount Amount to purchase
      * @return cost Total cost in app tokens
      */
-    function getPurchaseCost(uint256 id, uint256 amount) external view returns (uint256 cost) {
+    function getPurchaseCost(
+        uint256 id,
+        uint256 amount
+    )
+        external
+        view
+        returns (uint256 cost)
+    {
         return items[id].price * amount;
     }
 
@@ -311,10 +428,18 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
      */
     function getRemainingSupply(
         uint256 id
-    ) external view returns (uint256 remaining) {
+    )
+        external
+        view
+        returns (uint256 remaining)
+    {
         Item memory it = items[id];
-        if (it.maxSupply == 0) return type(uint256).max;
-        return it.maxSupply > it.minted ? it.maxSupply - it.minted : 0;
+        if (it.maxSupply == 0) {
+            return type(uint256).max;
+        }
+        return it.maxSupply > it.minted
+            ? it.maxSupply - it.minted
+            : 0;
     }
 
     /**
@@ -324,9 +449,18 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
      */
     function getItems(
         uint256[] calldata ids
-    ) external view returns (Item[] memory itemList) {
-        itemList = new Item[](ids.length);
-        for (uint256 i = 0; i < ids.length; i++) {
+    )
+        external
+        view
+        returns (Item[] memory itemList)
+    {
+        itemList =
+            new Item[](ids.length);
+        for (
+            uint256 i = 0;
+            i < ids.length;
+            i++
+        ) {
             itemList[i] = items[ids[i]];
         }
     }
@@ -338,10 +472,23 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
      */
     function getFeatureGates(
         bytes32[] calldata featureIds
-    ) external view returns (FeatureGate[] memory gateList) {
-        gateList = new FeatureGate[](featureIds.length);
-        for (uint256 i = 0; i < featureIds.length; i++) {
-            gateList[i] = gates[featureIds[i]];
+    )
+        external
+        view
+        returns (
+            FeatureGate[] memory gateList
+        )
+    {
+        gateList = new FeatureGate[](
+            featureIds.length
+        );
+        for (
+            uint256 i = 0;
+            i < featureIds.length;
+            i++
+        ) {
+            gateList[i] =
+                gates[featureIds[i]];
         }
     }
 }

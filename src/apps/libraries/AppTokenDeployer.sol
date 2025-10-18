@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { AppToken } from "../AppToken.sol";
+import { AppToken } from
+    "../AppToken.sol";
 
 /**
  * @title AppTokenDeployer
