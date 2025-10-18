@@ -41,8 +41,17 @@ bytecode_hash = "ipfs"
 ignore_eip_3860 = true
 # CI profile: optimize for gas efficiency and size constraints
 
+[profile.ci.fmt]
+# Ignore external/vendor and build artifacts from CI formatting scope
+ignore = [
+  "lib/**",
+  "out/**",
+  "broadcast/**",
+  "node_modules/**"
+]
+
 [fmt]
-line_length = 40
+line_length = 100
 tab_width = 4
 bracket_spacing = true
 quote_style = "double"

@@ -1,26 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { IERC20 } from
-    "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from
-    "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { ReentrancyGuard } from
-    "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import { IUniswapV2Router02 } from
-    "../interfaces/IUniswapV2Router02.sol";
-import { IUniswapV2Factory } from
-    "../interfaces/IUniswapV2Factory.sol";
-import { IUniswapV2Pair } from
-    "../interfaces/IUniswapV2Pair.sol";
-import { AppToken } from
-    "./AppToken.sol";
-import { LpLocker } from
-    "./LpLocker.sol";
-import { IAppFeeRouter } from
-    "../interfaces/IAppFeeRouter.sol";
-import { IElataXP } from
-    "../interfaces/IElataXP.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { IUniswapV2Router02 } from "../interfaces/IUniswapV2Router02.sol";
+import { IUniswapV2Factory } from "../interfaces/IUniswapV2Factory.sol";
+import { IUniswapV2Pair } from "../interfaces/IUniswapV2Pair.sol";
+import { AppToken } from "./AppToken.sol";
+import { LpLocker } from "./LpLocker.sol";
+import { IAppFeeRouter } from "../interfaces/IAppFeeRouter.sol";
+import { IElataXP } from "../interfaces/IElataXP.sol";
 
 interface IAppFactory {
     function onAppGraduated(
@@ -53,18 +43,14 @@ interface IAppFactory {
  * - Price increases with each purchase
  * - At target raised, auto-creates locked LP
  */
-contract AppBondingCurve is
-    ReentrancyGuard
-{
+contract AppBondingCurve is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     // Core assets
     IERC20 public immutable ELTA;
     AppToken public immutable TOKEN;
-    IUniswapV2Router02 public immutable
-        router;
-    IUniswapV2Factory public immutable
-        uniFactory;
+    IUniswapV2Router02 public immutable router;
+    IUniswapV2Factory public immutable uniFactory;
 
     // Factory and identification
     address public immutable appFactory;
@@ -73,8 +59,7 @@ contract AppBondingCurve is
     // Curve state
     uint256 public reserveElta; // x in constant product
     uint256 public reserveToken; // y in constant product
-    uint256 public immutable
-        targetRaisedElta;
+    uint256 public immutable targetRaisedElta;
     uint256 public immutable initialK; // k = x * y at start
     bool public graduated;
 
@@ -84,34 +69,23 @@ contract AppBondingCurve is
     uint256 public lpUnlockAt;
 
     // Configuration
-    uint256 public immutable
-        lpLockDuration;
-    address public immutable
-        lpBeneficiary;
+    uint256 public immutable lpLockDuration;
+    address public immutable lpBeneficiary;
     address public immutable treasury;
-    IAppFeeRouter public immutable
-        appFeeRouter; // Fee router for protocol revenues
+    IAppFeeRouter public immutable appFeeRouter; // Fee router for protocol revenues
 
     // XP gating configuration
     IElataXP public immutable elataXP;
-    uint256 public immutable
-        launchTimestamp;
-    uint256 public xpMinForEarlyBuy =
-        100e18; // governance-configurable (default 100 XP)
-    uint256 public earlyBuyDuration =
-        6 hours; // governance-configurable (default 6 hours)
+    uint256 public immutable launchTimestamp;
+    uint256 public xpMinForEarlyBuy = 100e18; // governance-configurable (default 100 XP)
+    uint256 public earlyBuyDuration = 6 hours; // governance-configurable (default 6 hours)
     address public governance;
 
     // Events
     event CurveInitialized(
-        uint256 indexed appId,
-        uint256 seedElta,
-        uint256 tokenSupply,
-        uint256 initialK
+        uint256 indexed appId, uint256 seedElta, uint256 tokenSupply, uint256 initialK
     );
-    event XPGateUpdated(
-        uint256 minXP, uint256 duration
-    );
+    event XPGateUpdated(uint256 minXP, uint256 duration);
     event TokensPurchased(
         uint256 indexed appId,
         address indexed buyer,
@@ -142,16 +116,12 @@ contract AppBondingCurve is
     error OnlyGovernance();
 
     modifier onlyFactory() {
-        if (msg.sender != appFactory) {
-            revert OnlyFactory();
-        }
+        if (msg.sender != appFactory) revert OnlyFactory();
         _;
     }
 
     modifier notGraduated() {
-        if (graduated) {
-            revert AlreadyGraduated();
-        }
+        if (graduated) revert AlreadyGraduated();
         _;
     }
 
@@ -184,45 +154,15 @@ contract AppBondingCurve is
         IElataXP _elataXP,
         address _governance
     ) {
-        require(
-            _factory != address(0),
-            "Zero factory"
-        );
-        require(
-            address(_elta) != address(0),
-            "Zero ELTA"
-        );
-        require(
-            address(_token)
-                != address(0),
-            "Zero token"
-        );
-        require(
-            address(_router)
-                != address(0),
-            "Zero router"
-        );
-        require(
-            _targetRaisedElta > 0,
-            "Zero target"
-        );
-        require(
-            _lpBeneficiary != address(0),
-            "Zero beneficiary"
-        );
-        require(
-            _treasury != address(0),
-            "Zero treasury"
-        );
-        require(
-            address(_elataXP)
-                != address(0),
-            "Zero XP"
-        );
-        require(
-            _governance != address(0),
-            "Zero governance"
-        );
+        require(_factory != address(0), "Zero factory");
+        require(address(_elta) != address(0), "Zero ELTA");
+        require(address(_token) != address(0), "Zero token");
+        require(address(_router) != address(0), "Zero router");
+        require(_targetRaisedElta > 0, "Zero target");
+        require(_lpBeneficiary != address(0), "Zero beneficiary");
+        require(_treasury != address(0), "Zero treasury");
+        require(address(_elataXP) != address(0), "Zero XP");
+        require(_governance != address(0), "Zero governance");
         // appFeeRouter can be address(0) to disable fee forwarding
 
         appId = _appId;
@@ -230,19 +170,15 @@ contract AppBondingCurve is
         ELTA = _elta;
         TOKEN = _token;
         router = _router;
-        uniFactory = IUniswapV2Factory(
-            _router.factory()
-        );
-        targetRaisedElta =
-            _targetRaisedElta;
+        uniFactory = IUniswapV2Factory(_router.factory());
+        targetRaisedElta = _targetRaisedElta;
         lpLockDuration = _lpLockDuration;
         lpBeneficiary = _lpBeneficiary;
         treasury = _treasury;
         appFeeRouter = _appFeeRouter;
         elataXP = _elataXP;
         governance = _governance;
-        launchTimestamp =
-            block.timestamp;
+        launchTimestamp = block.timestamp;
     }
 
     /**
@@ -250,35 +186,18 @@ contract AppBondingCurve is
      * @param seedElta Initial ELTA liquidity
      * @param tokenSupply Initial token supply
      */
-    function initializeCurve(
-        uint256 seedElta,
-        uint256 tokenSupply
-    ) external onlyFactory {
-        require(
-            reserveElta == 0
-                && reserveToken == 0,
-            "Already initialized"
-        );
-        require(
-            seedElta > 0
-                && tokenSupply > 0,
-            "Invalid initialization"
-        );
+    function initializeCurve(uint256 seedElta, uint256 tokenSupply) external onlyFactory {
+        require(reserveElta == 0 && reserveToken == 0, "Already initialized");
+        require(seedElta > 0 && tokenSupply > 0, "Invalid initialization");
 
         reserveElta = seedElta;
         reserveToken = tokenSupply;
 
         // Store initial k for reference
-        uint256 k =
-            seedElta * tokenSupply;
+        uint256 k = seedElta * tokenSupply;
         // We can't make initialK immutable after constructor, so we emit it
 
-        emit CurveInitialized(
-            appId,
-            seedElta,
-            tokenSupply,
-            k
-        );
+        emit CurveInitialized(appId, seedElta, tokenSupply, k);
     }
 
     /**
@@ -286,32 +205,19 @@ contract AppBondingCurve is
      * @param eltaIn Amount of ELTA to spend
      * @return tokensOut Amount of tokens that would be received
      */
-    function getTokensOut(
-        uint256 eltaIn
-    )
-        public
-        view
-        returns (uint256 tokensOut)
-    {
-        if (
-            graduated || eltaIn == 0
-                || reserveElta == 0
-        ) return 0;
+    function getTokensOut(uint256 eltaIn) public view returns (uint256 tokensOut) {
+        if (graduated || eltaIn == 0 || reserveElta == 0) return 0;
 
         // Constant product: x * y = k
         // newX = x + eltaIn
         // newY = k / newX
         // tokensOut = y - newY
 
-        uint256 k =
-            reserveElta * reserveToken;
-        uint256 newReserveElta =
-            reserveElta + eltaIn;
-        uint256 newReserveToken =
-            k / newReserveElta;
+        uint256 k = reserveElta * reserveToken;
+        uint256 newReserveElta = reserveElta + eltaIn;
+        uint256 newReserveToken = k / newReserveElta;
 
-        tokensOut = reserveToken
-            - newReserveToken;
+        tokensOut = reserveToken - newReserveToken;
     }
 
     /**
@@ -319,50 +225,30 @@ contract AppBondingCurve is
      * @param tokensDesired Amount of tokens desired
      * @return eltaIn Amount of ELTA needed
      */
-    function getEltaInForTokens(
-        uint256 tokensDesired
-    )
-        public
-        view
-        returns (uint256 eltaIn)
-    {
-        if (
-            graduated
-                || tokensDesired == 0
-                || tokensDesired
-                    >= reserveToken
-        ) return 0;
+    function getEltaInForTokens(uint256 tokensDesired) public view returns (uint256 eltaIn) {
+        if (graduated || tokensDesired == 0 || tokensDesired >= reserveToken) return 0;
 
         // Reverse calculation: y - newY = tokensDesired
         // newY = y - tokensDesired
         // newX = k / newY
         // eltaIn = newX - x
 
-        uint256 k =
-            reserveElta * reserveToken;
-        uint256 newReserveToken =
-            reserveToken - tokensDesired;
-        uint256 newReserveElta =
-            k / newReserveToken;
+        uint256 k = reserveElta * reserveToken;
+        uint256 newReserveToken = reserveToken - tokensDesired;
+        uint256 newReserveElta = k / newReserveToken;
 
-        eltaIn =
-            newReserveElta - reserveElta;
+        eltaIn = newReserveElta - reserveElta;
     }
 
     /**
      * @notice Get current token price in ELTA
      * @return price Current price per token (scaled by 1e18)
      */
-    function getCurrentPrice()
-        external
-        view
-        returns (uint256 price)
-    {
+    function getCurrentPrice() external view returns (uint256 price) {
         if (reserveToken == 0) return 0;
         // Price = marginal rate = dx/dy at current point
         // For constant product: price ≈ x/y
-        price = (reserveElta * 1e18)
-            / reserveToken;
+        price = (reserveElta * 1e18) / reserveToken;
     }
 
     /**
@@ -371,87 +257,45 @@ contract AppBondingCurve is
      * @param minTokensOut Minimum tokens expected (slippage protection)
      * @return tokensOut Actual tokens received
      */
-    function buy(
-        uint256 eltaIn,
-        uint256 minTokensOut
-    )
+    function buy(uint256 eltaIn, uint256 minTokensOut)
         external
         nonReentrant
         notGraduated
         returns (uint256 tokensOut)
     {
-        if (eltaIn == 0) {
-            revert ZeroInput();
-        }
-        if (reserveElta == 0) {
-            revert NotInitialized();
-        }
+        if (eltaIn == 0) revert ZeroInput();
+        if (reserveElta == 0) revert NotInitialized();
 
         // XP gating for early launch window
-        if (
-            block.timestamp
-                < launchTimestamp
-                    + earlyBuyDuration
-        ) {
-            if (
-                elataXP.balanceOf(
-                    msg.sender
-                ) < xpMinForEarlyBuy
-            ) revert InsufficientXP();
+        if (block.timestamp < launchTimestamp + earlyBuyDuration) {
+            if (elataXP.balanceOf(msg.sender) < xpMinForEarlyBuy) revert InsufficientXP();
         }
 
         // Calculate maximum ELTA we can accept before hitting target
         uint256 remainingToTarget =
-        targetRaisedElta > reserveElta
-            ? targetRaisedElta - reserveElta
-            : 0;
-        uint256 actualEltaIn = eltaIn
-            > remainingToTarget
-            ? remainingToTarget
-            : eltaIn;
+            targetRaisedElta > reserveElta ? targetRaisedElta - reserveElta : 0;
+        uint256 actualEltaIn = eltaIn > remainingToTarget ? remainingToTarget : eltaIn;
 
-        if (actualEltaIn == 0) {
-            revert InvalidAmount();
-        }
+        if (actualEltaIn == 0) revert InvalidAmount();
 
         // Calculate tokens out
-        tokensOut =
-            getTokensOut(actualEltaIn);
-        if (tokensOut < minTokensOut) {
-            revert InsufficientOutput();
-        }
+        tokensOut = getTokensOut(actualEltaIn);
+        if (tokensOut < minTokensOut) revert InsufficientOutput();
 
         // Calculate fee ON TOP of trade (buyer pays extra)
         uint256 tradingFee = 0;
-        if (
-            address(appFeeRouter)
-                != address(0)
-        ) {
-            tradingFee = (
-                actualEltaIn
-                    * appFeeRouter.feeBps()
-            ) / 10_000;
+        if (address(appFeeRouter) != address(0)) {
+            tradingFee = (actualEltaIn * appFeeRouter.feeBps()) / 10_000;
         }
 
         // Pull ELTA from buyer: curve amount + trading fee
-        ELTA.safeTransferFrom(
-            msg.sender,
-            address(this),
-            actualEltaIn + tradingFee
-        );
+        ELTA.safeTransferFrom(msg.sender, address(this), actualEltaIn + tradingFee);
 
         // Forward trading fee to RewardsDistributor via router (70/15/15 split)
         // FIXED: Use address(this) as payer since we already pulled the fee
         if (tradingFee > 0) {
-            ELTA.approve(
-                address(appFeeRouter),
-                tradingFee
-            );
-            appFeeRouter
-                .takeAndForwardFee(
-                address(this),
-                tradingFee
-            );
+            ELTA.approve(address(appFeeRouter), tradingFee);
+            appFeeRouter.takeAndForwardFee(address(this), tradingFee);
         }
 
         // Update reserves with ELTA (no more legacy protocol fee deduction)
@@ -459,56 +303,28 @@ contract AppBondingCurve is
         reserveToken -= tokensOut;
 
         // Transfer tokens to buyer
-        TOKEN.transfer(
-            msg.sender, tokensOut
-        );
+        TOKEN.transfer(msg.sender, tokensOut);
 
         // Calculate new price for event
-        uint256 newPrice = reserveToken
-            > 0
-            ? (reserveElta * 1e18)
-                / reserveToken
-            : 0;
+        uint256 newPrice = reserveToken > 0 ? (reserveElta * 1e18) / reserveToken : 0;
 
         emit TokensPurchased(
-            appId,
-            msg.sender,
-            actualEltaIn,
-            tokensOut,
-            reserveElta,
-            reserveToken,
-            newPrice
+            appId, msg.sender, actualEltaIn, tokensOut, reserveElta, reserveToken, newPrice
         );
 
         // Refund excess ELTA if any
-        uint256 refund =
-            eltaIn - actualEltaIn;
-        if (refund > 0) {
-            ELTA.safeTransfer(
-                msg.sender, refund
-            );
-        }
+        uint256 refund = eltaIn - actualEltaIn;
+        if (refund > 0) ELTA.safeTransfer(msg.sender, refund);
 
         // Check for graduation
-        if (
-            reserveElta
-                >= targetRaisedElta
-        ) _graduate();
+        if (reserveElta >= targetRaisedElta) _graduate();
     }
 
     /**
      * @notice Manually trigger graduation if target reached
      */
-    function graduate()
-        external
-        nonReentrant
-        notGraduated
-    {
-        require(
-            reserveElta
-                >= targetRaisedElta,
-            "Target not reached"
-        );
+    function graduate() external nonReentrant notGraduated {
+        require(reserveElta >= targetRaisedElta, "Target not reached");
         _graduate();
     }
 
@@ -537,13 +353,8 @@ contract AppBondingCurve is
         tokenReserve = reserveToken;
         target = targetRaisedElta;
         isGraduated = graduated;
-        currentPrice = tokenReserve > 0
-            ? (reserveElta * 1e18)
-                / reserveToken
-            : 0;
-        progress = target > 0
-            ? (reserveElta * 10000) / target
-            : 0; // basis points
+        currentPrice = tokenReserve > 0 ? (reserveElta * 1e18) / reserveToken : 0;
+        progress = target > 0 ? (reserveElta * 10000) / target : 0; // basis points
     }
 
     /**
@@ -553,32 +364,18 @@ contract AppBondingCurve is
         graduated = true;
 
         // Create or get existing pair
-        address pairAddress = uniFactory
-            .getPair(
-            address(TOKEN),
-            address(ELTA)
-        );
+        address pairAddress = uniFactory.getPair(address(TOKEN), address(ELTA));
         if (pairAddress == address(0)) {
-            pairAddress = uniFactory
-                .createPair(
-                address(TOKEN),
-                address(ELTA)
-            );
+            pairAddress = uniFactory.createPair(address(TOKEN), address(ELTA));
         }
         pair = pairAddress;
 
         // Approve router for liquidity addition
-        TOKEN.approve(
-            address(router),
-            reserveToken
-        );
-        ELTA.approve(
-            address(router), reserveElta
-        );
+        TOKEN.approve(address(router), reserveToken);
+        ELTA.approve(address(router), reserveElta);
 
         // Add all remaining reserves as liquidity
-        (,, uint256 liquidity) = router
-            .addLiquidity(
+        (,, uint256 liquidity) = router.addLiquidity(
             address(TOKEN),
             address(ELTA),
             reserveToken,
@@ -590,41 +387,21 @@ contract AppBondingCurve is
         );
 
         // Create LP locker
-        lpUnlockAt = block.timestamp
-            + lpLockDuration;
-        LpLocker lpLocker = new LpLocker(
-            appId,
-            pair,
-            lpBeneficiary,
-            lpUnlockAt
-        );
+        lpUnlockAt = block.timestamp + lpLockDuration;
+        LpLocker lpLocker = new LpLocker(appId, pair, lpBeneficiary, lpUnlockAt);
         locker = address(lpLocker);
 
         // Transfer LP tokens to locker
-        IUniswapV2Pair(pair).transfer(
-            address(lpLocker), liquidity
-        );
+        IUniswapV2Pair(pair).transfer(address(lpLocker), liquidity);
         lpLocker.lockLp(liquidity);
 
         emit AppGraduated(
-            appId,
-            address(TOKEN),
-            pair,
-            locker,
-            lpUnlockAt,
-            reserveElta,
-            reserveToken
+            appId, address(TOKEN), pair, locker, lpUnlockAt, reserveElta, reserveToken
         );
 
         // Notify factory
-        IAppFactory(appFactory)
-            .onAppGraduated(
-            appId,
-            pair,
-            locker,
-            lpUnlockAt,
-            reserveElta,
-            reserveToken
+        IAppFactory(appFactory).onAppGraduated(
+            appId, pair, locker, lpUnlockAt, reserveElta, reserveToken
         );
 
         // Clear reserves (all moved to LP)
@@ -637,18 +414,11 @@ contract AppBondingCurve is
      * @param _minXP Minimum XP required for early access
      * @param _duration Duration of early access period in seconds
      */
-    function setXPGate(
-        uint256 _minXP,
-        uint256 _duration
-    ) external {
-        if (msg.sender != governance) {
-            revert OnlyGovernance();
-        }
+    function setXPGate(uint256 _minXP, uint256 _duration) external {
+        if (msg.sender != governance) revert OnlyGovernance();
         xpMinForEarlyBuy = _minXP;
         earlyBuyDuration = _duration;
-        emit XPGateUpdated(
-            _minXP, _duration
-        );
+        emit XPGateUpdated(_minXP, _duration);
     }
 
     /**
@@ -656,19 +426,10 @@ contract AppBondingCurve is
      * @param user User address to check
      * @return canBuy Whether the user can buy
      */
-    function canUserBuy(address user)
-        external
-        view
-        returns (bool canBuy)
-    {
+    function canUserBuy(address user) external view returns (bool canBuy) {
         if (graduated) return false;
-        if (
-            block.timestamp
-                >= launchTimestamp
-                    + earlyBuyDuration
-        ) return true;
-        return elataXP.balanceOf(user)
-            >= xpMinForEarlyBuy;
+        if (block.timestamp >= launchTimestamp + earlyBuyDuration) return true;
+        return elataXP.balanceOf(user) >= xpMinForEarlyBuy;
     }
 
     /**
@@ -681,17 +442,11 @@ contract AppBondingCurve is
     function getEarlyAccessInfo()
         external
         view
-        returns (
-            uint256 launchTime,
-            uint256 duration,
-            uint256 xpMin,
-            bool isActive
-        )
+        returns (uint256 launchTime, uint256 duration, uint256 xpMin, bool isActive)
     {
         launchTime = launchTimestamp;
         duration = earlyBuyDuration;
         xpMin = xpMinForEarlyBuy;
-        isActive = block.timestamp
-            < launchTimestamp + duration;
+        isActive = block.timestamp < launchTimestamp + duration;
     }
 }

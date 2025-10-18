@@ -16,6 +16,8 @@ jobs:
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.1.0
 
       - name: Check formatting
         run: forge fmt --check
@@ -30,6 +32,8 @@ jobs:
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.1.0
 
       - name: Build contracts
         run: forge build
@@ -44,6 +48,8 @@ jobs:
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.1.0
 
       - name: Run tests
         run: forge test -vv
@@ -58,6 +64,8 @@ jobs:
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.1.0
 
       - name: Run security tests
         run: |
@@ -74,6 +82,8 @@ jobs:
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.1.0
 
       - name: Generate gas report
         run: forge test --gas-report

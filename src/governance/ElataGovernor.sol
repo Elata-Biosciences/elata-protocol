@@ -1,19 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { Governor } from
-    "@openzeppelin/contracts/governance/Governor.sol";
+import { Governor } from "@openzeppelin/contracts/governance/Governor.sol";
 import { GovernorSettings } from
     "@openzeppelin/contracts/governance/extensions/GovernorSettings.sol";
 import { GovernorCountingSimple } from
     "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
-import { GovernorVotes } from
-    "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
-import { GovernorVotesQuorumFraction }
-    from
+import { GovernorVotes } from "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
+import { GovernorVotesQuorumFraction } from
     "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
-import { IVotes } from
-    "@openzeppelin/contracts/governance/utils/IVotes.sol";
+import { IVotes } from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 
 /**
  * @title ElataGovernor
@@ -42,29 +38,19 @@ contract ElataGovernor is
     GovernorVotesQuorumFraction
 {
     /// @notice Emergency proposal threshold (5% of total supply)
-    uint256 public constant
-        EMERGENCY_PROPOSAL_THRESHOLD =
-            500; // 5%
+    uint256 public constant EMERGENCY_PROPOSAL_THRESHOLD = 500; // 5%
 
     /// @notice Emergency voting period (3 days instead of 7)
-    uint256 public constant
-        EMERGENCY_VOTING_PERIOD = 3 days;
+    uint256 public constant EMERGENCY_VOTING_PERIOD = 3 days;
 
     /// @notice Mapping to track emergency proposals
-    mapping(uint256 => bool) public
-        emergencyProposals;
+    mapping(uint256 => bool) public emergencyProposals;
 
     /// @notice Mapping to track proposal execution status
-    mapping(uint256 => bool) public
-        executed;
+    mapping(uint256 => bool) public executed;
 
-    event EmergencyProposalCreated(
-        uint256 indexed proposalId,
-        string description
-    );
-    event CustomProposalExecuted(
-        uint256 indexed proposalId
-    );
+    event EmergencyProposalCreated(uint256 indexed proposalId, string description);
+    event CustomProposalExecuted(uint256 indexed proposalId);
 
     /**
      * @notice Initializes the Elata Governor
@@ -94,38 +80,19 @@ contract ElataGovernor is
         uint256[] memory values,
         bytes[] memory calldatas,
         string memory description
-    )
-        public
-        returns (uint256 proposalId)
-    {
+    ) public returns (uint256 proposalId) {
         // Check emergency proposal threshold
-        uint256 voterVotes = getVotes(
-            msg.sender, block.number - 1
-        );
-        uint256 threshold =
-        _emergencyProposalThreshold();
+        uint256 voterVotes = getVotes(msg.sender, block.number - 1);
+        uint256 threshold = _emergencyProposalThreshold();
 
         if (voterVotes < threshold) {
-            revert
-                GovernorInsufficientProposerVotes(
-                msg.sender,
-                voterVotes,
-                threshold
-            );
+            revert GovernorInsufficientProposerVotes(msg.sender, voterVotes, threshold);
         }
 
-        proposalId = propose(
-            targets,
-            values,
-            calldatas,
-            description
-        );
-        emergencyProposals[proposalId] =
-            true;
+        proposalId = propose(targets, values, calldatas, description);
+        emergencyProposals[proposalId] = true;
 
-        emit EmergencyProposalCreated(
-            proposalId, description
-        );
+        emit EmergencyProposalCreated(proposalId, description);
     }
 
     /**
@@ -141,22 +108,10 @@ contract ElataGovernor is
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    )
-        public
-        payable
-        override
-        returns (uint256 proposalId)
-    {
-        proposalId = super.execute(
-            targets,
-            values,
-            calldatas,
-            descriptionHash
-        );
+    ) public payable override returns (uint256 proposalId) {
+        proposalId = super.execute(targets, values, calldatas, descriptionHash);
         executed[proposalId] = true;
-        emit CustomProposalExecuted(
-            proposalId
-        );
+        emit CustomProposalExecuted(proposalId);
     }
 
     /**
@@ -164,15 +119,8 @@ contract ElataGovernor is
      * @param proposalId ID of the proposal
      * @return Voting period in seconds
      */
-    function proposalVotingPeriod(
-        uint256 proposalId
-    ) public view returns (uint256) {
-        if (
-            emergencyProposals[proposalId]
-        ) {
-            return
-                EMERGENCY_VOTING_PERIOD;
-        }
+    function proposalVotingPeriod(uint256 proposalId) public view returns (uint256) {
+        if (emergencyProposals[proposalId]) return EMERGENCY_VOTING_PERIOD;
         return votingPeriod();
     }
 
@@ -180,10 +128,8 @@ contract ElataGovernor is
      * @notice Gets the emergency proposal threshold
      * @return Emergency proposal threshold in tokens
      */
-    function emergencyProposalThreshold(
-    ) public view returns (uint256) {
-        return
-        _emergencyProposalThreshold();
+    function emergencyProposalThreshold() public view returns (uint256) {
+        return _emergencyProposalThreshold();
     }
 
     /**
@@ -191,9 +137,7 @@ contract ElataGovernor is
      * @param proposalId ID of the proposal
      * @return Whether the proposal is marked as emergency
      */
-    function isEmergencyProposal(
-        uint256 proposalId
-    ) public view returns (bool) {
+    function isEmergencyProposal(uint256 proposalId) public view returns (bool) {
         return emergencyProposals[proposalId];
     }
 
@@ -202,9 +146,7 @@ contract ElataGovernor is
      * @param proposalId ID of the proposal
      * @return Whether the proposal has been executed
      */
-    function isExecuted(
-        uint256 proposalId
-    ) public view returns (bool) {
+    function isExecuted(uint256 proposalId) public view returns (bool) {
         return executed[proposalId];
     }
 
@@ -212,44 +154,24 @@ contract ElataGovernor is
      * @dev Calculates emergency proposal threshold
      * @return Emergency threshold based on total supply
      */
-    function _emergencyProposalThreshold(
-    ) internal view returns (uint256) {
-        return (
-            token().getPastTotalSupply(
-                block.number - 1
-            )
-                *
-                EMERGENCY_PROPOSAL_THRESHOLD
-        ) / 10000;
+    function _emergencyProposalThreshold() internal view returns (uint256) {
+        return (token().getPastTotalSupply(block.number - 1) * EMERGENCY_PROPOSAL_THRESHOLD) / 10000;
     }
 
     // Required overrides for multiple inheritance
 
-    function votingDelay()
-        public
-        view
-        override(Governor, GovernorSettings)
-        returns (uint256)
-    {
+    function votingDelay() public view override(Governor, GovernorSettings) returns (uint256) {
         return super.votingDelay();
     }
 
-    function votingPeriod()
-        public
-        view
-        override(Governor, GovernorSettings)
-        returns (uint256)
-    {
+    function votingPeriod() public view override(Governor, GovernorSettings) returns (uint256) {
         return super.votingPeriod();
     }
 
     function quorum(uint256 blockNumber)
         public
         view
-        override(
-            Governor,
-            GovernorVotesQuorumFraction
-        )
+        override(Governor, GovernorVotesQuorumFraction)
         returns (uint256)
     {
         return super.quorum(blockNumber);
