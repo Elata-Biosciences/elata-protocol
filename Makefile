@@ -17,7 +17,7 @@ install: ## Install dependencies and setup hooks
 
 build: ## Build contracts
 	@echo "🔨 Building contracts..."
-	forge build --sizes || (echo "⚠️  Some contracts exceed EIP-170 limit (acceptable for L2 deployment)" && forge build)
+	forge build
 
 test: ## Run tests
 	@echo "🧪 Running tests..."
