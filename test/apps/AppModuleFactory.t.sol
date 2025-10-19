@@ -36,7 +36,18 @@ contract AppModuleFactoryTest is Test {
         factory = new AppModuleFactory(address(elta), factoryOwner, treasury);
 
         // Deploy app token
-        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin);
+        appToken = new AppToken(
+            "TestApp",
+            "TEST",
+            18,
+            MAX_SUPPLY,
+            appCreator,
+            admin,
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
 
         // Mint ELTA to app creator for fees
         vm.prank(factoryOwner);
@@ -195,7 +206,18 @@ contract AppModuleFactoryTest is Test {
 
     function test_MultipleAppsDeployModules() public {
         // Create second app token
-        AppToken appToken2 = new AppToken("TestApp2", "TEST2", 18, MAX_SUPPLY, appCreator, admin);
+        AppToken appToken2 = new AppToken(
+            "TestApp2",
+            "TEST2",
+            18,
+            MAX_SUPPLY,
+            appCreator,
+            admin,
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
 
         // Deploy modules for first app
         vm.prank(appCreator);

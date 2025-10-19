@@ -101,7 +101,8 @@ contract DeployLocal is Script {
 
         // NOTE: AppFactory deployment commented out - use script/Deploy.sol instead
         // AppFactory now requires AppFeeRouter and AppRewardsDistributor
-        // For full deployment, use: forge script script/Deploy.sol:Deploy --fork-url http://localhost:8545 --broadcast
+        // For full deployment, use: forge script script/Deploy.sol:Deploy --fork-url
+        // http://localhost:8545 --broadcast
 
         // Mint additional ELTA to some test accounts for easier testing
         address[] memory testAccounts = new address[](3);

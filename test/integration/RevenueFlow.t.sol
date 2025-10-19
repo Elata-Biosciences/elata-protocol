@@ -69,7 +69,18 @@ contract RevenueFlowTest is Test {
             new AppFeeRouter(elta, IRewardsDistributor(address(rewardsDistributor)), governance);
 
         // Deploy app and vault
-        appToken = new AppToken("Game", "GAME", 18, 1_000_000 ether, governance, address(this));
+        appToken = new AppToken(
+            "Game",
+            "GAME",
+            18,
+            1_000_000 ether,
+            governance,
+            address(this),
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
         appVault = new AppStakingVault("Game", "GAME", appToken, governance);
         appToken.mint(address(this), 1_000_000 ether);
 
@@ -121,7 +132,8 @@ contract RevenueFlowTest is Test {
         // 4) Verify split happened correctly
         uint256 expectedAppAmount = (tradingFee * BIPS_APP) / 10_000; // 70 ELTA
         uint256 expectedVeAmount = (tradingFee * BIPS_VEELTA) / 10_000; // 15 ELTA
-        uint256 expectedTreasuryAmount = tradingFee - expectedAppAmount - expectedVeAmount; // 15 ELTA
+        uint256 expectedTreasuryAmount = tradingFee - expectedAppAmount - expectedVeAmount; // 15
+            // ELTA
 
         // Treasury should have received immediately
         assertEq(elta.balanceOf(treasury), treasuryBalanceBefore + expectedTreasuryAmount);
@@ -161,8 +173,18 @@ contract RevenueFlowTest is Test {
 
     function test_MultipleApps_ProportionalDistribution() public {
         // Deploy second app
-        AppToken appToken2 =
-            new AppToken("Game2", "GM2", 18, 1_000_000 ether, governance, address(this));
+        AppToken appToken2 = new AppToken(
+            "Game2",
+            "GM2",
+            18,
+            1_000_000 ether,
+            governance,
+            address(this),
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
         AppStakingVault appVault2 = new AppStakingVault("Game2", "GM2", appToken2, governance);
         appToken2.mint(address(this), 1_000_000 ether);
 

@@ -42,12 +42,34 @@ contract AppRewardsDistributorTest is Test {
         distributor = new AppRewardsDistributor(elta, governance, factory);
 
         // Deploy app 1
-        token1 = new AppToken("Game1", "GM1", 18, 1_000_000 ether, alice, address(this));
+        token1 = new AppToken(
+            "Game1",
+            "GM1",
+            18,
+            1_000_000 ether,
+            alice,
+            address(this),
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
         vault1 = new AppStakingVault("Game1", "GM1", token1, alice);
         token1.mint(address(this), 1_000_000 ether);
 
         // Deploy app 2
-        token2 = new AppToken("Game2", "GM2", 18, 1_000_000 ether, bob, address(this));
+        token2 = new AppToken(
+            "Game2",
+            "GM2",
+            18,
+            1_000_000 ether,
+            bob,
+            address(this),
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
         vault2 = new AppStakingVault("Game2", "GM2", token2, bob);
         token2.mint(address(this), 1_000_000 ether);
 
@@ -57,9 +79,13 @@ contract AppRewardsDistributorTest is Test {
         token2.transfer(alice, 100_000 ether);
         token2.transfer(bob, 100_000 ether);
 
-        // Fund rewards source with ELTA
+        // Make vaults exempt from transfer fees
+        token1.setTransferFeeExempt(address(vault1), true);
+        token2.setTransferFeeExempt(address(vault2), true);
+
+        // Fund rewards source with ELTA (extra for transfer fees)
         vm.prank(governance);
-        elta.transfer(rewardsSource, 100_000 ether);
+        elta.transfer(rewardsSource, 200_000 ether);
 
         // Approve distributor
         vm.prank(rewardsSource);

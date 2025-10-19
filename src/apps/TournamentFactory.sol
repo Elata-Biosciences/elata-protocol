@@ -130,14 +130,10 @@ contract TournamentFactory is Ownable {
         uint256 burnFeeBps
     ) public returns (address tournamentAddr) {
         // Verify caller is token owner
-        if (IOwnable(appToken).owner() != msg.sender) {
-            revert NotTokenOwner();
-        }
+        if (IOwnable(appToken).owner() != msg.sender) revert NotTokenOwner();
 
         // Verify fees
-        if (protocolFeeBps + burnFeeBps > 1500) {
-            revert InvalidFees();
-        }
+        if (protocolFeeBps + burnFeeBps > 1500) revert InvalidFees();
 
         // Deploy tournament (creator becomes owner)
         tournamentAddr = address(

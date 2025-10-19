@@ -59,9 +59,7 @@ contract ELTA is ERC20, ERC20Burnable, ERC20Permit, ERC20Votes, AccessControl {
 
         MAX_SUPPLY = maxSupply_;
 
-        if (initialMint > 0) {
-            _mint(initialRecipient, initialMint);
-        }
+        if (initialMint > 0) _mint(initialRecipient, initialMint);
     }
 
     /**

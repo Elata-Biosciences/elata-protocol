@@ -28,7 +28,18 @@ contract TournamentTest is Test {
     event Claimed(address indexed user, uint256 amount);
 
     function setUp() public {
-        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, owner, admin);
+        appToken = new AppToken(
+            "TestApp",
+            "TEST",
+            18,
+            MAX_SUPPLY,
+            owner,
+            admin,
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
         merkle = new Merkle();
 
         tournament = new Tournament(
@@ -211,7 +222,9 @@ contract TournamentTest is Test {
         assertTrue(tournament.finalized());
         assertEq(tournament.winnersRoot(), root);
         assertEq(tournament.pool(), netPool);
-        assertEq(appToken.balanceOf(treasury), protocolFee);
+        // Account for 1% transfer fee on treasury transfer
+        uint256 expectedTreasuryBalance = (protocolFee * 99) / 100;
+        assertEq(appToken.balanceOf(treasury), expectedTreasuryBalance);
     }
 
     function test_RevertWhen_FinalizeUnauthorized() public {
@@ -269,7 +282,9 @@ contract TournamentTest is Test {
         vm.prank(user1);
         tournament.claim(proof, user1Prize);
 
-        assertEq(appToken.balanceOf(user1), initialBalance + user1Prize);
+        // Account for 1% transfer fee
+        uint256 expectedReceived = (user1Prize * 99) / 100;
+        assertEq(appToken.balanceOf(user1), initialBalance + expectedReceived);
         assertTrue(tournament.claimed(user1));
     }
 

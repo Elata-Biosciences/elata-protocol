@@ -200,7 +200,8 @@ contract SeedLocalData is Script {
         );
 
         // Get app token address (apps mapping returns the full struct as tuple)
-        // App struct: creator, token, vault, curve, pair, locker, createdAt, graduatedAt, graduated, totalRaised, finalSupply
+        // App struct: creator, token, vault, curve, pair, locker, createdAt, graduatedAt,
+        // graduated, totalRaised, finalSupply
         (, app.token,,,,,,,,,) = factory.apps(app.appId);
         app.name = name;
         app.symbol = symbol;

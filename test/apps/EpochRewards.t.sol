@@ -25,7 +25,18 @@ contract EpochRewardsTest is Test {
     event Claimed(uint256 indexed id, address indexed user, uint256 amount);
 
     function setUp() public {
-        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, owner, admin);
+        appToken = new AppToken(
+            "TestApp",
+            "TEST",
+            18,
+            MAX_SUPPLY,
+            owner,
+            admin,
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
         rewards = new EpochRewards(address(appToken), owner);
         merkle = new Merkle();
 
@@ -236,7 +247,9 @@ contract EpochRewardsTest is Test {
         vm.prank(user1);
         rewards.claim(1, proof, user1Reward);
 
-        assertEq(appToken.balanceOf(user1), user1Reward);
+        // Account for 1% transfer fee
+        uint256 expectedReceived = (user1Reward * 99) / 100;
+        assertEq(appToken.balanceOf(user1), expectedReceived);
         assertTrue(rewards.claimed(1, user1));
 
         (,,,, uint256 totalClaimed) = rewards.epochs(1);
@@ -244,11 +257,11 @@ contract EpochRewardsTest is Test {
     }
 
     function test_MultipleUsersClaim() public {
-        // Setup
+        // Setup - fund extra tokens to cover transfer fees
         vm.startPrank(owner);
         rewards.startEpoch(0, uint64(block.timestamp + 7 days));
-        appToken.approve(address(rewards), 10000 ether);
-        rewards.fund(10000 ether);
+        appToken.approve(address(rewards), 11000 ether); // Extra 1000 for fees
+        rewards.fund(11000 ether);
 
         bytes32[] memory data = new bytes32[](3);
         data[0] = keccak256(abi.encodePacked(user1, uint256(5000 ether)));
@@ -273,9 +286,10 @@ contract EpochRewardsTest is Test {
         vm.prank(user3);
         rewards.claim(1, proof3, 2000 ether);
 
-        assertEq(appToken.balanceOf(user1), 5000 ether);
-        assertEq(appToken.balanceOf(user2), 3000 ether);
-        assertEq(appToken.balanceOf(user3), 2000 ether);
+        // Account for 1% transfer fee
+        assertEq(appToken.balanceOf(user1), 4950 ether); // 5000 * 0.99
+        assertEq(appToken.balanceOf(user2), 2970 ether); // 3000 * 0.99
+        assertEq(appToken.balanceOf(user3), 1980 ether); // 2000 * 0.99
 
         (,,,, uint256 totalClaimed) = rewards.epochs(1);
         assertEq(totalClaimed, 10000 ether);

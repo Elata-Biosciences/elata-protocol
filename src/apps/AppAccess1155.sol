@@ -168,15 +168,9 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
 
         // Validate purchase conditions
         if (!it.active) revert ItemInactive();
-        if (it.startTime != 0 && block.timestamp < it.startTime) {
-            revert PurchaseTooEarly();
-        }
-        if (it.endTime != 0 && block.timestamp > it.endTime) {
-            revert PurchaseTooLate();
-        }
-        if (it.maxSupply != 0 && it.minted + amount > it.maxSupply) {
-            revert SupplyExceeded();
-        }
+        if (it.startTime != 0 && block.timestamp < it.startTime) revert PurchaseTooEarly();
+        if (it.endTime != 0 && block.timestamp > it.endTime) revert PurchaseTooLate();
+        if (it.maxSupply != 0 && it.minted + amount > it.maxSupply) revert SupplyExceeded();
 
         uint256 cost = it.price * amount;
 
@@ -207,9 +201,7 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
         // Allow minting (from == 0) and burning (to == 0)
         if (from != address(0) && to != address(0)) {
             for (uint256 i = 0; i < ids.length; i++) {
-                if (items[ids[i]].soulbound) {
-                    revert SoulboundTransfer();
-                }
+                if (items[ids[i]].soulbound) revert SoulboundTransfer();
             }
         }
         super._update(from, to, ids, values);
@@ -253,16 +245,11 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
         bool hasItem = gate.requiredItem > 0 && balanceOf(user, gate.requiredItem) > 0;
 
         // If no item required (requiredItem == 0), only check stake
-        if (gate.requiredItem == 0) {
-            return meetsStake;
-        }
+        if (gate.requiredItem == 0) return meetsStake;
 
         // If item required, apply AND/OR logic
-        if (gate.requireBoth) {
-            return meetsStake && hasItem;
-        } else {
-            return meetsStake || hasItem;
-        }
+        if (gate.requireBoth) return meetsStake && hasItem;
+        else return meetsStake || hasItem;
     }
 
     /**
@@ -271,7 +258,8 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
      * @param id Item ID
      * @param amount Amount to purchase
      * @return canPurchase Whether purchase is valid
-     * @return reason Reason if cannot purchase (0=can purchase, 1=inactive, 2=early, 3=late, 4=supply)
+     * @return reason Reason if cannot purchase (0=can purchase, 1=inactive, 2=early, 3=late,
+     * 4=supply)
      */
     function checkPurchaseEligibility(address user, uint256 id, uint256 amount)
         external

@@ -69,9 +69,7 @@ contract AppStakingVault is ERC20, ERC20Permit, ERC20Votes, Ownable, ReentrancyG
         _mint(msg.sender, amount);
 
         // Auto-delegate to self for voting power (ERC20Votes requirement)
-        if (delegates(msg.sender) == address(0)) {
-            _delegate(msg.sender, msg.sender);
-        }
+        if (delegates(msg.sender) == address(0)) _delegate(msg.sender, msg.sender);
 
         emit Staked(msg.sender, amount, balanceOf(msg.sender));
     }
@@ -90,9 +88,7 @@ contract AppStakingVault is ERC20, ERC20Permit, ERC20Votes, Ownable, ReentrancyG
         _mint(beneficiary, amount);
 
         // Auto-delegate to self for voting power (ERC20Votes requirement)
-        if (delegates(beneficiary) == address(0)) {
-            _delegate(beneficiary, beneficiary);
-        }
+        if (delegates(beneficiary) == address(0)) _delegate(beneficiary, beneficiary);
 
         emit StakedFor(beneficiary, amount, msg.sender);
     }
@@ -140,9 +136,7 @@ contract AppStakingVault is ERC20, ERC20Permit, ERC20Votes, Ownable, ReentrancyG
     {
         // Allow minting (from == 0) and burning (to == 0)
         // Block transfers between users
-        if (from != address(0) && to != address(0)) {
-            revert Errors.NonTransferable();
-        }
+        if (from != address(0) && to != address(0)) revert Errors.NonTransferable();
         super._update(from, to, amount);
     }
 

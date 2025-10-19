@@ -159,16 +159,19 @@ contract Deploy is Script {
         );
 
         if (routerAddress != address(0)) {
-            protocol.appFactory = new AppFactory(
-                protocol.token,
-                IUniswapV2Router02(routerAddress),
-                INITIAL_TREASURY,
-                IAppFeeRouter(address(protocol.appFeeRouter)),
-                IAppRewardsDistributor(address(protocol.appRewardsDistributor)),
-                ADMIN_MSIG
+            // TODO: Update constructor call - see MIGRATION_GUIDE.md
+            // Need to add: rewardsDistributor, elataXP, governance parameters
+            // protocol.appFactory = new AppFactory(
+            //     protocol.token,
+            //     IUniswapV2Router02(routerAddress),
+            //     INITIAL_TREASURY,
+            //     IAppFeeRouter(address(protocol.appFeeRouter)),
+            //     IAppRewardsDistributor(address(protocol.appRewardsDistributor)),
+            //     ADMIN_MSIG
+            // );
+            console2.log(
+                "   AppFactory deployment DISABLED - needs migration (see MIGRATION_GUIDE.md)"
             );
-            console2.log("   AppFactory deployed at:", address(protocol.appFactory));
-            console2.log("   Uniswap Router:", routerAddress);
         } else {
             console2.log("   AppFactory skipped (no router configured)");
         }

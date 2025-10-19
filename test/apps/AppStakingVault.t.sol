@@ -21,13 +21,27 @@ contract AppStakingVaultTest is Test {
     event Unstaked(address indexed user, uint256 amount, uint256 newBalance);
 
     function setUp() public {
-        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, owner, admin);
+        appToken = new AppToken(
+            "TestApp",
+            "TEST",
+            18,
+            MAX_SUPPLY,
+            owner,
+            admin,
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
         vault = new AppStakingVault("TestApp", "TAPP", appToken, owner);
 
         // Mint tokens to users
         vm.startPrank(admin);
         appToken.mint(user1, 10000 ether);
         appToken.mint(user2, 10000 ether);
+
+        // Make vault exempt from transfer fees to avoid circular fee issues
+        appToken.setTransferFeeExempt(address(vault), true);
         vm.stopPrank();
     }
 

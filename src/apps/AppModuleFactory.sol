@@ -99,14 +99,10 @@ contract AppModuleFactory is Ownable {
         returns (address access1155, address staking, address epochs)
     {
         // Verify caller is token owner
-        if (IOwnable(appToken).owner() != msg.sender) {
-            revert NotTokenOwner();
-        }
+        if (IOwnable(appToken).owner() != msg.sender) revert NotTokenOwner();
 
         // Prevent duplicate deployments
-        if (modulesByApp[appToken].access1155 != address(0)) {
-            revert ModulesAlreadyExist();
-        }
+        if (modulesByApp[appToken].access1155 != address(0)) revert ModulesAlreadyExist();
 
         // Collect ELTA fee if set
         if (createFeeELTA > 0 && ELTA != address(0)) {

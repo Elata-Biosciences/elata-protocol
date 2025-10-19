@@ -29,7 +29,18 @@ contract TournamentFactoryTest is Test {
 
     function setUp() public {
         factory = new TournamentFactory(factoryOwner, treasury);
-        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin);
+        appToken = new AppToken(
+            "TestApp",
+            "TEST",
+            18,
+            MAX_SUPPLY,
+            appCreator,
+            admin,
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
     }
 
     function test_Deployment() public {

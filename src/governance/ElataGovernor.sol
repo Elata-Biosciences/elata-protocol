@@ -120,9 +120,7 @@ contract ElataGovernor is
      * @return Voting period in seconds
      */
     function proposalVotingPeriod(uint256 proposalId) public view returns (uint256) {
-        if (emergencyProposals[proposalId]) {
-            return EMERGENCY_VOTING_PERIOD;
-        }
+        if (emergencyProposals[proposalId]) return EMERGENCY_VOTING_PERIOD;
         return votingPeriod();
     }
 

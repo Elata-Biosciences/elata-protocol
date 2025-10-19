@@ -80,7 +80,8 @@ contract LotPool is AccessControl {
         ELTA.safeTransferFrom(msg.sender, address(this), amount);
     }
 
-    /// @notice Start a new round: captures current block for XP snapshot; defines options & recipients.
+    /// @notice Start a new round: captures current block for XP snapshot; defines options &
+    /// recipients.
     function startRound(
         bytes32[] calldata options,
         address[] calldata recipients,
@@ -243,9 +244,7 @@ contract LotPool is AccessControl {
         r.finalized = true;
 
         address rcpt = r.recipient[winner];
-        if (amount > 0) {
-            ELTA.safeTransfer(rcpt, amount);
-        }
+        if (amount > 0) ELTA.safeTransfer(rcpt, amount);
 
         emit Finalized(roundId, winner, amount, rcpt);
     }

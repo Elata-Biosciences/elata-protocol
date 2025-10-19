@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ELTA } from "../../src/token/ELTA.sol";
 import { AppFactory } from "../../src/apps/AppFactory.sol";
 import { AppFactoryViews } from "../../src/apps/AppFactoryViews.sol";
@@ -10,7 +11,28 @@ import { AppBondingCurve } from "../../src/apps/AppBondingCurve.sol";
 import { IUniswapV2Router02 } from "../../src/interfaces/IUniswapV2Router02.sol";
 import { IAppFeeRouter } from "../../src/interfaces/IAppFeeRouter.sol";
 import { IAppRewardsDistributor } from "../../src/interfaces/IAppRewardsDistributor.sol";
+import { IRewardsDistributor } from "../../src/interfaces/IRewardsDistributor.sol";
+import { IElataXP } from "../../src/interfaces/IElataXP.sol";
 import { MockAppFeeRouter, MockAppRewardsDistributor } from "../mocks/MockContracts.sol";
+
+// Mock ElataXP
+contract MockElataXP is IElataXP {
+    mapping(address => uint256) public balances;
+
+    function balanceOf(address account) external view override returns (uint256) {
+        return balances[account];
+    }
+
+    function setBalance(address account, uint256 balance) external {
+        balances[account] = balance;
+    }
+}
+
+// Mock RewardsDistributor
+contract MockRewardsDistributor is IRewardsDistributor {
+    function deposit(uint256) external pure { }
+    function depositVeInToken(IERC20, uint256) external pure { }
+}
 
 contract AppFactoryTest is Test {
     ELTA public elta;
@@ -21,12 +43,15 @@ contract AppFactoryTest is Test {
     address public treasury = makeAddr("treasury");
     address public creator = makeAddr("creator");
     address public user1 = makeAddr("user1");
+    address public governance = makeAddr("governance");
 
     // Mock Uniswap router (for testing)
     address public mockRouter = makeAddr("mockRouter");
 
     MockAppFeeRouter public mockFeeRouter;
     MockAppRewardsDistributor public mockAppRewards;
+    MockRewardsDistributor public mockRewards;
+    MockElataXP public mockXP;
 
     function setUp() public {
         elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 77_000_000 ether);
@@ -34,6 +59,8 @@ contract AppFactoryTest is Test {
         // Deploy mocks
         mockFeeRouter = new MockAppFeeRouter();
         mockAppRewards = new MockAppRewardsDistributor();
+        mockRewards = new MockRewardsDistributor();
+        mockXP = new MockElataXP();
 
         // For testing, we'll use a mock router address
         // In production, this would be the actual Uniswap router
@@ -47,6 +74,9 @@ contract AppFactoryTest is Test {
             treasury,
             IAppFeeRouter(address(mockFeeRouter)),
             IAppRewardsDistributor(address(mockAppRewards)),
+            IRewardsDistributor(address(mockRewards)),
+            mockXP,
+            governance,
             admin
         );
 
@@ -135,7 +165,7 @@ contract AppFactoryTest is Test {
         assertEq(factory.defaultSupply(), 1_000_000_000 ether);
         assertEq(factory.lpLockDuration(), 365 days * 2);
         assertEq(factory.defaultDecimals(), 18);
-        assertEq(factory.protocolFeeRate(), 250);
+        // Removed protocolFeeRate check - legacy fee removed in favor of unified 70/15/15 split
         assertEq(factory.creationFee(), 10 ether);
     }
 

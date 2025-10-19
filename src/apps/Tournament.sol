@@ -171,12 +171,8 @@ contract Tournament is Ownable, ReentrancyGuard {
      */
     function enter() external nonReentrant {
         if (entered[msg.sender]) revert AlreadyEntered();
-        if (startTime != 0 && block.timestamp < startTime) {
-            revert TournamentNotStarted();
-        }
-        if (endTime != 0 && block.timestamp > endTime) {
-            revert TournamentEnded();
-        }
+        if (startTime != 0 && block.timestamp < startTime) revert TournamentNotStarted();
+        if (endTime != 0 && block.timestamp > endTime) revert TournamentEnded();
 
         entered[msg.sender] = true;
         APP.transferFrom(msg.sender, address(this), entryFee);
@@ -199,12 +195,8 @@ contract Tournament is Ownable, ReentrancyGuard {
         uint256 netPool = pool - protocolFee - burnAmt;
 
         // Transfer fees
-        if (protocolFee > 0) {
-            APP.transfer(protocolTreasury, protocolFee);
-        }
-        if (burnAmt > 0) {
-            APP.transfer(burnSink, burnAmt);
-        }
+        if (protocolFee > 0) APP.transfer(protocolTreasury, protocolFee);
+        if (burnAmt > 0) APP.transfer(burnSink, burnAmt);
 
         winnersRoot = winnersRoot_;
         pool = netPool;
@@ -222,9 +214,7 @@ contract Tournament is Ownable, ReentrancyGuard {
         if (claimed[msg.sender]) revert AlreadyClaimed();
 
         bytes32 leaf = keccak256(abi.encodePacked(msg.sender, amount));
-        if (!MerkleProof.verify(proof, winnersRoot, leaf)) {
-            revert InvalidProof();
-        }
+        if (!MerkleProof.verify(proof, winnersRoot, leaf)) revert InvalidProof();
 
         claimed[msg.sender] = true;
         APP.transfer(msg.sender, amount);
@@ -276,7 +266,8 @@ contract Tournament is Ownable, ReentrancyGuard {
      * @notice Check if user can enter tournament
      * @param user User address
      * @return canEnter Whether user can enter
-     * @return reason Reason code (0=can enter, 1=already entered, 2=not started, 3=ended, 4=finalized)
+     * @return reason Reason code (0=can enter, 1=already entered, 2=not started, 3=ended,
+     * 4=finalized)
      */
     function checkEntryEligibility(address user)
         external

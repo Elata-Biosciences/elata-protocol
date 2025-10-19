@@ -96,9 +96,7 @@ contract ProtocolStats {
         (uint256 principal, uint64 unlockTime, uint256 veBalance, bool isExpired) =
             staking.getLockDetails(user);
 
-        if (principal == 0) {
-            return new PositionSummary[](0);
-        }
+        if (principal == 0) return new PositionSummary[](0);
 
         PositionSummary[] memory positions = new PositionSummary[](1);
         positions[0] = PositionSummary({

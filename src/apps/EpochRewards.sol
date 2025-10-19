@@ -131,9 +131,7 @@ contract EpochRewards is Ownable, ReentrancyGuard {
         if (claimed[id][msg.sender]) revert AlreadyClaimed();
 
         bytes32 leaf = keccak256(abi.encodePacked(msg.sender, amount));
-        if (!MerkleProof.verify(proof, e.merkleRoot, leaf)) {
-            revert InvalidProof();
-        }
+        if (!MerkleProof.verify(proof, e.merkleRoot, leaf)) revert InvalidProof();
 
         claimed[id][msg.sender] = true;
         e.totalClaimed += amount;

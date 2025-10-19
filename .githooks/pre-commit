@@ -28,7 +28,6 @@ if ! forge build; then
     echo "❌ Build failed!"
     exit 1
 fi
-echo "✓ Build successful (note: some contracts >24KB, acceptable for L2)"
 
 # 3. Run quick tests (only on changed files if possible)
 echo "🧪 Running tests..."

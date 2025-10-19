@@ -19,6 +19,10 @@ contract MockRewardsDistributor is IRewardsDistributor {
         eltaToken.transferFrom(msg.sender, address(this), amount);
         totalDeposited += amount;
     }
+
+    function depositVeInToken(IERC20 token, uint256 amount) external {
+        token.transferFrom(msg.sender, address(this), amount);
+    }
 }
 
 contract AppFeeRouterTest is Test {

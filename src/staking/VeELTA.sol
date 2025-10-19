@@ -76,9 +76,7 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
         ERC20("veELTA Voting Power", "veELTA")
         ERC20Permit("veELTA Voting Power")
     {
-        if (address(_elta) == address(0) || _admin == address(0)) {
-            revert Errors.ZeroAddress();
-        }
+        if (address(_elta) == address(0) || _admin == address(0)) revert Errors.ZeroAddress();
 
         ELTA = _elta;
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
@@ -109,9 +107,7 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
         _mint(msg.sender, veAmount);
 
         // Auto-delegate to self for voting power (ERC20Votes requirement)
-        if (delegates(msg.sender) == address(0)) {
-            _delegate(msg.sender, msg.sender);
-        }
+        if (delegates(msg.sender) == address(0)) _delegate(msg.sender, msg.sender);
 
         emit Locked(msg.sender, amount, unlockTime, veAmount);
     }
@@ -140,11 +136,8 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
         locks[msg.sender].principal = uint128(newPrincipal);
 
         // Mint difference
-        if (newVeAmount > oldVeAmount) {
-            _mint(msg.sender, newVeAmount - oldVeAmount);
-        } else if (oldVeAmount > newVeAmount) {
-            _burn(msg.sender, oldVeAmount - newVeAmount);
-        }
+        if (newVeAmount > oldVeAmount) _mint(msg.sender, newVeAmount - oldVeAmount);
+        else if (oldVeAmount > newVeAmount) _burn(msg.sender, oldVeAmount - newVeAmount);
 
         emit AmountIncreased(msg.sender, amount, newPrincipal, newVeAmount);
     }
@@ -174,11 +167,8 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
         locks[msg.sender].unlockTime = newUnlockTime;
 
         // Adjust voting power
-        if (newVeAmount > oldVeAmount) {
-            _mint(msg.sender, newVeAmount - oldVeAmount);
-        } else if (oldVeAmount > newVeAmount) {
-            _burn(msg.sender, oldVeAmount - newVeAmount);
-        }
+        if (newVeAmount > oldVeAmount) _mint(msg.sender, newVeAmount - oldVeAmount);
+        else if (oldVeAmount > newVeAmount) _burn(msg.sender, oldVeAmount - newVeAmount);
 
         emit LockExtended(msg.sender, userLock.unlockTime, newUnlockTime, newVeAmount);
     }
@@ -197,9 +187,7 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
 
         delete locks[msg.sender];
 
-        if (veBalance > 0) {
-            _burn(msg.sender, veBalance);
-        }
+        if (veBalance > 0) _burn(msg.sender, veBalance);
 
         ELTA.safeTransfer(msg.sender, principal);
 
@@ -215,9 +203,7 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
         _mint(to, amount);
 
         // Auto-delegate to self for voting power
-        if (delegates(to) == address(0)) {
-            _delegate(to, to);
-        }
+        if (delegates(to) == address(0)) _delegate(to, to);
     }
 
     /**
@@ -277,11 +263,8 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
         Lock memory userLock = locks[user];
         if (userLock.principal == 0) return (false, 0);
 
-        if (block.timestamp >= userLock.unlockTime) {
-            return (true, 0);
-        } else {
-            return (false, userLock.unlockTime - block.timestamp);
-        }
+        if (block.timestamp >= userLock.unlockTime) return (true, 0);
+        else return (false, userLock.unlockTime - block.timestamp);
     }
 
     /**
@@ -293,9 +276,7 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
     {
         // Allow minting (from == 0) and burning (to == 0)
         // Block transfers between users
-        if (from != address(0) && to != address(0)) {
-            revert Errors.NonTransferable();
-        }
+        if (from != address(0) && to != address(0)) revert Errors.NonTransferable();
         super._update(from, to, amount);
     }
 
