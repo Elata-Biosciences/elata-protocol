@@ -7,6 +7,8 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/Nonces.sol";
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { Errors } from "../utils/Errors.sol";
 
 /**
@@ -17,7 +19,7 @@ import { Errors } from "../utils/Errors.sol";
  * awards.
  * Extends ERC20Votes for governance integration (XP can be used for voting weight).
  */
-contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl {
+contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl, ReentrancyGuard {
     bytes32 public constant XP_OPERATOR_ROLE = keccak256("XP_OPERATOR_ROLE");
 
     // Track operator nonces for signature-based XP updates (one nonce per operator address).
@@ -31,6 +33,23 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl {
     // Events for minting and burning XP:
     event XPAwarded(address indexed user, uint256 amount);
     event XPRevoked(address indexed user, uint256 amount);
+
+    // ======== Merkle Distribution Storage/Events/Errors ========
+    // Incremental distribution id counter
+    uint256 public currentDistributionId;
+    // distributionId => merkle root
+    mapping(uint256 => bytes32) public merkleRoots;
+    // distributionId => canonical data hash (keccak256 of published JSON)
+    mapping(uint256 => bytes32) public distributionDataHash;
+    // distributionId => user => claimed
+    mapping(uint256 => mapping(address => bool)) private _claimed;
+
+    event MerkleRootUpdated(uint256 indexed distributionId, bytes32 merkleRoot, bytes32 dataHash);
+    event XPClaimed(uint256 indexed distributionId, address indexed user, uint256 amount);
+
+    error AlreadyClaimed();
+    error InvalidProof();
+    error InvalidDistribution();
 
     /**
      * @notice Constructor to initialize XP token.
@@ -81,6 +100,58 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl {
         if (amount == 0) revert Errors.InvalidAmount();
         _burn(from, amount);
         emit XPRevoked(from, amount);
+    }
+
+    // ========== Merkle Distribution ==========
+
+    /**
+     * @notice Publish a new Merkle root and bind it to a canonical data hash.
+     * @dev Increments currentDistributionId and stores root and dataHash for that id.
+     */
+    function setMerkleRoot(bytes32 newRoot, bytes32 dataHash) external onlyRole(XP_OPERATOR_ROLE) {
+        // Allow zero dataHash if operator chooses, but root must be non-zero to be meaningful
+        if (newRoot == bytes32(0)) revert Errors.InvalidAmount();
+        uint256 newId = currentDistributionId + 1;
+        currentDistributionId = newId;
+        merkleRoots[newId] = newRoot;
+        distributionDataHash[newId] = dataHash;
+        emit MerkleRootUpdated(newId, newRoot, dataHash);
+    }
+
+    /**
+     * @notice Claim XP for a given distribution by providing a Merkle proof.
+     * @param distributionId The distribution id to claim from.
+     * @param amount The XP amount allocated to msg.sender for this distribution.
+     * @param proof Merkle proof from the leaf (msg.sender, amount) to the root.
+     */
+    function claimXP(uint256 distributionId, uint256 amount, bytes32[] calldata proof)
+        external
+        nonReentrant
+    {
+        bytes32 root = merkleRoots[distributionId];
+        if (root == bytes32(0)) revert InvalidDistribution();
+        if (amount == 0) revert Errors.InvalidAmount();
+        if (_claimed[distributionId][msg.sender]) revert AlreadyClaimed();
+
+        bytes32 leaf = keccak256(abi.encodePacked(msg.sender, amount));
+        bool ok = MerkleProof.verify(proof, root, leaf);
+        if (!ok) revert InvalidProof();
+
+        // effects before interactions
+        _claimed[distributionId][msg.sender] = true;
+
+        _mint(msg.sender, amount);
+        if (delegates(msg.sender) == address(0)) _delegate(msg.sender, msg.sender);
+
+        emit XPClaimed(distributionId, msg.sender, amount);
+        emit XPAwarded(msg.sender, amount);
+    }
+
+    /**
+     * @notice Convenience view to check if a user has claimed for a distribution.
+     */
+    function hasClaimed(uint256 distributionId, address user) external view returns (bool) {
+        return _claimed[distributionId][user];
     }
 
     // ========== Off-Chain Signature-Based XP Award ==========

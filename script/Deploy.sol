@@ -21,6 +21,7 @@ import { IAppRewardsDistributor } from "../src/interfaces/IAppRewardsDistributor
 import { IAppFeeRouter } from "../src/interfaces/IAppFeeRouter.sol";
 import { IVeEltaVotes } from "../src/interfaces/IVeEltaVotes.sol";
 import { IRewardsDistributor } from "../src/interfaces/IRewardsDistributor.sol";
+import { IElataXP } from "../src/interfaces/IElataXP.sol";
 
 /**
  * @title Deploy
@@ -159,19 +160,19 @@ contract Deploy is Script {
         );
 
         if (routerAddress != address(0)) {
-            // TODO: Update constructor call - see MIGRATION_GUIDE.md
-            // Need to add: rewardsDistributor, elataXP, governance parameters
-            // protocol.appFactory = new AppFactory(
-            //     protocol.token,
-            //     IUniswapV2Router02(routerAddress),
-            //     INITIAL_TREASURY,
-            //     IAppFeeRouter(address(protocol.appFeeRouter)),
-            //     IAppRewardsDistributor(address(protocol.appRewardsDistributor)),
-            //     ADMIN_MSIG
-            // );
-            console2.log(
-                "   AppFactory deployment DISABLED - needs migration (see MIGRATION_GUIDE.md)"
+            // Deploy AppFactory with full parameters
+            protocol.appFactory = new AppFactory(
+                IERC20(address(protocol.token)),
+                IUniswapV2Router02(routerAddress),
+                INITIAL_TREASURY,
+                IAppFeeRouter(address(protocol.appFeeRouter)),
+                IAppRewardsDistributor(address(protocol.appRewardsDistributor)),
+                IRewardsDistributor(address(protocol.rewards)),
+                IElataXP(address(protocol.xp)),
+                ADMIN_MSIG,
+                ADMIN_MSIG
             );
+            console2.log("   AppFactory deployed at:", address(protocol.appFactory));
         } else {
             console2.log("   AppFactory skipped (no router configured)");
         }
@@ -240,6 +241,15 @@ contract Deploy is Script {
 
         // XP: Grant operator role to funding system
         protocol.xp.grantRole(protocol.xp.XP_OPERATOR_ROLE(), address(protocol.funding));
+
+        // XP: Grant initial operators from env (XP_OPERATOR_1 .. XP_OPERATOR_10)
+        // Set env vars like: XP_OPERATOR_1=0x..., XP_OPERATOR_2=0x...
+        for (uint256 i = 1; i <= 10; i++) {
+            string memory key = string.concat("XP_OPERATOR_", vm.toString(i));
+            // Default to zero address if not set
+            address op = vm.envOr(key, address(0));
+            if (op != address(0)) protocol.xp.grantRole(protocol.xp.XP_OPERATOR_ROLE(), op);
+        }
 
         // Rewards: Grant DISTRIBUTOR_ROLE to AppFeeRouter
         protocol.rewards.grantRole(
