@@ -334,7 +334,9 @@ contract Deploy is Script {
         console2.log("\n=== NEXT STEPS ===");
         console2.log("1. Verify contracts on block explorer");
         console2.log("2. Test end-to-end on testnet");
-        console2.log("3. Update frontend with contract addresses");
+        console2.log(
+            "3. Update appstore env/ABIs with contract addresses (npm run dev:config, then npm run sync-abi in elata-appstore)"
+        );
         console2.log("4. Grant additional roles as needed");
         console2.log("==================");
     }

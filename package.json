@@ -42,7 +42,6 @@
     "dev:seed": "FOUNDRY_PROFILE=local forge script script/SeedLocalData.s.sol:SeedLocalData --rpc-url http://127.0.0.1:8545 --broadcast --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 --ffi",
     "dev:config": "npx tsx scripts/generate-config.ts",
     "dev:anvil": "anvil --chain-id 31337 --port 8545",
-    "dev:frontend": "cd frontend && npm run dev",
     "xp:generate": "npx tsx scripts/xp/xp-generate-merkle.ts --in scripts/xp/data/allocs.json --out ../elata-appstore/public/xp-distribution.json --id 1",
     "xp:publish": "npx tsx scripts/xp/xp-publish-root.ts --rpc $RPC --key $OPERATOR_PK --contract $XP_ADDR --json ../elata-appstore/public/xp-distribution.json",
     "xp:grant-ops": "npx tsx scripts/xp/xp-grant-operators.ts --rpc $RPC --key $ADMIN_PK --contract $XP_ADDR --ops $OPS"

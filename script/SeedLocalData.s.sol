@@ -329,8 +329,8 @@ contract SeedLocalData is Script {
 
         console2.log("- 1 active funding round with 3 options");
         console2.log("");
-        console2.log("Ready for development! Start the frontend:");
-        console2.log("  cd frontend && npm run dev");
+        console2.log("Ready for development! Start the App Store frontend:");
+        console2.log("  cd ../elata-appstore && npm run local:full");
         console2.log("");
     }
 }
