@@ -23,13 +23,14 @@ This will:
 - Start a funding round
 - Generate frontend configuration
 
-## Connect Your Frontend
+## Connect the App Store Frontend
 
 ```bash
-npm run dev:frontend
+cd ../elata-appstore
+npm run local:full
 ```
 
-Open http://localhost:3000
+Open http://localhost:3000 (App Store)
 
 ## Test Account
 
@@ -72,11 +73,11 @@ Each app has:
 ## 🛠️ Common Commands
 
 ```bash
-npm run dev            # Start everything
+npm run dev            # Start everything (protocol)
 npm run dev:stop       # Stop Anvil
 npm run dev:restart    # Restart everything
-npm run dev:frontend   # Start frontend
-npm test               # Run tests
+cd ../elata-appstore && npm run local:full   # Start App Store frontend
+npm test               # Run tests (protocol)
 ```
 
 ## View Contract Addresses
@@ -141,7 +142,7 @@ Use these addresses in your frontend or testing scripts!
 ##  Next Steps
 
 1.  Run `npm run dev` (you've done this!)
-2.  Start frontend: `npm run dev:frontend`
+2.  Start appstore: `cd ../elata-appstore && npm run local:full`
 3. 🔗 Connect MetaMask to localhost:8545
 4.  Start building!
 

@@ -6,13 +6,22 @@ This repository contains the smart contracts that power Elata's token, staking, 
 
 > **Scope of this repo**: Token economics + staking + XP + funding governance. (ZORP experiment data contracts live in a separate repository.)
 
-##  Live dApp
+##  Quick Start (Contracts Only)
 
-Production: [app.elata.bio](https://app.elata.bio)
+Run a full local chain with contracts and seed data:
 
-[![Elata Protocol – Live dApp](docs/images/app-screenshot.png)](https://app.elata.bio)
+```bash
+npm run dev
+```
 
----
+Connect MetaMask to Anvil (http://127.0.0.1:8545, Chain ID 31337). Default Anvil keys are printed by the scripts.
+
+Essential docs:
+- Local development guide: docs/LOCAL_DEVELOPMENT.md
+- XP operations: docs/xp-ops.md and docs/xp-system.md
+- Contract architecture: docs/ARCHITECTURE.md
+- Testing: run `forge test` and see “Build, test, deploy” below
+
 
 ##  What problem does the protocol solve?
 
@@ -1094,11 +1103,12 @@ forge install
 npm install
 bash scripts/setup-hooks.sh
 
-# Start local blockchain with all contracts + test data
+# Start local blockchain with all contracts + test data (protocol only)
 npm run dev
 
-# In another terminal, start the frontend
-npm run dev:frontend
+# In another terminal, run the App Store frontend (separate repo)
+cd ../elata-appstore
+npm run local:full
 ```
 
 This automatically:

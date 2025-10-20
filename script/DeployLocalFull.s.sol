@@ -313,7 +313,7 @@ contract DeployLocalFull is Script {
         console2.log("=================================================");
         console2.log("NEXT STEPS:");
         console2.log("1. Run seed script: npm run dev:seed");
-        console2.log("2. Start frontend: npm run dev:frontend");
+        console2.log("2. Start appstore: cd ../elata-appstore && npm run local:full");
         console2.log("3. Addresses saved to: deployments/local.json");
         console2.log("=================================================\n");
     }

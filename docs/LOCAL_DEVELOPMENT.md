@@ -37,7 +37,7 @@ This single command will:
 -  Start Anvil (local blockchain)
 -  Deploy ALL Elata Protocol contracts
 -  Seed test data (apps, XP, staking positions, funding rounds)
--  Generate frontend configuration files
+-  Generate appstore configuration (.env.local)
 -  Set up test accounts with ELTA tokens
 
 **That's it!** Your local blockchain is ready for development.
@@ -53,7 +53,7 @@ This single command will:
 | `npm run dev` | Complete setup (start Anvil + deploy + seed) |
 | `npm run dev:stop` | Stop Anvil blockchain |
 | `npm run dev:restart` | Stop and restart everything |
-| `npm run dev:frontend` | Start the frontend dev server |
+| `cd ../elata-appstore && npm run local:full` | Start the App Store frontend |
 
 ### Manual Commands (for fine-grained control)
 
@@ -62,7 +62,7 @@ This single command will:
 | `npm run dev:anvil` | Start Anvil only |
 | `npm run dev:deploy` | Deploy contracts only |
 | `npm run dev:seed` | Seed test data only |
-| `npm run dev:config` | Generate frontend config only |
+| `npm run dev:config` | Generate appstore .env.local only |
 
 ### Testing Commands
 
@@ -193,10 +193,8 @@ After running `npm run dev`, you'll find:
 elata-protocol/
 ├── deployments/
 │   └── local.json           # All contract addresses
-├── frontend/
-│   ├── .env.local           # Environment variables
-│   └── src/config/
-│       └── contracts.ts     # TypeScript config
+├── elata-appstore/
+│   └── .env.local           # Environment variables for local addresses
 ├── anvil.log                # Anvil blockchain logs
 └── .anvil.pid               # Anvil process ID
 ```
@@ -217,32 +215,18 @@ elata-protocol/
 }
 ```
 
-### `frontend/.env.local`
+### `elata-appstore/.env.local`
 
-Auto-generated environment variables for frontend:
+Auto-generated environment variables for appstore:
 
 ```env
 NEXT_PUBLIC_CHAIN_ID=31337
 NEXT_PUBLIC_RPC_URL=http://127.0.0.1:8545
-NEXT_PUBLIC_ELTA_ADDRESS=0x5FbDB...
+NEXT_PUBLIC_ELTA_ADDRESS_LOCAL=0x5FbDB...
 # ... all contract addresses
 ```
 
-### `frontend/src/config/contracts.ts`
-
-Type-safe TypeScript configuration:
-
-```typescript
-export const contracts = {
-  ELTA: '0x5FbDB...' as const,
-  ElataXP: '0xe7f17...' as const,
-  // ... all contracts
-} as const;
-
-export function getContractAddress(name: ContractName): string {
-  return contracts[name];
-}
-```
+The appstore reads contract addresses from these env vars and ABIs from src/abi.
 
 ---
 
@@ -254,8 +238,9 @@ export function getContractAddress(name: ContractName): string {
 # 1. Start local blockchain with everything
 npm run dev
 
-# 2. In another terminal, start frontend
-npm run dev:frontend
+# 2. In another terminal, start the App Store frontend
+cd ../elata-appstore
+npm run local:full
 
 # 3. Open http://localhost:3000
 # Your app is now connected to local blockchain!
@@ -290,8 +275,8 @@ npm run dev:seed
 # Terminal 4: Generate config
 npm run dev:config
 
-# Terminal 5: Start frontend
-npm run dev:frontend
+# Terminal 5: Start the App Store frontend
+cd ../elata-appstore && npm run local:full
 ```
 
 ---
@@ -328,10 +313,7 @@ tail -f anvil.log
 
 ### Running Frontend Tests
 
-```bash
-cd frontend
-npm test
-```
+Run tests from the `elata-appstore` repository.
 
 ### End-to-End Testing
 
@@ -339,8 +321,8 @@ npm test
 # Start local environment
 npm run dev
 
-# Run E2E tests (in another terminal)
-cd frontend
+# Run E2E tests (in another terminal) from appstore
+cd ../elata-appstore
 npm run test:e2e
 ```
 
@@ -374,14 +356,14 @@ npm run dev:restart
 ### Problem: Frontend can't connect
 
 ```bash
-# 1. Verify .env.local exists
-ls -la frontend/.env.local
+# 1. Verify appstore .env.local exists
+ls -la ../elata-appstore/.env.local
 
 # 2. Regenerate config
 npm run dev:config
 
-# 3. Restart frontend
-cd frontend && npm run dev
+# 3. Restart appstore frontend
+cd ../elata-appstore && npm run local:full
 ```
 
 ### Problem: "Nonce too high" errors
@@ -559,8 +541,8 @@ npm run dev:stop
 # Restart everything
 npm run dev:restart
 
-# Start frontend
-npm run dev:frontend
+# Start appstore frontend
+cd ../elata-appstore && npm run local:full
 ```
 
 ### Contract Addresses

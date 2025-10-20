@@ -82,25 +82,17 @@ FOUNDRY_PROFILE=local forge script script/SeedLocalData.s.sol:SeedLocalData \
     --ffi
 echo -e "${GREEN}✓ Test data seeded${NC}"
 
-echo -e "${YELLOW}[5/6] Generating frontend configuration...${NC}"
+echo -e "${YELLOW}[5/6] Generating appstore configuration...${NC}"
 if [ -f "$PROJECT_ROOT/scripts/generate-config.ts" ]; then
     npx tsx "$PROJECT_ROOT/scripts/generate-config.ts"
-    echo -e "${GREEN}✓ Frontend configuration generated${NC}"
+    echo -e "${GREEN}✓ Appstore .env.local generated${NC}"
 else
     echo -e "${YELLOW}⚠ Frontend config script not found, skipping...${NC}"
 fi
 
-echo -e "${YELLOW}[6/6] Setting up frontend...${NC}"
-if [ -d "$PROJECT_ROOT/frontend" ]; then
-    cd "$PROJECT_ROOT/frontend"
-    if [ ! -d "node_modules" ]; then
-        echo "Installing frontend dependencies..."
-        npm install
-    fi
-    echo -e "${GREEN}✓ Frontend ready${NC}"
-else
-    echo -e "${YELLOW}⚠ Frontend directory not found, skipping...${NC}"
-fi
+echo -e "${YELLOW}[6/6] App Store instructions...${NC}"
+echo "  To start the App Store frontend:"
+echo "    cd ../elata-appstore && npm run local:full"
 
 echo -e "${GREEN}"
 echo "================================================="
@@ -138,7 +130,7 @@ echo ""
 echo -e "${GREEN}Ready to develop!${NC}"
 echo ""
 echo -e "${CYAN}Next steps:${NC}"
-echo "  1. Start frontend:    npm run dev:frontend"
+echo "  1. Start App Store:   cd ../elata-appstore && npm run local:full"
 echo "  2. View logs:         tail -f anvil.log"
 echo "  3. Stop Anvil:        npm run dev:stop"
 echo "  4. Restart all:       npm run dev:restart"
