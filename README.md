@@ -764,6 +764,10 @@ XP_OPERATOR_ROLE  // Required to award/revoke XP
 
 **Why permanent?** Simpler implementation, clear accounting, and reliable reputation without complex decay mechanics.
 
+For operator and distribution runbooks, see:
+- docs/xp-system.md (XP architecture and Merkle claims)
+- docs/xp-ops.md (Operator roles, rotation, publishing distributions)
+
 ### XP Lifecycle
 
 ```mermaid
