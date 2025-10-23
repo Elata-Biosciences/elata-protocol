@@ -39,9 +39,9 @@ graph LR
         S3[Aligned Incentives<br/> Usage-based rewards]
     end
     
-    T1 -.->|Replaces| S1
-    T2 -.->|Replaces| S2
-    T3 -.->|Replaces| S3
+    T1 -.->|Replaced by| S1
+    T2 -.->|Replaced by| S2
+    T3 -.->|Replaced by| S3
     
     style T1 fill:#ffcdd2
     style T2 fill:#ffcdd2
