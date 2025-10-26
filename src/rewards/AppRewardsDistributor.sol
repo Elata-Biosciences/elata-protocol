@@ -98,12 +98,12 @@ contract AppRewardsDistributor is AccessControl {
     constructor(IERC20 _elta, address _governance, address _factory) {
         require(address(_elta) != address(0), "Zero ELTA");
         require(_governance != address(0), "Zero gov");
-        require(_factory != address(0), "Zero factory");
 
         ELTA = _elta;
         _grantRole(DEFAULT_ADMIN_ROLE, _governance);
         _grantRole(GOVERNANCE_ROLE, _governance);
-        _grantRole(FACTORY_ROLE, _factory);
+        // Allow deferred factory assignment for local deploys; role can be granted later
+        if (_factory != address(0)) _grantRole(FACTORY_ROLE, _factory);
     }
 
     /**
@@ -191,11 +191,10 @@ contract AppRewardsDistributor is AccessControl {
             uint256 vaultTotalStaked = IStakeVaultVotes(vault).totalSupply();
             uint256 vaultShare = (totalWeight == 0) ? 0 : (amount * vaultTotalStaked) / totalWeight;
 
-            epochs[vault].push(
+            epochs[vault]
+            .push(
                 AppEpoch({
-                    blockNumber: blockNumber,
-                    amount: vaultShare,
-                    totalStaked: vaultTotalStaked
+                    blockNumber: blockNumber, amount: vaultShare, totalStaked: vaultTotalStaked
                 })
             );
 
@@ -221,9 +220,8 @@ contract AppRewardsDistributor is AccessControl {
 
         // Create epoch denominated in this token (separate from ELTA epochs)
         uint256 totalStaked = IStakeVaultVotes(vault).totalSupply();
-        tokenEpochs[vault][token].push(
-            AppEpoch({ blockNumber: block.number, amount: amount, totalStaked: totalStaked })
-        );
+        tokenEpochs[vault][token]
+        .push(AppEpoch({ blockNumber: block.number, amount: amount, totalStaked: totalStaked }));
     }
 
     /**

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import { Script, console2 } from "forge-std/Script.sol";
+import { stdJson } from "forge-std/StdJson.sol";
 import { ELTA } from "../src/token/ELTA.sol";
 import { ElataXP } from "../src/experience/ElataXP.sol";
 import { VeELTA } from "../src/staking/VeELTA.sol";
@@ -30,13 +31,13 @@ contract SeedLocalData is Script {
         string symbol;
     }
 
-    // Contract addresses (Anvil's deterministic addresses from deployment)
-    address constant ELTA_ADDRESS = 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512;
-    address constant XP_ADDRESS = 0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0;
-    address constant STAKING_ADDRESS = 0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9;
-    address constant FUNDING_ADDRESS = 0x0165878A594ca255338adfa4d48449f69242Eb8F;
-    address constant APP_FACTORY_ADDRESS = 0x610178dA211FEF7D417bC0e6FeD39F05609AD788;
-    address constant APP_MODULE_FACTORY_ADDRESS = 0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0;
+    // Addresses are loaded dynamically from deployments/local.json (written by Deploy.sol)
+    address ELTA_ADDRESS;
+    address XP_ADDRESS;
+    address STAKING_ADDRESS;
+    address FUNDING_ADDRESS;
+    address APP_FACTORY_ADDRESS;
+    address APP_MODULE_FACTORY_ADDRESS;
 
     function run() external {
         // Use Anvil account #0
@@ -48,6 +49,9 @@ contract SeedLocalData is Script {
         console2.log("\n=================================================");
         console2.log("       SEEDING LOCAL BLOCKCHAIN WITH DATA");
         console2.log("=================================================\n");
+
+        // Load addresses from deployments/local.json
+        _loadAddresses();
 
         // Step 1: Award XP to test users
         console2.log("[1/5] Awarding XP to test users...");
@@ -78,8 +82,36 @@ contract SeedLocalData is Script {
         _printSeedSummary(apps);
     }
 
+    function _loadAddresses() internal {
+        string memory root = vm.projectRoot();
+        string memory path = string.concat(root, "/deployments/local.json");
+        string memory json = vm.readFile(path);
+
+        // Read required addresses
+        ELTA_ADDRESS = stdJson.readAddress(json, ".contracts.ELTA");
+        XP_ADDRESS = stdJson.readAddress(json, ".contracts.ElataXP");
+        STAKING_ADDRESS = stdJson.readAddress(json, ".contracts.VeELTA");
+        FUNDING_ADDRESS = stdJson.readAddress(json, ".contracts.LotPool");
+        APP_FACTORY_ADDRESS = stdJson.readAddress(json, ".contracts.AppFactory");
+        APP_MODULE_FACTORY_ADDRESS = stdJson.readAddress(json, ".contracts.AppModuleFactory");
+
+        require(ELTA_ADDRESS != address(0), "ELTA address missing");
+        require(XP_ADDRESS != address(0), "XP address missing");
+        require(STAKING_ADDRESS != address(0), "VeELTA address missing");
+        require(FUNDING_ADDRESS != address(0), "LotPool address missing");
+        require(APP_MODULE_FACTORY_ADDRESS != address(0), "AppModuleFactory address missing");
+
+        // AppFactory is required for creating apps; allow zero to skip app creation
+        if (APP_FACTORY_ADDRESS == address(0)) {
+            console2.log("[WARN] AppFactory not deployed; skipping app creation steps");
+        }
+    }
+
     function _awardTestXP() internal {
         ElataXP xp = ElataXP(XP_ADDRESS);
+
+        console2.log("       XP contract at:", address(xp));
+        console2.log("       Sender:", msg.sender);
 
         // Test accounts
         address[] memory users = new address[](5);
@@ -97,7 +129,9 @@ contract SeedLocalData is Script {
         xpAmounts[3] = 800 ether; // Casual user
         xpAmounts[4] = 300 ether; // New user
 
+        console2.log("       Starting XP awards...");
         for (uint256 i = 0; i < users.length; i++) {
+            console2.log("       Awarding to user", i, ":", users[i]);
             xp.award(users[i], xpAmounts[i]);
             console2.log("       Awarded", xpAmounts[i] / 1 ether, "XP to", users[i]);
         }
@@ -107,34 +141,24 @@ contract SeedLocalData is Script {
         ELTA elta = ELTA(ELTA_ADDRESS);
         VeELTA staking = VeELTA(STAKING_ADDRESS);
 
-        address deployer = msg.sender;
+        // Create one staking position for the deployer
+        // NOTE: VeELTA only allows one lock per address
+        uint256 amount = 10000 ether; // 10K ELTA
+        uint256 duration = 104 weeks; // 2 years
 
-        // Create a few staking positions for the deployer
-        uint256[] memory amounts = new uint256[](3);
-        amounts[0] = 10000 ether; // 10K ELTA
-        amounts[1] = 5000 ether; // 5K ELTA
-        amounts[2] = 2500 ether; // 2.5K ELTA
-
-        uint256[] memory durations = new uint256[](3);
-        durations[0] = 104 weeks; // 2 years
-        durations[1] = 52 weeks; // 1 year
-        durations[2] = 26 weeks; // 6 months
-
-        for (uint256 i = 0; i < amounts.length; i++) {
-            elta.approve(address(staking), amounts[i]);
-            // NOTE: VeELTA API changed from createLock() to lock() (no tokenId returned)
-            staking.lock(amounts[i], uint64(block.timestamp + durations[i]));
-            console2.log(
-                "       Created lock #%s: %s ELTA for %s weeks",
-                i,
-                amounts[i] / 1 ether,
-                durations[i] / 1 weeks
-            );
-        }
+        elta.approve(address(staking), amount);
+        staking.lock(amount, uint64(block.timestamp + duration));
+        console2.log(
+            "       Created lock: %s ELTA for %s weeks", amount / 1 ether, duration / 1 weeks
+        );
     }
 
     function _createTestApps() internal returns (TestApp[] memory) {
         ELTA elta = ELTA(ELTA_ADDRESS);
+        if (APP_FACTORY_ADDRESS == address(0)) {
+            // If no factory, return empty array
+            return new TestApp[](0);
+        }
         AppFactory factory = AppFactory(APP_FACTORY_ADDRESS);
         AppModuleFactory moduleFactory = AppModuleFactory(APP_MODULE_FACTORY_ADDRESS);
 

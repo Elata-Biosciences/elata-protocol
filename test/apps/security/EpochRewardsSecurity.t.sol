@@ -459,7 +459,6 @@ contract EpochRewardsSecurityTest is Test {
 
         // For very small amounts, the fee might round down to 0
         if (claimAmount < 100) assertEq(actualReceived, claimAmount); // No fee for very small amounts
-
         else assertApproxEqRel(actualReceived, expectedReceived, 0.01e18); // 0.01% tolerance
     }
 

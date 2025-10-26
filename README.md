@@ -6,21 +6,52 @@ This repository contains the smart contracts that power Elata's token, staking, 
 
 > **Scope of this repo**: Token economics + staking + XP + funding governance. (ZORP experiment data contracts live in a separate repository.)
 
-##  Quick Start (Contracts Only)
+## 🚀 Quick Start
 
-Run a full local chain with contracts and seed data:
+**One command (recommended):**
 
 ```bash
-npm run dev
+bash scripts/dev-local.sh
 ```
 
-Connect MetaMask to Anvil (http://127.0.0.1:8545, Chain ID 31337). Default Anvil keys are printed by the scripts.
+This will:
+- ✅ Start Anvil (local blockchain)
+- ✅ Deploy all contracts
+- ✅ Seed test data (users, XP, apps, funding rounds)
+- ✅ Generate frontend configuration
 
-Essential docs:
-- Local development guide: docs/LOCAL_DEVELOPMENT.md
-- XP operations: docs/xp-ops.md and docs/xp-system.md
-- Contract architecture: docs/ARCHITECTURE.md
-- Testing: run `forge test` and see “Build, test, deploy” below
+**That's it!** Your local blockchain is ready with all contracts deployed.
+
+Alternative (npm):
+
+```bash
+npm run local:up
+```
+
+### Next Steps
+
+1. **Start the frontend:**
+   ```bash
+   cd ../elata-appstore
+   npm run local:full
+   ```
+
+2. **View deployed contracts:**
+   ```bash
+   cat deployments/local.json
+   ```
+
+3. **Connect MetaMask:**
+   - Network: `http://127.0.0.1:8545`
+   - Chain ID: `31337`
+   - Default Account: `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266`
+
+### Essential Documentation
+
+- **[QUICKSTART.md](./QUICKSTART.md)** - Complete setup guide
+- **[docs/LOCAL_DEVELOPMENT.md](./docs/LOCAL_DEVELOPMENT.md)** - Detailed local dev info
+- **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** - System architecture
+- **Testing:** Run `forge test`
 
 
 ##  What problem does the protocol solve?
@@ -1110,6 +1141,15 @@ npm run dev
 cd ../elata-appstore
 npm run local:full
 ```
+
+Prerequisites:
+
+- Foundry (forge, anvil, cast)
+- Node.js v18+
+- Git
+- Docker Desktop (required if you will run the App Store locally; it starts Postgres via docker compose)
+  - Verify: `docker --version` and `docker compose version`
+  - Make sure Docker Desktop is running before `npm run local:full` in `elata-appstore`
 
 This automatically:
 -  Starts Anvil (local blockchain)

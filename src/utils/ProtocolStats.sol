@@ -82,7 +82,7 @@ contract ProtocolStats {
             totalVotingPower: staking.balanceOf(user),
             pendingRewards: rewards.estimatePendingVeRewards(user),
             totalClaimedRewards: 0 // No longer tracked globally in new architecture
-         });
+        });
     }
 
     /**
@@ -203,11 +203,7 @@ contract ProtocolStats {
      * @param users Array of user addresses
      * @return Array of XP balances
      */
-    function getBatchXPBalances(address[] calldata users)
-        external
-        view
-        returns (uint256[] memory)
-    {
+    function getBatchXPBalances(address[] calldata users) external view returns (uint256[] memory) {
         uint256[] memory balances = new uint256[](users.length);
         for (uint256 i = 0; i < users.length; i++) {
             balances[i] = xp.balanceOf(users[i]);

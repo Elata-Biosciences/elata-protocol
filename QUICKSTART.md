@@ -1,161 +1,213 @@
-# Quick Start - Local Development
+# Elata Protocol - Quick Start Guide
 
-**Get up and running in 60 seconds**
+## 🚀 Local Development Setup (One Command)
 
-## Prerequisites
-
-- Foundry installed: `curl -L https://foundry.paradigm.xyz | bash && foundryup`
-- Node.js v18+: `node --version`
-
-## One Command Setup
+Get the entire Elata Protocol stack running locally in under 2 minutes:
 
 ```bash
-npm run dev
+npm run local:up
 ```
 
-This will:
-- Start Anvil (local blockchain)
-- Deploy all contracts
-- Create test apps (NeuroPong, MindfulBreath, FocusTrainer)
-- Fund 5 test accounts with 100K ELTA each
-- Award XP to users
-- Create staking positions
-- Start a funding round
-- Generate frontend configuration
+This single command will:
+1. ✅ Start Anvil (local Ethereum blockchain)
+2. ✅ Build all smart contracts
+3. ✅ Deploy all contracts (ELTA, AppFactory, Governance, etc.)
+4. ✅ Seed test data (users, XP, staking, apps, funding rounds)
+5. ✅ Generate frontend configuration
 
-## Connect the App Store Frontend
+**That's it!** Your local blockchain is now running with all contracts deployed.
+
+---
+
+## 📋 What Gets Deployed
+
+### Core Contracts
+- **ELTA Token**: ERC20 governance token
+- **ElataXP**: Non-transferable XP token for reputation
+- **VeELTA**: Vote-escrowed ELTA for governance voting power
+- **AppFactory**: Launch new app tokens with bonding curves
+- **AppModuleFactory**: Create app modules (tournaments, leaderboards, etc.)
+- **TournamentFactory**: Create competitive tournaments
+- **LotPool**: Funding rounds for research/development
+- **RewardsDistributor**: Distribute ELTA rewards (70/15/15 split)
+- **ElataGovernor**: On-chain governance
+- **ElataTimelock**: Timelock for governance execution
+
+### Test Data Seeded
+- 5 test users with XP (300-5000 XP each)
+- 1 staking position (10,000 ELTA locked for 2 years)
+- 3 test apps (NeuroPong, MindfulBreath, FocusTrainer)
+- 1 active funding round (10,000 ELTA pool)
+
+---
+
+## 🎮 Next Steps
+
+### Start the Frontend (App Store)
 
 ```bash
 cd ../elata-appstore
 npm run local:full
 ```
 
-Open http://localhost:3000 (App Store)
+The App Store will be available at `http://localhost:3001`
 
-## Test Account
-
-**MetaMask Setup:**
-1. Add network: Chain ID `31337`, RPC `http://127.0.0.1:8545`
-2. Import private key: `0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d`
-3. Account address: `0x70997970C51812dc3A010C7d01b50e0d17dc79C8`
-4. You now have 100K ELTA + 10K ETH!
-
-## What You Get
-
-### Test Apps (Pre-deployed)
--  **NeuroPong** - EEG Pong game
--  **MindfulBreath** - Meditation app  
--  **FocusTrainer** - Attention training
-
-Each app has:
-- Its own token with bonding curve
-- 3 item tiers (Basic, Premium, Legendary)
-- Staking vault
-- Rewards system
-
-### Test Users with XP
-- Account 1: 5,000 XP (power user)
-- Account 2: 3,000 XP (active user)
-- Account 3: 1,500 XP (regular user)
-- Account 4: 800 XP (casual user)
-- Account 5: 300 XP (new user)
-
-### Staking Positions
-- 10K ELTA locked for 2 years
-- 5K ELTA locked for 1 year
-- 2.5K ELTA locked for 6 months
-
-### Active Funding Round
-- 7-day voting period
-- 3 research options
-- 10K ELTA funding pool
-
-## 🛠️ Common Commands
-
-```bash
-npm run dev            # Start everything (protocol)
-npm run dev:stop       # Stop Anvil
-npm run dev:restart    # Restart everything
-cd ../elata-appstore && npm run local:full   # Start App Store frontend
-npm test               # Run tests (protocol)
-```
-
-## View Contract Addresses
-
-All addresses saved to: `deployments/local.json`
+### View Deployed Contract Addresses
 
 ```bash
 cat deployments/local.json
 ```
 
-Or use the TypeScript config in your frontend:
-```typescript
-import { contracts } from '@/config/contracts';
-console.log(contracts.ELTA); // Contract address
-```
+### Check Anvil Logs
 
-##  Troubleshooting
-
-### Port 8545 already in use?
 ```bash
-npm run dev:stop
-npm run dev
+tail -f anvil.log
 ```
 
-### Frontend can't connect?
+### Get ELTA Tokens for Testing
+
+Need ELTA to launch apps or test features? Use the faucet:
+
 ```bash
-npm run dev:config  # Regenerate config
+npm run faucet <your-wallet-address>
 ```
 
-### Nonce errors in MetaMask?
+This sends 10,000 ELTA from the deployer account to your address.
+
+**Example:**
 ```bash
-# In MetaMask: Settings → Advanced → Clear activity tab data
+npm run faucet 0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
 ```
 
-##  Full Documentation
-
-For detailed information, see:
-- **[Local Development Guide](docs/LOCAL_DEVELOPMENT.md)** - Complete reference
-- **[Architecture](docs/ARCHITECTURE.md)** - System design
-- **[Main README](README.md)** - Project overview
-
-## 🔗 Contract Addresses on Local
-
-After running `npm run dev`, you'll see addresses like:
-
-```
-CORE PROTOCOL:
-ELTA:              0x5FbDB2315678afecb367f032d93F642f64180aa3
-ElataXP:           0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
-VeELTA:            0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0
-LotPool:           0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
-...
-
-APP ECOSYSTEM:
-AppFactory:        0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9
-AppModuleFactory:  0x5FC8d32690cc91D4c39d9d3abcBD16989F875707
-...
-```
-
-Use these addresses in your frontend or testing scripts!
-
-##  Next Steps
-
-1.  Run `npm run dev` (you've done this!)
-2.  Start appstore: `cd ../elata-appstore && npm run local:full`
-3. 🔗 Connect MetaMask to localhost:8545
-4.  Start building!
-
-##  Pro Tips
-
-- Use different test accounts for different user types
-- Check `anvil.log` for blockchain activity
-- Run `npm run dev:seed` again to reset test data
-- All data resets when you stop Anvil
+**Note:** The faucet only works on local network (chainId 31337) for safety.
 
 ---
 
-**Ready to build? Let's go! **
+## 🛠️ Available Commands
 
-Questions? Check the [full guide](docs/LOCAL_DEVELOPMENT.md) or open an issue.
+### Primary Commands
 
+| Command | Description |
+|---------|-------------|
+| `npm run local:up` | **Start everything** (Anvil + Deploy + Seed) |
+| `npm run local:down` | **Stop everything** (Anvil + cleanup) |
+| `npm run local:restart` | **Restart** (Down + Up) |
+
+### Individual Steps (Advanced)
+
+| Command | Description |
+|---------|-------------|
+| `npm run anvil:start` | Start Anvil only |
+| `npm run deploy:local` | Deploy contracts only |
+| `npm run seed:local` | Seed test data only |
+| `npm run config:appstore` | Generate frontend config only |
+
+### Testnet Deployment
+
+| Command | Description |
+|---------|-------------|
+| `npm run deploy:sepolia` | Deploy to Sepolia testnet |
+| `npm run deploy:base-sepolia` | Deploy to Base Sepolia |
+
+---
+
+## 🔧 Troubleshooting
+
+### Anvil Won't Start
+
+```bash
+# Kill any existing Anvil process
+pkill -9 anvil
+
+# Try starting again
+npm run local:up
+```
+
+### Contracts Won't Deploy
+
+```bash
+# Clean build artifacts and try again
+forge clean
+npm run local:up
+```
+
+### Frontend Can't Connect
+
+```bash
+# Regenerate frontend configuration
+npm run config:appstore
+
+# Copy to appstore
+cd ../elata-appstore
+npm run sync-abi
+```
+
+### Check Deployment Status
+
+```bash
+# View deployment logs
+cat broadcast/Deploy.sol/31337/run-latest.json | jq
+
+# Check if contracts have code
+cast code <CONTRACT_ADDRESS> --rpc-url http://127.0.0.1:8545
+```
+
+---
+
+## 📚 Additional Resources
+
+- **Full Documentation**: See `docs/LOCAL_DEVELOPMENT.md` for detailed information
+- **Architecture**: See `docs/ARCHITECTURE.md` for system design
+- **Testing**: See `docs/TESTING.md` for running tests
+- **Deployment**: See `docs/DEPLOYMENT.md` for production deployment
+
+---
+
+## ⚠️ Important Notes
+
+### Contract Size Limits
+
+Some contracts (AppModuleFactory) exceed the EIP-170 24KB limit. This is:
+- ✅ **Safe for local development** (Anvil allows it)
+- ✅ **Safe for L2 deployment** (Base, Arbitrum, Optimism)
+- ⚠️ **May need optimization** for Ethereum mainnet
+
+### Anvil Configuration
+
+Anvil is started with:
+- Chain ID: `31337`
+- Port: `8545`
+- `--disable-code-size-limit` (allows oversized contracts)
+- 10 pre-funded accounts with 10,000 ETH each
+
+### Default Accounts
+
+Account #0 (Deployer):
+- Address: `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266`
+- Private Key: `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`
+- Balance: 10,000 ETH
+
+---
+
+## 🤝 Contributing
+
+When making changes:
+
+1. **Test locally first**: `npm run local:up`
+2. **Run tests**: `forge test`
+3. **Check gas usage**: `forge test --gas-report`
+4. **Verify deployment**: Check `deployments/local.json`
+
+---
+
+## 📞 Support
+
+Having issues? Check:
+1. This quickstart guide
+2. `docs/LOCAL_DEVELOPMENT.md` for detailed setup
+3. `docs/TROUBLESHOOTING.md` for common issues
+4. GitHub Issues for known problems
+
+---
+
+**Happy Building! 🚀**

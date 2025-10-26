@@ -117,7 +117,9 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
         address _treasury,
         address _admin
     ) {
-        if (address(_elta) == address(0)) revert Errors.ZeroAddress();
+        if (address(_elta) == address(0)) {
+            revert Errors.ZeroAddress();
+        }
         if (address(_veELTA) == address(0)) revert Errors.ZeroAddress();
         if (address(_appRewardsDistributor) == address(0)) revert Errors.ZeroAddress();
         if (_treasury == address(0)) revert Errors.ZeroAddress();
@@ -370,11 +372,7 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
      * @return blockNumber Snapshot block
      * @return amount ELTA allocated
      */
-    function getEpoch(uint256 epochId)
-        external
-        view
-        returns (uint256 blockNumber, uint256 amount)
-    {
+    function getEpoch(uint256 epochId) external view returns (uint256 blockNumber, uint256 amount) {
         if (epochId >= veEpochs.length) return (0, 0);
         Epoch storage epoch = veEpochs[epochId];
         return (epoch.blockNumber, epoch.amount);

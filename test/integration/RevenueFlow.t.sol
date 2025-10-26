@@ -133,7 +133,7 @@ contract RevenueFlowTest is Test {
         uint256 expectedAppAmount = (tradingFee * BIPS_APP) / 10_000; // 70 ELTA
         uint256 expectedVeAmount = (tradingFee * BIPS_VEELTA) / 10_000; // 15 ELTA
         uint256 expectedTreasuryAmount = tradingFee - expectedAppAmount - expectedVeAmount; // 15
-            // ELTA
+        // ELTA
 
         // Treasury should have received immediately
         assertEq(elta.balanceOf(treasury), treasuryBalanceBefore + expectedTreasuryAmount);

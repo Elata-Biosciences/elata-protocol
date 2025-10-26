@@ -10,10 +10,12 @@ import { AppStakingVault } from "../AppStakingVault.sol";
  * @dev Separated to reduce AppDeploymentLib size
  */
 library AppVaultDeployer {
-    function deployVault(string calldata name, string calldata symbol, address token, address owner)
-        external
-        returns (address)
-    {
+    function deployVault(
+        string calldata name,
+        string calldata symbol,
+        address token,
+        address owner
+    ) external returns (address) {
         return address(new AppStakingVault(name, symbol, IERC20(token), owner));
     }
 }

@@ -129,10 +129,7 @@ contract AppAccess1155SecurityTest is Test {
         access.setFeatureGate(
             keccak256("premium"),
             AppAccess1155.FeatureGate({
-                minStake: 1000 ether,
-                requiredItem: 0,
-                requireBoth: false,
-                active: true
+                minStake: 1000 ether, requiredItem: 0, requireBoth: false, active: true
             })
         );
     }

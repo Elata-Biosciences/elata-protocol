@@ -53,7 +53,9 @@ contract ELTA is ERC20, ERC20Burnable, ERC20Permit, ERC20Votes, AccessControl {
         uint256 initialMint,
         uint256 maxSupply_
     ) ERC20(name_, symbol_) ERC20Permit(name_) {
-        if (admin_ == address(0) || initialRecipient == address(0)) revert Errors.ZeroAddress();
+        if (admin_ == address(0) || initialRecipient == address(0)) {
+            revert Errors.ZeroAddress();
+        }
         _grantRole(DEFAULT_ADMIN_ROLE, admin_);
         _grantRole(MINTER_ROLE, admin_);
 
@@ -91,10 +93,7 @@ contract ELTA is ERC20, ERC20Burnable, ERC20Permit, ERC20Votes, AccessControl {
      * @dev Enforces supply cap when minting (from == address(0))
      * @dev Updates vote checkpoints for governance functionality
      */
-    function _update(address from, address to, uint256 value)
-        internal
-        override(ERC20, ERC20Votes)
-    {
+    function _update(address from, address to, uint256 value) internal override(ERC20, ERC20Votes) {
         if (from == address(0)) {
             // Minting: check supply cap
             if (MAX_SUPPLY != 0 && (totalSupply() + value > MAX_SUPPLY)) {

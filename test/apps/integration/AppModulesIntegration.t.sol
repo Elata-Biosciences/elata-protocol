@@ -169,10 +169,7 @@ contract AppModulesIntegrationTest is Test {
         access.setFeatureGate(
             premiumFeature,
             AppAccess1155.FeatureGate({
-                minStake: 500 ether,
-                requiredItem: 1,
-                requireBoth: true,
-                active: true
+                minStake: 500 ether, requiredItem: 1, requireBoth: true, active: true
             })
         );
 
@@ -207,10 +204,7 @@ contract AppModulesIntegrationTest is Test {
         access.setFeatureGate(
             tourneyAccess,
             AppAccess1155.FeatureGate({
-                minStake: 100 ether,
-                requiredItem: 0,
-                requireBoth: false,
-                active: true
+                minStake: 100 ether, requiredItem: 0, requireBoth: false, active: true
             })
         );
 
@@ -353,10 +347,7 @@ contract AppModulesIntegrationTest is Test {
         access.setFeatureGate(
             premium,
             AppAccess1155.FeatureGate({
-                minStake: 1000 ether,
-                requiredItem: 0,
-                requireBoth: false,
-                active: true
+                minStake: 1000 ether, requiredItem: 0, requireBoth: false, active: true
             })
         );
 
@@ -446,10 +437,7 @@ contract AppModulesIntegrationTest is Test {
         access.setFeatureGate(
             keccak256("bronze"),
             AppAccess1155.FeatureGate({
-                minStake: 0,
-                requiredItem: 1,
-                requireBoth: false,
-                active: true
+                minStake: 0, requiredItem: 1, requireBoth: false, active: true
             })
         );
 
@@ -457,10 +445,7 @@ contract AppModulesIntegrationTest is Test {
         access.setFeatureGate(
             keccak256("silver"),
             AppAccess1155.FeatureGate({
-                minStake: 100 ether,
-                requiredItem: 2,
-                requireBoth: true,
-                active: true
+                minStake: 100 ether, requiredItem: 2, requireBoth: true, active: true
             })
         );
 
@@ -468,10 +453,7 @@ contract AppModulesIntegrationTest is Test {
         access.setFeatureGate(
             keccak256("gold"),
             AppAccess1155.FeatureGate({
-                minStake: 500 ether,
-                requiredItem: 3,
-                requireBoth: true,
-                active: true
+                minStake: 500 ether, requiredItem: 3, requireBoth: true, active: true
             })
         );
         vm.stopPrank();

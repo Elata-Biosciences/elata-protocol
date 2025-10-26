@@ -254,16 +254,17 @@ contract AppModuleFactoryTest is Test {
 
         // Configure an item
         vm.prank(appCreator);
-        AppAccess1155(access1155).setItem(
-            1, // id
-            100 ether, // price
-            false, // not soulbound
-            true, // active
-            0, // no start time
-            0, // no end time
-            100, // max supply
-            "ipfs://item1"
-        );
+        AppAccess1155(access1155)
+            .setItem(
+                1, // id
+                100 ether, // price
+                false, // not soulbound
+                true, // active
+                0, // no start time
+                0, // no end time
+                100, // max supply
+                "ipfs://item1"
+            );
 
         // Verify item was configured
         (uint256 price,, bool active,,,,,) = AppAccess1155(access1155).items(1);

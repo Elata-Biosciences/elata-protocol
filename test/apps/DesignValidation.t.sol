@@ -219,10 +219,7 @@ contract DesignValidationTest is Test {
         access.setFeatureGate(
             featureId,
             AppAccess1155.FeatureGate({
-                minStake: 1000 ether,
-                requiredItem: 1,
-                requireBoth: true,
-                active: true
+                minStake: 1000 ether, requiredItem: 1, requireBoth: true, active: true
             })
         );
 

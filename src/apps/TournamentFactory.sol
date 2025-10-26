@@ -202,11 +202,7 @@ contract TournamentFactory is Ownable {
      * @param tournamentId Tournament ID
      * @return Tournament info struct
      */
-    function getTournamentInfo(uint256 tournamentId)
-        external
-        view
-        returns (TournamentInfo memory)
-    {
+    function getTournamentInfo(uint256 tournamentId) external view returns (TournamentInfo memory) {
         return tournaments[tournamentId];
     }
 }

@@ -400,9 +400,8 @@ contract AppBondingCurve is ReentrancyGuard {
         );
 
         // Notify factory
-        IAppFactory(appFactory).onAppGraduated(
-            appId, pair, locker, lpUnlockAt, reserveElta, reserveToken
-        );
+        IAppFactory(appFactory)
+            .onAppGraduated(appId, pair, locker, lpUnlockAt, reserveElta, reserveToken);
 
         // Clear reserves (all moved to LP)
         reserveElta = 0;

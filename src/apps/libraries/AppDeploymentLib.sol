@@ -41,10 +41,12 @@ library AppDeploymentLib {
         );
     }
 
-    function deployVault(string calldata name, string calldata symbol, address token, address owner)
-        external
-        returns (address)
-    {
+    function deployVault(
+        string calldata name,
+        string calldata symbol,
+        address token,
+        address owner
+    ) external returns (address) {
         return AppVaultDeployer.deployVault(name, symbol, token, owner);
     }
 

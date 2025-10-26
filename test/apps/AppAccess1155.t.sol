@@ -293,10 +293,7 @@ contract AppAccess1155Test is Test {
         bytes32 featureId = keccak256("premium_mode");
 
         AppAccess1155.FeatureGate memory gate = AppAccess1155.FeatureGate({
-            minStake: 1000 ether,
-            requiredItem: 1,
-            requireBoth: true,
-            active: true
+            minStake: 1000 ether, requiredItem: 1, requireBoth: true, active: true
         });
 
         vm.expectEmit(true, true, true, true);
@@ -318,10 +315,7 @@ contract AppAccess1155Test is Test {
         bytes32 featureId = keccak256("premium_mode");
 
         AppAccess1155.FeatureGate memory gate = AppAccess1155.FeatureGate({
-            minStake: 1000 ether,
-            requiredItem: 0,
-            requireBoth: false,
-            active: true
+            minStake: 1000 ether, requiredItem: 0, requireBoth: false, active: true
         });
 
         vm.expectRevert();

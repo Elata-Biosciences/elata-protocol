@@ -186,8 +186,9 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl, ReentrancyGua
 
         // Construct the struct hash and message digest as per EIP-712
         uint256 currentNonce = operatorNonces[operator];
-        bytes32 structHash =
-            keccak256(abi.encode(XPUPDATE_TYPEHASH, operator, user, amount, currentNonce, deadline));
+        bytes32 structHash = keccak256(
+            abi.encode(XPUPDATE_TYPEHASH, operator, user, amount, currentNonce, deadline)
+        );
         bytes32 hash = _hashTypedDataV4(structHash);
 
         // Recover the signer
@@ -221,10 +222,7 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl, ReentrancyGua
     /**
      * @dev Override to disable transfers (soulbound)
      */
-    function _update(address from, address to, uint256 value)
-        internal
-        override(ERC20, ERC20Votes)
-    {
+    function _update(address from, address to, uint256 value) internal override(ERC20, ERC20Votes) {
         if (from != address(0) && to != address(0)) revert Errors.TransfersDisabled();
         super._update(from, to, value);
     }
