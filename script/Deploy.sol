@@ -1,26 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { AppFactory } from "../src/apps/AppFactory.sol";
-import { AppModuleFactory } from "../src/apps/AppModuleFactory.sol";
-import { TournamentFactory } from "../src/apps/TournamentFactory.sol";
-import { ElataXP } from "../src/experience/ElataXP.sol";
-import { AppFeeRouter } from "../src/fees/AppFeeRouter.sol";
-import { ElataGovernor } from "../src/governance/ElataGovernor.sol";
-import { ElataTimelock } from "../src/governance/ElataTimelock.sol";
-import { LotPool } from "../src/governance/LotPool.sol";
-import { IAppFeeRouter } from "../src/interfaces/IAppFeeRouter.sol";
-import { IAppRewardsDistributor } from "../src/interfaces/IAppRewardsDistributor.sol";
-import { IElataXP } from "../src/interfaces/IElataXP.sol";
-import { IRewardsDistributor } from "../src/interfaces/IRewardsDistributor.sol";
-import { IUniswapV2Router02 } from "../src/interfaces/IUniswapV2Router02.sol";
-import { IVeEltaVotes } from "../src/interfaces/IVeEltaVotes.sol";
-import { AppRewardsDistributor } from "../src/rewards/AppRewardsDistributor.sol";
-import { RewardsDistributor } from "../src/rewards/RewardsDistributor.sol";
-import { VeELTA } from "../src/staking/VeELTA.sol";
-import { ELTA } from "../src/token/ELTA.sol";
-import { TimelockController } from "@openzeppelin/contracts/governance/TimelockController.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {AppFactory} from "../src/apps/AppFactory.sol";
+import {AppModuleFactory} from "../src/apps/AppModuleFactory.sol";
+import {TournamentFactory} from "../src/apps/TournamentFactory.sol";
+import {ElataXP} from "../src/experience/ElataXP.sol";
+import {AppFeeRouter} from "../src/fees/AppFeeRouter.sol";
+import {ElataGovernor} from "../src/governance/ElataGovernor.sol";
+import {ElataTimelock} from "../src/governance/ElataTimelock.sol";
+import {LotPool} from "../src/governance/LotPool.sol";
+import {IAppFeeRouter} from "../src/interfaces/IAppFeeRouter.sol";
+import {IAppRewardsDistributor} from "../src/interfaces/IAppRewardsDistributor.sol";
+import {IElataXP} from "../src/interfaces/IElataXP.sol";
+import {IRewardsDistributor} from "../src/interfaces/IRewardsDistributor.sol";
+import {IUniswapV2Router02} from "../src/interfaces/IUniswapV2Router02.sol";
+import {IVeEltaVotes} from "../src/interfaces/IVeEltaVotes.sol";
+import {AppRewardsDistributor} from "../src/rewards/AppRewardsDistributor.sol";
+import {RewardsDistributor} from "../src/rewards/RewardsDistributor.sol";
+import {VeELTA} from "../src/staking/VeELTA.sol";
+import {ELTA} from "../src/token/ELTA.sol";
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "forge-std/Script.sol";
 
 /**
@@ -47,9 +47,7 @@ import "forge-std/Script.sol";
 contract MockUniswapV2Router {
     address public immutable factory;
 
-    constructor(
-        address _factory
-    ) {
+    constructor(address _factory) {
         factory = _factory;
     }
 }
@@ -58,10 +56,7 @@ contract MockUniswapV2Factory {
     mapping(address => mapping(address => address)) public getPair;
     address[] public allPairs;
 
-    function createPair(
-        address tokenA,
-        address tokenB
-    ) external returns (address pair) {
+    function createPair(address tokenA, address tokenB) external returns (address pair) {
         pair = address(uint160(uint256(keccak256(abi.encodePacked(tokenA, tokenB, block.timestamp)))));
         getPair[tokenA][tokenB] = pair;
         getPair[tokenB][tokenA] = pair;
@@ -168,7 +163,13 @@ contract Deploy is Script {
         console2.log("   AppRewardsDistributor deployed at:", address(protocol.appRewardsDistributor));
 
         // 5b. RewardsDistributor (central hub with 70/15/15 split)
-        protocol.rewards = new RewardsDistributor(protocol.token, IVeEltaVotes(address(protocol.staking)), IAppRewardsDistributor(address(protocol.appRewardsDistributor)), treasury, admin);
+        protocol.rewards = new RewardsDistributor(
+            protocol.token,
+            IVeEltaVotes(address(protocol.staking)),
+            IAppRewardsDistributor(address(protocol.appRewardsDistributor)),
+            treasury,
+            admin
+        );
         console2.log("   RewardsDistributor deployed at:", address(protocol.rewards));
         console2.log("   - 70% to app stakers");
         console2.log("   - 15% to veELTA stakers");
@@ -191,7 +192,9 @@ contract Deploy is Script {
             console2.log("   Using local MockUniswapV2Router:", routerAddress);
         }
         // For non-local networks, require explicit router
-        if (block.chainid != 31337 && routerAddress == address(0)) revert("UNISWAP_V2_ROUTER not set for this network");
+        if (block.chainid != 31337 && routerAddress == address(0)) {
+            revert("UNISWAP_V2_ROUTER not set for this network");
+        }
 
         if (routerAddress != address(0)) {
             // Deploy AppFactory with full parameters
@@ -267,9 +270,7 @@ contract Deploy is Script {
     /**
      * @dev Configures initial permissions and roles
      */
-    function _configurePermissions(
-        ProtocolContracts memory protocol
-    ) internal {
+    function _configurePermissions(ProtocolContracts memory protocol) internal {
         // Governance: Grant proposer/executor roles to governor
         protocol.timelock.grantRole(protocol.timelock.PROPOSER_ROLE(), address(protocol.governor));
         protocol.timelock.grantRole(protocol.timelock.EXECUTOR_ROLE(), address(protocol.governor));
@@ -293,15 +294,16 @@ contract Deploy is Script {
         protocol.rewards.grantRole(protocol.rewards.DISTRIBUTOR_ROLE(), address(protocol.appFeeRouter));
 
         // AppRewards: Grant FACTORY_ROLE to AppFactory
-        if (address(protocol.appFactory) != address(0)) protocol.appRewardsDistributor.grantRole(protocol.appRewardsDistributor.FACTORY_ROLE(), address(protocol.appFactory));
+        if (address(protocol.appFactory) != address(0)) {
+            protocol.appRewardsDistributor
+                .grantRole(protocol.appRewardsDistributor.FACTORY_ROLE(), address(protocol.appFactory));
+        }
     }
 
     /**
      * @dev Saves deployment addresses to JSON file
      */
-    function _saveDeploymentAddresses(
-        ProtocolContracts memory protocol
-    ) internal {
+    function _saveDeploymentAddresses(ProtocolContracts memory protocol) internal {
         // Build JSON string (match structure used by local deploy for appstore tooling)
         string memory json = string.concat(
             "{\n",
@@ -387,9 +389,7 @@ contract Deploy is Script {
     /**
      * @dev Logs all deployment addresses for verification
      */
-    function _logDeployment(
-        ProtocolContracts memory protocol
-    ) internal view {
+    function _logDeployment(ProtocolContracts memory protocol) internal view {
         console2.log("\n=== DEPLOYMENT COMPLETE ===");
         console2.log("ELTA Token:              ", address(protocol.token));
         console2.log("ElataXP:                 ", address(protocol.xp));
@@ -409,7 +409,9 @@ contract Deploy is Script {
         console2.log("\n=== NEXT STEPS ===");
         console2.log("1. Verify contracts on block explorer");
         console2.log("2. Test end-to-end on testnet");
-        console2.log("3. Update appstore env/ABIs with contract addresses (npm run dev:config, then npm run sync-abi in elata-appstore)");
+        console2.log(
+            "3. Update appstore env/ABIs with contract addresses (npm run dev:config, then npm run sync-abi in elata-appstore)"
+        );
         console2.log("4. Grant additional roles as needed");
         console2.log("==================");
     }

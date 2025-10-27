@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { AppToken } from "../../../src/apps/AppToken.sol";
+import {AppToken} from "../../../src/apps/AppToken.sol";
 import "forge-std/Test.sol";
 
 /**
@@ -20,7 +20,9 @@ contract AppTokenSecurityTest is Test {
     uint256 public constant MAX_SUPPLY = 1_000_000_000 ether;
 
     function setUp() public {
-        token = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, creator, admin, address(1), address(1), address(1), address(1));
+        token = new AppToken(
+            "TestApp", "TEST", 18, MAX_SUPPLY, creator, admin, address(1), address(1), address(1), address(1)
+        );
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -80,10 +82,7 @@ contract AppTokenSecurityTest is Test {
         vm.stopPrank();
     }
 
-    function testFuzz_Security_SupplyNeverExceedsCap(
-        uint256 amount1,
-        uint256 amount2
-    ) public {
+    function testFuzz_Security_SupplyNeverExceedsCap(uint256 amount1, uint256 amount2) public {
         amount1 = bound(amount1, 1, MAX_SUPPLY);
         amount2 = bound(amount2, 1, MAX_SUPPLY);
 
@@ -236,10 +235,7 @@ contract AppTokenSecurityTest is Test {
         assertEq(token.balanceOf(user1), 500 ether); // Sender pays full amount
     }
 
-    function testFuzz_Security_TransferPreservesSupply(
-        uint256 mintAmount,
-        uint256 transferAmount
-    ) public {
+    function testFuzz_Security_TransferPreservesSupply(uint256 mintAmount, uint256 transferAmount) public {
         mintAmount = bound(mintAmount, 1, MAX_SUPPLY);
         transferAmount = bound(transferAmount, 0, mintAmount);
 

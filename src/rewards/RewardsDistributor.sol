@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { Errors } from "../utils/Errors.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Errors} from "../utils/Errors.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title RewardsDistributor
@@ -33,8 +33,8 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
  * - Cursor tracking for efficiency
  * - Emergency pause capability
  */
-import { IAppRewardsDistributor } from "../interfaces/IAppRewardsDistributor.sol";
-import { IVeEltaVotes } from "../interfaces/IVeEltaVotes.sol";
+import {IAppRewardsDistributor} from "../interfaces/IAppRewardsDistributor.sol";
+import {IVeEltaVotes} from "../interfaces/IVeEltaVotes.sol";
 
 contract RewardsDistributor is ReentrancyGuard, AccessControl {
     using SafeERC20 for IERC20;
@@ -78,11 +78,15 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
     /// @notice Paused state
     bool public paused;
 
-    event RevenueSplit(uint256 indexed blockNumber, uint256 totalAmount, uint256 appAmount, uint256 veAmount, uint256 treasuryAmount);
+    event RevenueSplit(
+        uint256 indexed blockNumber, uint256 totalAmount, uint256 appAmount, uint256 veAmount, uint256 treasuryAmount
+    );
     event VeEpochCreated(uint256 indexed epochId, uint256 blockNumber, uint256 amount);
     event VeRewardsClaimed(address indexed user, uint256 fromEpoch, uint256 toEpoch, uint256 amount);
     event VeTokenEpochCreated(address indexed token, uint256 indexed epochId, uint256 blockNumber, uint256 amount);
-    event VeTokenRewardsClaimed(address indexed user, address indexed token, uint256 fromEpoch, uint256 toEpoch, uint256 amount);
+    event VeTokenRewardsClaimed(
+        address indexed user, address indexed token, uint256 fromEpoch, uint256 toEpoch, uint256 amount
+    );
     event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury);
     event EmergencyPause(bool paused);
 
@@ -134,9 +138,7 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
      * @dev Splits 70% app / 15% veELTA / 15% treasury
      * @param amount Total ELTA revenue to distribute
      */
-    function deposit(
-        uint256 amount
-    ) external nonReentrant whenNotPaused {
+    function deposit(uint256 amount) external nonReentrant whenNotPaused {
         if (amount == 0) revert Errors.InvalidAmount();
 
         ELTA.safeTransferFrom(msg.sender, address(this), amount);
@@ -151,7 +153,7 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
         appRewardsDistributor.distribute(appAmount);
 
         // 2) Record veELTA epoch (15%)
-        veEpochs.push(Epoch({ blockNumber: block.number, amount: veAmount }));
+        veEpochs.push(Epoch({blockNumber: block.number, amount: veAmount}));
         emit VeEpochCreated(veEpochs.length - 1, block.number, veAmount);
 
         // 3) Transfer to treasury (15%)
@@ -166,10 +168,7 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
      * @param fromEpoch Starting epoch index
      * @param toEpoch Ending epoch index (exclusive)
      */
-    function claimVe(
-        uint256 fromEpoch,
-        uint256 toEpoch
-    ) external nonReentrant whenNotPaused {
+    function claimVe(uint256 fromEpoch, uint256 toEpoch) external nonReentrant whenNotPaused {
         uint256 totalEpochs = veEpochs.length;
         if (fromEpoch >= totalEpochs) return;
 
@@ -217,16 +216,13 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
      * @param token Token address
      * @param amount Amount to deposit
      */
-    function depositVeInToken(
-        IERC20 token,
-        uint256 amount
-    ) external whenNotPaused {
+    function depositVeInToken(IERC20 token, uint256 amount) external whenNotPaused {
         if (amount == 0) revert Errors.InvalidAmount();
         require(address(token) != address(0), "Zero token");
 
         token.safeTransferFrom(msg.sender, address(this), amount);
 
-        tokenEpochs[token].push(Epoch({ blockNumber: block.number, amount: amount }));
+        tokenEpochs[token].push(Epoch({blockNumber: block.number, amount: amount}));
 
         emit VeTokenEpochCreated(address(token), tokenEpochs[token].length - 1, block.number, amount);
     }
@@ -238,11 +234,7 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
      * @param fromEpoch Starting epoch index
      * @param toEpoch Ending epoch index (exclusive)
      */
-    function claimVeToken(
-        IERC20 token,
-        uint256 fromEpoch,
-        uint256 toEpoch
-    ) external nonReentrant whenNotPaused {
+    function claimVeToken(IERC20 token, uint256 fromEpoch, uint256 toEpoch) external nonReentrant whenNotPaused {
         Epoch[] storage epochs = tokenEpochs[token];
         uint256 totalEpochs = epochs.length;
         if (fromEpoch >= totalEpochs) return;
@@ -279,9 +271,7 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
      * @notice Convenience function to claim token rewards from last claimed to latest
      * @param token Token to claim
      */
-    function claimVeTokenFromLast(
-        IERC20 token
-    ) external {
+    function claimVeTokenFromLast(IERC20 token) external {
         uint256 fromEpoch = tokenLastClaimed[msg.sender][token];
         uint256 toEpoch = tokenEpochs[token].length;
         this.claimVeToken(token, fromEpoch, toEpoch);
@@ -291,9 +281,7 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
      * @notice Update treasury address (governance only)
      * @param newTreasury New treasury address
      */
-    function setTreasury(
-        address newTreasury
-    ) external onlyRole(TREASURY_ROLE) {
+    function setTreasury(address newTreasury) external onlyRole(TREASURY_ROLE) {
         if (newTreasury == address(0)) revert Errors.ZeroAddress();
 
         emit TreasuryUpdated(treasury, newTreasury);
@@ -304,9 +292,7 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
      * @notice Emergency pause/unpause
      * @param _paused New pause state
      */
-    function setPaused(
-        bool _paused
-    ) external onlyRole(PAUSER_ROLE) {
+    function setPaused(bool _paused) external onlyRole(PAUSER_ROLE) {
         paused = _paused;
         emit EmergencyPause(_paused);
     }
@@ -325,9 +311,7 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
      * @return fromEpoch Starting epoch
      * @return toEpoch Ending epoch (exclusive)
      */
-    function getUnclaimedRange(
-        address user
-    ) external view returns (uint256 fromEpoch, uint256 toEpoch) {
+    function getUnclaimedRange(address user) external view returns (uint256 fromEpoch, uint256 toEpoch) {
         fromEpoch = lastClaimed[user];
         toEpoch = veEpochs.length;
     }
@@ -338,9 +322,7 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
      * @param user User address
      * @return estimated Estimated claimable amount
      */
-    function estimatePendingVeRewards(
-        address user
-    ) external view returns (uint256 estimated) {
+    function estimatePendingVeRewards(address user) external view returns (uint256 estimated) {
         uint256 fromEpoch = lastClaimed[user];
         uint256 endEpoch = veEpochs.length;
 
@@ -366,9 +348,7 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
      * @return blockNumber Snapshot block
      * @return amount ELTA allocated
      */
-    function getEpoch(
-        uint256 epochId
-    ) external view returns (uint256 blockNumber, uint256 amount) {
+    function getEpoch(uint256 epochId) external view returns (uint256 blockNumber, uint256 amount) {
         if (epochId >= veEpochs.length) return (0, 0);
         Epoch storage epoch = veEpochs[epochId];
         return (epoch.blockNumber, epoch.amount);
@@ -380,10 +360,7 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
      * @param count Number of epochs to fetch
      * @return epochs Array of epochs
      */
-    function getEpochsBatch(
-        uint256 startId,
-        uint256 count
-    ) external view returns (Epoch[] memory epochs) {
+    function getEpochsBatch(uint256 startId, uint256 count) external view returns (Epoch[] memory epochs) {
         uint256 totalEpochs = veEpochs.length;
         if (startId >= totalEpochs) return new Epoch[](0);
 

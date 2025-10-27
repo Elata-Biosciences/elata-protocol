@@ -11,10 +11,7 @@ interface IAppToken {
      * @param account Address to burn tokens from
      * @param amount Amount of tokens to burn
      */
-    function burnFrom(
-        address account,
-        uint256 amount
-    ) external;
+    function burnFrom(address account, uint256 amount) external;
 
     /**
      * @notice Returns the number of decimals used by the token

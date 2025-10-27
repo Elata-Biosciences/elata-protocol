@@ -1,18 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { AppBondingCurve } from "../../src/apps/AppBondingCurve.sol";
-import { AppFactory } from "../../src/apps/AppFactory.sol";
-import { AppFactoryViews } from "../../src/apps/AppFactoryViews.sol";
-import { AppStakingVault } from "../../src/apps/AppStakingVault.sol";
-import { AppToken } from "../../src/apps/AppToken.sol";
-import { LpLocker } from "../../src/apps/LpLocker.sol";
-import { IAppFeeRouter } from "../../src/interfaces/IAppFeeRouter.sol";
-import { IAppRewardsDistributor } from "../../src/interfaces/IAppRewardsDistributor.sol";
-import { IRewardsDistributor } from "../../src/interfaces/IRewardsDistributor.sol";
-import { IUniswapV2Router02 } from "../../src/interfaces/IUniswapV2Router02.sol";
-import { ELTA } from "../../src/token/ELTA.sol";
-import { MockAppFeeRouter, MockAppRewardsDistributor, MockElataXP, MockRewardsDistributor } from "../mocks/MockContracts.sol";
+import {AppBondingCurve} from "../../src/apps/AppBondingCurve.sol";
+import {AppFactory} from "../../src/apps/AppFactory.sol";
+import {AppFactoryViews} from "../../src/apps/AppFactoryViews.sol";
+import {AppStakingVault} from "../../src/apps/AppStakingVault.sol";
+import {AppToken} from "../../src/apps/AppToken.sol";
+import {LpLocker} from "../../src/apps/LpLocker.sol";
+import {IAppFeeRouter} from "../../src/interfaces/IAppFeeRouter.sol";
+import {IAppRewardsDistributor} from "../../src/interfaces/IAppRewardsDistributor.sol";
+import {IRewardsDistributor} from "../../src/interfaces/IRewardsDistributor.sol";
+import {IUniswapV2Router02} from "../../src/interfaces/IUniswapV2Router02.sol";
+import {ELTA} from "../../src/token/ELTA.sol";
+import {
+    MockAppFeeRouter,
+    MockAppRewardsDistributor,
+    MockElataXP,
+    MockRewardsDistributor
+} from "../mocks/MockContracts.sol";
 import "forge-std/Test.sol";
 
 /**
@@ -89,7 +94,11 @@ contract AppLaunchIntegrationTest is Test {
 
         vm.mockCall(mockFactory, abi.encodeWithSignature("createPair(address,address)"), abi.encode(mockPair));
 
-        vm.mockCall(mockRouter, abi.encodeWithSignature("addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint256)"), abi.encode(500_000 ether, 900 ether, 1000 ether));
+        vm.mockCall(
+            mockRouter,
+            abi.encodeWithSignature("addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint256)"),
+            abi.encode(500_000 ether, 900 ether, 1000 ether)
+        );
 
         vm.mockCall(mockPair, abi.encodeWithSignature("balanceOf(address)"), abi.encode(1000 ether));
 
@@ -150,9 +159,7 @@ contract AppLaunchIntegrationTest is Test {
         console2.log("[OK] App created successfully");
     }
 
-    function _testBondingCurvePhase(
-        uint256 appId
-    ) internal {
+    function _testBondingCurvePhase(uint256 appId) internal {
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
         AppToken token = AppToken(app.token);
@@ -497,10 +504,7 @@ contract AppLaunchIntegrationTest is Test {
         console2.log("[OK] Error handling verified");
     }
 
-    function testFuzz_AppLaunchScenarios(
-        uint256 supply,
-        uint256 purchaseAmount
-    ) public {
+    function testFuzz_AppLaunchScenarios(uint256 supply, uint256 purchaseAmount) public {
         // Bound parameters to reasonable ranges
         supply = bound(supply, 1_000_000 ether, 10_000_000_000 ether);
 

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { ElataXP } from "../experience/ElataXP.sol";
-import { LotPool } from "../governance/LotPool.sol";
-import { RewardsDistributor } from "../rewards/RewardsDistributor.sol";
-import { VeELTA } from "../staking/VeELTA.sol";
-import { ELTA } from "../token/ELTA.sol";
+import {ElataXP} from "../experience/ElataXP.sol";
+import {LotPool} from "../governance/LotPool.sol";
+import {RewardsDistributor} from "../rewards/RewardsDistributor.sol";
+import {VeELTA} from "../staking/VeELTA.sol";
+import {ELTA} from "../token/ELTA.sol";
 
 /**
  * @title ProtocolStats
@@ -53,13 +53,7 @@ contract ProtocolStats {
         uint256 totalFundingAllocated;
     }
 
-    constructor(
-        ELTA _elta,
-        VeELTA _staking,
-        ElataXP _xp,
-        LotPool _funding,
-        RewardsDistributor _rewards
-    ) {
+    constructor(ELTA _elta, VeELTA _staking, ElataXP _xp, LotPool _funding, RewardsDistributor _rewards) {
         elta = _elta;
         staking = _staking;
         xp = _xp;
@@ -72,9 +66,7 @@ contract ProtocolStats {
      * @param user User address
      * @return Complete user data summary
      */
-    function getUserSummary(
-        address user
-    ) external view returns (UserSummary memory) {
+    function getUserSummary(address user) external view returns (UserSummary memory) {
         return UserSummary({
             eltaBalance: elta.balanceOf(user),
             eltaVotingPower: elta.getVotes(user),
@@ -93,9 +85,7 @@ contract ProtocolStats {
      * @param user User address
      * @return Array of position summaries (single element or empty)
      */
-    function getUserPositions(
-        address user
-    ) external view returns (PositionSummary[] memory) {
+    function getUserPositions(address user) external view returns (PositionSummary[] memory) {
         // Single lock per user
         (uint256 principal, uint64 unlockTime, uint256 veBalance, bool isExpired) = staking.getLockDetails(user);
 
@@ -142,7 +132,18 @@ contract ProtocolStats {
      * @param finalized Whether round is finalized
      * @param options Array of voting options
      */
-    function getCurrentFundingRound() external view returns (uint256 roundId, uint256 snapshotBlock, uint64 startTime, uint64 endTime, bool finalized, bytes32[] memory options) {
+    function getCurrentFundingRound()
+        external
+        view
+        returns (
+            uint256 roundId,
+            uint256 snapshotBlock,
+            uint64 startTime,
+            uint64 endTime,
+            bool finalized,
+            bytes32[] memory options
+        )
+    {
         uint256 currentRound = funding.currentRoundId();
         if (currentRound > 0) {
             (snapshotBlock, startTime, endTime, finalized, options) = funding.getRound(currentRound - 1);
@@ -160,10 +161,11 @@ contract ProtocolStats {
      * @return usedXP XP already used in voting
      * @return remainingXP XP still available
      */
-    function getUserVotingStatus(
-        address user,
-        uint256 roundId
-    ) external view returns (uint256 userXP, uint256 usedXP, uint256 remainingXP) {
+    function getUserVotingStatus(address user, uint256 roundId)
+        external
+        view
+        returns (uint256 userXP, uint256 usedXP, uint256 remainingXP)
+    {
         (uint256 snapshotBlock,,,,) = funding.getRound(roundId);
         userXP = xp.getPastXP(user, snapshotBlock);
         // Note: usedXP would need to be tracked in LotPool - see enhancement below
@@ -176,9 +178,7 @@ contract ProtocolStats {
      * @param users Array of user addresses
      * @return Array of ELTA balances
      */
-    function getBatchELTABalances(
-        address[] calldata users
-    ) external view returns (uint256[] memory) {
+    function getBatchELTABalances(address[] calldata users) external view returns (uint256[] memory) {
         uint256[] memory balances = new uint256[](users.length);
         for (uint256 i = 0; i < users.length; i++) {
             balances[i] = elta.balanceOf(users[i]);
@@ -191,9 +191,7 @@ contract ProtocolStats {
      * @param users Array of user addresses
      * @return Array of XP balances
      */
-    function getBatchXPBalances(
-        address[] calldata users
-    ) external view returns (uint256[] memory) {
+    function getBatchXPBalances(address[] calldata users) external view returns (uint256[] memory) {
         uint256[] memory balances = new uint256[](users.length);
         for (uint256 i = 0; i < users.length; i++) {
             balances[i] = xp.balanceOf(users[i]);
@@ -203,16 +201,22 @@ contract ProtocolStats {
 
     // Internal helper functions
 
-    function _getPositionSummary(
-        uint256 tokenId
-    ) internal view returns (PositionSummary memory) {
+    function _getPositionSummary(uint256 tokenId) internal view returns (PositionSummary memory) {
         // Not used (kept for interface compatibility, always returns empty)
-        return PositionSummary({ tokenId: tokenId, amount: 0, startTime: 0, endTime: 0, votingPower: 0, delegate: address(0), isExpired: true, emergencyUnlocked: false, timeRemaining: 0 });
+        return PositionSummary({
+            tokenId: tokenId,
+            amount: 0,
+            startTime: 0,
+            endTime: 0,
+            votingPower: 0,
+            delegate: address(0),
+            isExpired: true,
+            emergencyUnlocked: false,
+            timeRemaining: 0
+        });
     }
 
-    function _getTotalStaked(
-        address user
-    ) internal view returns (uint256) {
+    function _getTotalStaked(address user) internal view returns (uint256) {
         // Single lock per user - get principal from lock
         (uint256 principal,,,) = staking.getLockDetails(user);
         return principal;

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { IOwnable } from "./Interfaces.sol";
-import { Tournament } from "./Tournament.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import {IOwnable} from "./Interfaces.sol";
+import {Tournament} from "./Tournament.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title TournamentFactory
@@ -50,7 +50,14 @@ contract TournamentFactory is Ownable {
     /// @notice Tournaments by creator
     mapping(address => address[]) public tournamentsByCreator;
 
-    event TournamentCreated(address indexed appToken, address indexed tournament, address indexed creator, uint256 entryFee, uint64 startTime, uint64 endTime);
+    event TournamentCreated(
+        address indexed appToken,
+        address indexed tournament,
+        address indexed creator,
+        uint256 entryFee,
+        uint64 startTime,
+        uint64 endTime
+    );
     event TreasurySet(address treasury);
     event DefaultFeesSet(uint256 protocolFeeBps, uint256 burnFeeBps);
 
@@ -62,10 +69,7 @@ contract TournamentFactory is Ownable {
      * @param initialOwner Factory owner (protocol)
      * @param treasury_ Protocol treasury address
      */
-    constructor(
-        address initialOwner,
-        address treasury_
-    ) Ownable(initialOwner) {
+    constructor(address initialOwner, address treasury_) Ownable(initialOwner) {
         treasury = treasury_;
     }
 
@@ -73,9 +77,7 @@ contract TournamentFactory is Ownable {
      * @notice Set protocol treasury address
      * @param treasury_ New treasury address
      */
-    function setTreasury(
-        address treasury_
-    ) external onlyOwner {
+    function setTreasury(address treasury_) external onlyOwner {
         treasury = treasury_;
         emit TreasurySet(treasury_);
     }
@@ -85,10 +87,7 @@ contract TournamentFactory is Ownable {
      * @param protocolFeeBps Default protocol fee in bps
      * @param burnFeeBps Default burn fee in bps
      */
-    function setDefaultFees(
-        uint256 protocolFeeBps,
-        uint256 burnFeeBps
-    ) external onlyOwner {
+    function setDefaultFees(uint256 protocolFeeBps, uint256 burnFeeBps) external onlyOwner {
         if (protocolFeeBps + burnFeeBps > 1500) revert InvalidFees();
         defaultProtocolFeeBps = protocolFeeBps;
         defaultBurnFeeBps = burnFeeBps;
@@ -103,13 +102,13 @@ contract TournamentFactory is Ownable {
      * @param endTime Tournament end time (0 = no end)
      * @return tournament Address of deployed tournament
      */
-    function createTournament(
-        address appToken,
-        uint256 entryFee,
-        uint64 startTime,
-        uint64 endTime
-    ) external returns (address tournament) {
-        return createTournamentWithFees(appToken, entryFee, startTime, endTime, defaultProtocolFeeBps, defaultBurnFeeBps);
+    function createTournament(address appToken, uint256 entryFee, uint64 startTime, uint64 endTime)
+        external
+        returns (address tournament)
+    {
+        return createTournamentWithFees(
+            appToken, entryFee, startTime, endTime, defaultProtocolFeeBps, defaultBurnFeeBps
+        );
     }
 
     /**
@@ -137,11 +136,21 @@ contract TournamentFactory is Ownable {
         if (protocolFeeBps + burnFeeBps > 1500) revert InvalidFees();
 
         // Deploy tournament (creator becomes owner)
-        tournamentAddr = address(new Tournament(appToken, msg.sender, treasury, entryFee, startTime, endTime, protocolFeeBps, burnFeeBps));
+        tournamentAddr = address(
+            new Tournament(appToken, msg.sender, treasury, entryFee, startTime, endTime, protocolFeeBps, burnFeeBps)
+        );
 
         // Register tournament
         uint256 tournamentId = tournaments.length;
-        tournaments.push(TournamentInfo({ tournament: tournamentAddr, appToken: appToken, creator: msg.sender, createdAt: uint64(block.timestamp), finalized: false }));
+        tournaments.push(
+            TournamentInfo({
+                tournament: tournamentAddr,
+                appToken: appToken,
+                creator: msg.sender,
+                createdAt: uint64(block.timestamp),
+                finalized: false
+            })
+        );
 
         tournamentsByApp[appToken].push(tournamentAddr);
         tournamentsByCreator[msg.sender].push(tournamentAddr);
@@ -158,9 +167,7 @@ contract TournamentFactory is Ownable {
      * @param appToken App token address
      * @return Array of tournament addresses
      */
-    function getAppTournaments(
-        address appToken
-    ) external view returns (address[] memory) {
+    function getAppTournaments(address appToken) external view returns (address[] memory) {
         return tournamentsByApp[appToken];
     }
 
@@ -169,9 +176,7 @@ contract TournamentFactory is Ownable {
      * @param creator Creator address
      * @return Array of tournament addresses
      */
-    function getCreatorTournaments(
-        address creator
-    ) external view returns (address[] memory) {
+    function getCreatorTournaments(address creator) external view returns (address[] memory) {
         return tournamentsByCreator[creator];
     }
 
@@ -188,9 +193,7 @@ contract TournamentFactory is Ownable {
      * @param tournamentId Tournament ID
      * @return Tournament info struct
      */
-    function getTournamentInfo(
-        uint256 tournamentId
-    ) external view returns (TournamentInfo memory) {
+    function getTournamentInfo(uint256 tournamentId) external view returns (TournamentInfo memory) {
         return tournaments[tournamentId];
     }
 }

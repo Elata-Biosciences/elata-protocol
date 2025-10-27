@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { AppAccess1155 } from "../../../src/apps/AppAccess1155.sol";
-import { AppModuleFactory } from "../../../src/apps/AppModuleFactory.sol";
-import { AppStakingVault } from "../../../src/apps/AppStakingVault.sol";
-import { AppToken } from "../../../src/apps/AppToken.sol";
-import { ELTA } from "../../../src/token/ELTA.sol";
+import {AppAccess1155} from "../../../src/apps/AppAccess1155.sol";
+import {AppModuleFactory} from "../../../src/apps/AppModuleFactory.sol";
+import {AppStakingVault} from "../../../src/apps/AppStakingVault.sol";
+import {AppToken} from "../../../src/apps/AppToken.sol";
+import {ELTA} from "../../../src/token/ELTA.sol";
 import "forge-std/Test.sol";
 
 /**
@@ -31,7 +31,9 @@ contract AppModuleFactorySecurityTest is Test {
 
         factory = new AppModuleFactory(address(elta), factoryOwner, treasury);
 
-        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1));
+        appToken = new AppToken(
+            "TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
+        );
 
         // Mint ELTA to users
         vm.startPrank(factoryOwner);
@@ -168,7 +170,9 @@ contract AppModuleFactorySecurityTest is Test {
 
     function test_Security_MultipleAppsIsolated() public {
         // Create second app token
-        AppToken appToken2 = new AppToken("TestApp2", "TEST2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1));
+        AppToken appToken2 = new AppToken(
+            "TestApp2", "TEST2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
+        );
 
         // Deploy for both apps
         vm.startPrank(appCreator);
@@ -224,9 +228,7 @@ contract AppModuleFactorySecurityTest is Test {
     // FUZZ TESTS
     // ────────────────────────────────────────────────────────────────────────────
 
-    function testFuzz_Security_FeeAmountCorrect(
-        uint256 feeAmount
-    ) public {
+    function testFuzz_Security_FeeAmountCorrect(uint256 feeAmount) public {
         feeAmount = bound(feeAmount, 0, 10000 ether);
 
         vm.prank(factoryOwner);

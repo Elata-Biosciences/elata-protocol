@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { ELTA } from "../../src/token/ELTA.sol";
-import { Errors } from "../../src/utils/Errors.sol";
+import {ELTA} from "../../src/token/ELTA.sol";
+import {Errors} from "../../src/utils/Errors.sol";
 import "forge-std/Test.sol";
 
 contract ELTATest is Test {
@@ -121,7 +121,18 @@ contract ELTATest is Test {
                 abi.encodePacked(
                     "\x19\x01",
                     elta.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"), owner, user1, amount, elta.nonces(owner), deadline))
+                    keccak256(
+                        abi.encode(
+                            keccak256(
+                                "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
+                            ),
+                            owner,
+                            user1,
+                            amount,
+                            elta.nonces(owner),
+                            deadline
+                        )
+                    )
                 )
             )
         );
@@ -178,9 +189,7 @@ contract ELTATest is Test {
         elta.mint(user1, 1000 ether);
     }
 
-    function testFuzz_MintWithinCap(
-        uint256 amount
-    ) public {
+    function testFuzz_MintWithinCap(uint256 amount) public {
         amount = bound(amount, 1, MAX_SUPPLY - INITIAL_MINT);
 
         vm.prank(admin);
@@ -190,9 +199,7 @@ contract ELTATest is Test {
         assertEq(elta.totalSupply(), INITIAL_MINT + amount);
     }
 
-    function testFuzz_Transfer(
-        uint256 amount
-    ) public {
+    function testFuzz_Transfer(uint256 amount) public {
         amount = bound(amount, 1, INITIAL_MINT);
 
         vm.prank(treasury);

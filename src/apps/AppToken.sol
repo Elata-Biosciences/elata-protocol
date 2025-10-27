@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { ERC20Burnable } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
-import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC20Burnable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 
 /**
  * @title AppToken
@@ -53,7 +53,9 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
     event Minted(address indexed to, uint256 amount);
     event TransferFeeUpdated(uint16 oldBps, uint16 newBps);
     event TransferFeeExemptSet(address indexed account, bool exempt);
-    event TransferFeeCollected(address indexed from, address indexed to, uint256 totalFee, uint256 appFee, uint256 veFee, uint256 treasuryFee);
+    event TransferFeeCollected(
+        address indexed from, address indexed to, uint256 totalFee, uint256 appFee, uint256 veFee, uint256 treasuryFee
+    );
 
     error SupplyCapExceeded();
     error OnlyCreator();
@@ -127,10 +129,7 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
      * @param to Address to mint tokens to
      * @param amount Amount of tokens to mint
      */
-    function mint(
-        address to,
-        uint256 amount
-    ) external onlyRole(MINTER_ROLE) {
+    function mint(address to, uint256 amount) external onlyRole(MINTER_ROLE) {
         if (mintingFinalized) revert MintingAlreadyFinalized();
         if (maxSupply > 0 && totalSupply() + amount > maxSupply) revert SupplyCapExceeded();
 
@@ -153,11 +152,9 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
      * @param imageURI_ App image URI
      * @param website_ App website URL
      */
-    function updateMetadata(
-        string calldata description_,
-        string calldata imageURI_,
-        string calldata website_
-    ) external {
+    function updateMetadata(string calldata description_, string calldata imageURI_, string calldata website_)
+        external
+    {
         if (msg.sender != appCreator) revert OnlyCreator();
 
         appDescription = description_;
@@ -171,9 +168,7 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
      * @notice Revoke minter role (makes supply fixed)
      * @param account Address to revoke minter role from
      */
-    function revokeMinter(
-        address account
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function revokeMinter(address account) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _revokeRole(MINTER_ROLE, account);
     }
 
@@ -181,9 +176,7 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
      * @notice Set the app vault address (called by factory after vault creation)
      * @param _vault Vault address
      */
-    function setVault(
-        address _vault
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setVault(address _vault) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (appVault != address(0)) revert VaultAlreadySet();
         require(_vault != address(0), "Zero vault");
         appVault = _vault;
@@ -194,9 +187,7 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
      * @notice Set transfer fee in basis points (governance only)
      * @param newBps New fee rate (0-200 = 0-2%)
      */
-    function setTransferFeeBps(
-        uint16 newBps
-    ) external {
+    function setTransferFeeBps(uint16 newBps) external {
         if (msg.sender != governance) revert OnlyGovernance();
         if (newBps > MAX_TRANSFER_FEE_BPS) revert FeeTooHigh();
         emit TransferFeeUpdated(transferFeeBps, newBps);
@@ -208,10 +199,7 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
      * @param account Address to update
      * @param exempt True to exempt from fees
      */
-    function setTransferFeeExempt(
-        address account,
-        bool exempt
-    ) external {
+    function setTransferFeeExempt(address account, bool exempt) external {
         if (msg.sender != governance && !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) revert OnlyGovernance();
         transferFeeExempt[account] = exempt;
         emit TransferFeeExemptSet(account, exempt);
@@ -235,9 +223,7 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
      * @return fee Fee amount
      * @return netAmount Amount after fee
      */
-    function calculateTransferFee(
-        uint256 amount
-    ) external view returns (uint256 fee, uint256 netAmount) {
+    function calculateTransferFee(uint256 amount) external view returns (uint256 fee, uint256 netAmount) {
         fee = (amount * transferFeeBps) / 10_000;
         netAmount = amount - fee;
     }
@@ -245,13 +231,12 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
     /**
      * @dev Override _update to implement fee-on-transfer with 70/15/15 split
      */
-    function _update(
-        address from,
-        address to,
-        uint256 amount
-    ) internal override {
+    function _update(address from, address to, uint256 amount) internal override {
         // Skip fee for mints, burns, and exempt addresses
-        if (from == address(0) || to == address(0) || transferFeeExempt[from] || transferFeeExempt[to] || transferFeeBps == 0) {
+        if (
+            from == address(0) || to == address(0) || transferFeeExempt[from] || transferFeeExempt[to]
+                || transferFeeBps == 0
+        ) {
             super._update(from, to, amount);
             return;
         }

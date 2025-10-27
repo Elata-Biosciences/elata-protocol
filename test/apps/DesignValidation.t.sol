@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { AppAccess1155 } from "../../src/apps/AppAccess1155.sol";
-import { AppModuleFactory } from "../../src/apps/AppModuleFactory.sol";
-import { AppStakingVault } from "../../src/apps/AppStakingVault.sol";
-import { AppToken } from "../../src/apps/AppToken.sol";
-import { EpochRewards } from "../../src/apps/EpochRewards.sol";
-import { Tournament } from "../../src/apps/Tournament.sol";
-import { ELTA } from "../../src/token/ELTA.sol";
+import {AppAccess1155} from "../../src/apps/AppAccess1155.sol";
+import {AppModuleFactory} from "../../src/apps/AppModuleFactory.sol";
+import {AppStakingVault} from "../../src/apps/AppStakingVault.sol";
+import {AppToken} from "../../src/apps/AppToken.sol";
+import {EpochRewards} from "../../src/apps/EpochRewards.sol";
+import {Tournament} from "../../src/apps/Tournament.sol";
+import {ELTA} from "../../src/token/ELTA.sol";
 import "forge-std/Test.sol";
 
 /**
@@ -35,7 +35,9 @@ contract DesignValidationTest is Test {
 
         factory = new AppModuleFactory(address(elta), factoryOwner, treasury);
 
-        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1));
+        appToken = new AppToken(
+            "TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
+        );
 
         vm.prank(appCreator);
         (address accessAddr, address vaultAddr,) = factory.deployModules(address(appToken), "https://metadata.test/");
@@ -143,7 +145,9 @@ contract DesignValidationTest is Test {
         uint256 treasuryBefore = elta.balanceOf(treasury);
 
         // Deploy modules
-        AppToken app2 = new AppToken("App2", "APP2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1));
+        AppToken app2 = new AppToken(
+            "App2", "APP2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
+        );
 
         vm.prank(appCreator);
         elta.approve(address(factory), 100 ether);
@@ -193,7 +197,10 @@ contract DesignValidationTest is Test {
         // Configure gate
         bytes32 featureId = keccak256("premium");
         vm.prank(appCreator);
-        access.setFeatureGate(featureId, AppAccess1155.FeatureGate({ minStake: 1000 ether, requiredItem: 1, requireBoth: true, active: true }));
+        access.setFeatureGate(
+            featureId,
+            AppAccess1155.FeatureGate({minStake: 1000 ether, requiredItem: 1, requireBoth: true, active: true})
+        );
 
         // VALIDATION: Apps can query access via views
         bool hasAccess = access.checkFeatureAccess(player, featureId, 0);
@@ -346,7 +353,9 @@ contract DesignValidationTest is Test {
 
     function test_Design_PerAppIsolation() public {
         // Deploy second app
-        AppToken app2 = new AppToken("App2", "APP2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1));
+        AppToken app2 = new AppToken(
+            "App2", "APP2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
+        );
 
         vm.prank(appCreator);
         (address access2Addr, address vault2Addr,) = factory.deployModules(address(app2), "https://metadata.app2/");
@@ -522,7 +531,18 @@ contract DesignValidationTest is Test {
 
     function test_Design_SustainableEmissions() public {
         // Create new token for this test to control supply
-        AppToken freshToken = new AppToken("FreshApp", "FRESH", 18, 200000 ether, appCreator, appCreator, address(1), address(1), address(1), address(1));
+        AppToken freshToken = new AppToken(
+            "FreshApp",
+            "FRESH",
+            18,
+            200000 ether,
+            appCreator,
+            appCreator,
+            address(1),
+            address(1),
+            address(1),
+            address(1)
+        );
 
         EpochRewards epochRewards = new EpochRewards(address(freshToken), appCreator);
 

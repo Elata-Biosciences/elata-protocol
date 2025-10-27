@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { AppToken } from "../../src/apps/AppToken.sol";
-import { Errors } from "../../src/utils/Errors.sol";
+import {AppToken} from "../../src/apps/AppToken.sol";
+import {Errors} from "../../src/utils/Errors.sol";
 import "forge-std/Test.sol";
 
 contract AppTokenTest is Test {
@@ -21,7 +21,9 @@ contract AppTokenTest is Test {
     event Minted(address indexed to, uint256 amount);
 
     function setUp() public {
-        token = new AppToken("TestApp Token", "TEST", 18, MAX_SUPPLY, creator, admin, address(1), address(1), address(1), address(1));
+        token = new AppToken(
+            "TestApp Token", "TEST", 18, MAX_SUPPLY, creator, admin, address(1), address(1), address(1), address(1)
+        );
     }
 
     function test_Deployment() public {
@@ -41,7 +43,9 @@ contract AppTokenTest is Test {
         new AppToken("Test", "TEST", 18, MAX_SUPPLY, address(0), admin, address(1), address(1), address(1), address(1));
 
         vm.expectRevert("Zero address");
-        new AppToken("Test", "TEST", 18, MAX_SUPPLY, creator, address(0), address(1), address(1), address(1), address(1));
+        new AppToken(
+            "Test", "TEST", 18, MAX_SUPPLY, creator, address(0), address(1), address(1), address(1), address(1)
+        );
     }
 
     function test_RevertWhen_DeploymentInvalidSupply() public {
@@ -188,9 +192,7 @@ contract AppTokenTest is Test {
         assertEq(token.allowance(user1, user2), 200 ether);
     }
 
-    function testFuzz_Mint(
-        uint256 amount
-    ) public {
+    function testFuzz_Mint(uint256 amount) public {
         amount = bound(amount, 1, MAX_SUPPLY);
 
         vm.prank(admin);
@@ -200,10 +202,7 @@ contract AppTokenTest is Test {
         assertEq(token.totalSupply(), amount);
     }
 
-    function testFuzz_Burn(
-        uint256 mintAmount,
-        uint256 burnAmount
-    ) public {
+    function testFuzz_Burn(uint256 mintAmount, uint256 burnAmount) public {
         mintAmount = bound(mintAmount, 1, MAX_SUPPLY);
         burnAmount = bound(burnAmount, 1, mintAmount);
 

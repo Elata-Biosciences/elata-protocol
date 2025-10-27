@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { AppAccess1155 } from "../../src/apps/AppAccess1155.sol";
-import { AppStakingVault } from "../../src/apps/AppStakingVault.sol";
-import { AppToken } from "../../src/apps/AppToken.sol";
+import {AppAccess1155} from "../../src/apps/AppAccess1155.sol";
+import {AppStakingVault} from "../../src/apps/AppStakingVault.sol";
+import {AppToken} from "../../src/apps/AppToken.sol";
 import "forge-std/Test.sol";
 
 contract AppAccess1155Test is Test {
@@ -30,7 +30,9 @@ contract AppAccess1155Test is Test {
 
     function setUp() public {
         // Deploy app token
-        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, owner, admin, governance, mockAppRewards, mockRewards, treasury);
+        appToken = new AppToken(
+            "TestApp", "TEST", 18, MAX_SUPPLY, owner, admin, governance, mockAppRewards, mockRewards, treasury
+        );
 
         // Deploy staking vault
         vault = new AppStakingVault("TestApp", "TAPP", appToken, owner);
@@ -72,7 +74,16 @@ contract AppAccess1155Test is Test {
             "ipfs://item1"
         );
 
-        (uint256 price, bool soulbound, bool active, uint64 startTime, uint64 endTime, uint64 maxSupply, uint64 minted, string memory uri_) = access.items(1);
+        (
+            uint256 price,
+            bool soulbound,
+            bool active,
+            uint64 startTime,
+            uint64 endTime,
+            uint64 maxSupply,
+            uint64 minted,
+            string memory uri_
+        ) = access.items(1);
 
         assertEq(price, ITEM_PRICE);
         assertFalse(soulbound);
@@ -271,7 +282,8 @@ contract AppAccess1155Test is Test {
     function test_SetFeatureGate() public {
         bytes32 featureId = keccak256("premium_mode");
 
-        AppAccess1155.FeatureGate memory gate = AppAccess1155.FeatureGate({ minStake: 1000 ether, requiredItem: 1, requireBoth: true, active: true });
+        AppAccess1155.FeatureGate memory gate =
+            AppAccess1155.FeatureGate({minStake: 1000 ether, requiredItem: 1, requireBoth: true, active: true});
 
         vm.expectEmit(true, true, true, true);
         emit FeatureGateSet(featureId, gate);
@@ -290,7 +302,8 @@ contract AppAccess1155Test is Test {
     function test_RevertWhen_SetFeatureGateUnauthorized() public {
         bytes32 featureId = keccak256("premium_mode");
 
-        AppAccess1155.FeatureGate memory gate = AppAccess1155.FeatureGate({ minStake: 1000 ether, requiredItem: 0, requireBoth: false, active: true });
+        AppAccess1155.FeatureGate memory gate =
+            AppAccess1155.FeatureGate({minStake: 1000 ether, requiredItem: 0, requireBoth: false, active: true});
 
         vm.expectRevert();
         vm.prank(user1);
@@ -320,9 +333,7 @@ contract AppAccess1155Test is Test {
     // FUZZ TESTS
     // ────────────────────────────────────────────────────────────────────────────
 
-    function testFuzz_Purchase(
-        uint256 amount
-    ) public {
+    function testFuzz_Purchase(uint256 amount) public {
         amount = bound(amount, 1, 100);
 
         vm.prank(owner);

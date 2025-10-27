@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { AppToken } from "../../src/apps/AppToken.sol";
-import { Tournament } from "../../src/apps/Tournament.sol";
+import {AppToken} from "../../src/apps/AppToken.sol";
+import {Tournament} from "../../src/apps/Tournament.sol";
 import "forge-std/Test.sol";
-import { Merkle } from "murky/src/Merkle.sol";
+import {Merkle} from "murky/src/Merkle.sol";
 
 contract TournamentTest is Test {
     Tournament public tournament;
@@ -28,7 +28,9 @@ contract TournamentTest is Test {
     event Claimed(address indexed user, uint256 amount);
 
     function setUp() public {
-        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, owner, admin, address(1), address(1), address(1), address(1));
+        appToken = new AppToken(
+            "TestApp", "TEST", 18, MAX_SUPPLY, owner, admin, address(1), address(1), address(1), address(1)
+        );
         merkle = new Merkle();
 
         tournament = new Tournament(
@@ -129,7 +131,16 @@ contract TournamentTest is Test {
     }
 
     function test_RevertWhen_EnterBeforeStart() public {
-        Tournament futureTourn = new Tournament(address(appToken), owner, treasury, ENTRY_FEE, uint64(block.timestamp + 1000), 0, PROTOCOL_FEE_BPS, BURN_FEE_BPS);
+        Tournament futureTourn = new Tournament(
+            address(appToken),
+            owner,
+            treasury,
+            ENTRY_FEE,
+            uint64(block.timestamp + 1000),
+            0,
+            PROTOCOL_FEE_BPS,
+            BURN_FEE_BPS
+        );
 
         vm.startPrank(user1);
         appToken.approve(address(futureTourn), ENTRY_FEE);
@@ -140,7 +151,16 @@ contract TournamentTest is Test {
     }
 
     function test_RevertWhen_EnterAfterEnd() public {
-        Tournament pastTourn = new Tournament(address(appToken), owner, treasury, ENTRY_FEE, 0, uint64(block.timestamp + 1000), PROTOCOL_FEE_BPS, BURN_FEE_BPS);
+        Tournament pastTourn = new Tournament(
+            address(appToken),
+            owner,
+            treasury,
+            ENTRY_FEE,
+            0,
+            uint64(block.timestamp + 1000),
+            PROTOCOL_FEE_BPS,
+            BURN_FEE_BPS
+        );
 
         vm.warp(block.timestamp + 1001);
 

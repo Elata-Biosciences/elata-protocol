@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { AppStakingVault } from "../../src/apps/AppStakingVault.sol";
-import { AppToken } from "../../src/apps/AppToken.sol";
-import { AppRewardsDistributor } from "../../src/rewards/AppRewardsDistributor.sol";
-import { ELTA } from "../../src/token/ELTA.sol";
+import {AppStakingVault} from "../../src/apps/AppStakingVault.sol";
+import {AppToken} from "../../src/apps/AppToken.sol";
+import {AppRewardsDistributor} from "../../src/rewards/AppRewardsDistributor.sol";
+import {ELTA} from "../../src/token/ELTA.sol";
 import "forge-std/Test.sol";
 
 contract AppRewardsDistributorTest is Test {
@@ -36,12 +36,16 @@ contract AppRewardsDistributorTest is Test {
         distributor = new AppRewardsDistributor(elta, governance, factory);
 
         // Deploy app 1
-        token1 = new AppToken("Game1", "GM1", 18, 1_000_000 ether, alice, address(this), address(1), address(1), address(1), address(1));
+        token1 = new AppToken(
+            "Game1", "GM1", 18, 1_000_000 ether, alice, address(this), address(1), address(1), address(1), address(1)
+        );
         vault1 = new AppStakingVault("Game1", "GM1", token1, alice);
         token1.mint(address(this), 1_000_000 ether);
 
         // Deploy app 2
-        token2 = new AppToken("Game2", "GM2", 18, 1_000_000 ether, bob, address(this), address(1), address(1), address(1), address(1));
+        token2 = new AppToken(
+            "Game2", "GM2", 18, 1_000_000 ether, bob, address(this), address(1), address(1), address(1), address(1)
+        );
         vault2 = new AppStakingVault("Game2", "GM2", token2, bob);
         token2.mint(address(this), 1_000_000 ether);
 

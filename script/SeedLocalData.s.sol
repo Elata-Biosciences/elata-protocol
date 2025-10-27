@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { AppAccess1155 } from "../src/apps/AppAccess1155.sol";
-import { AppFactory } from "../src/apps/AppFactory.sol";
-import { AppModuleFactory } from "../src/apps/AppModuleFactory.sol";
-import { AppStakingVault } from "../src/apps/AppStakingVault.sol";
-import { AppToken } from "../src/apps/AppToken.sol";
-import { ElataXP } from "../src/experience/ElataXP.sol";
-import { LotPool } from "../src/governance/LotPool.sol";
-import { VeELTA } from "../src/staking/VeELTA.sol";
-import { ELTA } from "../src/token/ELTA.sol";
-import { Script, console2 } from "forge-std/Script.sol";
-import { stdJson } from "forge-std/StdJson.sol";
+import {AppAccess1155} from "../src/apps/AppAccess1155.sol";
+import {AppFactory} from "../src/apps/AppFactory.sol";
+import {AppModuleFactory} from "../src/apps/AppModuleFactory.sol";
+import {AppStakingVault} from "../src/apps/AppStakingVault.sol";
+import {AppToken} from "../src/apps/AppToken.sol";
+import {ElataXP} from "../src/experience/ElataXP.sol";
+import {LotPool} from "../src/governance/LotPool.sol";
+import {VeELTA} from "../src/staking/VeELTA.sol";
+import {ELTA} from "../src/token/ELTA.sol";
+import {Script, console2} from "forge-std/Script.sol";
+import {stdJson} from "forge-std/StdJson.sol";
 
 /**
  * @title SeedLocalData
@@ -101,7 +101,9 @@ contract SeedLocalData is Script {
         require(APP_MODULE_FACTORY_ADDRESS != address(0), "AppModuleFactory address missing");
 
         // AppFactory is required for creating apps; allow zero to skip app creation
-        if (APP_FACTORY_ADDRESS == address(0)) console2.log("[WARN] AppFactory not deployed; skipping app creation steps");
+        if (APP_FACTORY_ADDRESS == address(0)) {
+            console2.log("[WARN] AppFactory not deployed; skipping app creation steps");
+        }
     }
 
     function _awardTestXP() internal {
@@ -160,13 +162,37 @@ contract SeedLocalData is Script {
         TestApp[] memory apps = new TestApp[](3);
 
         // App 1: NeuroPong
-        apps[0] = _createSingleApp(elta, factory, moduleFactory, "NeuroPong Token", "NPONG", "EEG-controlled Pong game with competitive multiplayer", "ipfs://QmNeuroPong");
+        apps[0] = _createSingleApp(
+            elta,
+            factory,
+            moduleFactory,
+            "NeuroPong Token",
+            "NPONG",
+            "EEG-controlled Pong game with competitive multiplayer",
+            "ipfs://QmNeuroPong"
+        );
 
         // App 2: MindfulBreath
-        apps[1] = _createSingleApp(elta, factory, moduleFactory, "MindfulBreath Token", "BREATH", "Meditation and breathing exercises with EEG feedback", "ipfs://QmMindfulBreath");
+        apps[1] = _createSingleApp(
+            elta,
+            factory,
+            moduleFactory,
+            "MindfulBreath Token",
+            "BREATH",
+            "Meditation and breathing exercises with EEG feedback",
+            "ipfs://QmMindfulBreath"
+        );
 
         // App 3: FocusTrainer
-        apps[2] = _createSingleApp(elta, factory, moduleFactory, "FocusTrainer Token", "FOCUS", "Attention training with real-time neurofeedback", "ipfs://QmFocusTrainer");
+        apps[2] = _createSingleApp(
+            elta,
+            factory,
+            moduleFactory,
+            "FocusTrainer Token",
+            "FOCUS",
+            "Attention training with real-time neurofeedback",
+            "ipfs://QmFocusTrainer"
+        );
 
         return apps;
     }
@@ -206,25 +232,22 @@ contract SeedLocalData is Script {
         // Deploy utility modules
         elta.approve(address(moduleFactory), 0); // No fee for now
 
-        (app.access1155, app.stakingVault, app.rewards) = moduleFactory.deployModules(app.token, string.concat("https://metadata.elata.bio/", symbol, "/"));
+        (app.access1155, app.stakingVault, app.rewards) =
+            moduleFactory.deployModules(app.token, string.concat("https://metadata.elata.bio/", symbol, "/"));
 
         console2.log("       Deployed modules: Access, Staking, Rewards");
 
         return app;
     }
 
-    function _configureAppEconomies(
-        TestApp[] memory apps
-    ) internal {
+    function _configureAppEconomies(TestApp[] memory apps) internal {
         // Configure each app with items, prices, etc.
         for (uint256 i = 0; i < apps.length; i++) {
             _configureSingleApp(apps[i]);
         }
     }
 
-    function _configureSingleApp(
-        TestApp memory app
-    ) internal {
+    function _configureSingleApp(TestApp memory app) internal {
         AppAccess1155 access = AppAccess1155(app.access1155);
 
         // Create tiered items for each app
@@ -310,9 +333,7 @@ contract SeedLocalData is Script {
         console2.log("       Funded pool with", fundingAmount / 1 ether, "ELTA");
     }
 
-    function _printSeedSummary(
-        TestApp[] memory apps
-    ) internal pure {
+    function _printSeedSummary(TestApp[] memory apps) internal pure {
         console2.log("SUMMARY:");
         console2.log("--------");
         console2.log("- 5 test users with XP (300-5000 XP)");

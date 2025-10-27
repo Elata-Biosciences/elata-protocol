@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { AppAccess1155 } from "../../src/apps/AppAccess1155.sol";
-import { AppModuleFactory } from "../../src/apps/AppModuleFactory.sol";
-import { AppStakingVault } from "../../src/apps/AppStakingVault.sol";
-import { AppToken } from "../../src/apps/AppToken.sol";
-import { ELTA } from "../../src/token/ELTA.sol";
+import {AppAccess1155} from "../../src/apps/AppAccess1155.sol";
+import {AppModuleFactory} from "../../src/apps/AppModuleFactory.sol";
+import {AppStakingVault} from "../../src/apps/AppStakingVault.sol";
+import {AppToken} from "../../src/apps/AppToken.sol";
+import {ELTA} from "../../src/token/ELTA.sol";
 import "forge-std/Test.sol";
 
 contract AppModuleFactoryTest is Test {
@@ -34,7 +34,9 @@ contract AppModuleFactoryTest is Test {
         factory = new AppModuleFactory(address(elta), factoryOwner, treasury);
 
         // Deploy app token
-        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1));
+        appToken = new AppToken(
+            "TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
+        );
 
         // Mint ELTA to app creator for fees
         vm.prank(factoryOwner);
@@ -191,15 +193,19 @@ contract AppModuleFactoryTest is Test {
 
     function test_MultipleAppsDeployModules() public {
         // Create second app token
-        AppToken appToken2 = new AppToken("TestApp2", "TEST2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1));
+        AppToken appToken2 = new AppToken(
+            "TestApp2", "TEST2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
+        );
 
         // Deploy modules for first app
         vm.prank(appCreator);
-        (address access1, address stake1, address epochs1) = factory.deployModules(address(appToken), "https://app1.test/");
+        (address access1, address stake1, address epochs1) =
+            factory.deployModules(address(appToken), "https://app1.test/");
 
         // Deploy modules for second app
         vm.prank(appCreator);
-        (address access2, address stake2, address epochs2) = factory.deployModules(address(appToken2), "https://app2.test/");
+        (address access2, address stake2, address epochs2) =
+            factory.deployModules(address(appToken2), "https://app2.test/");
 
         // Verify both are registered correctly
         (address storedAccess1, address storedStake1, address storedEpochs1) = factory.modulesByApp(address(appToken));

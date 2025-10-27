@@ -18,17 +18,12 @@ interface IStakeVaultVotes {
      * @param blockNumber Block number to query
      * @return Staked balance at that block
      */
-    function getPastVotes(
-        address account,
-        uint256 blockNumber
-    ) external view returns (uint256);
+    function getPastVotes(address account, uint256 blockNumber) external view returns (uint256);
 
     /**
      * @notice Get current staked balance
      * @param account Address to check
      * @return Current staked balance
      */
-    function balanceOf(
-        address account
-    ) external view returns (uint256);
+    function balanceOf(address account) external view returns (uint256);
 }

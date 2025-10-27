@@ -47,15 +47,7 @@ ignore = [
   "node_modules/**"
 ]
 
-[fmt]
-line_length = 200
-tab_width = 4
-bracket_spacing = true
-quote_style = "double"
-number_underscore = "preserve"
-single_line_statement_blocks = "single"
-multiline_func_header = "params_first"
-sort_imports = true
+# Use Foundry default formatter settings for consistency across local and CI
 
 [rpc_endpoints]
 mainnet = "${MAINNET_RPC_URL}"

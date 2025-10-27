@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { IVeEltaVotes } from "../interfaces/IVeEltaVotes.sol";
-import { Errors } from "../utils/Errors.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
-import { ERC20Votes } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { Nonces } from "@openzeppelin/contracts/utils/Nonces.sol";
+import {IVeEltaVotes} from "../interfaces/IVeEltaVotes.sol";
+import {Errors} from "../utils/Errors.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import {ERC20Votes} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
 
 /**
  * @title VeELTA (Vote-Escrowed ELTA)
@@ -68,11 +68,13 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @param _elta ELTA token address
      * @param _admin Admin address for roles
      */
-    constructor(
-        IERC20 _elta,
-        address _admin
-    ) ERC20("veELTA Voting Power", "veELTA") ERC20Permit("veELTA Voting Power") {
-        if (address(_elta) == address(0) || _admin == address(0)) revert Errors.ZeroAddress();
+    constructor(IERC20 _elta, address _admin)
+        ERC20("veELTA Voting Power", "veELTA")
+        ERC20Permit("veELTA Voting Power")
+    {
+        if (address(_elta) == address(0) || _admin == address(0)) {
+            revert Errors.ZeroAddress();
+        }
 
         ELTA = _elta;
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
@@ -85,10 +87,7 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @param amount ELTA amount to lock
      * @param unlockTime Unix timestamp when lock expires
      */
-    function lock(
-        uint256 amount,
-        uint64 unlockTime
-    ) external {
+    function lock(uint256 amount, uint64 unlockTime) external {
         Lock memory userLock = locks[msg.sender];
         if (userLock.principal > 0) revert LockExists();
         if (amount == 0) revert Errors.InvalidAmount();
@@ -101,7 +100,7 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
         uint256 boost = _calculateBoost(duration);
         uint256 veAmount = (amount * boost) / 1e18;
 
-        locks[msg.sender] = Lock({ principal: uint128(amount), unlockTime: unlockTime });
+        locks[msg.sender] = Lock({principal: uint128(amount), unlockTime: unlockTime});
 
         _mint(msg.sender, veAmount);
 
@@ -116,9 +115,7 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @dev Recalculates voting power based on remaining duration
      * @param amount Additional ELTA to lock
      */
-    function increaseAmount(
-        uint256 amount
-    ) external {
+    function increaseAmount(uint256 amount) external {
         Lock memory userLock = locks[msg.sender];
         if (userLock.principal == 0) revert Errors.NoActiveLock();
         if (block.timestamp >= userLock.unlockTime) revert LockExpired();
@@ -148,15 +145,14 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @dev Recalculates voting power based on new duration
      * @param newUnlockTime New unlock timestamp (must be > current)
      */
-    function extendLock(
-        uint64 newUnlockTime
-    ) external {
+    function extendLock(uint64 newUnlockTime) external {
         Lock memory userLock = locks[msg.sender];
         if (userLock.principal == 0) revert Errors.NoActiveLock();
         if (newUnlockTime <= userLock.unlockTime) revert InvalidUnlockTime();
         if (newUnlockTime > block.timestamp + MAX_LOCK) revert Errors.LockTooLong();
 
-        uint256 oldRemainingTime = userLock.unlockTime > block.timestamp ? userLock.unlockTime - uint64(block.timestamp) : 0;
+        uint256 oldRemainingTime =
+            userLock.unlockTime > block.timestamp ? userLock.unlockTime - uint64(block.timestamp) : 0;
         uint256 newRemainingTime = newUnlockTime - uint64(block.timestamp);
 
         uint256 oldBoost = _calculateBoost(oldRemainingTime);
@@ -200,10 +196,7 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @param to Address to mint to
      * @param amount Amount to mint
      */
-    function mint(
-        address to,
-        uint256 amount
-    ) external onlyRole(MANAGER_ROLE) {
+    function mint(address to, uint256 amount) external onlyRole(MANAGER_ROLE) {
         _mint(to, amount);
 
         // Auto-delegate to self for voting power
@@ -215,10 +208,7 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @param from Address to burn from
      * @param amount Amount to burn
      */
-    function burn(
-        address from,
-        uint256 amount
-    ) external onlyRole(MANAGER_ROLE) {
+    function burn(address from, uint256 amount) external onlyRole(MANAGER_ROLE) {
         _burn(from, amount);
     }
 
@@ -228,9 +218,7 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @param duration Lock duration in seconds
      * @return boost Boost multiplier (1e18 = 1x)
      */
-    function _calculateBoost(
-        uint256 duration
-    ) internal pure returns (uint256 boost) {
+    function _calculateBoost(uint256 duration) internal pure returns (uint256 boost) {
         if (duration >= MAX_LOCK) return BOOST_MAX;
         if (duration <= MIN_LOCK) return BOOST_MIN;
 
@@ -246,9 +234,11 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @return veBalance Current veELTA balance
      * @return isExpired Whether lock has expired
      */
-    function getLockDetails(
-        address user
-    ) external view returns (uint256 principal, uint64 unlockTime, uint256 veBalance, bool isExpired) {
+    function getLockDetails(address user)
+        external
+        view
+        returns (uint256 principal, uint64 unlockTime, uint256 veBalance, bool isExpired)
+    {
         Lock memory userLock = locks[user];
         principal = userLock.principal;
         unlockTime = userLock.unlockTime;
@@ -262,9 +252,7 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @return unlockable Whether user can unlock now
      * @return timeRemaining Seconds until unlock (0 if expired)
      */
-    function canUnlock(
-        address user
-    ) external view returns (bool unlockable, uint256 timeRemaining) {
+    function canUnlock(address user) external view returns (bool unlockable, uint256 timeRemaining) {
         Lock memory userLock = locks[user];
         if (userLock.principal == 0) return (false, 0);
 
@@ -275,11 +263,7 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
     /**
      * @dev Override to make tokens non-transferable (soulbound)
      */
-    function _update(
-        address from,
-        address to,
-        uint256 amount
-    ) internal override(ERC20, ERC20Votes) {
+    function _update(address from, address to, uint256 amount) internal override(ERC20, ERC20Votes) {
         // Allow minting (from == 0) and burning (to == 0)
         // Block transfers between users
         if (from != address(0) && to != address(0)) revert Errors.NonTransferable();
@@ -289,9 +273,7 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
     /**
      * @dev Required override for Nonces
      */
-    function nonces(
-        address owner
-    ) public view override(ERC20Permit, Nonces) returns (uint256) {
+    function nonces(address owner) public view override(ERC20Permit, Nonces) returns (uint256) {
         return super.nonces(owner);
     }
 }

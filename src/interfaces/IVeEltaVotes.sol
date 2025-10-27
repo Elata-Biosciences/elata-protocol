@@ -12,28 +12,21 @@ interface IVeEltaVotes {
      * @param blockNumber Block number to query
      * @return Voting power at that block
      */
-    function getPastVotes(
-        address account,
-        uint256 blockNumber
-    ) external view returns (uint256);
+    function getPastVotes(address account, uint256 blockNumber) external view returns (uint256);
 
     /**
      * @notice Get total voting power at a specific block
      * @param blockNumber Block number to query
      * @return Total voting power at that block
      */
-    function getPastTotalSupply(
-        uint256 blockNumber
-    ) external view returns (uint256);
+    function getPastTotalSupply(uint256 blockNumber) external view returns (uint256);
 
     /**
      * @notice Get current balance of veELTA tokens
      * @param account Address to check
      * @return Current veELTA balance
      */
-    function balanceOf(
-        address account
-    ) external view returns (uint256);
+    function balanceOf(address account) external view returns (uint256);
 
     /**
      * @notice Get current total supply of veELTA

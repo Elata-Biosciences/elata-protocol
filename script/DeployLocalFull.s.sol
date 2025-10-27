@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { AppFactory } from "../src/apps/AppFactory.sol";
-import { AppFactoryViews } from "../src/apps/AppFactoryViews.sol";
-import { AppModuleFactory } from "../src/apps/AppModuleFactory.sol";
-import { TournamentFactory } from "../src/apps/TournamentFactory.sol";
-import { ElataXP } from "../src/experience/ElataXP.sol";
-import { ElataGovernor } from "../src/governance/ElataGovernor.sol";
-import { ElataTimelock } from "../src/governance/ElataTimelock.sol";
-import { LotPool } from "../src/governance/LotPool.sol";
-import { IUniswapV2Router02 } from "../src/interfaces/IUniswapV2Router02.sol";
-import { RewardsDistributor } from "../src/rewards/RewardsDistributor.sol";
-import { VeELTA } from "../src/staking/VeELTA.sol";
-import { ELTA } from "../src/token/ELTA.sol";
-import { TimelockController } from "@openzeppelin/contracts/governance/TimelockController.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { Script, console2 } from "forge-std/Script.sol";
+import {AppFactory} from "../src/apps/AppFactory.sol";
+import {AppFactoryViews} from "../src/apps/AppFactoryViews.sol";
+import {AppModuleFactory} from "../src/apps/AppModuleFactory.sol";
+import {TournamentFactory} from "../src/apps/TournamentFactory.sol";
+import {ElataXP} from "../src/experience/ElataXP.sol";
+import {ElataGovernor} from "../src/governance/ElataGovernor.sol";
+import {ElataTimelock} from "../src/governance/ElataTimelock.sol";
+import {LotPool} from "../src/governance/LotPool.sol";
+import {IUniswapV2Router02} from "../src/interfaces/IUniswapV2Router02.sol";
+import {RewardsDistributor} from "../src/rewards/RewardsDistributor.sol";
+import {VeELTA} from "../src/staking/VeELTA.sol";
+import {ELTA} from "../src/token/ELTA.sol";
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Script, console2} from "forge-std/Script.sol";
 
 /**
  * @title DeployLocalFull
@@ -28,9 +28,7 @@ import { Script, console2 } from "forge-std/Script.sol";
 contract MockUniswapV2Router {
     address public immutable factory;
 
-    constructor(
-        address _factory
-    ) {
+    constructor(address _factory) {
         factory = _factory;
     }
 
@@ -48,23 +46,17 @@ contract MockUniswapV2Router {
         return (amountADesired, amountBDesired, amountADesired + amountBDesired);
     }
 
-    function swapExactTokensForTokens(
-        uint256 amountIn,
-        uint256,
-        address[] calldata path,
-        address,
-        uint256
-    ) external returns (uint256[] memory amounts) {
+    function swapExactTokensForTokens(uint256 amountIn, uint256, address[] calldata path, address, uint256)
+        external
+        returns (uint256[] memory amounts)
+    {
         amounts = new uint256[](path.length);
         amounts[0] = amountIn;
         amounts[path.length - 1] = amountIn; // 1:1 for simplicity
         return amounts;
     }
 
-    function getAmountsOut(
-        uint256 amountIn,
-        address[] calldata path
-    ) external pure returns (uint256[] memory amounts) {
+    function getAmountsOut(uint256 amountIn, address[] calldata path) external pure returns (uint256[] memory amounts) {
         amounts = new uint256[](path.length);
         amounts[0] = amountIn;
         amounts[path.length - 1] = amountIn; // 1:1 for simplicity
@@ -76,10 +68,7 @@ contract MockUniswapV2Factory {
     mapping(address => mapping(address => address)) public getPair;
     address[] public allPairs;
 
-    function createPair(
-        address tokenA,
-        address tokenB
-    ) external returns (address pair) {
+    function createPair(address tokenA, address tokenB) external returns (address pair) {
         // Create a deterministic mock pair address
         pair = address(uint160(uint256(keccak256(abi.encodePacked(tokenA, tokenB, block.timestamp)))));
         getPair[tokenA][tokenB] = pair;
@@ -228,9 +217,7 @@ contract DeployLocalFull is Script {
         return result;
     }
 
-    function _deployTimelock(
-        address admin
-    ) internal returns (TimelockController) {
+    function _deployTimelock(address admin) internal returns (TimelockController) {
         address[] memory proposers = new address[](1);
         proposers[0] = address(0); // Will be set to governor
 
@@ -240,9 +227,7 @@ contract DeployLocalFull is Script {
         return new ElataTimelock(TIMELOCK_DELAY, proposers, executors, admin);
     }
 
-    function _configurePermissions(
-        DeploymentResult memory result
-    ) internal {
+    function _configurePermissions(DeploymentResult memory result) internal {
         // Grant governor roles on timelock
         result.timelock.grantRole(result.timelock.PROPOSER_ROLE(), address(result.governor));
         result.timelock.grantRole(result.timelock.EXECUTOR_ROLE(), address(result.governor));
@@ -255,9 +240,7 @@ contract DeployLocalFull is Script {
         result.xp.grantRole(result.xp.XP_OPERATOR_ROLE(), address(result.funding));
     }
 
-    function _setupTestAccounts(
-        ELTA token
-    ) internal returns (address[] memory accounts) {
+    function _setupTestAccounts(ELTA token) internal returns (address[] memory accounts) {
         // Anvil's default test accounts (deterministic)
         accounts = new address[](5);
         accounts[0] = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8; // Account #1
@@ -274,9 +257,7 @@ contract DeployLocalFull is Script {
         return accounts;
     }
 
-    function _logDeploymentSummary(
-        DeploymentResult memory result
-    ) internal view {
+    function _logDeploymentSummary(DeploymentResult memory result) internal view {
         console2.log("\n=================================================");
         console2.log("         DEPLOYMENT COMPLETE - SUMMARY");
         console2.log("=================================================\n");
@@ -322,9 +303,7 @@ contract DeployLocalFull is Script {
         console2.log("=================================================\n");
     }
 
-    function _writeDeploymentJson(
-        DeploymentResult memory result
-    ) internal {
+    function _writeDeploymentJson(DeploymentResult memory result) internal {
         // Build JSON string manually (Solidity doesn't have native JSON)
         string memory json = string.concat(
             "{\n",
@@ -378,7 +357,13 @@ contract DeployLocalFull is Script {
         );
 
         for (uint256 i = 0; i < result.testAccounts.length; i++) {
-            json = string.concat(json, '    "', vm.toString(result.testAccounts[i]), '"', i < result.testAccounts.length - 1 ? ",\n" : "\n");
+            json = string.concat(
+                json,
+                '    "',
+                vm.toString(result.testAccounts[i]),
+                '"',
+                i < result.testAccounts.length - 1 ? ",\n" : "\n"
+            );
         }
 
         json = string.concat(json, "  ]\n", "}\n");

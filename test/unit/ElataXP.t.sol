@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { ElataXP } from "../../src/experience/ElataXP.sol";
-import { Errors } from "../../src/utils/Errors.sol";
+import {ElataXP} from "../../src/experience/ElataXP.sol";
+import {Errors} from "../../src/utils/Errors.sol";
 import "forge-std/Test.sol";
 
 contract ElataXPTest is Test {
@@ -173,7 +173,18 @@ contract ElataXPTest is Test {
                 abi.encodePacked(
                     "\x19\x01",
                     xp.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"), owner, user1, 500 ether, xp.nonces(owner), deadline))
+                    keccak256(
+                        abi.encode(
+                            keccak256(
+                                "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
+                            ),
+                            owner,
+                            user1,
+                            500 ether,
+                            xp.nonces(owner),
+                            deadline
+                        )
+                    )
                 )
             )
         );
@@ -224,9 +235,7 @@ contract ElataXPTest is Test {
         assertEq(xp.totalSupply(), amount1 + amount2 + amount3);
     }
 
-    function testFuzz_Award(
-        uint256 amount
-    ) public {
+    function testFuzz_Award(uint256 amount) public {
         amount = bound(amount, 1, type(uint128).max);
 
         vm.prank(admin);
@@ -236,10 +245,7 @@ contract ElataXPTest is Test {
         assertEq(xp.getVotes(user1), amount);
     }
 
-    function testFuzz_Revoke(
-        uint256 awardAmount,
-        uint256 revokeAmount
-    ) public {
+    function testFuzz_Revoke(uint256 awardAmount, uint256 revokeAmount) public {
         awardAmount = bound(awardAmount, 1, type(uint128).max);
         revokeAmount = bound(revokeAmount, 1, awardAmount);
 

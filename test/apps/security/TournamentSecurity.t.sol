@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { AppToken } from "../../../src/apps/AppToken.sol";
-import { Tournament } from "../../../src/apps/Tournament.sol";
+import {AppToken} from "../../../src/apps/AppToken.sol";
+import {Tournament} from "../../../src/apps/Tournament.sol";
 import "forge-std/Test.sol";
-import { Merkle } from "murky/src/Merkle.sol";
+import {Merkle} from "murky/src/Merkle.sol";
 
 /**
  * @title TournamentSecurityTest
@@ -27,7 +27,9 @@ contract TournamentSecurityTest is Test {
     uint256 public constant MAX_SUPPLY = 1_000_000_000 ether;
 
     function setUp() public {
-        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, owner, admin, address(1), address(1), address(1), address(1));
+        appToken = new AppToken(
+            "TestApp", "TEST", 18, MAX_SUPPLY, owner, admin, address(1), address(1), address(1), address(1)
+        );
         merkle = new Merkle();
 
         tournament = new Tournament(
@@ -262,7 +264,16 @@ contract TournamentSecurityTest is Test {
     // ────────────────────────────────────────────────────────────────────────────
 
     function test_Security_CannotEnterOutsideWindow() public {
-        Tournament timedTourn = new Tournament(address(appToken), owner, treasury, ENTRY_FEE, uint64(block.timestamp + 100), uint64(block.timestamp + 200), 250, 100);
+        Tournament timedTourn = new Tournament(
+            address(appToken),
+            owner,
+            treasury,
+            ENTRY_FEE,
+            uint64(block.timestamp + 100),
+            uint64(block.timestamp + 200),
+            250,
+            100
+        );
 
         // Before start
         vm.startPrank(user1);
@@ -312,11 +323,7 @@ contract TournamentSecurityTest is Test {
         assertEq(tournament.pool(), expectedNet);
     }
 
-    function testFuzz_Security_FeeCalculationCorrect(
-        uint256 poolAmount,
-        uint256 protocolBps,
-        uint256 burnBps
-    ) public {
+    function testFuzz_Security_FeeCalculationCorrect(uint256 poolAmount, uint256 protocolBps, uint256 burnBps) public {
         poolAmount = bound(poolAmount, 1 ether, 1000000 ether);
         protocolBps = bound(protocolBps, 0, 1000);
         burnBps = bound(burnBps, 0, 1500 - protocolBps); // Ensure total <= 15%
@@ -473,9 +480,27 @@ contract TournamentSecurityTest is Test {
     // ────────────────────────────────────────────────────────────────────────────
 
     function test_Security_ViewFunctionsConsistent() public {
-        Tournament fuzzTourn = new Tournament(address(appToken), owner, treasury, ENTRY_FEE, uint64(block.timestamp + 100), uint64(block.timestamp + 200), 250, 100);
+        Tournament fuzzTourn = new Tournament(
+            address(appToken),
+            owner,
+            treasury,
+            ENTRY_FEE,
+            uint64(block.timestamp + 100),
+            uint64(block.timestamp + 200),
+            250,
+            100
+        );
 
-        (bool isFinalized, bool isActive, uint256 currentPool, uint256 entryFeeAmount, uint256 protocolFee, uint256 burnFee, uint64 start, uint64 end) = fuzzTourn.getTournamentState();
+        (
+            bool isFinalized,
+            bool isActive,
+            uint256 currentPool,
+            uint256 entryFeeAmount,
+            uint256 protocolFee,
+            uint256 burnFee,
+            uint64 start,
+            uint64 end
+        ) = fuzzTourn.getTournamentState();
 
         assertFalse(isFinalized);
         assertFalse(isActive); // Not active yet (before start)

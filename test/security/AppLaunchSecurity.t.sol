@@ -1,16 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { AppBondingCurve } from "../../src/apps/AppBondingCurve.sol";
-import { AppFactory } from "../../src/apps/AppFactory.sol";
-import { AppToken } from "../../src/apps/AppToken.sol";
-import { LpLocker } from "../../src/apps/LpLocker.sol";
-import { IAppFeeRouter } from "../../src/interfaces/IAppFeeRouter.sol";
-import { IAppRewardsDistributor } from "../../src/interfaces/IAppRewardsDistributor.sol";
-import { IRewardsDistributor } from "../../src/interfaces/IRewardsDistributor.sol";
-import { IUniswapV2Router02 } from "../../src/interfaces/IUniswapV2Router02.sol";
-import { ELTA } from "../../src/token/ELTA.sol";
-import { MockAppFeeRouter, MockAppRewardsDistributor, MockElataXP, MockRewardsDistributor } from "../mocks/MockContracts.sol";
+import {AppBondingCurve} from "../../src/apps/AppBondingCurve.sol";
+import {AppFactory} from "../../src/apps/AppFactory.sol";
+import {AppToken} from "../../src/apps/AppToken.sol";
+import {LpLocker} from "../../src/apps/LpLocker.sol";
+import {IAppFeeRouter} from "../../src/interfaces/IAppFeeRouter.sol";
+import {IAppRewardsDistributor} from "../../src/interfaces/IAppRewardsDistributor.sol";
+import {IRewardsDistributor} from "../../src/interfaces/IRewardsDistributor.sol";
+import {IUniswapV2Router02} from "../../src/interfaces/IUniswapV2Router02.sol";
+import {ELTA} from "../../src/token/ELTA.sol";
+import {
+    MockAppFeeRouter,
+    MockAppRewardsDistributor,
+    MockElataXP,
+    MockRewardsDistributor
+} from "../mocks/MockContracts.sol";
 import "forge-std/Test.sol";
 
 /**

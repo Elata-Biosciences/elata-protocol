@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 /**
  * @title Tournament
@@ -126,18 +126,12 @@ contract Tournament is Ownable, ReentrancyGuard {
      * @param protocolBps Protocol fee in basis points
      * @param burnBps Burn fee in basis points
      */
-    function setFees(
-        uint256 protocolBps,
-        uint256 burnBps
-    ) external onlyOwner {
+    function setFees(uint256 protocolBps, uint256 burnBps) external onlyOwner {
         if (finalized) revert AlreadyFinalized();
         _setFees(protocolBps, burnBps);
     }
 
-    function _setFees(
-        uint256 protocolBps,
-        uint256 burnBps
-    ) private {
+    function _setFees(uint256 protocolBps, uint256 burnBps) private {
         if (protocolBps + burnBps > 1500) revert FeesTooHigh(); // max 15%
         protocolFeeBps = protocolBps;
         burnFeeBps = burnBps;
@@ -149,10 +143,7 @@ contract Tournament is Ownable, ReentrancyGuard {
      * @param start_ Start time
      * @param end_ End time
      */
-    function setWindow(
-        uint64 start_,
-        uint64 end_
-    ) external onlyOwner {
+    function setWindow(uint64 start_, uint64 end_) external onlyOwner {
         if (finalized) revert AlreadyFinalized();
         if (end_ != 0 && end_ <= start_) revert InvalidWindow();
         startTime = start_;
@@ -164,9 +155,7 @@ contract Tournament is Ownable, ReentrancyGuard {
      * @notice Set entry fee
      * @param fee New entry fee
      */
-    function setEntryFee(
-        uint256 fee
-    ) external onlyOwner {
+    function setEntryFee(uint256 fee) external onlyOwner {
         if (finalized) revert AlreadyFinalized();
         entryFee = fee;
         emit EntryFeeSet(fee);
@@ -197,9 +186,7 @@ contract Tournament is Ownable, ReentrancyGuard {
      * @dev Applies protocol and burn fees, sets net pool
      * @param winnersRoot_ Merkle root of (address, amount) pairs
      */
-    function finalize(
-        bytes32 winnersRoot_
-    ) external onlyOwner nonReentrant {
+    function finalize(bytes32 winnersRoot_) external onlyOwner nonReentrant {
         if (finalized) revert AlreadyFinalized();
         finalized = true;
 
@@ -222,10 +209,7 @@ contract Tournament is Ownable, ReentrancyGuard {
      * @param proof Merkle proof of (msg.sender, amount)
      * @param amount Prize amount to claim
      */
-    function claim(
-        bytes32[] calldata proof,
-        uint256 amount
-    ) external nonReentrant {
+    function claim(bytes32[] calldata proof, uint256 amount) external nonReentrant {
         if (!finalized) revert NotFinalized();
         if (claimed[msg.sender]) revert AlreadyClaimed();
 
@@ -253,9 +237,23 @@ contract Tournament is Ownable, ReentrancyGuard {
      * @return start Start time
      * @return end End time
      */
-    function getTournamentState() external view returns (bool isFinalized, bool isActive, uint256 currentPool, uint256 entryFeeAmount, uint256 protocolFee, uint256 burnFee, uint64 start, uint64 end) {
+    function getTournamentState()
+        external
+        view
+        returns (
+            bool isFinalized,
+            bool isActive,
+            uint256 currentPool,
+            uint256 entryFeeAmount,
+            uint256 protocolFee,
+            uint256 burnFee,
+            uint64 start,
+            uint64 end
+        )
+    {
         isFinalized = finalized;
-        isActive = !finalized && (startTime == 0 || block.timestamp >= startTime) && (endTime == 0 || block.timestamp <= endTime);
+        isActive = !finalized && (startTime == 0 || block.timestamp >= startTime)
+            && (endTime == 0 || block.timestamp <= endTime);
         currentPool = pool;
         entryFeeAmount = entryFee;
         protocolFee = protocolFeeBps;
@@ -271,9 +269,7 @@ contract Tournament is Ownable, ReentrancyGuard {
      * @return reason Reason code (0=can enter, 1=already entered, 2=not started, 3=ended,
      * 4=finalized)
      */
-    function checkEntryEligibility(
-        address user
-    ) external view returns (bool canEnter, uint8 reason) {
+    function checkEntryEligibility(address user) external view returns (bool canEnter, uint8 reason) {
         if (entered[user]) return (false, 1);
         if (finalized) return (false, 4);
         if (startTime != 0 && block.timestamp < startTime) return (false, 2);

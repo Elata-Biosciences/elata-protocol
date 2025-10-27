@@ -12,8 +12,6 @@ interface IElataXP {
      * @param account Address to query
      * @return XP balance
      */
-    function balanceOf(
-        address account
-    ) external view returns (uint256);
+    function balanceOf(address account) external view returns (uint256);
 }
 

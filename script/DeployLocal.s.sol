@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { AppFactory } from "../src/apps/AppFactory.sol";
-import { IUniswapV2Router02 } from "../src/interfaces/IUniswapV2Router02.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { Script, console } from "forge-std/Script.sol";
+import {AppFactory} from "../src/apps/AppFactory.sol";
+import {IUniswapV2Router02} from "../src/interfaces/IUniswapV2Router02.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Script, console} from "forge-std/Script.sol";
 
 // Mock ELTA token for local development
 contract MockELTA is ERC20 {
@@ -13,10 +13,7 @@ contract MockELTA is ERC20 {
         _mint(msg.sender, 1_000_000 * 10 ** decimals());
     }
 
-    function mint(
-        address to,
-        uint256 amount
-    ) external {
+    function mint(address to, uint256 amount) external {
         _mint(to, amount);
     }
 }
@@ -56,10 +53,7 @@ contract MockUniswapV2Router {
         return amounts;
     }
 
-    function getAmountsOut(
-        uint256 amountIn,
-        address[] calldata path
-    ) external pure returns (uint256[] memory amounts) {
+    function getAmountsOut(uint256 amountIn, address[] calldata path) external pure returns (uint256[] memory amounts) {
         amounts = new uint256[](path.length);
         amounts[0] = amountIn;
         // Simple 1:1 mock exchange rate
@@ -72,10 +66,7 @@ contract MockUniswapV2Router {
 contract MockUniswapV2Factory {
     mapping(address => mapping(address => address)) public getPair;
 
-    function createPair(
-        address tokenA,
-        address tokenB
-    ) external returns (address pair) {
+    function createPair(address tokenA, address tokenB) external returns (address pair) {
         // Create a simple mock pair address
         pair = address(uint160(uint256(keccak256(abi.encodePacked(tokenA, tokenB)))));
         getPair[tokenA][tokenB] = pair;

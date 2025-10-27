@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { IAppRewardsDistributor } from "../../src/interfaces/IAppRewardsDistributor.sol";
-import { IVeEltaVotes } from "../../src/interfaces/IVeEltaVotes.sol";
-import { AppRewardsDistributor } from "../../src/rewards/AppRewardsDistributor.sol";
-import { RewardsDistributor } from "../../src/rewards/RewardsDistributor.sol";
-import { VeELTA } from "../../src/staking/VeELTA.sol";
-import { ELTA } from "../../src/token/ELTA.sol";
-import { Errors } from "../../src/utils/Errors.sol";
+import {IAppRewardsDistributor} from "../../src/interfaces/IAppRewardsDistributor.sol";
+import {IVeEltaVotes} from "../../src/interfaces/IVeEltaVotes.sol";
+import {AppRewardsDistributor} from "../../src/rewards/AppRewardsDistributor.sol";
+import {RewardsDistributor} from "../../src/rewards/RewardsDistributor.sol";
+import {VeELTA} from "../../src/staking/VeELTA.sol";
+import {ELTA} from "../../src/token/ELTA.sol";
+import {Errors} from "../../src/utils/Errors.sol";
 import "forge-std/Test.sol";
 
 /**
@@ -48,7 +48,9 @@ contract RewardsDistributorTest is Test {
         appRewardsDistributor = new AppRewardsDistributor(elta, admin, factory);
 
         // Deploy RewardsDistributor with all dependencies
-        rewardsDistributor = new RewardsDistributor(elta, IVeEltaVotes(address(veElta)), IAppRewardsDistributor(address(appRewardsDistributor)), treasury, admin);
+        rewardsDistributor = new RewardsDistributor(
+            elta, IVeEltaVotes(address(veElta)), IAppRewardsDistributor(address(appRewardsDistributor)), treasury, admin
+        );
 
         // Grant DISTRIBUTOR_ROLE to revenueSource
         rewardsDistributor.grantRole(rewardsDistributor.DISTRIBUTOR_ROLE(), revenueSource);

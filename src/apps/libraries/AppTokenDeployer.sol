@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { AppToken } from "../AppToken.sol";
+import {AppToken} from "../AppToken.sol";
 
 /**
  * @title AppTokenDeployer
@@ -21,6 +21,19 @@ library AppTokenDeployer {
         address rewardsDistributor,
         address treasury
     ) external returns (address) {
-        return address(new AppToken(name, symbol, decimals, supply, creator, factory, governance, appRewardsDistributor, rewardsDistributor, treasury));
+        return address(
+            new AppToken(
+                name,
+                symbol,
+                decimals,
+                supply,
+                creator,
+                factory,
+                governance,
+                appRewardsDistributor,
+                rewardsDistributor,
+                treasury
+            )
+        );
     }
 }

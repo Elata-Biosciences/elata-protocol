@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { AppAccess1155 } from "./AppAccess1155.sol";
-import { AppStakingVault } from "./AppStakingVault.sol";
-import { EpochRewards } from "./EpochRewards.sol";
-import { IOwnable } from "./Interfaces.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {AppAccess1155} from "./AppAccess1155.sol";
+import {AppStakingVault} from "./AppStakingVault.sol";
+import {EpochRewards} from "./EpochRewards.sol";
+import {IOwnable} from "./Interfaces.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title AppModuleFactory
@@ -60,11 +60,7 @@ contract AppModuleFactory is Ownable {
      * @param initialOwner Factory owner
      * @param treasury_ Protocol treasury address
      */
-    constructor(
-        address elta,
-        address initialOwner,
-        address treasury_
-    ) Ownable(initialOwner) {
+    constructor(address elta, address initialOwner, address treasury_) Ownable(initialOwner) {
         ELTA = elta;
         treasury = treasury_;
     }
@@ -73,9 +69,7 @@ contract AppModuleFactory is Ownable {
      * @notice Set protocol treasury address
      * @param t New treasury address
      */
-    function setTreasury(
-        address t
-    ) external onlyOwner {
+    function setTreasury(address t) external onlyOwner {
         treasury = t;
         emit TreasurySet(t);
     }
@@ -84,9 +78,7 @@ contract AppModuleFactory is Ownable {
      * @notice Set ELTA creation fee
      * @param fee New fee amount in ELTA
      */
-    function setCreateFee(
-        uint256 fee
-    ) external onlyOwner {
+    function setCreateFee(uint256 fee) external onlyOwner {
         createFeeELTA = fee;
         emit FeeSet(fee);
     }
@@ -100,10 +92,10 @@ contract AppModuleFactory is Ownable {
      * @return staking Address of deployed AppStakingVault
      * @return epochs Address of deployed EpochRewards
      */
-    function deployModules(
-        address appToken,
-        string calldata baseURI
-    ) external returns (address access1155, address staking, address epochs) {
+    function deployModules(address appToken, string calldata baseURI)
+        external
+        returns (address access1155, address staking, address epochs)
+    {
         // Verify caller is token owner
         if (IOwnable(appToken).owner() != msg.sender) revert NotTokenOwner();
 
