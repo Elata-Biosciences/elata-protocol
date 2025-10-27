@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { ELTA } from "../token/ELTA.sol";
-import { VeELTA } from "../staking/VeELTA.sol";
 import { ElataXP } from "../experience/ElataXP.sol";
 import { LotPool } from "../governance/LotPool.sol";
 import { RewardsDistributor } from "../rewards/RewardsDistributor.sol";
+import { VeELTA } from "../staking/VeELTA.sol";
+import { ELTA } from "../token/ELTA.sol";
 
 /**
  * @title ProtocolStats
@@ -169,7 +169,10 @@ contract ProtocolStats {
      * @return usedXP XP already used in voting
      * @return remainingXP XP still available
      */
-    function getUserVotingStatus(address user, uint256 roundId)
+    function getUserVotingStatus(
+        address user,
+        uint256 roundId
+    )
         external
         view
         returns (uint256 userXP, uint256 usedXP, uint256 remainingXP)

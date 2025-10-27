@@ -1,24 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-import { ELTA } from "../../src/token/ELTA.sol";
-import { ElataXP } from "../../src/experience/ElataXP.sol";
-import { AppFactory } from "../../src/apps/AppFactory.sol";
-import { AppToken } from "../../src/apps/AppToken.sol";
 import { AppBondingCurve } from "../../src/apps/AppBondingCurve.sol";
+import { AppFactory } from "../../src/apps/AppFactory.sol";
 import { AppStakingVault } from "../../src/apps/AppStakingVault.sol";
+import { AppToken } from "../../src/apps/AppToken.sol";
+import { ElataXP } from "../../src/experience/ElataXP.sol";
+import { AppFeeRouter } from "../../src/fees/AppFeeRouter.sol";
+import { IAppFeeRouter } from "../../src/interfaces/IAppFeeRouter.sol";
+import { IAppRewardsDistributor } from "../../src/interfaces/IAppRewardsDistributor.sol";
+import { IElataXP } from "../../src/interfaces/IElataXP.sol";
+import { IRewardsDistributor } from "../../src/interfaces/IRewardsDistributor.sol";
+import { IUniswapV2Router02 } from "../../src/interfaces/IUniswapV2Router02.sol";
+import { IVeEltaVotes } from "../../src/interfaces/IVeEltaVotes.sol";
 import { AppRewardsDistributor } from "../../src/rewards/AppRewardsDistributor.sol";
 import { RewardsDistributor } from "../../src/rewards/RewardsDistributor.sol";
-import { AppFeeRouter } from "../../src/fees/AppFeeRouter.sol";
 import { VeELTA } from "../../src/staking/VeELTA.sol";
-import { IUniswapV2Router02 } from "../../src/interfaces/IUniswapV2Router02.sol";
-import { IRewardsDistributor } from "../../src/interfaces/IRewardsDistributor.sol";
-import { IAppRewardsDistributor } from "../../src/interfaces/IAppRewardsDistributor.sol";
-import { IAppFeeRouter } from "../../src/interfaces/IAppFeeRouter.sol";
-import { IElataXP } from "../../src/interfaces/IElataXP.sol";
-import { IVeEltaVotes } from "../../src/interfaces/IVeEltaVotes.sol";
+import { ELTA } from "../../src/token/ELTA.sol";
 import { MockElataXP } from "../mocks/MockContracts.sol";
+import "forge-std/Test.sol";
 
 /**
  * @title XP-Gated Launch and Transfer Fees Test

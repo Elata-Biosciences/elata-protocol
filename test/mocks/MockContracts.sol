@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IAppFeeRouter } from "../../src/interfaces/IAppFeeRouter.sol";
 import { IAppRewardsDistributor } from "../../src/interfaces/IAppRewardsDistributor.sol";
 import { IElataXP } from "../../src/interfaces/IElataXP.sol";
 import { IRewardsDistributor } from "../../src/interfaces/IRewardsDistributor.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title MockAppFeeRouter

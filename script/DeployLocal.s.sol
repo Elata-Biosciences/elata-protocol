@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { Script, console } from "forge-std/Script.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { AppFactory } from "../src/apps/AppFactory.sol";
 import { IUniswapV2Router02 } from "../src/interfaces/IUniswapV2Router02.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { Script, console } from "forge-std/Script.sol";
 
 // Mock ELTA token for local development
 contract MockELTA is ERC20 {
@@ -35,7 +35,10 @@ contract MockUniswapV2Router {
         uint256,
         address to,
         uint256
-    ) external returns (uint256 amountA, uint256 amountB, uint256 liquidity) {
+    )
+        external
+        returns (uint256 amountA, uint256 amountB, uint256 liquidity)
+    {
         // Mock implementation - just return the desired amounts
         return (amountADesired, amountBDesired, amountADesired + amountBDesired);
     }
@@ -46,14 +49,20 @@ contract MockUniswapV2Router {
         address[] calldata path,
         address to,
         uint256 deadline
-    ) external returns (uint256[] memory amounts) {
+    )
+        external
+        returns (uint256[] memory amounts)
+    {
         amounts = new uint256[](path.length);
         amounts[0] = amountIn;
         amounts[path.length - 1] = amountOutMin;
         return amounts;
     }
 
-    function getAmountsOut(uint256 amountIn, address[] calldata path)
+    function getAmountsOut(
+        uint256 amountIn,
+        address[] calldata path
+    )
         external
         pure
         returns (uint256[] memory amounts)

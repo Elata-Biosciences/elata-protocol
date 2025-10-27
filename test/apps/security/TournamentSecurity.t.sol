@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-import { Tournament } from "../../../src/apps/Tournament.sol";
 import { AppToken } from "../../../src/apps/AppToken.sol";
+import { Tournament } from "../../../src/apps/Tournament.sol";
+import "forge-std/Test.sol";
 import { Merkle } from "murky/src/Merkle.sol";
 
 /**
@@ -336,7 +336,9 @@ contract TournamentSecurityTest is Test {
         uint256 poolAmount,
         uint256 protocolBps,
         uint256 burnBps
-    ) public {
+    )
+        public
+    {
         poolAmount = bound(poolAmount, 1 ether, 1000000 ether);
         protocolBps = bound(protocolBps, 0, 1000);
         burnBps = bound(burnBps, 0, 1500 - protocolBps); // Ensure total <= 15%

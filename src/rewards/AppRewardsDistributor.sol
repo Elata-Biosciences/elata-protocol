@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 
 /**
  * @title AppRewardsDistributor
@@ -31,7 +31,13 @@ import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol"
  */
 interface IStakeVaultVotes {
     function totalSupply() external view returns (uint256);
-    function getPastVotes(address account, uint256 blockNumber) external view returns (uint256);
+    function getPastVotes(
+        address account,
+        uint256 blockNumber
+    )
+        external
+        view
+        returns (uint256);
 }
 
 contract AppRewardsDistributor is AccessControl {
@@ -269,7 +275,12 @@ contract AppRewardsDistributor is AccessControl {
      * @param vaultList Array of vault addresses
      * @param toEpochs Array of target epochs (one per vault)
      */
-    function claimMultiple(address[] calldata vaultList, uint256[] calldata toEpochs) external {
+    function claimMultiple(
+        address[] calldata vaultList,
+        uint256[] calldata toEpochs
+    )
+        external
+    {
         require(vaultList.length == toEpochs.length, "Length mismatch");
 
         for (uint256 i; i < vaultList.length; ++i) {
@@ -321,7 +332,10 @@ contract AppRewardsDistributor is AccessControl {
      * @return fromEpoch Starting epoch to claim
      * @return toEpoch Ending epoch (exclusive)
      */
-    function getUnclaimedRange(address user, address vault)
+    function getUnclaimedRange(
+        address user,
+        address vault
+    )
         external
         view
         returns (uint256 fromEpoch, uint256 toEpoch)
@@ -394,7 +408,10 @@ contract AppRewardsDistributor is AccessControl {
      * @param vault Vault address
      * @return estimated Estimated claimable amount
      */
-    function estimatePendingRewards(address user, address vault)
+    function estimatePendingRewards(
+        address user,
+        address vault
+    )
         external
         view
         returns (uint256 estimated)

@@ -1,27 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "forge-std/Script.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { TimelockController } from "@openzeppelin/contracts/governance/TimelockController.sol";
-import { ELTA } from "../src/token/ELTA.sol";
-import { ElataXP } from "../src/experience/ElataXP.sol";
-import { VeELTA } from "../src/staking/VeELTA.sol";
-import { LotPool } from "../src/governance/LotPool.sol";
-import { RewardsDistributor } from "../src/rewards/RewardsDistributor.sol";
-import { AppRewardsDistributor } from "../src/rewards/AppRewardsDistributor.sol";
-import { AppFeeRouter } from "../src/fees/AppFeeRouter.sol";
-import { ElataGovernor } from "../src/governance/ElataGovernor.sol";
-import { ElataTimelock } from "../src/governance/ElataTimelock.sol";
 import { AppFactory } from "../src/apps/AppFactory.sol";
 import { AppModuleFactory } from "../src/apps/AppModuleFactory.sol";
 import { TournamentFactory } from "../src/apps/TournamentFactory.sol";
-import { IUniswapV2Router02 } from "../src/interfaces/IUniswapV2Router02.sol";
-import { IAppRewardsDistributor } from "../src/interfaces/IAppRewardsDistributor.sol";
+import { ElataXP } from "../src/experience/ElataXP.sol";
+import { AppFeeRouter } from "../src/fees/AppFeeRouter.sol";
+import { ElataGovernor } from "../src/governance/ElataGovernor.sol";
+import { ElataTimelock } from "../src/governance/ElataTimelock.sol";
+import { LotPool } from "../src/governance/LotPool.sol";
 import { IAppFeeRouter } from "../src/interfaces/IAppFeeRouter.sol";
-import { IVeEltaVotes } from "../src/interfaces/IVeEltaVotes.sol";
-import { IRewardsDistributor } from "../src/interfaces/IRewardsDistributor.sol";
+import { IAppRewardsDistributor } from "../src/interfaces/IAppRewardsDistributor.sol";
 import { IElataXP } from "../src/interfaces/IElataXP.sol";
+import { IRewardsDistributor } from "../src/interfaces/IRewardsDistributor.sol";
+import { IUniswapV2Router02 } from "../src/interfaces/IUniswapV2Router02.sol";
+import { IVeEltaVotes } from "../src/interfaces/IVeEltaVotes.sol";
+import { AppRewardsDistributor } from "../src/rewards/AppRewardsDistributor.sol";
+import { RewardsDistributor } from "../src/rewards/RewardsDistributor.sol";
+import { VeELTA } from "../src/staking/VeELTA.sol";
+import { ELTA } from "../src/token/ELTA.sol";
+import { TimelockController } from "@openzeppelin/contracts/governance/TimelockController.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "forge-std/Script.sol";
 
 /**
  * @title Deploy

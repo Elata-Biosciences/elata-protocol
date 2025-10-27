@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-import { ELTA } from "../../src/token/ELTA.sol";
-import { AppToken } from "../../src/apps/AppToken.sol";
 import { AppStakingVault } from "../../src/apps/AppStakingVault.sol";
+import { AppToken } from "../../src/apps/AppToken.sol";
 import { AppRewardsDistributor } from "../../src/rewards/AppRewardsDistributor.sol";
+import { ELTA } from "../../src/token/ELTA.sol";
+import "forge-std/Test.sol";
 
 contract AppRewardsDistributorTest is Test {
     ELTA public elta;

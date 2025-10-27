@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-import { ELTA } from "../../src/token/ELTA.sol";
-import { VeELTA } from "../../src/staking/VeELTA.sol";
 import { ElataXP } from "../../src/experience/ElataXP.sol";
 import { LotPool } from "../../src/governance/LotPool.sol";
+import { VeELTA } from "../../src/staking/VeELTA.sol";
+import { ELTA } from "../../src/token/ELTA.sol";
 import { Errors } from "../../src/utils/Errors.sol";
+import "forge-std/Test.sol";
 
 /**
  * @title Core Security Verification

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
 import { AppStakingVault } from "../../src/apps/AppStakingVault.sol";
 import { AppToken } from "../../src/apps/AppToken.sol";
 import { Errors } from "../../src/utils/Errors.sol";
+import "forge-std/Test.sol";
 
 contract AppStakingVaultTest is Test {
     AppStakingVault public vault;

@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import { IUniswapV2Router02 } from "../interfaces/IUniswapV2Router02.sol";
 import { IAppFeeRouter } from "../interfaces/IAppFeeRouter.sol";
 import { IAppRewardsDistributor } from "../interfaces/IAppRewardsDistributor.sol";
-import { IRewardsDistributor } from "../interfaces/IRewardsDistributor.sol";
 import { IElataXP } from "../interfaces/IElataXP.sol";
-import { AppToken } from "./AppToken.sol";
-import { AppStakingVault } from "./AppStakingVault.sol";
+import { IRewardsDistributor } from "../interfaces/IRewardsDistributor.sol";
+import { IUniswapV2Router02 } from "../interfaces/IUniswapV2Router02.sol";
 import { AppBondingCurve, IAppFactory } from "./AppBondingCurve.sol";
+import { AppStakingVault } from "./AppStakingVault.sol";
+import { AppToken } from "./AppToken.sol";
 import { AppDeploymentLib } from "./libraries/AppDeploymentLib.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title AppFactory
@@ -174,7 +174,11 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         string calldata description,
         string calldata imageURI,
         string calldata website
-    ) external nonReentrant returns (uint256 appId) {
+    )
+        external
+        nonReentrant
+        returns (uint256 appId)
+    {
         if (paused) revert Paused();
         uint256 tokenSupply = supply == 0 ? defaultSupply : supply;
         require(tokenSupply > 0, "Invalid supply");
@@ -292,7 +296,10 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         uint256 unlockAt,
         uint256 totalRaisedElta,
         uint256 finalSupply
-    ) external override {
+    )
+        external
+        override
+    {
         require(appId < appCount, "Invalid app");
         App storage app = apps[appId];
         require(msg.sender == app.curve, "Only curve");

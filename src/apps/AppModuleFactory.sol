@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { IOwnable } from "./Interfaces.sol";
 import { AppAccess1155 } from "./AppAccess1155.sol";
 import { AppStakingVault } from "./AppStakingVault.sol";
 import { EpochRewards } from "./EpochRewards.sol";
+import { IOwnable } from "./Interfaces.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title AppModuleFactory
@@ -94,7 +94,10 @@ contract AppModuleFactory is Ownable {
      * @return staking Address of deployed AppStakingVault
      * @return epochs Address of deployed EpochRewards
      */
-    function deployModules(address appToken, string calldata baseURI)
+    function deployModules(
+        address appToken,
+        string calldata baseURI
+    )
         external
         returns (address access1155, address staking, address epochs)
     {

@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import { Errors } from "../utils/Errors.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/Nonces.sol";
-import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import { Errors } from "../utils/Errors.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 /**
  * @title ElataXP
@@ -108,7 +108,13 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl, ReentrancyGua
      * @notice Publish a new Merkle root and bind it to a canonical data hash.
      * @dev Increments currentDistributionId and stores root and dataHash for that id.
      */
-    function setMerkleRoot(bytes32 newRoot, bytes32 dataHash) external onlyRole(XP_OPERATOR_ROLE) {
+    function setMerkleRoot(
+        bytes32 newRoot,
+        bytes32 dataHash
+    )
+        external
+        onlyRole(XP_OPERATOR_ROLE)
+    {
         // Allow zero dataHash if operator chooses, but root must be non-zero to be meaningful
         if (newRoot == bytes32(0)) revert Errors.InvalidAmount();
         uint256 newId = currentDistributionId + 1;
@@ -124,7 +130,11 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl, ReentrancyGua
      * @param amount The XP amount allocated to msg.sender for this distribution.
      * @param proof Merkle proof from the leaf (msg.sender, amount) to the root.
      */
-    function claimXP(uint256 distributionId, uint256 amount, bytes32[] calldata proof)
+    function claimXP(
+        uint256 distributionId,
+        uint256 amount,
+        bytes32[] calldata proof
+    )
         external
         nonReentrant
     {
@@ -178,7 +188,9 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl, ReentrancyGua
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external {
+    )
+        external
+    {
         if (block.timestamp > deadline) revert Errors.SignatureExpired();
         if (amount == 0 || user == address(0) || operator == address(0)) {
             revert Errors.InvalidAmount();
@@ -222,7 +234,14 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl, ReentrancyGua
     /**
      * @dev Override to disable transfers (soulbound)
      */
-    function _update(address from, address to, uint256 value) internal override(ERC20, ERC20Votes) {
+    function _update(
+        address from,
+        address to,
+        uint256 value
+    )
+        internal
+        override(ERC20, ERC20Votes)
+    {
         if (from != address(0) && to != address(0)) revert Errors.TransfersDisabled();
         super._update(from, to, value);
     }

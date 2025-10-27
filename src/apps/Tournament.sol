@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 /**
  * @title Tournament
@@ -105,7 +105,9 @@ contract Tournament is Ownable, ReentrancyGuard {
         uint64 end_,
         uint256 protocolFeeBps_,
         uint256 burnFeeBps_
-    ) Ownable(owner_) {
+    )
+        Ownable(owner_)
+    {
         if (end_ != 0 && end_ <= start_) revert InvalidWindow();
 
         APP = IERC20(appToken);

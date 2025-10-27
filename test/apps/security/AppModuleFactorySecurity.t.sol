@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-import { AppModuleFactory } from "../../../src/apps/AppModuleFactory.sol";
-import { AppToken } from "../../../src/apps/AppToken.sol";
 import { AppAccess1155 } from "../../../src/apps/AppAccess1155.sol";
+import { AppModuleFactory } from "../../../src/apps/AppModuleFactory.sol";
 import { AppStakingVault } from "../../../src/apps/AppStakingVault.sol";
+import { AppToken } from "../../../src/apps/AppToken.sol";
 import { ELTA } from "../../../src/token/ELTA.sol";
+import "forge-std/Test.sol";
 
 /**
  * @title AppModuleFactorySecurityTest

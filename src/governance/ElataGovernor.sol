@@ -3,11 +3,11 @@ pragma solidity ^0.8.24;
 
 import { Governor } from "@openzeppelin/contracts/governance/Governor.sol";
 import {
-    GovernorSettings
-} from "@openzeppelin/contracts/governance/extensions/GovernorSettings.sol";
-import {
     GovernorCountingSimple
 } from "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
+import {
+    GovernorSettings
+} from "@openzeppelin/contracts/governance/extensions/GovernorSettings.sol";
 import { GovernorVotes } from "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
 import {
     GovernorVotesQuorumFraction
@@ -84,7 +84,10 @@ contract ElataGovernor is
         uint256[] memory values,
         bytes[] memory calldatas,
         string memory description
-    ) public returns (uint256 proposalId) {
+    )
+        public
+        returns (uint256 proposalId)
+    {
         // Check emergency proposal threshold
         uint256 voterVotes = getVotes(msg.sender, block.number - 1);
         uint256 threshold = _emergencyProposalThreshold();
@@ -112,7 +115,12 @@ contract ElataGovernor is
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) public payable override returns (uint256 proposalId) {
+    )
+        public
+        payable
+        override
+        returns (uint256 proposalId)
+    {
         proposalId = super.execute(targets, values, calldatas, descriptionHash);
         executed[proposalId] = true;
         emit CustomProposalExecuted(proposalId);

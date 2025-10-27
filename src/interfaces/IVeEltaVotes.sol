@@ -12,7 +12,13 @@ interface IVeEltaVotes {
      * @param blockNumber Block number to query
      * @return Voting power at that block
      */
-    function getPastVotes(address account, uint256 blockNumber) external view returns (uint256);
+    function getPastVotes(
+        address account,
+        uint256 blockNumber
+    )
+        external
+        view
+        returns (uint256);
 
     /**
      * @notice Get total voting power at a specific block

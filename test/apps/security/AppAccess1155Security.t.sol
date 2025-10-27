@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
 import { AppAccess1155 } from "../../../src/apps/AppAccess1155.sol";
-import { AppToken } from "../../../src/apps/AppToken.sol";
 import { AppStakingVault } from "../../../src/apps/AppStakingVault.sol";
+import { AppToken } from "../../../src/apps/AppToken.sol";
+import "forge-std/Test.sol";
 
 /**
  * @title AppAccess1155Security
@@ -416,7 +416,13 @@ contract ReentrancyAttacker {
     }
 
     // Reentrancy attempt via ERC1155 callback
-    function onERC1155Received(address, address, uint256 id, uint256, bytes memory)
+    function onERC1155Received(
+        address,
+        address,
+        uint256 id,
+        uint256,
+        bytes memory
+    )
         external
         returns (bytes4)
     {

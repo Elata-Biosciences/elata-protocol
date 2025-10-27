@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
 import { ElataXP } from "../../src/experience/ElataXP.sol";
 import { Errors } from "../../src/utils/Errors.sol";
+import "forge-std/Test.sol";
 
 contract ElataXP_Merkle_Test is Test {
     event XPClaimed(uint256 indexed distributionId, address indexed user, uint256 amount);

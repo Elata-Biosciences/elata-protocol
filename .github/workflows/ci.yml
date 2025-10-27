@@ -10,9 +10,31 @@ env:
   FOUNDRY_PROFILE: ci
 
 jobs:
+  fmt:
+    name: Formatting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.1.0
+
+      - name: Assert Foundry version
+        run: |
+          forge --version
+          forge --version | grep "forge 1.1.0" || (echo "Wrong Foundry version; expected v1.1.0" && exit 1)
+
+      - name: Check code formatting
+        run: forge fmt --check
+
   test:
     name: Foundry Tests
     runs-on: ubuntu-latest
+    needs: fmt
     steps:
       - uses: actions/checkout@v4
         with:
@@ -42,6 +64,7 @@ jobs:
   lint:
     name: Code Quality
     runs-on: ubuntu-latest
+    needs: fmt
     steps:
       - uses: actions/checkout@v4
 
@@ -49,9 +72,6 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: v1.1.0
-
-      - name: Check code formatting
-        run: forge fmt --check
 
       - name: Run gas report
         run: forge test --gas-report

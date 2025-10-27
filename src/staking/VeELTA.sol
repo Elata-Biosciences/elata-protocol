@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IVeEltaVotes } from "../interfaces/IVeEltaVotes.sol";
+import { Errors } from "../utils/Errors.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import { ERC20Votes } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Nonces } from "@openzeppelin/contracts/utils/Nonces.sol";
-import { Errors } from "../utils/Errors.sol";
-import { IVeEltaVotes } from "../interfaces/IVeEltaVotes.sol";
 
 /**
  * @title VeELTA (Vote-Escrowed ELTA)
@@ -72,7 +72,10 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @param _elta ELTA token address
      * @param _admin Admin address for roles
      */
-    constructor(IERC20 _elta, address _admin)
+    constructor(
+        IERC20 _elta,
+        address _admin
+    )
         ERC20("veELTA Voting Power", "veELTA")
         ERC20Permit("veELTA Voting Power")
     {
@@ -270,7 +273,11 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
     /**
      * @dev Override to make tokens non-transferable (soulbound)
      */
-    function _update(address from, address to, uint256 amount)
+    function _update(
+        address from,
+        address to,
+        uint256 amount
+    )
         internal
         override(ERC20, ERC20Votes)
     {

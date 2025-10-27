@@ -53,7 +53,9 @@ tab_width = 4
 bracket_spacing = true
 quote_style = "double"
 number_underscore = "preserve"
-single_line_statement_blocks = "single"
+single_line_statement_blocks = "preserve"
+multiline_func_header = "all"
+sort_imports = true
 
 [rpc_endpoints]
 mainnet = "${MAINNET_RPC_URL}"

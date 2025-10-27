@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { Script, console2 } from "forge-std/Script.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { ELTA } from "../src/token/ELTA.sol";
-import { ElataXP } from "../src/experience/ElataXP.sol";
-import { VeELTA } from "../src/staking/VeELTA.sol";
-import { LotPool } from "../src/governance/LotPool.sol";
-import { RewardsDistributor } from "../src/rewards/RewardsDistributor.sol";
-import { ElataGovernor } from "../src/governance/ElataGovernor.sol";
-import { ElataTimelock } from "../src/governance/ElataTimelock.sol";
-import { TimelockController } from "@openzeppelin/contracts/governance/TimelockController.sol";
 import { AppFactory } from "../src/apps/AppFactory.sol";
 import { AppFactoryViews } from "../src/apps/AppFactoryViews.sol";
 import { AppModuleFactory } from "../src/apps/AppModuleFactory.sol";
 import { TournamentFactory } from "../src/apps/TournamentFactory.sol";
+import { ElataXP } from "../src/experience/ElataXP.sol";
+import { ElataGovernor } from "../src/governance/ElataGovernor.sol";
+import { ElataTimelock } from "../src/governance/ElataTimelock.sol";
+import { LotPool } from "../src/governance/LotPool.sol";
 import { IUniswapV2Router02 } from "../src/interfaces/IUniswapV2Router02.sol";
+import { RewardsDistributor } from "../src/rewards/RewardsDistributor.sol";
+import { VeELTA } from "../src/staking/VeELTA.sol";
+import { ELTA } from "../src/token/ELTA.sol";
+import { TimelockController } from "@openzeppelin/contracts/governance/TimelockController.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { Script, console2 } from "forge-std/Script.sol";
 
 /**
  * @title DeployLocalFull
@@ -41,7 +41,10 @@ contract MockUniswapV2Router {
         uint256,
         address,
         uint256
-    ) external returns (uint256 amountA, uint256 amountB, uint256 liquidity) {
+    )
+        external
+        returns (uint256 amountA, uint256 amountB, uint256 liquidity)
+    {
         // Mock: just return the desired amounts
         return (amountADesired, amountBDesired, amountADesired + amountBDesired);
     }
@@ -52,14 +55,20 @@ contract MockUniswapV2Router {
         address[] calldata path,
         address,
         uint256
-    ) external returns (uint256[] memory amounts) {
+    )
+        external
+        returns (uint256[] memory amounts)
+    {
         amounts = new uint256[](path.length);
         amounts[0] = amountIn;
         amounts[path.length - 1] = amountIn; // 1:1 for simplicity
         return amounts;
     }
 
-    function getAmountsOut(uint256 amountIn, address[] calldata path)
+    function getAmountsOut(
+        uint256 amountIn,
+        address[] calldata path
+    )
         external
         pure
         returns (uint256[] memory amounts)

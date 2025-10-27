@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { Script, console2 } from "forge-std/Script.sol";
-import { stdJson } from "forge-std/StdJson.sol";
-import { ELTA } from "../src/token/ELTA.sol";
-import { ElataXP } from "../src/experience/ElataXP.sol";
-import { VeELTA } from "../src/staking/VeELTA.sol";
-import { LotPool } from "../src/governance/LotPool.sol";
+import { AppAccess1155 } from "../src/apps/AppAccess1155.sol";
 import { AppFactory } from "../src/apps/AppFactory.sol";
 import { AppModuleFactory } from "../src/apps/AppModuleFactory.sol";
-import { AppToken } from "../src/apps/AppToken.sol";
-import { AppAccess1155 } from "../src/apps/AppAccess1155.sol";
 import { AppStakingVault } from "../src/apps/AppStakingVault.sol";
+import { AppToken } from "../src/apps/AppToken.sol";
+import { ElataXP } from "../src/experience/ElataXP.sol";
+import { LotPool } from "../src/governance/LotPool.sol";
+import { VeELTA } from "../src/staking/VeELTA.sol";
+import { ELTA } from "../src/token/ELTA.sol";
+import { Script, console2 } from "forge-std/Script.sol";
+import { stdJson } from "forge-std/StdJson.sol";
 
 /**
  * @title SeedLocalData
@@ -208,7 +208,10 @@ contract SeedLocalData is Script {
         string memory symbol,
         string memory description,
         string memory imageURI
-    ) internal returns (TestApp memory app) {
+    )
+        internal
+        returns (TestApp memory app)
+    {
         // Get creation cost (seedElta + creationFee)
         uint256 totalCost = factory.seedElta() + factory.creationFee();
 

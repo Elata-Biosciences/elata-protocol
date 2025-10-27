@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IOwnable } from "./Interfaces.sol";
 import { Tournament } from "./Tournament.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title TournamentFactory
@@ -102,7 +102,12 @@ contract TournamentFactory is Ownable {
      * @param endTime Tournament end time (0 = no end)
      * @return tournament Address of deployed tournament
      */
-    function createTournament(address appToken, uint256 entryFee, uint64 startTime, uint64 endTime)
+    function createTournament(
+        address appToken,
+        uint256 entryFee,
+        uint64 startTime,
+        uint64 endTime
+    )
         external
         returns (address tournament)
     {
@@ -128,7 +133,10 @@ contract TournamentFactory is Ownable {
         uint64 endTime,
         uint256 protocolFeeBps,
         uint256 burnFeeBps
-    ) public returns (address tournamentAddr) {
+    )
+        public
+        returns (address tournamentAddr)
+    {
         // Verify caller is token owner
         if (IOwnable(appToken).owner() != msg.sender) revert NotTokenOwner();
 

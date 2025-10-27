@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import { Errors } from "../utils/Errors.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { Errors } from "../utils/Errors.sol";
 
 /**
  * @title RewardsDistributor
@@ -33,8 +33,8 @@ import { Errors } from "../utils/Errors.sol";
  * - Cursor tracking for efficiency
  * - Emergency pause capability
  */
-import { IVeEltaVotes } from "../interfaces/IVeEltaVotes.sol";
 import { IAppRewardsDistributor } from "../interfaces/IAppRewardsDistributor.sol";
+import { IVeEltaVotes } from "../interfaces/IVeEltaVotes.sol";
 
 contract RewardsDistributor is ReentrancyGuard, AccessControl {
     using SafeERC20 for IERC20;
@@ -250,7 +250,11 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
      * @param fromEpoch Starting epoch index
      * @param toEpoch Ending epoch index (exclusive)
      */
-    function claimVeToken(IERC20 token, uint256 fromEpoch, uint256 toEpoch)
+    function claimVeToken(
+        IERC20 token,
+        uint256 fromEpoch,
+        uint256 toEpoch
+    )
         external
         nonReentrant
         whenNotPaused
@@ -384,7 +388,10 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
      * @param count Number of epochs to fetch
      * @return epochs Array of epochs
      */
-    function getEpochsBatch(uint256 startId, uint256 count)
+    function getEpochsBatch(
+        uint256 startId,
+        uint256 count
+    )
         external
         view
         returns (Epoch[] memory epochs)

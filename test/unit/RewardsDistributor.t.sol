@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-import { RewardsDistributor } from "../../src/rewards/RewardsDistributor.sol";
+import { IAppRewardsDistributor } from "../../src/interfaces/IAppRewardsDistributor.sol";
+import { IVeEltaVotes } from "../../src/interfaces/IVeEltaVotes.sol";
 import { AppRewardsDistributor } from "../../src/rewards/AppRewardsDistributor.sol";
+import { RewardsDistributor } from "../../src/rewards/RewardsDistributor.sol";
 import { VeELTA } from "../../src/staking/VeELTA.sol";
 import { ELTA } from "../../src/token/ELTA.sol";
-import { IVeEltaVotes } from "../../src/interfaces/IVeEltaVotes.sol";
-import { IAppRewardsDistributor } from "../../src/interfaces/IAppRewardsDistributor.sol";
 import { Errors } from "../../src/utils/Errors.sol";
+import "forge-std/Test.sol";
 
 /**
  * @title RewardsDistributor V2 Tests

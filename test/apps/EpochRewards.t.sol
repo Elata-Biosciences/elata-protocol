@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-import { EpochRewards } from "../../src/apps/EpochRewards.sol";
 import { AppToken } from "../../src/apps/AppToken.sol";
+import { EpochRewards } from "../../src/apps/EpochRewards.sol";
+import "forge-std/Test.sol";
 import { Merkle } from "murky/src/Merkle.sol";
 
 contract EpochRewardsTest is Test {

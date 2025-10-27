@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IUniswapV2Router02 } from "../../interfaces/IUniswapV2Router02.sol";
 import { IAppFeeRouter } from "../../interfaces/IAppFeeRouter.sol";
 import { IElataXP } from "../../interfaces/IElataXP.sol";
+import { IUniswapV2Router02 } from "../../interfaces/IUniswapV2Router02.sol";
+import { AppCurveDeployer } from "./AppCurveDeployer.sol";
 import { AppTokenDeployer } from "./AppTokenDeployer.sol";
 import { AppVaultDeployer } from "./AppVaultDeployer.sol";
-import { AppCurveDeployer } from "./AppCurveDeployer.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title AppDeploymentLib
@@ -26,7 +26,10 @@ library AppDeploymentLib {
         address appRewardsDistributor,
         address rewardsDistributor,
         address treasury
-    ) external returns (address) {
+    )
+        external
+        returns (address)
+    {
         return AppTokenDeployer.deployToken(
             name,
             symbol,
@@ -46,7 +49,10 @@ library AppDeploymentLib {
         string calldata symbol,
         address token,
         address owner
-    ) external returns (address) {
+    )
+        external
+        returns (address)
+    {
         return AppVaultDeployer.deployVault(name, symbol, token, owner);
     }
 
@@ -63,7 +69,10 @@ library AppDeploymentLib {
         IAppFeeRouter appFeeRouter,
         IElataXP elataXP,
         address governance
-    ) external returns (address) {
+    )
+        external
+        returns (address)
+    {
         return AppCurveDeployer.deployCurve(
             appId,
             factory,

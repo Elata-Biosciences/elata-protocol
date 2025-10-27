@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
 import { AppStakingVault } from "../../../src/apps/AppStakingVault.sol";
 import { AppToken } from "../../../src/apps/AppToken.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Errors } from "../../../src/utils/Errors.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "forge-std/Test.sol";
 
 /**
  * @title AppStakingVaultSecurityTest
@@ -170,7 +170,10 @@ contract AppStakingVaultSecurityTest is Test {
     // FUZZ TESTING
     // ────────────────────────────────────────────────────────────────────────────
 
-    function testFuzz_Security_StakeUnstakeInvariants(uint256 stakeAmount, uint256 unstakeAmount)
+    function testFuzz_Security_StakeUnstakeInvariants(
+        uint256 stakeAmount,
+        uint256 unstakeAmount
+    )
         public
     {
         stakeAmount = bound(stakeAmount, 1, 10000 ether);
@@ -194,7 +197,12 @@ contract AppStakingVaultSecurityTest is Test {
         assertEq(totalStakedBefore - vault.totalStaked(), unstakeAmount);
     }
 
-    function testFuzz_Security_MultipleUsers(uint256 user1Amount, uint256 user2Amount) public {
+    function testFuzz_Security_MultipleUsers(
+        uint256 user1Amount,
+        uint256 user2Amount
+    )
+        public
+    {
         user1Amount = bound(user1Amount, 1, 10000 ether);
         user2Amount = bound(user2Amount, 1, 10000 ether);
 

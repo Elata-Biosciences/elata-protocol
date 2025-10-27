@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
 import { LpLocker } from "../../src/apps/LpLocker.sol";
 import { IUniswapV2Pair } from "../../src/interfaces/IUniswapV2Pair.sol";
+import "forge-std/Test.sol";
 
 // Mock LP token for testing
 contract MockLpToken {

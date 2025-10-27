@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { ElataXP } from "../experience/ElataXP.sol";
 import { Errors } from "../utils/Errors.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title LotPool
@@ -86,7 +86,11 @@ contract LotPool is AccessControl {
         bytes32[] calldata options,
         address[] calldata recipients,
         uint64 durationSecs
-    ) external onlyRole(MANAGER_ROLE) returns (uint256 roundId, uint256 snapshotBlock) {
+    )
+        external
+        onlyRole(MANAGER_ROLE)
+        returns (uint256 roundId, uint256 snapshotBlock)
+    {
         if (options.length == 0 || options.length != recipients.length) {
             revert Errors.ArrayLengthMismatch();
         }
@@ -160,7 +164,10 @@ contract LotPool is AccessControl {
      * @return usedXP XP already used in this round
      * @return remainingXP XP still available for voting
      */
-    function getUserVotingStatus(address user, uint256 roundId)
+    function getUserVotingStatus(
+        address user,
+        uint256 roundId
+    )
         external
         view
         returns (uint256 availableXP, uint256 usedXP, uint256 remainingXP)
@@ -197,7 +204,14 @@ contract LotPool is AccessControl {
      * @param option Option ID
      * @return Recipient address for the option
      */
-    function getOptionRecipient(uint256 roundId, bytes32 option) external view returns (address) {
+    function getOptionRecipient(
+        uint256 roundId,
+        bytes32 option
+    )
+        external
+        view
+        returns (address)
+    {
         return _rounds[roundId].recipient[option];
     }
 
@@ -223,7 +237,11 @@ contract LotPool is AccessControl {
     }
 
     /// @notice Finalize a round and pay out `amount` ELTA to the winner's recipient.
-    function finalize(uint256 roundId, bytes32 winner, uint256 amount)
+    function finalize(
+        uint256 roundId,
+        bytes32 winner,
+        uint256 amount
+    )
         external
         onlyRole(MANAGER_ROLE)
     {

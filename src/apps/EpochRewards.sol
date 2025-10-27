@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 /**
  * @title EpochRewards
@@ -124,7 +124,14 @@ contract EpochRewards is Ownable, ReentrancyGuard {
      * @param proof Merkle proof of (msg.sender, amount)
      * @param amount Reward amount
      */
-    function claim(uint256 id, bytes32[] calldata proof, uint256 amount) external nonReentrant {
+    function claim(
+        uint256 id,
+        bytes32[] calldata proof,
+        uint256 amount
+    )
+        external
+        nonReentrant
+    {
         Epoch storage e = epochs[id];
 
         if (e.merkleRoot == 0) revert NotFinalized();
@@ -190,7 +197,10 @@ contract EpochRewards is Ownable, ReentrancyGuard {
      * @param users Array of user addresses
      * @return statuses Array of claim statuses
      */
-    function checkClaimStatuses(uint256 id, address[] calldata users)
+    function checkClaimStatuses(
+        uint256 id,
+        address[] calldata users
+    )
         external
         view
         returns (bool[] memory statuses)

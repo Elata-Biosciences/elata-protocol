@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-import { ELTA } from "../../src/token/ELTA.sol";
-import { VeELTA } from "../../src/staking/VeELTA.sol";
-import { AppToken } from "../../src/apps/AppToken.sol";
 import { AppStakingVault } from "../../src/apps/AppStakingVault.sol";
+import { AppToken } from "../../src/apps/AppToken.sol";
 import { AppFeeRouter } from "../../src/fees/AppFeeRouter.sol";
+import { IAppRewardsDistributor } from "../../src/interfaces/IAppRewardsDistributor.sol";
+import { IRewardsDistributor } from "../../src/interfaces/IRewardsDistributor.sol";
+import { IVeEltaVotes } from "../../src/interfaces/IVeEltaVotes.sol";
 import { AppRewardsDistributor } from "../../src/rewards/AppRewardsDistributor.sol";
 import { RewardsDistributor } from "../../src/rewards/RewardsDistributor.sol";
-import { IAppRewardsDistributor } from "../../src/interfaces/IAppRewardsDistributor.sol";
-import { IVeEltaVotes } from "../../src/interfaces/IVeEltaVotes.sol";
-import { IRewardsDistributor } from "../../src/interfaces/IRewardsDistributor.sol";
+import { VeELTA } from "../../src/staking/VeELTA.sol";
+import { ELTA } from "../../src/token/ELTA.sol";
+import "forge-std/Test.sol";
 
 /**
  * @title RevenueFlowTest

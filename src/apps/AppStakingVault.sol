@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { IERC20, ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { Errors } from "../utils/Errors.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { ERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import { ERC20Votes } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Nonces } from "@openzeppelin/contracts/utils/Nonces.sol";
-import { Errors } from "../utils/Errors.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title AppStakingVault
@@ -48,7 +48,12 @@ contract AppStakingVault is ERC20, ERC20Permit, ERC20Votes, Ownable, ReentrancyG
      * @param appToken Address of the app ERC20 token
      * @param owner_ Contract owner (app creator or factory)
      */
-    constructor(string memory appName, string memory appSymbol, IERC20 appToken, address owner_)
+    constructor(
+        string memory appName,
+        string memory appSymbol,
+        IERC20 appToken,
+        address owner_
+    )
         ERC20(string.concat("Staked ", appName), string.concat("s", appSymbol))
         ERC20Permit(string.concat("Staked ", appName))
         Ownable(owner_)
@@ -130,7 +135,11 @@ contract AppStakingVault is ERC20, ERC20Permit, ERC20Votes, Ownable, ReentrancyG
      * @dev Override to make tokens non-transferable
      * @dev Allows minting/burning but blocks transfers between users
      */
-    function _update(address from, address to, uint256 amount)
+    function _update(
+        address from,
+        address to,
+        uint256 amount
+    )
         internal
         override(ERC20, ERC20Votes)
     {

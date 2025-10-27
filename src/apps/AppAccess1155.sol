@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { ERC1155 } from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IAppToken } from "./Interfaces.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { ERC1155 } from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title AppAccess1155
@@ -76,7 +76,12 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
      * @param owner_ Contract owner (app creator)
      * @param baseURI Base URI for ERC1155 metadata
      */
-    constructor(address appToken, address stakingVault, address owner_, string memory baseURI)
+    constructor(
+        address appToken,
+        address stakingVault,
+        address owner_,
+        string memory baseURI
+    )
         ERC1155(baseURI)
         Ownable(owner_)
     {
@@ -108,7 +113,10 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
         uint64 endTime,
         uint64 maxSupply,
         string calldata perIdURI
-    ) external onlyOwner {
+    )
+        external
+        onlyOwner
+    {
         items[id] = Item({
             price: price,
             soulbound: soulbound,
@@ -148,7 +156,13 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
      * @param featureId Unique identifier for the feature
      * @param gate Gate configuration
      */
-    function setFeatureGate(bytes32 featureId, FeatureGate calldata gate) external onlyOwner {
+    function setFeatureGate(
+        bytes32 featureId,
+        FeatureGate calldata gate
+    )
+        external
+        onlyOwner
+    {
         gates[featureId] = gate;
         emit FeatureGateSet(featureId, gate);
     }
@@ -200,7 +214,12 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
      * @notice Enforce soulbound restrictions on transfers
      * @dev Reverts if attempting to transfer a soulbound item
      */
-    function _update(address from, address to, uint256[] memory ids, uint256[] memory values)
+    function _update(
+        address from,
+        address to,
+        uint256[] memory ids,
+        uint256[] memory values
+    )
         internal
         virtual
         override
@@ -239,7 +258,11 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
      * @param userStake User's current stake amount (pass from StakingVault)
      * @return hasAccess Whether user meets requirements
      */
-    function checkFeatureAccess(address user, bytes32 featureId, uint256 userStake)
+    function checkFeatureAccess(
+        address user,
+        bytes32 featureId,
+        uint256 userStake
+    )
         external
         view
         returns (bool hasAccess)
@@ -268,7 +291,11 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
      * @return reason Reason if cannot purchase (0=can purchase, 1=inactive, 2=early, 3=late,
      * 4=supply)
      */
-    function checkPurchaseEligibility(address user, uint256 id, uint256 amount)
+    function checkPurchaseEligibility(
+        address user,
+        uint256 id,
+        uint256 amount
+    )
         external
         view
         returns (bool canPurchase, uint8 reason)

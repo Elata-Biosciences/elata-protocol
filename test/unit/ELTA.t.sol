@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
 import { ELTA } from "../../src/token/ELTA.sol";
 import { Errors } from "../../src/utils/Errors.sol";
+import "forge-std/Test.sol";
 
 contract ELTATest is Test {
     ELTA public elta;

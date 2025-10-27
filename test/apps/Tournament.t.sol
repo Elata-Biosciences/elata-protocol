@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-import { Tournament } from "../../src/apps/Tournament.sol";
 import { AppToken } from "../../src/apps/AppToken.sol";
+import { Tournament } from "../../src/apps/Tournament.sol";
+import "forge-std/Test.sol";
 import { Merkle } from "murky/src/Merkle.sol";
 
 contract TournamentTest is Test {
