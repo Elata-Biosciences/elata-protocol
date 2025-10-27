@@ -21,7 +21,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: v1.1.0
+          version: v1.4.2
 
       - name: Show Foundry version
         run: forge --version
@@ -41,7 +41,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: v1.1.0
+          version: v1.4.2
 
       - name: Show Foundry version
         run: forge --version
@@ -69,7 +69,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: v1.1.0
+          version: v1.4.2
 
       - name: Run gas report
         run: forge test --gas-report
