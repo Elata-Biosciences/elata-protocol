@@ -26,22 +26,8 @@ library AppDeploymentLib {
         address appRewardsDistributor,
         address rewardsDistributor,
         address treasury
-    )
-        external
-        returns (address)
-    {
-        return AppTokenDeployer.deployToken(
-            name,
-            symbol,
-            decimals,
-            supply,
-            creator,
-            factory,
-            governance,
-            appRewardsDistributor,
-            rewardsDistributor,
-            treasury
-        );
+    ) external returns (address) {
+        return AppTokenDeployer.deployToken(name, symbol, decimals, supply, creator, factory, governance, appRewardsDistributor, rewardsDistributor, treasury);
     }
 
     function deployVault(
@@ -49,10 +35,7 @@ library AppDeploymentLib {
         string calldata symbol,
         address token,
         address owner
-    )
-        external
-        returns (address)
-    {
+    ) external returns (address) {
         return AppVaultDeployer.deployVault(name, symbol, token, owner);
     }
 
@@ -69,23 +52,7 @@ library AppDeploymentLib {
         IAppFeeRouter appFeeRouter,
         IElataXP elataXP,
         address governance
-    )
-        external
-        returns (address)
-    {
-        return AppCurveDeployer.deployCurve(
-            appId,
-            factory,
-            elta,
-            token,
-            router,
-            targetRaised,
-            lpLockDuration,
-            creator,
-            treasury,
-            appFeeRouter,
-            elataXP,
-            governance
-        );
+    ) external returns (address) {
+        return AppCurveDeployer.deployCurve(appId, factory, elta, token, router, targetRaised, lpLockDuration, creator, treasury, appFeeRouter, elataXP, governance);
     }
 }

@@ -21,15 +21,14 @@ interface IStakeVaultVotes {
     function getPastVotes(
         address account,
         uint256 blockNumber
-    )
-        external
-        view
-        returns (uint256);
+    ) external view returns (uint256);
 
     /**
      * @notice Get current staked balance
      * @param account Address to check
      * @return Current staked balance
      */
-    function balanceOf(address account) external view returns (uint256);
+    function balanceOf(
+        address account
+    ) external view returns (uint256);
 }

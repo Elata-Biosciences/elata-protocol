@@ -24,21 +24,9 @@ contract AppAccess1155SecurityTest is Test {
     uint256 public constant MAX_SUPPLY = 1_000_000_000 ether;
 
     function setUp() public {
-        appToken = new AppToken(
-            "TestApp",
-            "TEST",
-            18,
-            MAX_SUPPLY,
-            owner,
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
-        );
+        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, owner, admin, address(1), address(1), address(1), address(1));
         vault = new AppStakingVault("TestApp", "TAPP", appToken, owner);
-        access =
-            new AppAccess1155(address(appToken), address(vault), owner, "https://metadata.test/");
+        access = new AppAccess1155(address(appToken), address(vault), owner, "https://metadata.test/");
 
         // Mint tokens to users
         vm.startPrank(admin);
@@ -126,12 +114,7 @@ contract AppAccess1155SecurityTest is Test {
     function test_Security_OnlyOwnerCanSetFeatureGate() public {
         vm.expectRevert();
         vm.prank(attacker);
-        access.setFeatureGate(
-            keccak256("premium"),
-            AppAccess1155.FeatureGate({
-                minStake: 1000 ether, requiredItem: 0, requireBoth: false, active: true
-            })
-        );
+        access.setFeatureGate(keccak256("premium"), AppAccess1155.FeatureGate({ minStake: 1000 ether, requiredItem: 0, requireBoth: false, active: true }));
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -404,12 +387,18 @@ contract ReentrancyAttacker {
     AppToken public token;
     bool public attacking;
 
-    constructor(AppAccess1155 _access, AppToken _token) {
+    constructor(
+        AppAccess1155 _access,
+        AppToken _token
+    ) {
         access = _access;
         token = _token;
     }
 
-    function attack(uint256 id, uint256 amount) external {
+    function attack(
+        uint256 id,
+        uint256 amount
+    ) external {
         token.approve(address(access), type(uint256).max);
         attacking = true;
         access.purchase(id, amount, bytes32(0));
@@ -422,10 +411,7 @@ contract ReentrancyAttacker {
         uint256 id,
         uint256,
         bytes memory
-    )
-        external
-        returns (bytes4)
-    {
+    ) external returns (bytes4) {
         if (attacking) {
             attacking = false;
             // Attempt reentrancy

@@ -48,13 +48,7 @@ contract RewardsDistributorTest is Test {
         appRewardsDistributor = new AppRewardsDistributor(elta, admin, factory);
 
         // Deploy RewardsDistributor with all dependencies
-        rewardsDistributor = new RewardsDistributor(
-            elta,
-            IVeEltaVotes(address(veElta)),
-            IAppRewardsDistributor(address(appRewardsDistributor)),
-            treasury,
-            admin
-        );
+        rewardsDistributor = new RewardsDistributor(elta, IVeEltaVotes(address(veElta)), IAppRewardsDistributor(address(appRewardsDistributor)), treasury, admin);
 
         // Grant DISTRIBUTOR_ROLE to revenueSource
         rewardsDistributor.grantRole(rewardsDistributor.DISTRIBUTOR_ROLE(), revenueSource);
@@ -73,9 +67,7 @@ contract RewardsDistributorTest is Test {
     function test_Deployment() public view {
         assertEq(address(rewardsDistributor.ELTA()), address(elta));
         assertEq(address(rewardsDistributor.veELTA()), address(veElta));
-        assertEq(
-            address(rewardsDistributor.appRewardsDistributor()), address(appRewardsDistributor)
-        );
+        assertEq(address(rewardsDistributor.appRewardsDistributor()), address(appRewardsDistributor));
         assertEq(rewardsDistributor.treasury(), treasury);
         assertEq(rewardsDistributor.BIPS_APP(), 7000); // 70%
         assertEq(rewardsDistributor.BIPS_VEELTA(), 1500); // 15%

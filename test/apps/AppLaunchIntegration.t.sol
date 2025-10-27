@@ -12,12 +12,7 @@ import { IAppRewardsDistributor } from "../../src/interfaces/IAppRewardsDistribu
 import { IRewardsDistributor } from "../../src/interfaces/IRewardsDistributor.sol";
 import { IUniswapV2Router02 } from "../../src/interfaces/IUniswapV2Router02.sol";
 import { ELTA } from "../../src/token/ELTA.sol";
-import {
-    MockAppFeeRouter,
-    MockAppRewardsDistributor,
-    MockElataXP,
-    MockRewardsDistributor
-} from "../mocks/MockContracts.sol";
+import { MockAppFeeRouter, MockAppRewardsDistributor, MockElataXP, MockRewardsDistributor } from "../mocks/MockContracts.sol";
 import "forge-std/Test.sol";
 
 /**
@@ -90,29 +85,15 @@ contract AppLaunchIntegrationTest is Test {
     function _setupMockUniswap() internal {
         vm.mockCall(mockRouter, abi.encodeWithSignature("factory()"), abi.encode(mockFactory));
 
-        vm.mockCall(
-            mockFactory, abi.encodeWithSignature("getPair(address,address)"), abi.encode(address(0))
-        );
+        vm.mockCall(mockFactory, abi.encodeWithSignature("getPair(address,address)"), abi.encode(address(0)));
 
-        vm.mockCall(
-            mockFactory,
-            abi.encodeWithSignature("createPair(address,address)"),
-            abi.encode(mockPair)
-        );
+        vm.mockCall(mockFactory, abi.encodeWithSignature("createPair(address,address)"), abi.encode(mockPair));
 
-        vm.mockCall(
-            mockRouter,
-            abi.encodeWithSignature(
-                "addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint256)"
-            ),
-            abi.encode(500_000 ether, 900 ether, 1000 ether)
-        );
+        vm.mockCall(mockRouter, abi.encodeWithSignature("addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint256)"), abi.encode(500_000 ether, 900 ether, 1000 ether));
 
         vm.mockCall(mockPair, abi.encodeWithSignature("balanceOf(address)"), abi.encode(1000 ether));
 
-        vm.mockCall(
-            mockPair, abi.encodeWithSignature("transfer(address,uint256)"), abi.encode(true)
-        );
+        vm.mockCall(mockPair, abi.encodeWithSignature("transfer(address,uint256)"), abi.encode(true));
     }
 
     function test_CompleteAppLaunchLifecycle() public {
@@ -169,7 +150,9 @@ contract AppLaunchIntegrationTest is Test {
         console2.log("[OK] App created successfully");
     }
 
-    function _testBondingCurvePhase(uint256 appId) internal {
+    function _testBondingCurvePhase(
+        uint256 appId
+    ) internal {
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
         AppToken token = AppToken(app.token);
@@ -514,7 +497,10 @@ contract AppLaunchIntegrationTest is Test {
         console2.log("[OK] Error handling verified");
     }
 
-    function testFuzz_AppLaunchScenarios(uint256 supply, uint256 purchaseAmount) public {
+    function testFuzz_AppLaunchScenarios(
+        uint256 supply,
+        uint256 purchaseAmount
+    ) public {
         // Bound parameters to reasonable ranges
         supply = bound(supply, 1_000_000 ether, 10_000_000_000 ether);
 

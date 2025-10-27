@@ -34,10 +34,7 @@ interface IStakeVaultVotes {
     function getPastVotes(
         address account,
         uint256 blockNumber
-    )
-        external
-        view
-        returns (uint256);
+    ) external view returns (uint256);
 }
 
 contract AppRewardsDistributor is AccessControl {
@@ -87,13 +84,7 @@ contract AppRewardsDistributor is AccessControl {
     event AppPaused(address indexed vault, bool paused);
     event AppRemoved(address indexed vault);
     event AppDistributed(uint256 indexed blockNumber, uint256 totalAmount, uint256 activeApps);
-    event AppClaim(
-        address indexed vault,
-        address indexed user,
-        uint256 fromEpoch,
-        uint256 toEpoch,
-        uint256 amount
-    );
+    event AppClaim(address indexed vault, address indexed user, uint256 fromEpoch, uint256 toEpoch, uint256 amount);
 
     /**
      * @notice Initialize app rewards distributor
@@ -101,7 +92,11 @@ contract AppRewardsDistributor is AccessControl {
      * @param _governance Governance address
      * @param _factory Factory address
      */
-    constructor(IERC20 _elta, address _governance, address _factory) {
+    constructor(
+        IERC20 _elta,
+        address _governance,
+        address _factory
+    ) {
         require(address(_elta) != address(0), "Zero ELTA");
         require(_governance != address(0), "Zero gov");
 
@@ -117,7 +112,10 @@ contract AppRewardsDistributor is AccessControl {
      * @param vault Address of AppStakingVault
      * @param token Address of the app token
      */
-    function registerApp(address vault, address token) external onlyRole(FACTORY_ROLE) {
+    function registerApp(
+        address vault,
+        address token
+    ) external onlyRole(FACTORY_ROLE) {
         if (isVault[vault]) revert VaultExists();
         require(token != address(0), "Zero token");
 
@@ -133,7 +131,9 @@ contract AppRewardsDistributor is AccessControl {
      * @notice Legacy registerApp for backward compatibility
      * @param vault Address of AppStakingVault
      */
-    function registerApp(address vault) external onlyRole(FACTORY_ROLE) {
+    function registerApp(
+        address vault
+    ) external onlyRole(FACTORY_ROLE) {
         if (isVault[vault]) revert VaultExists();
 
         isVault[vault] = true;
@@ -148,7 +148,10 @@ contract AppRewardsDistributor is AccessControl {
      * @param vault Vault address
      * @param paused True to pause, false to unpause
      */
-    function pauseApp(address vault, bool paused) external onlyRole(GOVERNANCE_ROLE) {
+    function pauseApp(
+        address vault,
+        bool paused
+    ) external onlyRole(GOVERNANCE_ROLE) {
         if (!isVault[vault]) revert UnknownVault();
 
         isActive[vault] = !paused;
@@ -160,7 +163,9 @@ contract AppRewardsDistributor is AccessControl {
      * @dev Vault remains in registry for historical claims but gets no new rewards
      * @param vault Vault address
      */
-    function removeApp(address vault) external onlyRole(GOVERNANCE_ROLE) {
+    function removeApp(
+        address vault
+    ) external onlyRole(GOVERNANCE_ROLE) {
         if (!isVault[vault]) revert UnknownVault();
 
         isActive[vault] = false;
@@ -172,7 +177,9 @@ contract AppRewardsDistributor is AccessControl {
      * @dev Called by RewardsDistributor with 70% of protocol revenue
      * @param amount Total ELTA to distribute
      */
-    function distribute(uint256 amount) external {
+    function distribute(
+        uint256 amount
+    ) external {
         ELTA.safeTransferFrom(msg.sender, address(this), amount);
 
         uint256 totalWeight;
@@ -197,12 +204,7 @@ contract AppRewardsDistributor is AccessControl {
             uint256 vaultTotalStaked = IStakeVaultVotes(vault).totalSupply();
             uint256 vaultShare = (totalWeight == 0) ? 0 : (amount * vaultTotalStaked) / totalWeight;
 
-            epochs[vault]
-            .push(
-                AppEpoch({
-                    blockNumber: blockNumber, amount: vaultShare, totalStaked: vaultTotalStaked
-                })
-            );
+            epochs[vault].push(AppEpoch({ blockNumber: blockNumber, amount: vaultShare, totalStaked: vaultTotalStaked }));
 
             activeCount++;
         }
@@ -216,7 +218,10 @@ contract AppRewardsDistributor is AccessControl {
      * @param token App token address
      * @param amount Amount of app tokens to distribute
      */
-    function depositForApp(IERC20 token, uint256 amount) external {
+    function depositForApp(
+        IERC20 token,
+        uint256 amount
+    ) external {
         // Find vault for this token
         address vault = tokenToVault[address(token)];
         require(vault != address(0), "Unknown token");
@@ -226,8 +231,7 @@ contract AppRewardsDistributor is AccessControl {
 
         // Create epoch denominated in this token (separate from ELTA epochs)
         uint256 totalStaked = IStakeVaultVotes(vault).totalSupply();
-        tokenEpochs[vault][token]
-        .push(AppEpoch({ blockNumber: block.number, amount: amount, totalStaked: totalStaked }));
+        tokenEpochs[vault][token].push(AppEpoch({ blockNumber: block.number, amount: amount, totalStaked: totalStaked }));
     }
 
     /**
@@ -236,7 +240,10 @@ contract AppRewardsDistributor is AccessControl {
      * @param vault Vault address to claim from
      * @param toEpoch Claim up to this epoch (exclusive)
      */
-    function claim(address vault, uint256 toEpoch) external {
+    function claim(
+        address vault,
+        uint256 toEpoch
+    ) external {
         AppEpoch[] storage vaultEpochs = epochs[vault];
         if (vaultEpochs.length == 0) revert NoEpochs();
 
@@ -278,9 +285,7 @@ contract AppRewardsDistributor is AccessControl {
     function claimMultiple(
         address[] calldata vaultList,
         uint256[] calldata toEpochs
-    )
-        external
-    {
+    ) external {
         require(vaultList.length == toEpochs.length, "Length mismatch");
 
         for (uint256 i; i < vaultList.length; ++i) {
@@ -301,8 +306,7 @@ contract AppRewardsDistributor is AccessControl {
                 AppEpoch storage epoch = vaultEpochs[j];
                 if (epoch.totalStaked == 0 || epoch.amount == 0) continue;
 
-                uint256 userStake =
-                    IStakeVaultVotes(vault).getPastVotes(msg.sender, epoch.blockNumber);
+                uint256 userStake = IStakeVaultVotes(vault).getPastVotes(msg.sender, epoch.blockNumber);
                 if (userStake == 0) continue;
 
                 totalClaim += (epoch.amount * userStake) / epoch.totalStaked;
@@ -321,7 +325,9 @@ contract AppRewardsDistributor is AccessControl {
      * @param vault Vault address
      * @return Number of epochs
      */
-    function getEpochCount(address vault) external view returns (uint256) {
+    function getEpochCount(
+        address vault
+    ) external view returns (uint256) {
         return epochs[vault].length;
     }
 
@@ -335,11 +341,7 @@ contract AppRewardsDistributor is AccessControl {
     function getUnclaimedRange(
         address user,
         address vault
-    )
-        external
-        view
-        returns (uint256 fromEpoch, uint256 toEpoch)
-    {
+    ) external view returns (uint256 fromEpoch, uint256 toEpoch) {
         fromEpoch = userCursor[user][vault];
         toEpoch = epochs[vault].length;
     }
@@ -351,7 +353,11 @@ contract AppRewardsDistributor is AccessControl {
      * @param token Token to claim
      * @param toEpoch Claim up to this epoch (exclusive)
      */
-    function claimToken(address vault, IERC20 token, uint256 toEpoch) external {
+    function claimToken(
+        address vault,
+        IERC20 token,
+        uint256 toEpoch
+    ) external {
         AppEpoch[] storage vaultTokenEpochs = tokenEpochs[vault][token];
         if (vaultTokenEpochs.length == 0) return; // No epochs to claim
 
@@ -411,11 +417,7 @@ contract AppRewardsDistributor is AccessControl {
     function estimatePendingRewards(
         address user,
         address vault
-    )
-        external
-        view
-        returns (uint256 estimated)
-    {
+    ) external view returns (uint256 estimated) {
         AppEpoch[] storage vaultEpochs = epochs[vault];
         uint256 fromEpoch = userCursor[user][vault];
         uint256 endEpoch = vaultEpochs.length;

@@ -96,12 +96,7 @@ contract LotPoolTest is Test {
         uint64 duration = 7 days;
 
         vm.expectEmit(true, false, false, true);
-        emit RoundStarted(
-            1,
-            block.number > 0 ? block.number - 1 : 0,
-            uint64(block.timestamp),
-            uint64(block.timestamp + duration)
-        );
+        emit RoundStarted(1, block.number > 0 ? block.number - 1 : 0, uint64(block.timestamp), uint64(block.timestamp + duration));
 
         vm.prank(admin);
         (uint256 roundId, uint256 snapshotBlock) = lotPool.startRound(options, recipients, duration);
@@ -110,13 +105,7 @@ contract LotPoolTest is Test {
         assertEq(snapshotBlock, block.number > 0 ? block.number - 1 : 0);
         assertEq(lotPool.currentRoundId(), 1);
 
-        (
-            uint256 returnedSnapshotBlock,
-            uint64 start,
-            uint64 end,
-            bool finalized,
-            bytes32[] memory returnedOptions
-        ) = lotPool.getRound(roundId);
+        (uint256 returnedSnapshotBlock, uint64 start, uint64 end, bool finalized, bytes32[] memory returnedOptions) = lotPool.getRound(roundId);
         assertEq(returnedSnapshotBlock, snapshotBlock);
         assertEq(start, block.timestamp);
         assertEq(end, block.timestamp + duration);
@@ -443,7 +432,10 @@ contract LotPoolTest is Test {
         assertEq(lotPool.currentRoundId(), 2);
     }
 
-    function testFuzz_Vote(uint256 xpAmount, uint256 voteWeight) public {
+    function testFuzz_Vote(
+        uint256 xpAmount,
+        uint256 voteWeight
+    ) public {
         xpAmount = bound(xpAmount, 1 ether, 10000 ether);
         voteWeight = bound(voteWeight, 1, xpAmount);
 

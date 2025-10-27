@@ -20,18 +20,7 @@ contract AppTokenSecurityTest is Test {
     uint256 public constant MAX_SUPPLY = 1_000_000_000 ether;
 
     function setUp() public {
-        token = new AppToken(
-            "TestApp",
-            "TEST",
-            18,
-            MAX_SUPPLY,
-            creator,
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
-        );
+        token = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, creator, admin, address(1), address(1), address(1), address(1));
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -94,9 +83,7 @@ contract AppTokenSecurityTest is Test {
     function testFuzz_Security_SupplyNeverExceedsCap(
         uint256 amount1,
         uint256 amount2
-    )
-        public
-    {
+    ) public {
         amount1 = bound(amount1, 1, MAX_SUPPLY);
         amount2 = bound(amount2, 1, MAX_SUPPLY);
 
@@ -252,9 +239,7 @@ contract AppTokenSecurityTest is Test {
     function testFuzz_Security_TransferPreservesSupply(
         uint256 mintAmount,
         uint256 transferAmount
-    )
-        public
-    {
+    ) public {
         mintAmount = bound(mintAmount, 1, MAX_SUPPLY);
         transferAmount = bound(transferAmount, 0, mintAmount);
 

@@ -18,29 +18,11 @@ contract TournamentFactoryTest is Test {
 
     uint256 public constant MAX_SUPPLY = 1_000_000_000 ether;
 
-    event TournamentCreated(
-        address indexed appToken,
-        address indexed tournament,
-        address indexed creator,
-        uint256 entryFee,
-        uint64 startTime,
-        uint64 endTime
-    );
+    event TournamentCreated(address indexed appToken, address indexed tournament, address indexed creator, uint256 entryFee, uint64 startTime, uint64 endTime);
 
     function setUp() public {
         factory = new TournamentFactory(factoryOwner, treasury);
-        appToken = new AppToken(
-            "TestApp",
-            "TEST",
-            18,
-            MAX_SUPPLY,
-            appCreator,
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
-        );
+        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1));
     }
 
     function test_Deployment() public {
@@ -99,18 +81,11 @@ contract TournamentFactoryTest is Test {
     function test_MultipleTournamentsForSameApp() public {
         // Create first tournament
         vm.prank(appCreator);
-        address tourn1 = factory.createTournament(
-            address(appToken), 10 ether, 0, uint64(block.timestamp + 7 days)
-        );
+        address tourn1 = factory.createTournament(address(appToken), 10 ether, 0, uint64(block.timestamp + 7 days));
 
         // Create second tournament
         vm.prank(appCreator);
-        address tourn2 = factory.createTournament(
-            address(appToken),
-            20 ether,
-            uint64(block.timestamp + 7 days),
-            uint64(block.timestamp + 14 days)
-        );
+        address tourn2 = factory.createTournament(address(appToken), 20 ether, uint64(block.timestamp + 7 days), uint64(block.timestamp + 14 days));
 
         // Verify both exist and are different
         assertTrue(tourn1 != tourn2);

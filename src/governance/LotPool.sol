@@ -45,27 +45,21 @@ contract LotPool is AccessControl {
     event Voted(uint256 indexed roundId, address indexed voter, bytes32 option, uint256 weight);
     event Finalized(uint256 indexed roundId, bytes32 winner, uint256 amount, address recipient);
 
-    constructor(IERC20 elta, ElataXP xp, address admin) {
-        if (address(elta) == address(0) || address(xp) == address(0) || admin == address(0)) {
-            revert Errors.ZeroAddress();
-        }
+    constructor(
+        IERC20 elta,
+        ElataXP xp,
+        address admin
+    ) {
+        if (address(elta) == address(0) || address(xp) == address(0) || admin == address(0)) revert Errors.ZeroAddress();
         ELTA = elta;
         XP = xp;
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(MANAGER_ROLE, admin);
     }
 
-    function getRound(uint256 roundId)
-        external
-        view
-        returns (
-            uint256 snapshotBlock,
-            uint64 start,
-            uint64 end,
-            bool finalized,
-            bytes32[] memory options
-        )
-    {
+    function getRound(
+        uint256 roundId
+    ) external view returns (uint256 snapshotBlock, uint64 start, uint64 end, bool finalized, bytes32[] memory options) {
         Round storage r = _rounds[roundId];
         snapshotBlock = r.snapshotBlock;
         start = r.start;
@@ -75,7 +69,9 @@ contract LotPool is AccessControl {
     }
 
     /// @notice Fund the pool (ELTA) prior to or during an active round.
-    function fund(uint256 amount) external {
+    function fund(
+        uint256 amount
+    ) external {
         if (amount == 0) revert Errors.InvalidAmount();
         ELTA.safeTransferFrom(msg.sender, address(this), amount);
     }
@@ -86,14 +82,8 @@ contract LotPool is AccessControl {
         bytes32[] calldata options,
         address[] calldata recipients,
         uint64 durationSecs
-    )
-        external
-        onlyRole(MANAGER_ROLE)
-        returns (uint256 roundId, uint256 snapshotBlock)
-    {
-        if (options.length == 0 || options.length != recipients.length) {
-            revert Errors.ArrayLengthMismatch();
-        }
+    ) external onlyRole(MANAGER_ROLE) returns (uint256 roundId, uint256 snapshotBlock) {
+        if (options.length == 0 || options.length != recipients.length) revert Errors.ArrayLengthMismatch();
         uint64 start = uint64(block.timestamp);
         uint64 end = start + durationSecs;
 
@@ -126,7 +116,11 @@ contract LotPool is AccessControl {
     }
 
     /// @notice Cast XP-weighted votes (consumes your XP-at-snapshot for this round).
-    function vote(uint256 roundId, bytes32 option, uint256 weight) external {
+    function vote(
+        uint256 roundId,
+        bytes32 option,
+        uint256 weight
+    ) external {
         Round storage r = _rounds[roundId];
         if (block.timestamp < r.start) revert Errors.VotingNotStarted();
         if (block.timestamp > r.end) revert Errors.VotingClosed();
@@ -152,7 +146,10 @@ contract LotPool is AccessControl {
     }
 
     /// @notice Read total votes for an option in a round.
-    function votesFor(uint256 roundId, bytes32 option) external view returns (uint256) {
+    function votesFor(
+        uint256 roundId,
+        bytes32 option
+    ) external view returns (uint256) {
         return _rounds[roundId].votes[option];
     }
 
@@ -167,11 +164,7 @@ contract LotPool is AccessControl {
     function getUserVotingStatus(
         address user,
         uint256 roundId
-    )
-        external
-        view
-        returns (uint256 availableXP, uint256 usedXP, uint256 remainingXP)
-    {
+    ) external view returns (uint256 availableXP, uint256 usedXP, uint256 remainingXP) {
         Round storage r = _rounds[roundId];
         availableXP = XP.getPastXP(user, r.snapshotBlock);
         usedXP = r.used[user];
@@ -184,11 +177,9 @@ contract LotPool is AccessControl {
      * @return options Array of option IDs
      * @return votes Array of vote counts for each option
      */
-    function getRoundVotes(uint256 roundId)
-        external
-        view
-        returns (bytes32[] memory options, uint256[] memory votes)
-    {
+    function getRoundVotes(
+        uint256 roundId
+    ) external view returns (bytes32[] memory options, uint256[] memory votes) {
         Round storage r = _rounds[roundId];
         options = r.options;
         votes = new uint256[](options.length);
@@ -207,11 +198,7 @@ contract LotPool is AccessControl {
     function getOptionRecipient(
         uint256 roundId,
         bytes32 option
-    )
-        external
-        view
-        returns (address)
-    {
+    ) external view returns (address) {
         return _rounds[roundId].recipient[option];
     }
 
@@ -220,7 +207,9 @@ contract LotPool is AccessControl {
      * @param roundId Round ID
      * @return Whether the round is active
      */
-    function isRoundActive(uint256 roundId) external view returns (bool) {
+    function isRoundActive(
+        uint256 roundId
+    ) external view returns (bool) {
         Round storage r = _rounds[roundId];
         return block.timestamp >= r.start && block.timestamp <= r.end && !r.finalized;
     }
@@ -230,7 +219,9 @@ contract LotPool is AccessControl {
      * @param roundId Round ID
      * @return Time remaining in seconds (0 if expired)
      */
-    function getRoundTimeRemaining(uint256 roundId) external view returns (uint256) {
+    function getRoundTimeRemaining(
+        uint256 roundId
+    ) external view returns (uint256) {
         Round storage r = _rounds[roundId];
         if (block.timestamp >= r.end || r.finalized) return 0;
         return r.end - block.timestamp;
@@ -241,10 +232,7 @@ contract LotPool is AccessControl {
         uint256 roundId,
         bytes32 winner,
         uint256 amount
-    )
-        external
-        onlyRole(MANAGER_ROLE)
-    {
+    ) external onlyRole(MANAGER_ROLE) {
         Round storage r = _rounds[roundId];
         if (r.finalized) revert();
         if (block.timestamp <= r.end) revert Errors.VotingClosed();

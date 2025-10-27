@@ -31,18 +31,7 @@ contract AppModuleFactorySecurityTest is Test {
 
         factory = new AppModuleFactory(address(elta), factoryOwner, treasury);
 
-        appToken = new AppToken(
-            "TestApp",
-            "TEST",
-            18,
-            MAX_SUPPLY,
-            appCreator,
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
-        );
+        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1));
 
         // Mint ELTA to users
         vm.startPrank(factoryOwner);
@@ -168,11 +157,9 @@ contract AppModuleFactorySecurityTest is Test {
 
     function test_Security_RegistryMappingCorrect() public {
         vm.prank(appCreator);
-        (address access, address vault, address epochs) =
-            factory.deployModules(address(appToken), "https://test/");
+        (address access, address vault, address epochs) = factory.deployModules(address(appToken), "https://test/");
 
-        (address storedAccess, address storedVault, address storedEpochs) =
-            factory.modulesByApp(address(appToken));
+        (address storedAccess, address storedVault, address storedEpochs) = factory.modulesByApp(address(appToken));
 
         assertEq(storedAccess, access);
         assertEq(storedVault, vault);
@@ -181,26 +168,13 @@ contract AppModuleFactorySecurityTest is Test {
 
     function test_Security_MultipleAppsIsolated() public {
         // Create second app token
-        AppToken appToken2 = new AppToken(
-            "TestApp2",
-            "TEST2",
-            18,
-            MAX_SUPPLY,
-            appCreator,
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
-        );
+        AppToken appToken2 = new AppToken("TestApp2", "TEST2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1));
 
         // Deploy for both apps
         vm.startPrank(appCreator);
-        (address access1, address vault1,) =
-            factory.deployModules(address(appToken), "https://app1/");
+        (address access1, address vault1,) = factory.deployModules(address(appToken), "https://app1/");
 
-        (address access2, address vault2,) =
-            factory.deployModules(address(appToken2), "https://app2/");
+        (address access2, address vault2,) = factory.deployModules(address(appToken2), "https://app2/");
         vm.stopPrank();
 
         // Verify they're different
@@ -250,7 +224,9 @@ contract AppModuleFactorySecurityTest is Test {
     // FUZZ TESTS
     // ────────────────────────────────────────────────────────────────────────────
 
-    function testFuzz_Security_FeeAmountCorrect(uint256 feeAmount) public {
+    function testFuzz_Security_FeeAmountCorrect(
+        uint256 feeAmount
+    ) public {
         feeAmount = bound(feeAmount, 0, 10000 ether);
 
         vm.prank(factoryOwner);

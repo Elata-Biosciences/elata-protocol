@@ -10,12 +10,18 @@ contract MockLpToken {
     mapping(address => uint256) public balanceOf;
     uint256 public totalSupply;
 
-    function mint(address to, uint256 amount) external {
+    function mint(
+        address to,
+        uint256 amount
+    ) external {
         balanceOf[to] += amount;
         totalSupply += amount;
     }
 
-    function transfer(address to, uint256 amount) external returns (bool) {
+    function transfer(
+        address to,
+        uint256 amount
+    ) external returns (bool) {
         require(balanceOf[msg.sender] >= amount, "Insufficient balance");
         balanceOf[msg.sender] -= amount;
         balanceOf[to] += amount;
@@ -34,13 +40,7 @@ contract LpLockerTest is Test {
     uint256 public constant LOCK_DURATION = 365 days * 2; // 2 years
     uint256 public unlockTime;
 
-    event LpLocked(
-        uint256 indexed appId,
-        address lpToken,
-        address beneficiary,
-        uint256 unlockAt,
-        uint256 amount
-    );
+    event LpLocked(uint256 indexed appId, address lpToken, address beneficiary, uint256 unlockAt, uint256 amount);
     event LpClaimed(uint256 indexed appId, address beneficiary, uint256 amount);
 
     function setUp() public {
@@ -198,7 +198,10 @@ contract LpLockerTest is Test {
         assertEq(locker.getLockedBalance(), lockAmount + additionalAmount);
     }
 
-    function testFuzz_LockAndClaim(uint256 lockAmount, uint256 timeOffset) public {
+    function testFuzz_LockAndClaim(
+        uint256 lockAmount,
+        uint256 timeOffset
+    ) public {
         lockAmount = bound(lockAmount, 1 ether, 1000 ether);
         timeOffset = bound(timeOffset, 0, 365 days * 5); // Up to 5 years
 

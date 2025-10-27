@@ -56,31 +56,13 @@ contract RevenueFlowTest is Test {
         appRewardsDistributor = new AppRewardsDistributor(elta, governance, factory);
 
         // Deploy RewardsDistributor (casting interfaces for constructor)
-        rewardsDistributor = new RewardsDistributor(
-            elta,
-            IVeEltaVotes(address(veElta)),
-            IAppRewardsDistributor(address(appRewardsDistributor)),
-            treasury,
-            governance
-        );
+        rewardsDistributor = new RewardsDistributor(elta, IVeEltaVotes(address(veElta)), IAppRewardsDistributor(address(appRewardsDistributor)), treasury, governance);
 
         // Deploy AppFeeRouter (casting interface for constructor)
-        feeRouter =
-            new AppFeeRouter(elta, IRewardsDistributor(address(rewardsDistributor)), governance);
+        feeRouter = new AppFeeRouter(elta, IRewardsDistributor(address(rewardsDistributor)), governance);
 
         // Deploy app and vault
-        appToken = new AppToken(
-            "Game",
-            "GAME",
-            18,
-            1_000_000 ether,
-            governance,
-            address(this),
-            address(1),
-            address(1),
-            address(1),
-            address(1)
-        );
+        appToken = new AppToken("Game", "GAME", 18, 1_000_000 ether, governance, address(this), address(1), address(1), address(1), address(1));
         appVault = new AppStakingVault("Game", "GAME", appToken, governance);
         appToken.mint(address(this), 1_000_000 ether);
 
@@ -146,8 +128,7 @@ contract RevenueFlowTest is Test {
 
         // App epoch should be recorded
         assertEq(appRewardsDistributor.getEpochCount(address(appVault)), 1);
-        (uint256 appBlockNumber, uint256 appAmount,) =
-            appRewardsDistributor.epochs(address(appVault), 0);
+        (uint256 appBlockNumber, uint256 appAmount,) = appRewardsDistributor.epochs(address(appVault), 0);
         assertEq(appBlockNumber, block.number);
         assertEq(appAmount, expectedAppAmount);
 
@@ -173,18 +154,7 @@ contract RevenueFlowTest is Test {
 
     function test_MultipleApps_ProportionalDistribution() public {
         // Deploy second app
-        AppToken appToken2 = new AppToken(
-            "Game2",
-            "GM2",
-            18,
-            1_000_000 ether,
-            governance,
-            address(this),
-            address(1),
-            address(1),
-            address(1),
-            address(1)
-        );
+        AppToken appToken2 = new AppToken("Game2", "GM2", 18, 1_000_000 ether, governance, address(this), address(1), address(1), address(1), address(1));
         AppStakingVault appVault2 = new AppStakingVault("Game2", "GM2", appToken2, governance);
         appToken2.mint(address(this), 1_000_000 ether);
 

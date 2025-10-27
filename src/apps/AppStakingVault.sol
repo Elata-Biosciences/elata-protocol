@@ -53,11 +53,7 @@ contract AppStakingVault is ERC20, ERC20Permit, ERC20Votes, Ownable, ReentrancyG
         string memory appSymbol,
         IERC20 appToken,
         address owner_
-    )
-        ERC20(string.concat("Staked ", appName), string.concat("s", appSymbol))
-        ERC20Permit(string.concat("Staked ", appName))
-        Ownable(owner_)
-    {
+    ) ERC20(string.concat("Staked ", appName), string.concat("s", appSymbol)) ERC20Permit(string.concat("Staked ", appName)) Ownable(owner_) {
         if (address(appToken) == address(0)) revert Errors.ZeroAddress();
         APP = appToken;
     }
@@ -67,7 +63,9 @@ contract AppStakingVault is ERC20, ERC20Permit, ERC20Votes, Ownable, ReentrancyG
      * @dev User must approve this contract first
      * @param amount Amount of tokens to stake
      */
-    function stake(uint256 amount) external nonReentrant {
+    function stake(
+        uint256 amount
+    ) external nonReentrant {
         if (amount == 0) revert Errors.InvalidAmount();
 
         APP.safeTransferFrom(msg.sender, address(this), amount);
@@ -85,7 +83,10 @@ contract AppStakingVault is ERC20, ERC20Permit, ERC20Votes, Ownable, ReentrancyG
      * @param beneficiary Address to receive stake-shares
      * @param amount Amount of tokens to stake
      */
-    function stakeFor(address beneficiary, uint256 amount) external onlyOwner nonReentrant {
+    function stakeFor(
+        address beneficiary,
+        uint256 amount
+    ) external onlyOwner nonReentrant {
         if (amount == 0) revert Errors.InvalidAmount();
         if (beneficiary == address(0)) revert Errors.ZeroAddress();
 
@@ -102,7 +103,9 @@ contract AppStakingVault is ERC20, ERC20Permit, ERC20Votes, Ownable, ReentrancyG
      * @notice Unstake app tokens
      * @param amount Amount of tokens to unstake
      */
-    function unstake(uint256 amount) external nonReentrant {
+    function unstake(
+        uint256 amount
+    ) external nonReentrant {
         if (amount == 0) revert Errors.InvalidAmount();
         if (balanceOf(msg.sender) < amount) revert Insufficient();
 
@@ -118,7 +121,9 @@ contract AppStakingVault is ERC20, ERC20Permit, ERC20Votes, Ownable, ReentrancyG
      * @param user User address
      * @return Staked balance
      */
-    function stakedOf(address user) external view returns (uint256) {
+    function stakedOf(
+        address user
+    ) external view returns (uint256) {
         return balanceOf(user);
     }
 
@@ -139,10 +144,7 @@ contract AppStakingVault is ERC20, ERC20Permit, ERC20Votes, Ownable, ReentrancyG
         address from,
         address to,
         uint256 amount
-    )
-        internal
-        override(ERC20, ERC20Votes)
-    {
+    ) internal override(ERC20, ERC20Votes) {
         // Allow minting (from == 0) and burning (to == 0)
         // Block transfers between users
         if (from != address(0) && to != address(0)) revert Errors.NonTransferable();
@@ -152,7 +154,9 @@ contract AppStakingVault is ERC20, ERC20Permit, ERC20Votes, Ownable, ReentrancyG
     /**
      * @dev Required override for Nonces
      */
-    function nonces(address owner) public view override(ERC20Permit, Nonces) returns (uint256) {
+    function nonces(
+        address owner
+    ) public view override(ERC20Permit, Nonces) returns (uint256) {
         return super.nonces(owner);
     }
 }

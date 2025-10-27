@@ -14,11 +14,16 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract MockAppFeeRouter is IAppFeeRouter {
     uint256 public override feeBps = 100; // 1%
 
-    function takeAndForwardFee(address, uint256) external pure override {
+    function takeAndForwardFee(
+        address,
+        uint256
+    ) external pure override {
         // Do nothing in mock
     }
 
-    function calculateFee(uint256 amount) external view override returns (uint256) {
+    function calculateFee(
+        uint256 amount
+    ) external view override returns (uint256) {
         return (amount * feeBps) / 10_000;
     }
 }
@@ -30,27 +35,44 @@ contract MockAppFeeRouter is IAppFeeRouter {
 contract MockAppRewardsDistributor is IAppRewardsDistributor {
     address[] public registered;
 
-    function registerApp(address vault) external override {
+    function registerApp(
+        address vault
+    ) external override {
         registered.push(vault);
     }
 
-    function registerApp(address vault, address) external override {
+    function registerApp(
+        address vault,
+        address
+    ) external override {
         registered.push(vault);
     }
 
-    function distribute(uint256) external pure override {
+    function distribute(
+        uint256
+    ) external pure override {
         // Do nothing in mock
     }
 
-    function depositForApp(IERC20, uint256) external pure override {
+    function depositForApp(
+        IERC20,
+        uint256
+    ) external pure override {
         // Do nothing in mock
     }
 
-    function claim(address, uint256) external pure override {
+    function claim(
+        address,
+        uint256
+    ) external pure override {
         // Do nothing in mock
     }
 
-    function claimToken(address, IERC20, uint256) external pure override {
+    function claimToken(
+        address,
+        IERC20,
+        uint256
+    ) external pure override {
         // Do nothing in mock
     }
 
@@ -66,11 +88,16 @@ contract MockAppRewardsDistributor is IAppRewardsDistributor {
 contract MockElataXP is IElataXP {
     mapping(address => uint256) public balances;
 
-    function balanceOf(address account) external view override returns (uint256) {
+    function balanceOf(
+        address account
+    ) external view override returns (uint256) {
         return balances[account];
     }
 
-    function setBalance(address account, uint256 amount) external {
+    function setBalance(
+        address account,
+        uint256 amount
+    ) external {
         balances[account] = amount;
     }
 }
@@ -80,11 +107,16 @@ contract MockElataXP is IElataXP {
  * @notice Mock RewardsDistributor for testing
  */
 contract MockRewardsDistributor is IRewardsDistributor {
-    function depositVeInToken(IERC20, uint256) external pure override {
+    function depositVeInToken(
+        IERC20,
+        uint256
+    ) external pure override {
         // Do nothing in mock
     }
 
-    function deposit(uint256) external pure override {
+    function deposit(
+        uint256
+    ) external pure override {
         // Do nothing in mock
     }
 }

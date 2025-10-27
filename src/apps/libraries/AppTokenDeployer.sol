@@ -20,23 +20,7 @@ library AppTokenDeployer {
         address appRewardsDistributor,
         address rewardsDistributor,
         address treasury
-    )
-        external
-        returns (address)
-    {
-        return address(
-            new AppToken(
-                name,
-                symbol,
-                decimals,
-                supply,
-                creator,
-                factory,
-                governance,
-                appRewardsDistributor,
-                rewardsDistributor,
-                treasury
-            )
-        );
+    ) external returns (address) {
+        return address(new AppToken(name, symbol, decimals, supply, creator, factory, governance, appRewardsDistributor, rewardsDistributor, treasury));
     }
 }

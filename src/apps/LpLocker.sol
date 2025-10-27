@@ -23,13 +23,7 @@ contract LpLocker {
 
     bool public claimed;
 
-    event LpLocked(
-        uint256 indexed appId,
-        address lpToken,
-        address beneficiary,
-        uint256 unlockAt,
-        uint256 amount
-    );
+    event LpLocked(uint256 indexed appId, address lpToken, address beneficiary, uint256 unlockAt, uint256 amount);
     event LpClaimed(uint256 indexed appId, address beneficiary, uint256 amount);
 
     error NotYetUnlocked();
@@ -44,7 +38,12 @@ contract LpLocker {
      * @param _beneficiary Address that can claim after unlock
      * @param _unlockAt Timestamp when LP can be claimed
      */
-    constructor(uint256 _appId, address _lpToken, address _beneficiary, uint256 _unlockAt) {
+    constructor(
+        uint256 _appId,
+        address _lpToken,
+        address _beneficiary,
+        uint256 _unlockAt
+    ) {
         require(_lpToken != address(0), "Zero LP token");
         require(_beneficiary != address(0), "Zero beneficiary");
         require(_unlockAt > block.timestamp, "Invalid unlock time");
@@ -59,7 +58,9 @@ contract LpLocker {
      * @notice Lock LP tokens in this contract
      * @param amount Amount of LP tokens to lock
      */
-    function lockLp(uint256 amount) external {
+    function lockLp(
+        uint256 amount
+    ) external {
         require(amount > 0, "Zero amount");
 
         bool success = IUniswapV2Pair(lpToken).transfer(address(this), amount);

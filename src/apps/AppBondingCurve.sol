@@ -20,8 +20,7 @@ interface IAppFactory {
         uint256 unlockAt,
         uint256 totalRaisedElta,
         uint256 tokensLeft
-    )
-        external;
+    ) external;
 }
 
 /**
@@ -83,28 +82,10 @@ contract AppBondingCurve is ReentrancyGuard {
     address public governance;
 
     // Events
-    event CurveInitialized(
-        uint256 indexed appId, uint256 seedElta, uint256 tokenSupply, uint256 initialK
-    );
+    event CurveInitialized(uint256 indexed appId, uint256 seedElta, uint256 tokenSupply, uint256 initialK);
     event XPGateUpdated(uint256 minXP, uint256 duration);
-    event TokensPurchased(
-        uint256 indexed appId,
-        address indexed buyer,
-        uint256 eltaIn,
-        uint256 tokensOut,
-        uint256 newReserveElta,
-        uint256 newReserveToken,
-        uint256 newPrice
-    );
-    event AppGraduated(
-        uint256 indexed appId,
-        address indexed token,
-        address pair,
-        address locker,
-        uint256 unlockAt,
-        uint256 totalRaisedElta,
-        uint256 tokensToLp
-    );
+    event TokensPurchased(uint256 indexed appId, address indexed buyer, uint256 eltaIn, uint256 tokensOut, uint256 newReserveElta, uint256 newReserveToken, uint256 newPrice);
+    event AppGraduated(uint256 indexed appId, address indexed token, address pair, address locker, uint256 unlockAt, uint256 totalRaisedElta, uint256 tokensToLp);
 
     error AlreadyGraduated();
     error NotGraduated();
@@ -187,7 +168,10 @@ contract AppBondingCurve is ReentrancyGuard {
      * @param seedElta Initial ELTA liquidity
      * @param tokenSupply Initial token supply
      */
-    function initializeCurve(uint256 seedElta, uint256 tokenSupply) external onlyFactory {
+    function initializeCurve(
+        uint256 seedElta,
+        uint256 tokenSupply
+    ) external onlyFactory {
         require(reserveElta == 0 && reserveToken == 0, "Already initialized");
         require(seedElta > 0 && tokenSupply > 0, "Invalid initialization");
 
@@ -206,7 +190,9 @@ contract AppBondingCurve is ReentrancyGuard {
      * @param eltaIn Amount of ELTA to spend
      * @return tokensOut Amount of tokens that would be received
      */
-    function getTokensOut(uint256 eltaIn) public view returns (uint256 tokensOut) {
+    function getTokensOut(
+        uint256 eltaIn
+    ) public view returns (uint256 tokensOut) {
         if (graduated || eltaIn == 0 || reserveElta == 0) return 0;
 
         // Constant product: x * y = k
@@ -226,7 +212,9 @@ contract AppBondingCurve is ReentrancyGuard {
      * @param tokensDesired Amount of tokens desired
      * @return eltaIn Amount of ELTA needed
      */
-    function getEltaInForTokens(uint256 tokensDesired) public view returns (uint256 eltaIn) {
+    function getEltaInForTokens(
+        uint256 tokensDesired
+    ) public view returns (uint256 eltaIn) {
         if (graduated || tokensDesired == 0 || tokensDesired >= reserveToken) return 0;
 
         // Reverse calculation: y - newY = tokensDesired
@@ -261,23 +249,15 @@ contract AppBondingCurve is ReentrancyGuard {
     function buy(
         uint256 eltaIn,
         uint256 minTokensOut
-    )
-        external
-        nonReentrant
-        notGraduated
-        returns (uint256 tokensOut)
-    {
+    ) external nonReentrant notGraduated returns (uint256 tokensOut) {
         if (eltaIn == 0) revert ZeroInput();
         if (reserveElta == 0) revert NotInitialized();
 
         // XP gating for early launch window
-        if (block.timestamp < launchTimestamp + earlyBuyDuration) {
-            if (elataXP.balanceOf(msg.sender) < xpMinForEarlyBuy) revert InsufficientXP();
-        }
+        if (block.timestamp < launchTimestamp + earlyBuyDuration) if (elataXP.balanceOf(msg.sender) < xpMinForEarlyBuy) revert InsufficientXP();
 
         // Calculate maximum ELTA we can accept before hitting target
-        uint256 remainingToTarget =
-            targetRaisedElta > reserveElta ? targetRaisedElta - reserveElta : 0;
+        uint256 remainingToTarget = targetRaisedElta > reserveElta ? targetRaisedElta - reserveElta : 0;
         uint256 actualEltaIn = eltaIn > remainingToTarget ? remainingToTarget : eltaIn;
 
         if (actualEltaIn == 0) revert InvalidAmount();
@@ -288,9 +268,7 @@ contract AppBondingCurve is ReentrancyGuard {
 
         // Calculate fee ON TOP of trade (buyer pays extra)
         uint256 tradingFee = 0;
-        if (address(appFeeRouter) != address(0)) {
-            tradingFee = (actualEltaIn * appFeeRouter.feeBps()) / 10_000;
-        }
+        if (address(appFeeRouter) != address(0)) tradingFee = (actualEltaIn * appFeeRouter.feeBps()) / 10_000;
 
         // Pull ELTA from buyer: curve amount + trading fee
         ELTA.safeTransferFrom(msg.sender, address(this), actualEltaIn + tradingFee);
@@ -312,9 +290,7 @@ contract AppBondingCurve is ReentrancyGuard {
         // Calculate new price for event
         uint256 newPrice = reserveToken > 0 ? (reserveElta * 1e18) / reserveToken : 0;
 
-        emit TokensPurchased(
-            appId, msg.sender, actualEltaIn, tokensOut, reserveElta, reserveToken, newPrice
-        );
+        emit TokensPurchased(appId, msg.sender, actualEltaIn, tokensOut, reserveElta, reserveToken, newPrice);
 
         // Refund excess ELTA if any
         uint256 refund = eltaIn - actualEltaIn;
@@ -341,18 +317,7 @@ contract AppBondingCurve is ReentrancyGuard {
      * @return currentPrice Current token price
      * @return progress Progress toward graduation (basis points)
      */
-    function getCurveState()
-        external
-        view
-        returns (
-            uint256 eltaReserve,
-            uint256 tokenReserve,
-            uint256 target,
-            bool isGraduated,
-            uint256 currentPrice,
-            uint256 progress
-        )
-    {
+    function getCurveState() external view returns (uint256 eltaReserve, uint256 tokenReserve, uint256 target, bool isGraduated, uint256 currentPrice, uint256 progress) {
         eltaReserve = reserveElta;
         tokenReserve = reserveToken;
         target = targetRaisedElta;
@@ -369,9 +334,7 @@ contract AppBondingCurve is ReentrancyGuard {
 
         // Create or get existing pair
         address pairAddress = uniFactory.getPair(address(TOKEN), address(ELTA));
-        if (pairAddress == address(0)) {
-            pairAddress = uniFactory.createPair(address(TOKEN), address(ELTA));
-        }
+        if (pairAddress == address(0)) pairAddress = uniFactory.createPair(address(TOKEN), address(ELTA));
         pair = pairAddress;
 
         // Approve router for liquidity addition
@@ -399,13 +362,10 @@ contract AppBondingCurve is ReentrancyGuard {
         IUniswapV2Pair(pair).transfer(address(lpLocker), liquidity);
         lpLocker.lockLp(liquidity);
 
-        emit AppGraduated(
-            appId, address(TOKEN), pair, locker, lpUnlockAt, reserveElta, reserveToken
-        );
+        emit AppGraduated(appId, address(TOKEN), pair, locker, lpUnlockAt, reserveElta, reserveToken);
 
         // Notify factory
-        IAppFactory(appFactory)
-            .onAppGraduated(appId, pair, locker, lpUnlockAt, reserveElta, reserveToken);
+        IAppFactory(appFactory).onAppGraduated(appId, pair, locker, lpUnlockAt, reserveElta, reserveToken);
 
         // Clear reserves (all moved to LP)
         reserveElta = 0;
@@ -417,7 +377,10 @@ contract AppBondingCurve is ReentrancyGuard {
      * @param _minXP Minimum XP required for early access
      * @param _duration Duration of early access period in seconds
      */
-    function setXPGate(uint256 _minXP, uint256 _duration) external {
+    function setXPGate(
+        uint256 _minXP,
+        uint256 _duration
+    ) external {
         if (msg.sender != governance) revert OnlyGovernance();
         xpMinForEarlyBuy = _minXP;
         earlyBuyDuration = _duration;
@@ -429,7 +392,9 @@ contract AppBondingCurve is ReentrancyGuard {
      * @param user User address to check
      * @return canBuy Whether the user can buy
      */
-    function canUserBuy(address user) external view returns (bool canBuy) {
+    function canUserBuy(
+        address user
+    ) external view returns (bool canBuy) {
         if (graduated) return false;
         if (block.timestamp >= launchTimestamp + earlyBuyDuration) return true;
         return elataXP.balanceOf(user) >= xpMinForEarlyBuy;
@@ -442,11 +407,7 @@ contract AppBondingCurve is ReentrancyGuard {
      * @return xpMin Minimum XP required
      * @return isActive Whether early access is currently active
      */
-    function getEarlyAccessInfo()
-        external
-        view
-        returns (uint256 launchTime, uint256 duration, uint256 xpMin, bool isActive)
-    {
+    function getEarlyAccessInfo() external view returns (uint256 launchTime, uint256 duration, uint256 xpMin, bool isActive) {
         launchTime = launchTimestamp;
         duration = earlyBuyDuration;
         xpMin = xpMinForEarlyBuy;

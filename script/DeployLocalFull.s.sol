@@ -28,7 +28,9 @@ import { Script, console2 } from "forge-std/Script.sol";
 contract MockUniswapV2Router {
     address public immutable factory;
 
-    constructor(address _factory) {
+    constructor(
+        address _factory
+    ) {
         factory = _factory;
     }
 
@@ -41,10 +43,7 @@ contract MockUniswapV2Router {
         uint256,
         address,
         uint256
-    )
-        external
-        returns (uint256 amountA, uint256 amountB, uint256 liquidity)
-    {
+    ) external returns (uint256 amountA, uint256 amountB, uint256 liquidity) {
         // Mock: just return the desired amounts
         return (amountADesired, amountBDesired, amountADesired + amountBDesired);
     }
@@ -55,10 +54,7 @@ contract MockUniswapV2Router {
         address[] calldata path,
         address,
         uint256
-    )
-        external
-        returns (uint256[] memory amounts)
-    {
+    ) external returns (uint256[] memory amounts) {
         amounts = new uint256[](path.length);
         amounts[0] = amountIn;
         amounts[path.length - 1] = amountIn; // 1:1 for simplicity
@@ -68,11 +64,7 @@ contract MockUniswapV2Router {
     function getAmountsOut(
         uint256 amountIn,
         address[] calldata path
-    )
-        external
-        pure
-        returns (uint256[] memory amounts)
-    {
+    ) external pure returns (uint256[] memory amounts) {
         amounts = new uint256[](path.length);
         amounts[0] = amountIn;
         amounts[path.length - 1] = amountIn; // 1:1 for simplicity
@@ -84,10 +76,12 @@ contract MockUniswapV2Factory {
     mapping(address => mapping(address => address)) public getPair;
     address[] public allPairs;
 
-    function createPair(address tokenA, address tokenB) external returns (address pair) {
+    function createPair(
+        address tokenA,
+        address tokenB
+    ) external returns (address pair) {
         // Create a deterministic mock pair address
-        pair =
-            address(uint160(uint256(keccak256(abi.encodePacked(tokenA, tokenB, block.timestamp)))));
+        pair = address(uint160(uint256(keccak256(abi.encodePacked(tokenA, tokenB, block.timestamp)))));
         getPair[tokenA][tokenB] = pair;
         getPair[tokenB][tokenA] = pair;
         allPairs.push(pair);
@@ -133,8 +127,7 @@ contract DeployLocalFull is Script {
 
     function run() external returns (DeploymentResult memory result) {
         // Use Anvil account #0 (has 10K ETH by default)
-        uint256 deployerPrivateKey =
-            0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
+        uint256 deployerPrivateKey = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
         result.deployer = vm.addr(deployerPrivateKey);
         result.treasury = result.deployer;
 
@@ -206,12 +199,9 @@ contract DeployLocalFull is Script {
         // and Governance
         // result.appFactory = new AppFactory(...);
         // result.appFactoryViews = new AppFactoryViews(address(result.appFactory));
-        console2.log(
-            "       AppFactory & AppFactoryViews deployment skipped (use script/Deploy.sol)"
-        );
+        console2.log("       AppFactory & AppFactoryViews deployment skipped (use script/Deploy.sol)");
 
-        result.appModuleFactory =
-            new AppModuleFactory(address(result.token), result.deployer, result.treasury);
+        result.appModuleFactory = new AppModuleFactory(address(result.token), result.deployer, result.treasury);
         console2.log("       AppModuleFactory deployed at:", address(result.appModuleFactory));
 
         result.tournamentFactory = new TournamentFactory(result.deployer, result.treasury);
@@ -238,7 +228,9 @@ contract DeployLocalFull is Script {
         return result;
     }
 
-    function _deployTimelock(address admin) internal returns (TimelockController) {
+    function _deployTimelock(
+        address admin
+    ) internal returns (TimelockController) {
         address[] memory proposers = new address[](1);
         proposers[0] = address(0); // Will be set to governor
 
@@ -248,7 +240,9 @@ contract DeployLocalFull is Script {
         return new ElataTimelock(TIMELOCK_DELAY, proposers, executors, admin);
     }
 
-    function _configurePermissions(DeploymentResult memory result) internal {
+    function _configurePermissions(
+        DeploymentResult memory result
+    ) internal {
         // Grant governor roles on timelock
         result.timelock.grantRole(result.timelock.PROPOSER_ROLE(), address(result.governor));
         result.timelock.grantRole(result.timelock.EXECUTOR_ROLE(), address(result.governor));
@@ -261,7 +255,9 @@ contract DeployLocalFull is Script {
         result.xp.grantRole(result.xp.XP_OPERATOR_ROLE(), address(result.funding));
     }
 
-    function _setupTestAccounts(ELTA token) internal returns (address[] memory accounts) {
+    function _setupTestAccounts(
+        ELTA token
+    ) internal returns (address[] memory accounts) {
         // Anvil's default test accounts (deterministic)
         accounts = new address[](5);
         accounts[0] = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8; // Account #1
@@ -278,7 +274,9 @@ contract DeployLocalFull is Script {
         return accounts;
     }
 
-    function _logDeploymentSummary(DeploymentResult memory result) internal view {
+    function _logDeploymentSummary(
+        DeploymentResult memory result
+    ) internal view {
         console2.log("\n=================================================");
         console2.log("         DEPLOYMENT COMPLETE - SUMMARY");
         console2.log("=================================================\n");
@@ -312,10 +310,7 @@ contract DeployLocalFull is Script {
         console2.log("--------------------------------");
         console2.log("Deployer:                ", result.deployer);
         for (uint256 i = 0; i < result.testAccounts.length; i++) {
-            console2.log(
-                string.concat("Test Account #", vm.toString(i + 1), ":        "),
-                result.testAccounts[i]
-            );
+            console2.log(string.concat("Test Account #", vm.toString(i + 1), ":        "), result.testAccounts[i]);
         }
         console2.log("");
 
@@ -327,7 +322,9 @@ contract DeployLocalFull is Script {
         console2.log("=================================================\n");
     }
 
-    function _writeDeploymentJson(DeploymentResult memory result) internal {
+    function _writeDeploymentJson(
+        DeploymentResult memory result
+    ) internal {
         // Build JSON string manually (Solidity doesn't have native JSON)
         string memory json = string.concat(
             "{\n",
@@ -381,13 +378,7 @@ contract DeployLocalFull is Script {
         );
 
         for (uint256 i = 0; i < result.testAccounts.length; i++) {
-            json = string.concat(
-                json,
-                '    "',
-                vm.toString(result.testAccounts[i]),
-                '"',
-                i < result.testAccounts.length - 1 ? ",\n" : "\n"
-            );
+            json = string.concat(json, '    "', vm.toString(result.testAccounts[i]), '"', i < result.testAccounts.length - 1 ? ",\n" : "\n");
         }
 
         json = string.concat(json, "  ]\n", "}\n");

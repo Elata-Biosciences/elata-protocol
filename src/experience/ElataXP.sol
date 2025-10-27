@@ -26,9 +26,7 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl, ReentrancyGua
     mapping(address => uint256) public operatorNonces;
 
     // EIP-712 typehash for struct used in updateBySig (off-chain XP award authorization).
-    bytes32 public constant XPUPDATE_TYPEHASH = keccak256(
-        "XPUpdate(address operator,address user,uint256 amount,uint256 nonce,uint256 deadline)"
-    );
+    bytes32 public constant XPUPDATE_TYPEHASH = keccak256("XPUpdate(address operator,address user,uint256 amount,uint256 nonce,uint256 deadline)");
 
     // Events for minting and burning XP:
     event XPAwarded(address indexed user, uint256 amount);
@@ -55,7 +53,9 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl, ReentrancyGua
      * @notice Constructor to initialize XP token.
      * @param admin The address that will have the default admin role and operator role initially.
      */
-    constructor(address admin) ERC20("Elata XP", "XP") ERC20Permit("Elata XP") {
+    constructor(
+        address admin
+    ) ERC20("Elata XP", "XP") ERC20Permit("Elata XP") {
         if (admin == address(0)) revert Errors.ZeroAddress();
         // Setup roles
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
@@ -77,7 +77,10 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl, ReentrancyGua
      * @param amount The amount of XP to mint.
      * @dev Only callable by an address with XP_OPERATOR_ROLE.
      */
-    function award(address to, uint256 amount) external onlyRole(XP_OPERATOR_ROLE) {
+    function award(
+        address to,
+        uint256 amount
+    ) external onlyRole(XP_OPERATOR_ROLE) {
         if (to == address(0)) revert Errors.ZeroAddress();
         if (amount == 0) revert Errors.InvalidAmount();
 
@@ -95,7 +98,10 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl, ReentrancyGua
      * @param amount The amount of XP to burn.
      * @dev Only callable by an address with XP_OPERATOR_ROLE.
      */
-    function revoke(address from, uint256 amount) external onlyRole(XP_OPERATOR_ROLE) {
+    function revoke(
+        address from,
+        uint256 amount
+    ) external onlyRole(XP_OPERATOR_ROLE) {
         if (from == address(0)) revert Errors.ZeroAddress();
         if (amount == 0) revert Errors.InvalidAmount();
         _burn(from, amount);
@@ -111,10 +117,7 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl, ReentrancyGua
     function setMerkleRoot(
         bytes32 newRoot,
         bytes32 dataHash
-    )
-        external
-        onlyRole(XP_OPERATOR_ROLE)
-    {
+    ) external onlyRole(XP_OPERATOR_ROLE) {
         // Allow zero dataHash if operator chooses, but root must be non-zero to be meaningful
         if (newRoot == bytes32(0)) revert Errors.InvalidAmount();
         uint256 newId = currentDistributionId + 1;
@@ -134,10 +137,7 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl, ReentrancyGua
         uint256 distributionId,
         uint256 amount,
         bytes32[] calldata proof
-    )
-        external
-        nonReentrant
-    {
+    ) external nonReentrant {
         bytes32 root = merkleRoots[distributionId];
         if (root == bytes32(0)) revert InvalidDistribution();
         if (amount == 0) revert Errors.InvalidAmount();
@@ -160,7 +160,10 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl, ReentrancyGua
     /**
      * @notice Convenience view to check if a user has claimed for a distribution.
      */
-    function hasClaimed(uint256 distributionId, address user) external view returns (bool) {
+    function hasClaimed(
+        uint256 distributionId,
+        address user
+    ) external view returns (bool) {
         return _claimed[distributionId][user];
     }
 
@@ -188,26 +191,18 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl, ReentrancyGua
         uint8 v,
         bytes32 r,
         bytes32 s
-    )
-        external
-    {
+    ) external {
         if (block.timestamp > deadline) revert Errors.SignatureExpired();
-        if (amount == 0 || user == address(0) || operator == address(0)) {
-            revert Errors.InvalidAmount();
-        }
+        if (amount == 0 || user == address(0) || operator == address(0)) revert Errors.InvalidAmount();
 
         // Construct the struct hash and message digest as per EIP-712
         uint256 currentNonce = operatorNonces[operator];
-        bytes32 structHash = keccak256(
-            abi.encode(XPUPDATE_TYPEHASH, operator, user, amount, currentNonce, deadline)
-        );
+        bytes32 structHash = keccak256(abi.encode(XPUPDATE_TYPEHASH, operator, user, amount, currentNonce, deadline));
         bytes32 hash = _hashTypedDataV4(structHash);
 
         // Recover the signer
         address signer = ECDSA.recover(hash, v, r, s);
-        if (signer != operator || !hasRole(XP_OPERATOR_ROLE, operator)) {
-            revert Errors.InvalidSignature();
-        }
+        if (signer != operator || !hasRole(XP_OPERATOR_ROLE, operator)) revert Errors.InvalidSignature();
 
         // Use up this signature nonce
         operatorNonces[operator] = currentNonce + 1;
@@ -225,7 +220,10 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl, ReentrancyGua
      * @param timepoint Block number
      * @return XP balance at the specified block
      */
-    function getPastXP(address account, uint256 timepoint) external view returns (uint256) {
+    function getPastXP(
+        address account,
+        uint256 timepoint
+    ) external view returns (uint256) {
         return getPastVotes(account, timepoint);
     }
 
@@ -238,10 +236,7 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl, ReentrancyGua
         address from,
         address to,
         uint256 value
-    )
-        internal
-        override(ERC20, ERC20Votes)
-    {
+    ) internal override(ERC20, ERC20Votes) {
         if (from != address(0) && to != address(0)) revert Errors.TransfersDisabled();
         super._update(from, to, value);
     }
@@ -249,7 +244,9 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl, ReentrancyGua
     /**
      * @dev Required override for multiple inheritance
      */
-    function nonces(address owner) public view override(ERC20Permit, Nonces) returns (uint256) {
+    function nonces(
+        address owner
+    ) public view override(ERC20Permit, Nonces) returns (uint256) {
         return super.nonces(owner);
     }
 }

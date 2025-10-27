@@ -26,13 +26,7 @@ contract AppRewardsDistributorTest is Test {
     event AppPaused(address indexed vault, bool paused);
     event AppRemoved(address indexed vault);
     event AppDistributed(uint256 indexed blockNumber, uint256 totalAmount, uint256 activeApps);
-    event AppClaim(
-        address indexed vault,
-        address indexed user,
-        uint256 fromEpoch,
-        uint256 toEpoch,
-        uint256 amount
-    );
+    event AppClaim(address indexed vault, address indexed user, uint256 fromEpoch, uint256 toEpoch, uint256 amount);
 
     function setUp() public {
         // Deploy ELTA
@@ -42,34 +36,12 @@ contract AppRewardsDistributorTest is Test {
         distributor = new AppRewardsDistributor(elta, governance, factory);
 
         // Deploy app 1
-        token1 = new AppToken(
-            "Game1",
-            "GM1",
-            18,
-            1_000_000 ether,
-            alice,
-            address(this),
-            address(1),
-            address(1),
-            address(1),
-            address(1)
-        );
+        token1 = new AppToken("Game1", "GM1", 18, 1_000_000 ether, alice, address(this), address(1), address(1), address(1), address(1));
         vault1 = new AppStakingVault("Game1", "GM1", token1, alice);
         token1.mint(address(this), 1_000_000 ether);
 
         // Deploy app 2
-        token2 = new AppToken(
-            "Game2",
-            "GM2",
-            18,
-            1_000_000 ether,
-            bob,
-            address(this),
-            address(1),
-            address(1),
-            address(1),
-            address(1)
-        );
+        token2 = new AppToken("Game2", "GM2", 18, 1_000_000 ether, bob, address(this), address(1), address(1), address(1), address(1));
         vault2 = new AppStakingVault("Game2", "GM2", token2, bob);
         token2.mint(address(this), 1_000_000 ether);
 
@@ -187,8 +159,7 @@ contract AppRewardsDistributorTest is Test {
 
         // Check epoch created
         assertEq(distributor.getEpochCount(address(vault1)), 1);
-        (uint256 blockNumber, uint256 amount, uint256 totalStaked) =
-            distributor.epochs(address(vault1), 0);
+        (uint256 blockNumber, uint256 amount, uint256 totalStaked) = distributor.epochs(address(vault1), 0);
         assertEq(blockNumber, block.number);
         assertEq(amount, rewardAmount); // 100% to single vault
         assertEq(totalStaked, 1000 ether);

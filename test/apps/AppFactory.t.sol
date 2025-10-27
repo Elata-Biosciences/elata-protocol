@@ -19,19 +19,29 @@ import "forge-std/Test.sol";
 contract MockElataXP is IElataXP {
     mapping(address => uint256) public balances;
 
-    function balanceOf(address account) external view override returns (uint256) {
+    function balanceOf(
+        address account
+    ) external view override returns (uint256) {
         return balances[account];
     }
 
-    function setBalance(address account, uint256 balance) external {
+    function setBalance(
+        address account,
+        uint256 balance
+    ) external {
         balances[account] = balance;
     }
 }
 
 // Mock RewardsDistributor
 contract MockRewardsDistributor is IRewardsDistributor {
-    function deposit(uint256) external pure { }
-    function depositVeInToken(IERC20, uint256) external pure { }
+    function deposit(
+        uint256
+    ) external pure { }
+    function depositVeInToken(
+        IERC20,
+        uint256
+    ) external pure { }
 }
 
 contract AppFactoryTest is Test {
@@ -64,9 +74,7 @@ contract AppFactoryTest is Test {
 
         // For testing, we'll use a mock router address
         // In production, this would be the actual Uniswap router
-        vm.mockCall(
-            mockRouter, abi.encodeWithSignature("factory()"), abi.encode(makeAddr("mockFactory"))
-        );
+        vm.mockCall(mockRouter, abi.encodeWithSignature("factory()"), abi.encode(makeAddr("mockFactory")));
 
         factory = new AppFactory(
             elta,
@@ -171,12 +179,7 @@ contract AppFactoryTest is Test {
 
     function test_GetLaunchStats() public {
         // Initially no apps
-        (
-            uint256 totalApps,
-            uint256 graduatedApps,
-            uint256 totalValueLocked,
-            uint256 totalFeesCollected
-        ) = views.getLaunchStats();
+        (uint256 totalApps, uint256 graduatedApps, uint256 totalValueLocked, uint256 totalFeesCollected) = views.getLaunchStats();
 
         assertEq(totalApps, 0);
         assertEq(graduatedApps, 0);

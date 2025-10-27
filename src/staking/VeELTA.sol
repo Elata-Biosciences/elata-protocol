@@ -59,12 +59,8 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
     mapping(address => Lock) public locks;
 
     event Locked(address indexed user, uint256 amount, uint64 unlockTime, uint256 veELTA);
-    event AmountIncreased(
-        address indexed user, uint256 addAmount, uint256 newPrincipal, uint256 newVeELTA
-    );
-    event LockExtended(
-        address indexed user, uint64 oldUnlockTime, uint64 newUnlockTime, uint256 newVeELTA
-    );
+    event AmountIncreased(address indexed user, uint256 addAmount, uint256 newPrincipal, uint256 newVeELTA);
+    event LockExtended(address indexed user, uint64 oldUnlockTime, uint64 newUnlockTime, uint256 newVeELTA);
     event Unlocked(address indexed user, uint256 principal, uint256 veELTABurned);
 
     /**
@@ -75,10 +71,7 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
     constructor(
         IERC20 _elta,
         address _admin
-    )
-        ERC20("veELTA Voting Power", "veELTA")
-        ERC20Permit("veELTA Voting Power")
-    {
+    ) ERC20("veELTA Voting Power", "veELTA") ERC20Permit("veELTA Voting Power") {
         if (address(_elta) == address(0) || _admin == address(0)) revert Errors.ZeroAddress();
 
         ELTA = _elta;
@@ -92,7 +85,10 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @param amount ELTA amount to lock
      * @param unlockTime Unix timestamp when lock expires
      */
-    function lock(uint256 amount, uint64 unlockTime) external {
+    function lock(
+        uint256 amount,
+        uint64 unlockTime
+    ) external {
         Lock memory userLock = locks[msg.sender];
         if (userLock.principal > 0) revert LockExists();
         if (amount == 0) revert Errors.InvalidAmount();
@@ -120,7 +116,9 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @dev Recalculates voting power based on remaining duration
      * @param amount Additional ELTA to lock
      */
-    function increaseAmount(uint256 amount) external {
+    function increaseAmount(
+        uint256 amount
+    ) external {
         Lock memory userLock = locks[msg.sender];
         if (userLock.principal == 0) revert Errors.NoActiveLock();
         if (block.timestamp >= userLock.unlockTime) revert LockExpired();
@@ -150,15 +148,15 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @dev Recalculates voting power based on new duration
      * @param newUnlockTime New unlock timestamp (must be > current)
      */
-    function extendLock(uint64 newUnlockTime) external {
+    function extendLock(
+        uint64 newUnlockTime
+    ) external {
         Lock memory userLock = locks[msg.sender];
         if (userLock.principal == 0) revert Errors.NoActiveLock();
         if (newUnlockTime <= userLock.unlockTime) revert InvalidUnlockTime();
         if (newUnlockTime > block.timestamp + MAX_LOCK) revert Errors.LockTooLong();
 
-        uint256 oldRemainingTime = userLock.unlockTime > block.timestamp
-            ? userLock.unlockTime - uint64(block.timestamp)
-            : 0;
+        uint256 oldRemainingTime = userLock.unlockTime > block.timestamp ? userLock.unlockTime - uint64(block.timestamp) : 0;
         uint256 newRemainingTime = newUnlockTime - uint64(block.timestamp);
 
         uint256 oldBoost = _calculateBoost(oldRemainingTime);
@@ -202,7 +200,10 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @param to Address to mint to
      * @param amount Amount to mint
      */
-    function mint(address to, uint256 amount) external onlyRole(MANAGER_ROLE) {
+    function mint(
+        address to,
+        uint256 amount
+    ) external onlyRole(MANAGER_ROLE) {
         _mint(to, amount);
 
         // Auto-delegate to self for voting power
@@ -214,7 +215,10 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @param from Address to burn from
      * @param amount Amount to burn
      */
-    function burn(address from, uint256 amount) external onlyRole(MANAGER_ROLE) {
+    function burn(
+        address from,
+        uint256 amount
+    ) external onlyRole(MANAGER_ROLE) {
         _burn(from, amount);
     }
 
@@ -224,7 +228,9 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @param duration Lock duration in seconds
      * @return boost Boost multiplier (1e18 = 1x)
      */
-    function _calculateBoost(uint256 duration) internal pure returns (uint256 boost) {
+    function _calculateBoost(
+        uint256 duration
+    ) internal pure returns (uint256 boost) {
         if (duration >= MAX_LOCK) return BOOST_MAX;
         if (duration <= MIN_LOCK) return BOOST_MIN;
 
@@ -240,11 +246,9 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @return veBalance Current veELTA balance
      * @return isExpired Whether lock has expired
      */
-    function getLockDetails(address user)
-        external
-        view
-        returns (uint256 principal, uint64 unlockTime, uint256 veBalance, bool isExpired)
-    {
+    function getLockDetails(
+        address user
+    ) external view returns (uint256 principal, uint64 unlockTime, uint256 veBalance, bool isExpired) {
         Lock memory userLock = locks[user];
         principal = userLock.principal;
         unlockTime = userLock.unlockTime;
@@ -258,11 +262,9 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @return unlockable Whether user can unlock now
      * @return timeRemaining Seconds until unlock (0 if expired)
      */
-    function canUnlock(address user)
-        external
-        view
-        returns (bool unlockable, uint256 timeRemaining)
-    {
+    function canUnlock(
+        address user
+    ) external view returns (bool unlockable, uint256 timeRemaining) {
         Lock memory userLock = locks[user];
         if (userLock.principal == 0) return (false, 0);
 
@@ -277,10 +279,7 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
         address from,
         address to,
         uint256 amount
-    )
-        internal
-        override(ERC20, ERC20Votes)
-    {
+    ) internal override(ERC20, ERC20Votes) {
         // Allow minting (from == 0) and burning (to == 0)
         // Block transfers between users
         if (from != address(0) && to != address(0)) revert Errors.NonTransferable();
@@ -290,7 +289,9 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
     /**
      * @dev Required override for Nonces
      */
-    function nonces(address owner) public view override(ERC20Permit, Nonces) returns (uint256) {
+    function nonces(
+        address owner
+    ) public view override(ERC20Permit, Nonces) returns (uint256) {
         return super.nonces(owner);
     }
 }

@@ -13,7 +13,10 @@ contract MockELTA is ERC20 {
         _mint(msg.sender, 1_000_000 * 10 ** decimals());
     }
 
-    function mint(address to, uint256 amount) external {
+    function mint(
+        address to,
+        uint256 amount
+    ) external {
         _mint(to, amount);
     }
 }
@@ -35,10 +38,7 @@ contract MockUniswapV2Router {
         uint256,
         address to,
         uint256
-    )
-        external
-        returns (uint256 amountA, uint256 amountB, uint256 liquidity)
-    {
+    ) external returns (uint256 amountA, uint256 amountB, uint256 liquidity) {
         // Mock implementation - just return the desired amounts
         return (amountADesired, amountBDesired, amountADesired + amountBDesired);
     }
@@ -49,10 +49,7 @@ contract MockUniswapV2Router {
         address[] calldata path,
         address to,
         uint256 deadline
-    )
-        external
-        returns (uint256[] memory amounts)
-    {
+    ) external returns (uint256[] memory amounts) {
         amounts = new uint256[](path.length);
         amounts[0] = amountIn;
         amounts[path.length - 1] = amountOutMin;
@@ -62,11 +59,7 @@ contract MockUniswapV2Router {
     function getAmountsOut(
         uint256 amountIn,
         address[] calldata path
-    )
-        external
-        pure
-        returns (uint256[] memory amounts)
-    {
+    ) external pure returns (uint256[] memory amounts) {
         amounts = new uint256[](path.length);
         amounts[0] = amountIn;
         // Simple 1:1 mock exchange rate
@@ -79,7 +72,10 @@ contract MockUniswapV2Router {
 contract MockUniswapV2Factory {
     mapping(address => mapping(address => address)) public getPair;
 
-    function createPair(address tokenA, address tokenB) external returns (address pair) {
+    function createPair(
+        address tokenA,
+        address tokenB
+    ) external returns (address pair) {
         // Create a simple mock pair address
         pair = address(uint160(uint256(keccak256(abi.encodePacked(tokenA, tokenB)))));
         getPair[tokenA][tokenB] = pair;
@@ -138,9 +134,7 @@ contract DeployLocal is Script {
         console.log("NEXT_PUBLIC_ELTA_ADDRESS_LOCALHOST=%s", address(elta));
         // console.log("NEXT_PUBLIC_APP_FACTORY_ADDRESS_LOCALHOST=%s", address(appFactory));
         console.log("NEXT_PUBLIC_UNISWAP_ROUTER_ADDRESS_LOCALHOST=%s", address(uniRouter));
-        console.log(
-            "\nNOTE: Use DeployEconomicUpgrade.s.sol for full deployment with new architecture"
-        );
+        console.log("\nNOTE: Use DeployEconomicUpgrade.s.sol for full deployment with new architecture");
 
         console.log("\nTest accounts with ELTA:");
         console.log("Deployer: %s (1M ELTA)", deployer);

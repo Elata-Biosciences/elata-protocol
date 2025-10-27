@@ -11,16 +11,23 @@ contract MockRewardsDistributor is IRewardsDistributor {
     IERC20 public immutable eltaToken;
     uint256 public totalDeposited;
 
-    constructor(IERC20 _elta) {
+    constructor(
+        IERC20 _elta
+    ) {
         eltaToken = _elta;
     }
 
-    function deposit(uint256 amount) external {
+    function deposit(
+        uint256 amount
+    ) external {
         eltaToken.transferFrom(msg.sender, address(this), amount);
         totalDeposited += amount;
     }
 
-    function depositVeInToken(IERC20 token, uint256 amount) external {
+    function depositVeInToken(
+        IERC20 token,
+        uint256 amount
+    ) external {
         token.transferFrom(msg.sender, address(this), amount);
     }
 }
@@ -34,9 +41,7 @@ contract AppFeeRouterTest is Test {
     address public trader = address(0x2);
     address public bondingCurve = address(0x3);
 
-    event FeeForwarded(
-        address indexed source, address indexed payer, uint256 grossAmount, uint256 fee
-    );
+    event FeeForwarded(address indexed source, address indexed payer, uint256 grossAmount, uint256 fee);
     event FeeBpsUpdated(uint256 oldBps, uint256 newBps);
     event GovernanceTransferred(address indexed oldGov, address indexed newGov);
 
@@ -48,8 +53,7 @@ contract AppFeeRouterTest is Test {
         rewardsDistributor = new MockRewardsDistributor(elta);
 
         // Deploy fee router - MockRewardsDistributor implements the IRewardsDistributor interface
-        feeRouter =
-            new AppFeeRouter(elta, IRewardsDistributor(address(rewardsDistributor)), governance);
+        feeRouter = new AppFeeRouter(elta, IRewardsDistributor(address(rewardsDistributor)), governance);
 
         // Fund trader
         vm.prank(governance);
@@ -170,7 +174,9 @@ contract AppFeeRouterTest is Test {
         assertEq(feeRouter.calculateFee(10 ether), 0.1 ether);
     }
 
-    function testFuzz_TakeAndForwardFee(uint256 grossAmount) public {
+    function testFuzz_TakeAndForwardFee(
+        uint256 grossAmount
+    ) public {
         grossAmount = bound(grossAmount, 1, 1_000_000 ether);
 
         // Fund trader if needed
@@ -193,7 +199,9 @@ contract AppFeeRouterTest is Test {
         assertEq(rewardsDistributor.totalDeposited(), expectedFee);
     }
 
-    function testFuzz_SetFeeBps(uint256 newBps) public {
+    function testFuzz_SetFeeBps(
+        uint256 newBps
+    ) public {
         newBps = bound(newBps, 0, feeRouter.MAX_FEE_BPS());
 
         vm.prank(governance);

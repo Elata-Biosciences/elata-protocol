@@ -52,18 +52,7 @@ contract AppModulesIntegrationTest is Test {
         factory.setCreateFee(CREATE_FEE);
 
         // Deploy app token
-        appToken = new AppToken(
-            "NeuroPong",
-            "NPONG",
-            18,
-            MAX_SUPPLY,
-            appCreator,
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
-        );
+        appToken = new AppToken("NeuroPong", "NPONG", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1));
 
         // Mint initial rewards treasury
         vm.prank(admin);
@@ -77,15 +66,13 @@ contract AppModulesIntegrationTest is Test {
         elta.approve(address(factory), CREATE_FEE);
 
         vm.prank(appCreator);
-        (address accessAddr, address vaultAddr,) =
-            factory.deployModules(address(appToken), "https://metadata.neuropong.game/");
+        (address accessAddr, address vaultAddr,) = factory.deployModules(address(appToken), "https://metadata.neuropong.game/");
 
         access = AppAccess1155(accessAddr);
         vault = AppStakingVault(vaultAddr);
 
         // Deploy tournament and rewards
-        tournament =
-            new Tournament(address(appToken), appCreator, treasury, 10 ether, 0, 0, 250, 100);
+        tournament = new Tournament(address(appToken), appCreator, treasury, 10 ether, 0, 0, 250, 100);
 
         rewards = new EpochRewards(address(appToken), appCreator);
 
@@ -115,8 +102,7 @@ contract AppModulesIntegrationTest is Test {
         assertEq(elta.balanceOf(treasury), CREATE_FEE);
 
         // Verify registry
-        (address storedAccess, address storedVault, address storedEpochs) =
-            factory.modulesByApp(address(appToken));
+        (address storedAccess, address storedVault, address storedEpochs) = factory.modulesByApp(address(appToken));
         assertEq(storedAccess, address(access));
         assertEq(storedVault, address(vault));
         assertTrue(storedEpochs != address(0));
@@ -166,12 +152,7 @@ contract AppModulesIntegrationTest is Test {
 
         bytes32 premiumFeature = keccak256("premium_mode");
         vm.prank(appCreator);
-        access.setFeatureGate(
-            premiumFeature,
-            AppAccess1155.FeatureGate({
-                minStake: 500 ether, requiredItem: 1, requireBoth: true, active: true
-            })
-        );
+        access.setFeatureGate(premiumFeature, AppAccess1155.FeatureGate({ minStake: 500 ether, requiredItem: 1, requireBoth: true, active: true }));
 
         // Player1: No access (nothing)
         bool hasAccess = access.checkFeatureAccess(player1, premiumFeature, 0);
@@ -201,12 +182,7 @@ contract AppModulesIntegrationTest is Test {
         // Configure premium tournament (requires stake)
         bytes32 tourneyAccess = keccak256("tournament_access");
         vm.prank(appCreator);
-        access.setFeatureGate(
-            tourneyAccess,
-            AppAccess1155.FeatureGate({
-                minStake: 100 ether, requiredItem: 0, requireBoth: false, active: true
-            })
-        );
+        access.setFeatureGate(tourneyAccess, AppAccess1155.FeatureGate({ minStake: 100 ether, requiredItem: 0, requireBoth: false, active: true }));
 
         // Note: Tournament owner is appCreator
 
@@ -263,8 +239,7 @@ contract AppModulesIntegrationTest is Test {
         rewards.fund(50000 ether);
 
         // Verify epoch state
-        (uint64 start, uint64 end, bytes32 root, uint256 funded, uint256 claimed) =
-            rewards.epochs(1);
+        (uint64 start, uint64 end, bytes32 root, uint256 funded, uint256 claimed) = rewards.epochs(1);
         assertEq(start, uint64(block.timestamp));
         assertEq(end, uint64(block.timestamp + 30 days));
         assertEq(root, 0); // Not finalized yet
@@ -282,18 +257,7 @@ contract AppModulesIntegrationTest is Test {
 
     function test_Integration_MultipleAppsCoexist() public {
         // Deploy second app
-        AppToken app2 = new AppToken(
-            "BrainWaves",
-            "BWAVE",
-            18,
-            MAX_SUPPLY,
-            appCreator,
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
-        );
+        AppToken app2 = new AppToken("BrainWaves", "BWAVE", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1));
 
         // Mint ELTA for second deployment
         vm.prank(factoryOwner);
@@ -303,8 +267,7 @@ contract AppModulesIntegrationTest is Test {
         elta.approve(address(factory), CREATE_FEE);
 
         vm.prank(appCreator);
-        (address access2Addr, address vault2Addr,) =
-            factory.deployModules(address(app2), "https://metadata.brainwaves/");
+        (address access2Addr, address vault2Addr,) = factory.deployModules(address(app2), "https://metadata.brainwaves/");
 
         AppAccess1155 access2 = AppAccess1155(access2Addr);
         AppStakingVault vault2 = AppStakingVault(vault2Addr);
@@ -344,12 +307,7 @@ contract AppModulesIntegrationTest is Test {
         // Configure premium feature (stake only)
         bytes32 premium = keccak256("premium");
         vm.prank(appCreator);
-        access.setFeatureGate(
-            premium,
-            AppAccess1155.FeatureGate({
-                minStake: 1000 ether, requiredItem: 0, requireBoth: false, active: true
-            })
-        );
+        access.setFeatureGate(premium, AppAccess1155.FeatureGate({ minStake: 1000 ether, requiredItem: 0, requireBoth: false, active: true }));
 
         // Player1 doesn't have access
         assertFalse(access.checkFeatureAccess(player1, premium, 0));
@@ -434,28 +392,13 @@ contract AppModulesIntegrationTest is Test {
         access.setItem(3, 500 ether, true, true, 0, 0, 1000, "ipfs://gold");
 
         // Bronze feature (just pass)
-        access.setFeatureGate(
-            keccak256("bronze"),
-            AppAccess1155.FeatureGate({
-                minStake: 0, requiredItem: 1, requireBoth: false, active: true
-            })
-        );
+        access.setFeatureGate(keccak256("bronze"), AppAccess1155.FeatureGate({ minStake: 0, requiredItem: 1, requireBoth: false, active: true }));
 
         // Silver feature (pass + 100 stake)
-        access.setFeatureGate(
-            keccak256("silver"),
-            AppAccess1155.FeatureGate({
-                minStake: 100 ether, requiredItem: 2, requireBoth: true, active: true
-            })
-        );
+        access.setFeatureGate(keccak256("silver"), AppAccess1155.FeatureGate({ minStake: 100 ether, requiredItem: 2, requireBoth: true, active: true }));
 
         // Gold feature (pass + 500 stake)
-        access.setFeatureGate(
-            keccak256("gold"),
-            AppAccess1155.FeatureGate({
-                minStake: 500 ether, requiredItem: 3, requireBoth: true, active: true
-            })
-        );
+        access.setFeatureGate(keccak256("gold"), AppAccess1155.FeatureGate({ minStake: 500 ether, requiredItem: 3, requireBoth: true, active: true }));
         vm.stopPrank();
 
         // Player1 progresses through tiers
@@ -493,16 +436,7 @@ contract AppModulesIntegrationTest is Test {
 
         // Phase 1: Season launch
         vm.startPrank(appCreator);
-        access.setItem(
-            1,
-            100 ether,
-            true,
-            true,
-            uint64(block.timestamp),
-            uint64(block.timestamp + 30 days),
-            5000,
-            "ipfs://season-1-pass"
-        );
+        access.setItem(1, 100 ether, true, true, uint64(block.timestamp), uint64(block.timestamp + 30 days), 5000, "ipfs://season-1-pass");
         vm.stopPrank();
 
         // Phase 2: Players buy passes
@@ -616,18 +550,7 @@ contract AppModulesIntegrationTest is Test {
         uint256 treasuryBefore = elta.balanceOf(treasury);
 
         // Deploy another app (pays ELTA fee)
-        AppToken app2 = new AppToken(
-            "App2",
-            "APP2",
-            18,
-            MAX_SUPPLY,
-            appCreator,
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
-        );
+        AppToken app2 = new AppToken("App2", "APP2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1));
 
         vm.prank(appCreator);
         elta.approve(address(factory), CREATE_FEE);

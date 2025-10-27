@@ -47,7 +47,9 @@ import "forge-std/Script.sol";
 contract MockUniswapV2Router {
     address public immutable factory;
 
-    constructor(address _factory) {
+    constructor(
+        address _factory
+    ) {
         factory = _factory;
     }
 }
@@ -56,9 +58,11 @@ contract MockUniswapV2Factory {
     mapping(address => mapping(address => address)) public getPair;
     address[] public allPairs;
 
-    function createPair(address tokenA, address tokenB) external returns (address pair) {
-        pair =
-            address(uint160(uint256(keccak256(abi.encodePacked(tokenA, tokenB, block.timestamp)))));
+    function createPair(
+        address tokenA,
+        address tokenB
+    ) external returns (address pair) {
+        pair = address(uint160(uint256(keccak256(abi.encodePacked(tokenA, tokenB, block.timestamp)))));
         getPair[tokenA][tokenB] = pair;
         getPair[tokenB][tokenA] = pair;
         allPairs.push(pair);
@@ -161,27 +165,17 @@ contract Deploy is Script {
         // AppRewardsDistributor requires a non-zero factory in constructor.
         // Use admin as initial factory; grant FACTORY_ROLE to AppFactory after it is deployed.
         protocol.appRewardsDistributor = new AppRewardsDistributor(protocol.token, admin, admin);
-        console2.log(
-            "   AppRewardsDistributor deployed at:", address(protocol.appRewardsDistributor)
-        );
+        console2.log("   AppRewardsDistributor deployed at:", address(protocol.appRewardsDistributor));
 
         // 5b. RewardsDistributor (central hub with 70/15/15 split)
-        protocol.rewards = new RewardsDistributor(
-            protocol.token,
-            IVeEltaVotes(address(protocol.staking)),
-            IAppRewardsDistributor(address(protocol.appRewardsDistributor)),
-            treasury,
-            admin
-        );
+        protocol.rewards = new RewardsDistributor(protocol.token, IVeEltaVotes(address(protocol.staking)), IAppRewardsDistributor(address(protocol.appRewardsDistributor)), treasury, admin);
         console2.log("   RewardsDistributor deployed at:", address(protocol.rewards));
         console2.log("   - 70% to app stakers");
         console2.log("   - 15% to veELTA stakers");
         console2.log("   - 15% to treasury");
 
         // 5c. AppFeeRouter (collects trading fees)
-        protocol.appFeeRouter = new AppFeeRouter(
-            protocol.token, IRewardsDistributor(address(protocol.rewards)), admin
-        );
+        protocol.appFeeRouter = new AppFeeRouter(protocol.token, IRewardsDistributor(address(protocol.rewards)), admin);
         console2.log("   AppFeeRouter deployed at:", address(protocol.appFeeRouter));
         console2.log("   Fee rate: 100 bps (1%)");
 
@@ -197,9 +191,7 @@ contract Deploy is Script {
             console2.log("   Using local MockUniswapV2Router:", routerAddress);
         }
         // For non-local networks, require explicit router
-        if (block.chainid != 31337 && routerAddress == address(0)) {
-            revert("UNISWAP_V2_ROUTER not set for this network");
-        }
+        if (block.chainid != 31337 && routerAddress == address(0)) revert("UNISWAP_V2_ROUTER not set for this network");
 
         if (routerAddress != address(0)) {
             // Deploy AppFactory with full parameters
@@ -275,7 +267,9 @@ contract Deploy is Script {
     /**
      * @dev Configures initial permissions and roles
      */
-    function _configurePermissions(ProtocolContracts memory protocol) internal {
+    function _configurePermissions(
+        ProtocolContracts memory protocol
+    ) internal {
         // Governance: Grant proposer/executor roles to governor
         protocol.timelock.grantRole(protocol.timelock.PROPOSER_ROLE(), address(protocol.governor));
         protocol.timelock.grantRole(protocol.timelock.EXECUTOR_ROLE(), address(protocol.governor));
@@ -284,9 +278,7 @@ contract Deploy is Script {
         protocol.xp.grantRole(protocol.xp.XP_OPERATOR_ROLE(), address(protocol.funding));
 
         // XP: For local development, grant operator role to deployer for seeding
-        if (block.chainid == 31337) {
-            protocol.xp.grantRole(protocol.xp.XP_OPERATOR_ROLE(), msg.sender);
-        }
+        if (block.chainid == 31337) protocol.xp.grantRole(protocol.xp.XP_OPERATOR_ROLE(), msg.sender);
 
         // XP: Grant initial operators from env (XP_OPERATOR_1 .. XP_OPERATOR_10)
         // Set env vars like: XP_OPERATOR_1=0x..., XP_OPERATOR_2=0x...
@@ -298,22 +290,18 @@ contract Deploy is Script {
         }
 
         // Rewards: Grant DISTRIBUTOR_ROLE to AppFeeRouter
-        protocol.rewards
-            .grantRole(protocol.rewards.DISTRIBUTOR_ROLE(), address(protocol.appFeeRouter));
+        protocol.rewards.grantRole(protocol.rewards.DISTRIBUTOR_ROLE(), address(protocol.appFeeRouter));
 
         // AppRewards: Grant FACTORY_ROLE to AppFactory
-        if (address(protocol.appFactory) != address(0)) {
-            protocol.appRewardsDistributor
-                .grantRole(
-                    protocol.appRewardsDistributor.FACTORY_ROLE(), address(protocol.appFactory)
-                );
-        }
+        if (address(protocol.appFactory) != address(0)) protocol.appRewardsDistributor.grantRole(protocol.appRewardsDistributor.FACTORY_ROLE(), address(protocol.appFactory));
     }
 
     /**
      * @dev Saves deployment addresses to JSON file
      */
-    function _saveDeploymentAddresses(ProtocolContracts memory protocol) internal {
+    function _saveDeploymentAddresses(
+        ProtocolContracts memory protocol
+    ) internal {
         // Build JSON string (match structure used by local deploy for appstore tooling)
         string memory json = string.concat(
             "{\n",
@@ -367,8 +355,7 @@ contract Deploy is Script {
             "}\n"
         );
 
-        string memory filename =
-            string.concat("./deployments/", _getNetworkName(), "-deployment.json");
+        string memory filename = string.concat("./deployments/", _getNetworkName(), "-deployment.json");
 
         vm.writeFile(filename, json);
         console2.log("   Deployment saved to:", filename);
@@ -400,7 +387,9 @@ contract Deploy is Script {
     /**
      * @dev Logs all deployment addresses for verification
      */
-    function _logDeployment(ProtocolContracts memory protocol) internal view {
+    function _logDeployment(
+        ProtocolContracts memory protocol
+    ) internal view {
         console2.log("\n=== DEPLOYMENT COMPLETE ===");
         console2.log("ELTA Token:              ", address(protocol.token));
         console2.log("ElataXP:                 ", address(protocol.xp));
@@ -420,9 +409,7 @@ contract Deploy is Script {
         console2.log("\n=== NEXT STEPS ===");
         console2.log("1. Verify contracts on block explorer");
         console2.log("2. Test end-to-end on testnet");
-        console2.log(
-            "3. Update appstore env/ABIs with contract addresses (npm run dev:config, then npm run sync-abi in elata-appstore)"
-        );
+        console2.log("3. Update appstore env/ABIs with contract addresses (npm run dev:config, then npm run sync-abi in elata-appstore)");
         console2.log("4. Grant additional roles as needed");
         console2.log("==================");
     }

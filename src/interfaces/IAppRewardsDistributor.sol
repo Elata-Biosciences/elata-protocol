@@ -12,34 +12,47 @@ interface IAppRewardsDistributor {
      * @notice Register a new app vault to receive rewards
      * @param vault Address of the AppStakingVault
      */
-    function registerApp(address vault) external;
+    function registerApp(
+        address vault
+    ) external;
 
     /**
      * @notice Register a new app vault with token mapping
      * @param vault Address of the AppStakingVault
      * @param token Address of the app token
      */
-    function registerApp(address vault, address token) external;
+    function registerApp(
+        address vault,
+        address token
+    ) external;
 
     /**
      * @notice Distribute ELTA rewards across active vaults
      * @param amount Total ELTA to distribute
      */
-    function distribute(uint256 amount) external;
+    function distribute(
+        uint256 amount
+    ) external;
 
     /**
      * @notice Deposit app tokens as rewards for a specific app
      * @param token App token address
      * @param amount Amount of app tokens to distribute
      */
-    function depositForApp(IERC20 token, uint256 amount) external;
+    function depositForApp(
+        IERC20 token,
+        uint256 amount
+    ) external;
 
     /**
      * @notice Claim rewards from a specific vault
      * @param vault Vault address
      * @param toEpoch Claim up to this epoch
      */
-    function claim(address vault, uint256 toEpoch) external;
+    function claim(
+        address vault,
+        uint256 toEpoch
+    ) external;
 
     /**
      * @notice Claim token rewards from a specific vault
@@ -47,5 +60,9 @@ interface IAppRewardsDistributor {
      * @param token Token to claim
      * @param toEpoch Claim up to this epoch
      */
-    function claimToken(address vault, IERC20 token, uint256 toEpoch) external;
+    function claimToken(
+        address vault,
+        IERC20 token,
+        uint256 toEpoch
+    ) external;
 }

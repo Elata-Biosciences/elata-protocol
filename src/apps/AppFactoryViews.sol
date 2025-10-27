@@ -24,7 +24,9 @@ contract AppFactoryViews {
         uint256 finalSupply;
     }
 
-    constructor(address _factory) {
+    constructor(
+        address _factory
+    ) {
         require(_factory != address(0), "Zero address");
         factory = _factory;
     }
@@ -34,19 +36,11 @@ contract AppFactoryViews {
      * @param appId App ID
      * @return App struct
      */
-    function getApp(uint256 appId) external view returns (App memory) {
-        (
-            address creator,
-            address token,
-            address curve,
-            address pair,
-            address locker,
-            uint64 createdAt,
-            uint64 graduatedAt,
-            bool graduated,
-            uint256 totalRaised,
-            uint256 finalSupply
-        ) = IAppFactoryState(factory).apps(appId);
+    function getApp(
+        uint256 appId
+    ) external view returns (App memory) {
+        (address creator, address token, address curve, address pair, address locker, uint64 createdAt, uint64 graduatedAt, bool graduated, uint256 totalRaised, uint256 finalSupply) =
+            IAppFactoryState(factory).apps(appId);
 
         return App({
             creator: creator,
@@ -67,7 +61,9 @@ contract AppFactoryViews {
      * @param creator Creator address
      * @return Array of app IDs
      */
-    function getCreatorApps(address creator) external view returns (uint256[] memory) {
+    function getCreatorApps(
+        address creator
+    ) external view returns (uint256[] memory) {
         IAppFactoryState factoryState = IAppFactoryState(factory);
 
         // Get count by checking each appId (not ideal but works)
@@ -100,7 +96,9 @@ contract AppFactoryViews {
      * @param token Token address
      * @return App ID
      */
-    function getAppIdFromToken(address token) external view returns (uint256) {
+    function getAppIdFromToken(
+        address token
+    ) external view returns (uint256) {
         return IAppFactoryState(factory).tokenToAppId(token);
     }
 
@@ -123,19 +121,7 @@ contract AppFactoryViews {
      * @return decimals Default decimals
      * @return protocolFee Protocol fee rate in bps
      */
-    function getParameters()
-        external
-        view
-        returns (
-            uint256 seed,
-            uint256 creation,
-            uint256 target,
-            uint256 supply,
-            uint256 lpLock,
-            uint8 decimals,
-            uint256 protocolFee
-        )
-    {
+    function getParameters() external view returns (uint256 seed, uint256 creation, uint256 target, uint256 supply, uint256 lpLock, uint8 decimals, uint256 protocolFee) {
         IAppFactoryState factoryState = IAppFactoryState(factory);
         return (
             factoryState.seedElta(),
@@ -185,16 +171,7 @@ contract AppFactoryViews {
      * @return totalValueLocked Total ELTA locked in curves
      * @return totalFeesCollected Total creation fees collected
      */
-    function getLaunchStats()
-        external
-        view
-        returns (
-            uint256 totalApps,
-            uint256 graduatedApps,
-            uint256 totalValueLocked,
-            uint256 totalFeesCollected
-        )
-    {
+    function getLaunchStats() external view returns (uint256 totalApps, uint256 graduatedApps, uint256 totalValueLocked, uint256 totalFeesCollected) {
         IAppFactoryState factoryState = IAppFactoryState(factory);
         totalApps = factoryState.appCount();
 
@@ -215,22 +192,15 @@ contract AppFactoryViews {
  */
 interface IAppFactoryState {
     function appCount() external view returns (uint256);
-    function apps(uint256)
+    function apps(
+        uint256
+    )
         external
         view
-        returns (
-            address creator,
-            address token,
-            address curve,
-            address pair,
-            address locker,
-            uint64 createdAt,
-            uint64 graduatedAt,
-            bool graduated,
-            uint256 totalRaised,
-            uint256 finalSupply
-        );
-    function tokenToAppId(address) external view returns (uint256);
+        returns (address creator, address token, address curve, address pair, address locker, uint64 createdAt, uint64 graduatedAt, bool graduated, uint256 totalRaised, uint256 finalSupply);
+    function tokenToAppId(
+        address
+    ) external view returns (uint256);
     function seedElta() external view returns (uint256);
     function creationFee() external view returns (uint256);
     function targetRaisedElta() external view returns (uint256);

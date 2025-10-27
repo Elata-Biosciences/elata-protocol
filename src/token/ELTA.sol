@@ -52,13 +52,8 @@ contract ELTA is ERC20, ERC20Burnable, ERC20Permit, ERC20Votes, AccessControl {
         address initialRecipient,
         uint256 initialMint,
         uint256 maxSupply_
-    )
-        ERC20(name_, symbol_)
-        ERC20Permit(name_)
-    {
-        if (admin_ == address(0) || initialRecipient == address(0)) {
-            revert Errors.ZeroAddress();
-        }
+    ) ERC20(name_, symbol_) ERC20Permit(name_) {
+        if (admin_ == address(0) || initialRecipient == address(0)) revert Errors.ZeroAddress();
         _grantRole(DEFAULT_ADMIN_ROLE, admin_);
         _grantRole(MINTER_ROLE, admin_);
 
@@ -83,7 +78,10 @@ contract ELTA is ERC20, ERC20Burnable, ERC20Permit, ERC20Votes, AccessControl {
      * @dev Respects the MAX_SUPPLY cap if set (non-zero)
      * @dev Will revert if minting would exceed the maximum supply
      */
-    function mint(address to, uint256 amount) external onlyRole(MINTER_ROLE) {
+    function mint(
+        address to,
+        uint256 amount
+    ) external onlyRole(MINTER_ROLE) {
         if (to == address(0)) revert Errors.ZeroAddress();
         _mint(to, amount);
     }
@@ -100,15 +98,10 @@ contract ELTA is ERC20, ERC20Burnable, ERC20Permit, ERC20Votes, AccessControl {
         address from,
         address to,
         uint256 value
-    )
-        internal
-        override(ERC20, ERC20Votes)
-    {
+    ) internal override(ERC20, ERC20Votes) {
         if (from == address(0)) {
             // Minting: check supply cap
-            if (MAX_SUPPLY != 0 && (totalSupply() + value > MAX_SUPPLY)) {
-                revert Errors.CapExceeded();
-            }
+            if (MAX_SUPPLY != 0 && (totalSupply() + value > MAX_SUPPLY)) revert Errors.CapExceeded();
         }
         super._update(from, to, value);
     }
@@ -119,7 +112,9 @@ contract ELTA is ERC20, ERC20Burnable, ERC20Permit, ERC20Votes, AccessControl {
      * @return The current nonce value
      * @dev Required override due to multiple inheritance from ERC20Permit and Nonces
      */
-    function nonces(address owner) public view override(ERC20Permit, Nonces) returns (uint256) {
+    function nonces(
+        address owner
+    ) public view override(ERC20Permit, Nonces) returns (uint256) {
         return super.nonces(owner);
     }
 }

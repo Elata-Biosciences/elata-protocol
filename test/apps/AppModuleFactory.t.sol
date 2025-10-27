@@ -22,9 +22,7 @@ contract AppModuleFactoryTest is Test {
     uint256 public constant MAX_SUPPLY = 1_000_000_000 ether;
     uint256 public constant CREATE_FEE = 50 ether;
 
-    event ModulesDeployed(
-        address indexed appToken, address access1155, address stakingVault, address epochRewards
-    );
+    event ModulesDeployed(address indexed appToken, address access1155, address stakingVault, address epochRewards);
     event TreasurySet(address treasury);
     event FeeSet(uint256 fee);
 
@@ -36,18 +34,7 @@ contract AppModuleFactoryTest is Test {
         factory = new AppModuleFactory(address(elta), factoryOwner, treasury);
 
         // Deploy app token
-        appToken = new AppToken(
-            "TestApp",
-            "TEST",
-            18,
-            MAX_SUPPLY,
-            appCreator,
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
-        );
+        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1));
 
         // Mint ELTA to app creator for fees
         vm.prank(factoryOwner);
@@ -82,8 +69,7 @@ contract AppModuleFactoryTest is Test {
         emit ModulesDeployed(address(appToken), address(0), address(0), address(0));
 
         vm.prank(appCreator);
-        (address access1155, address staking, address epochs) =
-            factory.deployModules(address(appToken), baseURI);
+        (address access1155, address staking, address epochs) = factory.deployModules(address(appToken), baseURI);
 
         // Verify addresses are non-zero
         assertTrue(access1155 != address(0));
@@ -91,8 +77,7 @@ contract AppModuleFactoryTest is Test {
         assertTrue(epochs != address(0));
 
         // Verify registry
-        (address storedAccess, address storedStaking, address storedEpochs) =
-            factory.modulesByApp(address(appToken));
+        (address storedAccess, address storedStaking, address storedEpochs) = factory.modulesByApp(address(appToken));
         assertEq(storedAccess, access1155);
         assertEq(storedStaking, staking);
         assertEq(storedEpochs, epochs);
@@ -206,38 +191,23 @@ contract AppModuleFactoryTest is Test {
 
     function test_MultipleAppsDeployModules() public {
         // Create second app token
-        AppToken appToken2 = new AppToken(
-            "TestApp2",
-            "TEST2",
-            18,
-            MAX_SUPPLY,
-            appCreator,
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
-        );
+        AppToken appToken2 = new AppToken("TestApp2", "TEST2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1));
 
         // Deploy modules for first app
         vm.prank(appCreator);
-        (address access1, address stake1, address epochs1) =
-            factory.deployModules(address(appToken), "https://app1.test/");
+        (address access1, address stake1, address epochs1) = factory.deployModules(address(appToken), "https://app1.test/");
 
         // Deploy modules for second app
         vm.prank(appCreator);
-        (address access2, address stake2, address epochs2) =
-            factory.deployModules(address(appToken2), "https://app2.test/");
+        (address access2, address stake2, address epochs2) = factory.deployModules(address(appToken2), "https://app2.test/");
 
         // Verify both are registered correctly
-        (address storedAccess1, address storedStake1, address storedEpochs1) =
-            factory.modulesByApp(address(appToken));
+        (address storedAccess1, address storedStake1, address storedEpochs1) = factory.modulesByApp(address(appToken));
         assertEq(storedAccess1, access1);
         assertEq(storedStake1, stake1);
         assertEq(storedEpochs1, epochs1);
 
-        (address storedAccess2, address storedStake2, address storedEpochs2) =
-            factory.modulesByApp(address(appToken2));
+        (address storedAccess2, address storedStake2, address storedEpochs2) = factory.modulesByApp(address(appToken2));
         assertEq(storedAccess2, access2);
         assertEq(storedStake2, stake2);
         assertEq(storedEpochs2, epochs2);
@@ -279,8 +249,7 @@ contract AppModuleFactoryTest is Test {
 
         // Deploy modules
         vm.prank(appCreator);
-        (, address stakingVault,) =
-            factory.deployModules(address(appToken), "https://metadata.test/");
+        (, address stakingVault,) = factory.deployModules(address(appToken), "https://metadata.test/");
 
         // User stakes
         vm.startPrank(user1);

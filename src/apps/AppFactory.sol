@@ -80,24 +80,9 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
     mapping(address => uint256) public tokenToAppId;
 
     // Events
-    event AppCreated(
-        uint256 indexed appId,
-        address indexed creator,
-        address indexed token,
-        address vault,
-        address curve,
-        uint256 creatorStaked
-    );
+    event AppCreated(uint256 indexed appId, address indexed creator, address indexed token, address vault, address curve, uint256 creatorStaked);
 
-    event AppGraduated(
-        uint256 indexed appId,
-        address indexed token,
-        address pair,
-        address locker,
-        uint256 unlockAt,
-        uint256 totalRaised,
-        uint256 finalSupply
-    );
+    event AppGraduated(uint256 indexed appId, address indexed token, address pair, address locker, uint256 unlockAt, uint256 totalRaised, uint256 finalSupply);
 
     error Paused();
     error ZeroAddress();
@@ -128,11 +113,8 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         address _admin
     ) {
         require(
-            address(_elta) != address(0) && address(_router) != address(0)
-                && _treasury != address(0) && address(_appFeeRouter) != address(0)
-                && address(_appRewardsDistributor) != address(0)
-                && address(_rewardsDistributor) != address(0) && address(_elataXP) != address(0)
-                && _governance != address(0) && _admin != address(0),
+            address(_elta) != address(0) && address(_router) != address(0) && _treasury != address(0) && address(_appFeeRouter) != address(0) && address(_appRewardsDistributor) != address(0)
+                && address(_rewardsDistributor) != address(0) && address(_elataXP) != address(0) && _governance != address(0) && _admin != address(0),
             "Zero address"
         );
 
@@ -153,7 +135,9 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
      * @notice Pause/unpause app creation
      * @param _paused New pause state
      */
-    function setPaused(bool _paused) external onlyRole(PAUSER_ROLE) {
+    function setPaused(
+        bool _paused
+    ) external onlyRole(PAUSER_ROLE) {
         paused = _paused;
     }
 
@@ -174,49 +158,20 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         string calldata description,
         string calldata imageURI,
         string calldata website
-    )
-        external
-        nonReentrant
-        returns (uint256 appId)
-    {
+    ) external nonReentrant returns (uint256 appId) {
         if (paused) revert Paused();
         uint256 tokenSupply = supply == 0 ? defaultSupply : supply;
         require(tokenSupply > 0, "Invalid supply");
 
         // Collect creation fees
-        require(
-            ELTA.transferFrom(msg.sender, address(this), creationFee + seedElta), "Transfer failed"
-        );
+        require(ELTA.transferFrom(msg.sender, address(this), creationFee + seedElta), "Transfer failed");
         if (creationFee > 0) require(ELTA.transfer(treasury, creationFee), "Transfer failed");
 
         // Deploy contracts via library (reduces AppFactory size)
-        address tokenAddr = AppDeploymentLib.deployToken(
-            name,
-            symbol,
-            defaultDecimals,
-            tokenSupply,
-            msg.sender,
-            address(this),
-            governance,
-            address(appRewardsDistributor),
-            address(rewardsDistributor),
-            treasury
-        );
+        address tokenAddr =
+            AppDeploymentLib.deployToken(name, symbol, defaultDecimals, tokenSupply, msg.sender, address(this), governance, address(appRewardsDistributor), address(rewardsDistributor), treasury);
         address vaultAddr = AppDeploymentLib.deployVault(name, symbol, tokenAddr, address(this));
-        address curveAddr = AppDeploymentLib.deployCurve(
-            appCount,
-            address(this),
-            ELTA,
-            tokenAddr,
-            router,
-            targetRaisedElta,
-            lpLockDuration,
-            msg.sender,
-            treasury,
-            appFeeRouter,
-            elataXP,
-            governance
-        );
+        address curveAddr = AppDeploymentLib.deployCurve(appCount, address(this), ELTA, tokenAddr, router, targetRaisedElta, lpLockDuration, msg.sender, treasury, appFeeRouter, elataXP, governance);
 
         // Configure token & curve
         uint256 creatorShare = tokenSupply / 2;
@@ -296,10 +251,7 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         uint256 unlockAt,
         uint256 totalRaisedElta,
         uint256 finalSupply
-    )
-        external
-        override
-    {
+    ) external override {
         require(appId < appCount, "Invalid app");
         App storage app = apps[appId];
         require(msg.sender == app.curve, "Only curve");
@@ -319,7 +271,9 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
      * @param appId App ID
      * @return App struct
      */
-    function getApp(uint256 appId) external view returns (App memory) {
+    function getApp(
+        uint256 appId
+    ) external view returns (App memory) {
         return apps[appId];
     }
 
@@ -336,7 +290,9 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
      * @param token Token address
      * @return App ID
      */
-    function getAppIdByToken(address token) external view returns (uint256) {
+    function getAppIdByToken(
+        address token
+    ) external view returns (uint256) {
         return tokenToAppId[token];
     }
 
@@ -347,11 +303,9 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
      * @return earlyAccessEndsAt Timestamp when early access ends
      * @return xpRequired Minimum XP required for early access
      */
-    function getAppLaunchStatus(uint256 appId)
-        external
-        view
-        returns (bool isInEarlyAccess, uint256 earlyAccessEndsAt, uint256 xpRequired)
-    {
+    function getAppLaunchStatus(
+        uint256 appId
+    ) external view returns (bool isInEarlyAccess, uint256 earlyAccessEndsAt, uint256 xpRequired) {
         require(appId < appCount, "Invalid app");
         App storage app = apps[appId];
         AppBondingCurve curve = AppBondingCurve(app.curve);

@@ -39,9 +39,7 @@ contract AppFeeRouter {
     /// @notice Maximum allowed fee (500 = 5%)
     uint256 public constant MAX_FEE_BPS = 500;
 
-    event FeeForwarded(
-        address indexed source, address indexed payer, uint256 grossAmount, uint256 fee
-    );
+    event FeeForwarded(address indexed source, address indexed payer, uint256 grossAmount, uint256 fee);
     event FeeBpsUpdated(uint256 oldBps, uint256 newBps);
     event GovernanceTransferred(address indexed oldGov, address indexed newGov);
 
@@ -51,7 +49,11 @@ contract AppFeeRouter {
      * @param _rewardsDistributor RewardsDistributor address for depositing fees
      * @param _governance Governance address for fee adjustments
      */
-    constructor(IERC20 _elta, IRewardsDistributor _rewardsDistributor, address _governance) {
+    constructor(
+        IERC20 _elta,
+        IRewardsDistributor _rewardsDistributor,
+        address _governance
+    ) {
         require(address(_elta) != address(0), "Zero ELTA");
         require(address(_rewardsDistributor) != address(0), "Zero RD");
         require(_governance != address(0), "Zero gov");
@@ -67,7 +69,10 @@ contract AppFeeRouter {
      * @param payer Address paying the fee (typically the trader)
      * @param grossAmount Gross trade amount (used for fee calculation context)
      */
-    function takeAndForwardFee(address payer, uint256 grossAmount) external {
+    function takeAndForwardFee(
+        address payer,
+        uint256 grossAmount
+    ) external {
         uint256 fee = (grossAmount * feeBps) / 10_000;
         if (fee == 0) return;
 
@@ -82,7 +87,9 @@ contract AppFeeRouter {
      * @notice Update fee rate (governance only)
      * @param newBps New fee rate in basis points
      */
-    function setFeeBps(uint256 newBps) external {
+    function setFeeBps(
+        uint256 newBps
+    ) external {
         if (msg.sender != governance) revert OnlyGovernance();
         if (newBps > MAX_FEE_BPS) revert FeeTooHigh();
 
@@ -94,7 +101,9 @@ contract AppFeeRouter {
      * @notice Transfer governance to new address
      * @param newGovernance New governance address
      */
-    function transferGovernance(address newGovernance) external {
+    function transferGovernance(
+        address newGovernance
+    ) external {
         if (msg.sender != governance) revert OnlyGovernance();
         require(newGovernance != address(0), "Zero address");
 
@@ -107,7 +116,9 @@ contract AppFeeRouter {
      * @param amount Amount to calculate fee for
      * @return fee Fee amount
      */
-    function calculateFee(uint256 amount) external view returns (uint256 fee) {
+    function calculateFee(
+        uint256 amount
+    ) external view returns (uint256 fee) {
         fee = (amount * feeBps) / 10_000;
     }
 }

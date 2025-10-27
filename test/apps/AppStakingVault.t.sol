@@ -21,18 +21,7 @@ contract AppStakingVaultTest is Test {
     event Unstaked(address indexed user, uint256 amount, uint256 newBalance);
 
     function setUp() public {
-        appToken = new AppToken(
-            "TestApp",
-            "TEST",
-            18,
-            MAX_SUPPLY,
-            owner,
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
-        );
+        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, owner, admin, address(1), address(1), address(1), address(1));
         vault = new AppStakingVault("TestApp", "TAPP", appToken, owner);
 
         // Mint tokens to users
@@ -219,7 +208,9 @@ contract AppStakingVaultTest is Test {
     // FUZZ TESTS
     // ────────────────────────────────────────────────────────────────────────────
 
-    function testFuzz_Stake(uint256 amount) public {
+    function testFuzz_Stake(
+        uint256 amount
+    ) public {
         amount = bound(amount, 1, 10000 ether);
 
         vm.startPrank(user1);
@@ -231,7 +222,10 @@ contract AppStakingVaultTest is Test {
         assertEq(vault.totalStaked(), amount);
     }
 
-    function testFuzz_StakeAndUnstake(uint256 stakeAmount, uint256 unstakeAmount) public {
+    function testFuzz_StakeAndUnstake(
+        uint256 stakeAmount,
+        uint256 unstakeAmount
+    ) public {
         stakeAmount = bound(stakeAmount, 1, 10000 ether);
         unstakeAmount = bound(unstakeAmount, 1, stakeAmount);
 

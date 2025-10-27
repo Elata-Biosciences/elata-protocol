@@ -25,18 +25,7 @@ contract EpochRewardsTest is Test {
     event Claimed(uint256 indexed id, address indexed user, uint256 amount);
 
     function setUp() public {
-        appToken = new AppToken(
-            "TestApp",
-            "TEST",
-            18,
-            MAX_SUPPLY,
-            owner,
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
-        );
+        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, owner, admin, address(1), address(1), address(1), address(1));
         rewards = new EpochRewards(address(appToken), owner);
         merkle = new Merkle();
 
@@ -71,13 +60,7 @@ contract EpochRewardsTest is Test {
 
         assertEq(rewards.epochId(), 1);
 
-        (
-            uint64 epochStart,
-            uint64 epochEnd,
-            bytes32 merkleRoot,
-            uint256 totalFunded,
-            uint256 totalClaimed
-        ) = rewards.epochs(1);
+        (uint64 epochStart, uint64 epochEnd, bytes32 merkleRoot, uint256 totalFunded, uint256 totalClaimed) = rewards.epochs(1);
 
         assertEq(epochStart, start);
         assertEq(epochEnd, end);

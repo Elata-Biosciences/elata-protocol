@@ -41,8 +41,7 @@ contract SeedLocalData is Script {
 
     function run() external {
         // Use Anvil account #0
-        uint256 deployerPrivateKey =
-            0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
+        uint256 deployerPrivateKey = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
 
         vm.startBroadcast(deployerPrivateKey);
 
@@ -102,9 +101,7 @@ contract SeedLocalData is Script {
         require(APP_MODULE_FACTORY_ADDRESS != address(0), "AppModuleFactory address missing");
 
         // AppFactory is required for creating apps; allow zero to skip app creation
-        if (APP_FACTORY_ADDRESS == address(0)) {
-            console2.log("[WARN] AppFactory not deployed; skipping app creation steps");
-        }
+        if (APP_FACTORY_ADDRESS == address(0)) console2.log("[WARN] AppFactory not deployed; skipping app creation steps");
     }
 
     function _awardTestXP() internal {
@@ -148,9 +145,7 @@ contract SeedLocalData is Script {
 
         elta.approve(address(staking), amount);
         staking.lock(amount, uint64(block.timestamp + duration));
-        console2.log(
-            "       Created lock: %s ELTA for %s weeks", amount / 1 ether, duration / 1 weeks
-        );
+        console2.log("       Created lock: %s ELTA for %s weeks", amount / 1 ether, duration / 1 weeks);
     }
 
     function _createTestApps() internal returns (TestApp[] memory) {
@@ -165,37 +160,13 @@ contract SeedLocalData is Script {
         TestApp[] memory apps = new TestApp[](3);
 
         // App 1: NeuroPong
-        apps[0] = _createSingleApp(
-            elta,
-            factory,
-            moduleFactory,
-            "NeuroPong Token",
-            "NPONG",
-            "EEG-controlled Pong game with competitive multiplayer",
-            "ipfs://QmNeuroPong"
-        );
+        apps[0] = _createSingleApp(elta, factory, moduleFactory, "NeuroPong Token", "NPONG", "EEG-controlled Pong game with competitive multiplayer", "ipfs://QmNeuroPong");
 
         // App 2: MindfulBreath
-        apps[1] = _createSingleApp(
-            elta,
-            factory,
-            moduleFactory,
-            "MindfulBreath Token",
-            "BREATH",
-            "Meditation and breathing exercises with EEG feedback",
-            "ipfs://QmMindfulBreath"
-        );
+        apps[1] = _createSingleApp(elta, factory, moduleFactory, "MindfulBreath Token", "BREATH", "Meditation and breathing exercises with EEG feedback", "ipfs://QmMindfulBreath");
 
         // App 3: FocusTrainer
-        apps[2] = _createSingleApp(
-            elta,
-            factory,
-            moduleFactory,
-            "FocusTrainer Token",
-            "FOCUS",
-            "Attention training with real-time neurofeedback",
-            "ipfs://QmFocusTrainer"
-        );
+        apps[2] = _createSingleApp(elta, factory, moduleFactory, "FocusTrainer Token", "FOCUS", "Attention training with real-time neurofeedback", "ipfs://QmFocusTrainer");
 
         return apps;
     }
@@ -208,10 +179,7 @@ contract SeedLocalData is Script {
         string memory symbol,
         string memory description,
         string memory imageURI
-    )
-        internal
-        returns (TestApp memory app)
-    {
+    ) internal returns (TestApp memory app) {
         // Get creation cost (seedElta + creationFee)
         uint256 totalCost = factory.seedElta() + factory.creationFee();
 
@@ -238,23 +206,25 @@ contract SeedLocalData is Script {
         // Deploy utility modules
         elta.approve(address(moduleFactory), 0); // No fee for now
 
-        (app.access1155, app.stakingVault, app.rewards) = moduleFactory.deployModules(
-            app.token, string.concat("https://metadata.elata.bio/", symbol, "/")
-        );
+        (app.access1155, app.stakingVault, app.rewards) = moduleFactory.deployModules(app.token, string.concat("https://metadata.elata.bio/", symbol, "/"));
 
         console2.log("       Deployed modules: Access, Staking, Rewards");
 
         return app;
     }
 
-    function _configureAppEconomies(TestApp[] memory apps) internal {
+    function _configureAppEconomies(
+        TestApp[] memory apps
+    ) internal {
         // Configure each app with items, prices, etc.
         for (uint256 i = 0; i < apps.length; i++) {
             _configureSingleApp(apps[i]);
         }
     }
 
-    function _configureSingleApp(TestApp memory app) internal {
+    function _configureSingleApp(
+        TestApp memory app
+    ) internal {
         AppAccess1155 access = AppAccess1155(app.access1155);
 
         // Create tiered items for each app
@@ -340,7 +310,9 @@ contract SeedLocalData is Script {
         console2.log("       Funded pool with", fundingAmount / 1 ether, "ELTA");
     }
 
-    function _printSeedSummary(TestApp[] memory apps) internal pure {
+    function _printSeedSummary(
+        TestApp[] memory apps
+    ) internal pure {
         console2.log("SUMMARY:");
         console2.log("--------");
         console2.log("- 5 test users with XP (300-5000 XP)");
@@ -348,10 +320,7 @@ contract SeedLocalData is Script {
         console2.log("- 3 test apps with full economies:");
 
         for (uint256 i = 0; i < apps.length; i++) {
-            console2.log(
-                "  ",
-                string.concat(vm.toString(i + 1), ". ", apps[i].name, " (", apps[i].symbol, ")")
-            );
+            console2.log("  ", string.concat(vm.toString(i + 1), ". ", apps[i].name, " (", apps[i].symbol, ")"));
         }
 
         console2.log("- 1 active funding round with 3 options");

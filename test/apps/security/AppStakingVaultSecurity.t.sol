@@ -25,18 +25,7 @@ contract AppStakingVaultSecurityTest is Test {
     uint256 public constant MAX_SUPPLY = 1_000_000_000 ether;
 
     function setUp() public {
-        appToken = new AppToken(
-            "TestApp",
-            "TEST",
-            18,
-            MAX_SUPPLY,
-            owner,
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
-        );
+        appToken = new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, owner, admin, address(1), address(1), address(1), address(1));
         vault = new AppStakingVault("TestApp", "TAPP", appToken, owner);
 
         // Mint tokens to users
@@ -173,9 +162,7 @@ contract AppStakingVaultSecurityTest is Test {
     function testFuzz_Security_StakeUnstakeInvariants(
         uint256 stakeAmount,
         uint256 unstakeAmount
-    )
-        public
-    {
+    ) public {
         stakeAmount = bound(stakeAmount, 1, 10000 ether);
         unstakeAmount = bound(unstakeAmount, 1, stakeAmount);
 
@@ -200,9 +187,7 @@ contract AppStakingVaultSecurityTest is Test {
     function testFuzz_Security_MultipleUsers(
         uint256 user1Amount,
         uint256 user2Amount
-    )
-        public
-    {
+    ) public {
         user1Amount = bound(user1Amount, 1, 10000 ether);
         user2Amount = bound(user2Amount, 1, 10000 ether);
 
@@ -266,16 +251,25 @@ contract MaliciousToken is IERC20 {
     address public attackTarget;
     uint256 private _totalSupply;
 
-    function setAttackTarget(address target) external {
+    function setAttackTarget(
+        address target
+    ) external {
         attackTarget = target;
     }
 
-    function mint(address to, uint256 amount) external {
+    function mint(
+        address to,
+        uint256 amount
+    ) external {
         _balances[to] += amount;
         _totalSupply += amount;
     }
 
-    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+    function transferFrom(
+        address from,
+        address to,
+        uint256 amount
+    ) external returns (bool) {
         _balances[from] -= amount;
         _balances[to] += amount;
 
@@ -285,18 +279,26 @@ contract MaliciousToken is IERC20 {
         return true;
     }
 
-    function approve(address spender, uint256 amount) external returns (bool) {
+    function approve(
+        address spender,
+        uint256 amount
+    ) external returns (bool) {
         _allowances[msg.sender][spender] = amount;
         return true;
     }
 
-    function transfer(address to, uint256 amount) external returns (bool) {
+    function transfer(
+        address to,
+        uint256 amount
+    ) external returns (bool) {
         _balances[msg.sender] -= amount;
         _balances[to] += amount;
         return true;
     }
 
-    function balanceOf(address account) external view returns (uint256) {
+    function balanceOf(
+        address account
+    ) external view returns (uint256) {
         return _balances[account];
     }
 
@@ -304,7 +306,10 @@ contract MaliciousToken is IERC20 {
         return _totalSupply;
     }
 
-    function allowance(address, address spender) external view returns (uint256) {
+    function allowance(
+        address,
+        address spender
+    ) external view returns (uint256) {
         return type(uint256).max;
     }
 }
@@ -315,17 +320,24 @@ contract MaliciousReceiver {
     AppToken public token;
     bool public attacking;
 
-    constructor(AppStakingVault _vault, AppToken _token) {
+    constructor(
+        AppStakingVault _vault,
+        AppToken _token
+    ) {
         vault = _vault;
         token = _token;
     }
 
-    function doStake(uint256 amount) external {
+    function doStake(
+        uint256 amount
+    ) external {
         token.approve(address(vault), amount);
         vault.stake(amount);
     }
 
-    function attackUnstake(uint256 amount) external {
+    function attackUnstake(
+        uint256 amount
+    ) external {
         attacking = true;
         vault.unstake(amount);
     }

@@ -11,7 +11,10 @@ interface IAppFeeRouter {
      * @param payer Address paying the fee
      * @param grossAmount Gross trade amount for fee calculation
      */
-    function takeAndForwardFee(address payer, uint256 grossAmount) external;
+    function takeAndForwardFee(
+        address payer,
+        uint256 grossAmount
+    ) external;
 
     /**
      * @notice Get current fee rate in basis points
@@ -24,5 +27,7 @@ interface IAppFeeRouter {
      * @param amount Amount to calculate fee for
      * @return fee Fee amount
      */
-    function calculateFee(uint256 amount) external view returns (uint256 fee);
+    function calculateFee(
+        uint256 amount
+    ) external view returns (uint256 fee);
 }

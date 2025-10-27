@@ -13,11 +13,16 @@ import "forge-std/Test.sol";
 contract MockElataXP is IElataXP {
     mapping(address => uint256) public balances;
 
-    function balanceOf(address account) external view override returns (uint256) {
+    function balanceOf(
+        address account
+    ) external view override returns (uint256) {
         return balances[account];
     }
 
-    function setBalance(address account, uint256 balance) external {
+    function setBalance(
+        address account,
+        uint256 balance
+    ) external {
         balances[account] = balance;
     }
 }
@@ -48,23 +53,10 @@ contract AppBondingCurveTest is Test {
         elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 77_000_000 ether);
         mockXP = new MockElataXP();
 
-        appToken = new AppToken(
-            "TestApp",
-            "TEST",
-            18,
-            TOKEN_SUPPLY,
-            creator,
-            factory,
-            governance,
-            mockAppRewards,
-            mockRewards,
-            treasury
-        );
+        appToken = new AppToken("TestApp", "TEST", 18, TOKEN_SUPPLY, creator, factory, governance, mockAppRewards, mockRewards, treasury);
 
         // Mock router calls
-        vm.mockCall(
-            mockRouter, abi.encodeWithSignature("factory()"), abi.encode(makeAddr("mockFactory"))
-        );
+        vm.mockCall(mockRouter, abi.encodeWithSignature("factory()"), abi.encode(makeAddr("mockFactory")));
 
         curve = new AppBondingCurve(
             0, // appId
@@ -177,14 +169,7 @@ contract AppBondingCurveTest is Test {
     }
 
     function test_CurveState() public {
-        (
-            uint256 eltaReserve,
-            uint256 tokenReserve,
-            uint256 target,
-            bool isGraduated,
-            uint256 currentPrice,
-            uint256 progress
-        ) = curve.getCurveState();
+        (uint256 eltaReserve, uint256 tokenReserve, uint256 target, bool isGraduated, uint256 currentPrice, uint256 progress) = curve.getCurveState();
 
         assertEq(eltaReserve, SEED_ELTA);
         assertEq(tokenReserve, TOKEN_SUPPLY);
@@ -207,7 +192,9 @@ contract AppBondingCurveTest is Test {
     // Removed test_ProtocolFeeCollection - legacy protocol fee removed in favor of unified 70/15/15
     // split
 
-    function testFuzz_BuyTokens(uint256 eltaAmount) public {
+    function testFuzz_BuyTokens(
+        uint256 eltaAmount
+    ) public {
         // Bound to reasonable range
         eltaAmount = bound(eltaAmount, 1 ether, 10_000 ether);
 

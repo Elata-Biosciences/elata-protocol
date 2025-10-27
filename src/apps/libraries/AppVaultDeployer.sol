@@ -15,10 +15,7 @@ library AppVaultDeployer {
         string calldata symbol,
         address token,
         address owner
-    )
-        external
-        returns (address)
-    {
+    ) external returns (address) {
         return address(new AppStakingVault(name, symbol, IERC20(token), owner));
     }
 }

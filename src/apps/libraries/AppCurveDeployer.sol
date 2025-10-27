@@ -27,25 +27,7 @@ library AppCurveDeployer {
         IAppFeeRouter appFeeRouter,
         IElataXP elataXP,
         address governance
-    )
-        external
-        returns (address)
-    {
-        return address(
-            new AppBondingCurve(
-                appId,
-                factory,
-                elta,
-                AppToken(token),
-                router,
-                targetRaised,
-                lpLockDuration,
-                creator,
-                treasury,
-                appFeeRouter,
-                elataXP,
-                governance
-            )
-        );
+    ) external returns (address) {
+        return address(new AppBondingCurve(appId, factory, elta, AppToken(token), router, targetRaised, lpLockDuration, creator, treasury, appFeeRouter, elataXP, governance));
     }
 }

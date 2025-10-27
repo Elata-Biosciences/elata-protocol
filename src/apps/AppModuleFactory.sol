@@ -47,9 +47,7 @@ contract AppModuleFactory is Ownable {
     /// @notice ELTA fee for deploying modules
     uint256 public createFeeELTA;
 
-    event ModulesDeployed(
-        address indexed appToken, address access1155, address stakingVault, address epochRewards
-    );
+    event ModulesDeployed(address indexed appToken, address access1155, address stakingVault, address epochRewards);
     event TreasurySet(address treasury);
     event FeeSet(uint256 fee);
 
@@ -62,7 +60,11 @@ contract AppModuleFactory is Ownable {
      * @param initialOwner Factory owner
      * @param treasury_ Protocol treasury address
      */
-    constructor(address elta, address initialOwner, address treasury_) Ownable(initialOwner) {
+    constructor(
+        address elta,
+        address initialOwner,
+        address treasury_
+    ) Ownable(initialOwner) {
         ELTA = elta;
         treasury = treasury_;
     }
@@ -71,7 +73,9 @@ contract AppModuleFactory is Ownable {
      * @notice Set protocol treasury address
      * @param t New treasury address
      */
-    function setTreasury(address t) external onlyOwner {
+    function setTreasury(
+        address t
+    ) external onlyOwner {
         treasury = t;
         emit TreasurySet(t);
     }
@@ -80,7 +84,9 @@ contract AppModuleFactory is Ownable {
      * @notice Set ELTA creation fee
      * @param fee New fee amount in ELTA
      */
-    function setCreateFee(uint256 fee) external onlyOwner {
+    function setCreateFee(
+        uint256 fee
+    ) external onlyOwner {
         createFeeELTA = fee;
         emit FeeSet(fee);
     }
@@ -97,10 +103,7 @@ contract AppModuleFactory is Ownable {
     function deployModules(
         address appToken,
         string calldata baseURI
-    )
-        external
-        returns (address access1155, address staking, address epochs)
-    {
+    ) external returns (address access1155, address staking, address epochs) {
         // Verify caller is token owner
         if (IOwnable(appToken).owner() != msg.sender) revert NotTokenOwner();
 
@@ -108,9 +111,7 @@ contract AppModuleFactory is Ownable {
         if (modulesByApp[appToken].access1155 != address(0)) revert ModulesAlreadyExist();
 
         // Collect ELTA fee if set
-        if (createFeeELTA > 0 && ELTA != address(0)) {
-            IERC20(ELTA).transferFrom(msg.sender, treasury, createFeeELTA);
-        }
+        if (createFeeELTA > 0 && ELTA != address(0)) IERC20(ELTA).transferFrom(msg.sender, treasury, createFeeELTA);
 
         // Deploy modules (msg.sender becomes owner of all)
         // Get token name and symbol for vault

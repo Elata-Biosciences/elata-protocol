@@ -53,14 +53,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
     event XPGateUpdated(uint256 minXP, uint256 duration);
     event TransferFeeUpdated(uint16 oldBps, uint16 newBps);
     event TransferFeeExemptSet(address indexed account, bool exempt);
-    event TransferFeeCollected(
-        address indexed from,
-        address indexed to,
-        uint256 totalFee,
-        uint256 appFee,
-        uint256 veFee,
-        uint256 treasuryFee
-    );
+    event TransferFeeCollected(address indexed from, address indexed to, uint256 totalFee, uint256 appFee, uint256 veFee, uint256 treasuryFee);
 
     function setUp() public {
         // Deploy core contracts
@@ -75,17 +68,10 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
         appRewardsDistributor = new AppRewardsDistributor(elta, governance, address(1));
 
         // Deploy rewards distributors (needs appRewardsDistributor)
-        rewardsDistributor = new RewardsDistributor(
-            elta,
-            IVeEltaVotes(address(veELTA)),
-            IAppRewardsDistributor(address(appRewardsDistributor)),
-            treasury,
-            governance
-        );
+        rewardsDistributor = new RewardsDistributor(elta, IVeEltaVotes(address(veELTA)), IAppRewardsDistributor(address(appRewardsDistributor)), treasury, governance);
 
         // Deploy fee router
-        appFeeRouter =
-            new AppFeeRouter(elta, IRewardsDistributor(address(rewardsDistributor)), governance);
+        appFeeRouter = new AppFeeRouter(elta, IRewardsDistributor(address(rewardsDistributor)), governance);
 
         // Setup mock Uniswap
         _setupMockUniswap();
@@ -125,21 +111,9 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
     function _setupMockUniswap() internal {
         vm.mockCall(mockRouter, abi.encodeWithSignature("factory()"), abi.encode(mockFactory));
-        vm.mockCall(
-            mockFactory, abi.encodeWithSignature("getPair(address,address)"), abi.encode(address(0))
-        );
-        vm.mockCall(
-            mockFactory,
-            abi.encodeWithSignature("createPair(address,address)"),
-            abi.encode(address(1))
-        );
-        vm.mockCall(
-            mockRouter,
-            abi.encodeWithSignature(
-                "addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint256)"
-            ),
-            abi.encode(0, 0, 0)
-        );
+        vm.mockCall(mockFactory, abi.encodeWithSignature("getPair(address,address)"), abi.encode(address(0)));
+        vm.mockCall(mockFactory, abi.encodeWithSignature("createPair(address,address)"), abi.encode(address(1)));
+        vm.mockCall(mockRouter, abi.encodeWithSignature("addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint256)"), abi.encode(0, 0, 0));
     }
 
     // ===== XP-Gated Launch Window Tests =====
@@ -482,8 +456,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
         uint256 appId = factory.createApp("StatusApp", "STAT", 0, "", "", "");
         vm.stopPrank();
 
-        (bool isInEarlyAccess, uint256 earlyAccessEndsAt, uint256 xpRequired) =
-            factory.getAppLaunchStatus(appId);
+        (bool isInEarlyAccess, uint256 earlyAccessEndsAt, uint256 xpRequired) = factory.getAppLaunchStatus(appId);
 
         assertTrue(isInEarlyAccess);
         assertEq(xpRequired, 100 ether);
@@ -522,8 +495,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
 
-        (uint256 launchTime, uint256 duration, uint256 xpMin, bool isActive) =
-            curve.getEarlyAccessInfo();
+        (uint256 launchTime, uint256 duration, uint256 xpMin, bool isActive) = curve.getEarlyAccessInfo();
 
         assertEq(launchTime, block.timestamp);
         assertEq(duration, 6 hours);
