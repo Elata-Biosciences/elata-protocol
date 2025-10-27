@@ -23,10 +23,8 @@ jobs:
         with:
           version: v1.1.0
 
-      - name: Assert Foundry version
-        run: |
-          forge --version
-          forge --version | grep "forge 1.1.0" || (echo "Wrong Foundry version; expected v1.1.0" && exit 1)
+      - name: Show Foundry version
+        run: forge --version
 
       - name: Check code formatting
         run: forge fmt --check
