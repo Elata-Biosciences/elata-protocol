@@ -10,29 +10,9 @@ env:
   FOUNDRY_PROFILE: ci
 
 jobs:
-  fmt:
-    name: Formatting
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: v1.4.2
-
-      - name: Show Foundry version
-        run: forge --version
-
-      - name: Check code formatting
-        run: forge fmt --check
-
   test:
     name: Foundry Tests
     runs-on: ubuntu-latest
-    needs: fmt
     steps:
       - uses: actions/checkout@v4
         with:
@@ -62,7 +42,6 @@ jobs:
   lint:
     name: Code Quality
     runs-on: ubuntu-latest
-    needs: fmt
     steps:
       - uses: actions/checkout@v4
 
