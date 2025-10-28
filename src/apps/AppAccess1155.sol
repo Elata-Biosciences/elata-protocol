@@ -163,14 +163,7 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
      * @param id Item ID to purchase
      * @param amount Quantity to purchase
      */
-    function purchase(
-        uint256 id,
-        uint256 amount,
-        bytes32 /* reason */
-    )
-        external
-        nonReentrant
-    {
+    function purchase(uint256 id, uint256 amount, bytes32 /* reason */ ) external nonReentrant {
         Item memory it = items[id];
 
         // Validate purchase conditions

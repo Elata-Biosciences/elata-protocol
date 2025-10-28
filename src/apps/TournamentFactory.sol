@@ -106,9 +106,8 @@ contract TournamentFactory is Ownable {
         external
         returns (address tournament)
     {
-        return createTournamentWithFees(
-            appToken, entryFee, startTime, endTime, defaultProtocolFeeBps, defaultBurnFeeBps
-        );
+        return
+            createTournamentWithFees(appToken, entryFee, startTime, endTime, defaultProtocolFeeBps, defaultBurnFeeBps);
     }
 
     /**

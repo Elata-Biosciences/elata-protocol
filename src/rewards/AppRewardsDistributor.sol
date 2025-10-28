@@ -308,7 +308,11 @@ contract AppRewardsDistributor is AccessControl {
      * @return fromEpoch Starting epoch to claim
      * @return toEpoch Ending epoch (exclusive)
      */
-    function getUnclaimedRange(address user, address vault) external view returns (uint256 fromEpoch, uint256 toEpoch) {
+    function getUnclaimedRange(address user, address vault)
+        external
+        view
+        returns (uint256 fromEpoch, uint256 toEpoch)
+    {
         fromEpoch = userCursor[user][vault];
         toEpoch = epochs[vault].length;
     }

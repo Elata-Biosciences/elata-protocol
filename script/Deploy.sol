@@ -295,8 +295,9 @@ contract Deploy is Script {
 
         // AppRewards: Grant FACTORY_ROLE to AppFactory
         if (address(protocol.appFactory) != address(0)) {
-            protocol.appRewardsDistributor
-                .grantRole(protocol.appRewardsDistributor.FACTORY_ROLE(), address(protocol.appFactory));
+            protocol.appRewardsDistributor.grantRole(
+                protocol.appRewardsDistributor.FACTORY_ROLE(), address(protocol.appFactory)
+            );
         }
     }
 
