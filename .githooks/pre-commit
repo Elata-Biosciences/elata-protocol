@@ -12,6 +12,13 @@ if ! command -v forge &> /dev/null; then
     exit 1
 fi
 
+# 0. Pin Foundry toolchain (idempotent)
+# Ensure pinned Foundry is used
+if [ -f "scripts/pin-foundry.sh" ]; then
+  bash scripts/pin-foundry.sh >/dev/null 2>&1 || true
+  export PATH="$HOME/.foundry/bin:$PATH"
+fi
+
 # 1. Format check and auto-fix
 echo "📝 Checking and fixing code formatting..."
 if ! forge fmt; then

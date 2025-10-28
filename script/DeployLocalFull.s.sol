@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { Script, console2 } from "forge-std/Script.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { ELTA } from "../src/token/ELTA.sol";
-import { ElataXP } from "../src/experience/ElataXP.sol";
-import { VeELTA } from "../src/staking/VeELTA.sol";
-import { LotPool } from "../src/governance/LotPool.sol";
-import { RewardsDistributor } from "../src/rewards/RewardsDistributor.sol";
-import { ElataGovernor } from "../src/governance/ElataGovernor.sol";
-import { ElataTimelock } from "../src/governance/ElataTimelock.sol";
-import { TimelockController } from "@openzeppelin/contracts/governance/TimelockController.sol";
-import { AppFactory } from "../src/apps/AppFactory.sol";
-import { AppFactoryViews } from "../src/apps/AppFactoryViews.sol";
-import { AppModuleFactory } from "../src/apps/AppModuleFactory.sol";
-import { TournamentFactory } from "../src/apps/TournamentFactory.sol";
-import { IUniswapV2Router02 } from "../src/interfaces/IUniswapV2Router02.sol";
+import {AppFactory} from "../src/apps/AppFactory.sol";
+import {AppFactoryViews} from "../src/apps/AppFactoryViews.sol";
+import {AppModuleFactory} from "../src/apps/AppModuleFactory.sol";
+import {TournamentFactory} from "../src/apps/TournamentFactory.sol";
+import {ElataXP} from "../src/experience/ElataXP.sol";
+import {ElataGovernor} from "../src/governance/ElataGovernor.sol";
+import {ElataTimelock} from "../src/governance/ElataTimelock.sol";
+import {LotPool} from "../src/governance/LotPool.sol";
+import {IUniswapV2Router02} from "../src/interfaces/IUniswapV2Router02.sol";
+import {RewardsDistributor} from "../src/rewards/RewardsDistributor.sol";
+import {VeELTA} from "../src/staking/VeELTA.sol";
+import {ELTA} from "../src/token/ELTA.sol";
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Script, console2} from "forge-std/Script.sol";
 
 /**
  * @title DeployLocalFull
@@ -46,13 +46,10 @@ contract MockUniswapV2Router {
         return (amountADesired, amountBDesired, amountADesired + amountBDesired);
     }
 
-    function swapExactTokensForTokens(
-        uint256 amountIn,
-        uint256,
-        address[] calldata path,
-        address,
-        uint256
-    ) external returns (uint256[] memory amounts) {
+    function swapExactTokensForTokens(uint256 amountIn, uint256, address[] calldata path, address, uint256)
+        external
+        returns (uint256[] memory amounts)
+    {
         amounts = new uint256[](path.length);
         amounts[0] = amountIn;
         amounts[path.length - 1] = amountIn; // 1:1 for simplicity
@@ -77,8 +74,7 @@ contract MockUniswapV2Factory {
 
     function createPair(address tokenA, address tokenB) external returns (address pair) {
         // Create a deterministic mock pair address
-        pair =
-            address(uint160(uint256(keccak256(abi.encodePacked(tokenA, tokenB, block.timestamp)))));
+        pair = address(uint160(uint256(keccak256(abi.encodePacked(tokenA, tokenB, block.timestamp)))));
         getPair[tokenA][tokenB] = pair;
         getPair[tokenB][tokenA] = pair;
         allPairs.push(pair);
@@ -124,8 +120,7 @@ contract DeployLocalFull is Script {
 
     function run() external returns (DeploymentResult memory result) {
         // Use Anvil account #0 (has 10K ETH by default)
-        uint256 deployerPrivateKey =
-            0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
+        uint256 deployerPrivateKey = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
         result.deployer = vm.addr(deployerPrivateKey);
         result.treasury = result.deployer;
 
@@ -197,12 +192,9 @@ contract DeployLocalFull is Script {
         // and Governance
         // result.appFactory = new AppFactory(...);
         // result.appFactoryViews = new AppFactoryViews(address(result.appFactory));
-        console2.log(
-            "       AppFactory & AppFactoryViews deployment skipped (use script/Deploy.sol)"
-        );
+        console2.log("       AppFactory & AppFactoryViews deployment skipped (use script/Deploy.sol)");
 
-        result.appModuleFactory =
-            new AppModuleFactory(address(result.token), result.deployer, result.treasury);
+        result.appModuleFactory = new AppModuleFactory(address(result.token), result.deployer, result.treasury);
         console2.log("       AppModuleFactory deployed at:", address(result.appModuleFactory));
 
         result.tournamentFactory = new TournamentFactory(result.deployer, result.treasury);
@@ -303,10 +295,7 @@ contract DeployLocalFull is Script {
         console2.log("--------------------------------");
         console2.log("Deployer:                ", result.deployer);
         for (uint256 i = 0; i < result.testAccounts.length; i++) {
-            console2.log(
-                string.concat("Test Account #", vm.toString(i + 1), ":        "),
-                result.testAccounts[i]
-            );
+            console2.log(string.concat("Test Account #", vm.toString(i + 1), ":        "), result.testAccounts[i]);
         }
         console2.log("");
 

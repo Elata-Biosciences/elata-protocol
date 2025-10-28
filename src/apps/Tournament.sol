@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 /**
  * @title Tournament
@@ -269,11 +269,7 @@ contract Tournament is Ownable, ReentrancyGuard {
      * @return reason Reason code (0=can enter, 1=already entered, 2=not started, 3=ended,
      * 4=finalized)
      */
-    function checkEntryEligibility(address user)
-        external
-        view
-        returns (bool canEnter, uint8 reason)
-    {
+    function checkEntryEligibility(address user) external view returns (bool canEnter, uint8 reason) {
         if (entered[user]) return (false, 1);
         if (finalized) return (false, 4);
         if (startTime != 0 && block.timestamp < startTime) return (false, 2);
@@ -287,11 +283,7 @@ contract Tournament is Ownable, ReentrancyGuard {
      * @return burnAmount Burn fee amount
      * @return netAmount Net pool for winners
      */
-    function calculateFees()
-        external
-        view
-        returns (uint256 protocolAmount, uint256 burnAmount, uint256 netAmount)
-    {
+    function calculateFees() external view returns (uint256 protocolAmount, uint256 burnAmount, uint256 netAmount) {
         protocolAmount = (pool * protocolFeeBps) / BPS;
         burnAmount = (pool * burnFeeBps) / BPS;
         netAmount = pool - protocolAmount - burnAmount;

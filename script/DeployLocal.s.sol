@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { Script, console } from "forge-std/Script.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { AppFactory } from "../src/apps/AppFactory.sol";
-import { IUniswapV2Router02 } from "../src/interfaces/IUniswapV2Router02.sol";
+import {AppFactory} from "../src/apps/AppFactory.sol";
+import {IUniswapV2Router02} from "../src/interfaces/IUniswapV2Router02.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Script, console} from "forge-std/Script.sol";
 
 // Mock ELTA token for local development
 contract MockELTA is ERC20 {
@@ -129,9 +129,7 @@ contract DeployLocal is Script {
         console.log("NEXT_PUBLIC_ELTA_ADDRESS_LOCALHOST=%s", address(elta));
         // console.log("NEXT_PUBLIC_APP_FACTORY_ADDRESS_LOCALHOST=%s", address(appFactory));
         console.log("NEXT_PUBLIC_UNISWAP_ROUTER_ADDRESS_LOCALHOST=%s", address(uniRouter));
-        console.log(
-            "\nNOTE: Use DeployEconomicUpgrade.s.sol for full deployment with new architecture"
-        );
+        console.log("\nNOTE: Use DeployEconomicUpgrade.s.sol for full deployment with new architecture");
 
         console.log("\nTest accounts with ELTA:");
         console.log("Deployer: %s (1M ELTA)", deployer);

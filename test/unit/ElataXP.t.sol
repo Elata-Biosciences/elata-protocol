@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {ElataXP} from "../../src/experience/ElataXP.sol";
+import {Errors} from "../../src/utils/Errors.sol";
 import "forge-std/Test.sol";
-import { ElataXP } from "../../src/experience/ElataXP.sol";
-import { Errors } from "../../src/utils/Errors.sol";
 
 contract ElataXPTest is Test {
     ElataXP public xp;

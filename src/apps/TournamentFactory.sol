@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { IOwnable } from "./Interfaces.sol";
-import { Tournament } from "./Tournament.sol";
+import {IOwnable} from "./Interfaces.sol";
+import {Tournament} from "./Tournament.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title TournamentFactory
@@ -106,9 +106,8 @@ contract TournamentFactory is Ownable {
         external
         returns (address tournament)
     {
-        return createTournamentWithFees(
-            appToken, entryFee, startTime, endTime, defaultProtocolFeeBps, defaultBurnFeeBps
-        );
+        return
+            createTournamentWithFees(appToken, entryFee, startTime, endTime, defaultProtocolFeeBps, defaultBurnFeeBps);
     }
 
     /**
@@ -137,16 +136,7 @@ contract TournamentFactory is Ownable {
 
         // Deploy tournament (creator becomes owner)
         tournamentAddr = address(
-            new Tournament(
-                appToken,
-                msg.sender,
-                treasury,
-                entryFee,
-                startTime,
-                endTime,
-                protocolFeeBps,
-                burnFeeBps
-            )
+            new Tournament(appToken, msg.sender, treasury, entryFee, startTime, endTime, protocolFeeBps, burnFeeBps)
         );
 
         // Register tournament
@@ -202,11 +192,7 @@ contract TournamentFactory is Ownable {
      * @param tournamentId Tournament ID
      * @return Tournament info struct
      */
-    function getTournamentInfo(uint256 tournamentId)
-        external
-        view
-        returns (TournamentInfo memory)
-    {
+    function getTournamentInfo(uint256 tournamentId) external view returns (TournamentInfo memory) {
         return tournaments[tournamentId];
     }
 }

@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AppAccess1155} from "../../../src/apps/AppAccess1155.sol";
+import {AppModuleFactory} from "../../../src/apps/AppModuleFactory.sol";
+import {AppStakingVault} from "../../../src/apps/AppStakingVault.sol";
+import {AppToken} from "../../../src/apps/AppToken.sol";
+import {EpochRewards} from "../../../src/apps/EpochRewards.sol";
+import {Tournament} from "../../../src/apps/Tournament.sol";
+import {ELTA} from "../../../src/token/ELTA.sol";
 import "forge-std/Test.sol";
-import { AppToken } from "../../../src/apps/AppToken.sol";
-import { AppAccess1155 } from "../../../src/apps/AppAccess1155.sol";
-import { AppStakingVault } from "../../../src/apps/AppStakingVault.sol";
-import { Tournament } from "../../../src/apps/Tournament.sol";
-import { EpochRewards } from "../../../src/apps/EpochRewards.sol";
-import { AppModuleFactory } from "../../../src/apps/AppModuleFactory.sol";
-import { ELTA } from "../../../src/token/ELTA.sol";
-import { Merkle } from "murky/src/Merkle.sol";
+import {Merkle} from "murky/src/Merkle.sol";
 
 /**
  * @title AppModulesIntegrationTest
@@ -53,16 +53,7 @@ contract AppModulesIntegrationTest is Test {
 
         // Deploy app token
         appToken = new AppToken(
-            "NeuroPong",
-            "NPONG",
-            18,
-            MAX_SUPPLY,
-            appCreator,
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
+            "NeuroPong", "NPONG", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
         );
 
         // Mint initial rewards treasury
@@ -84,8 +75,7 @@ contract AppModulesIntegrationTest is Test {
         vault = AppStakingVault(vaultAddr);
 
         // Deploy tournament and rewards
-        tournament =
-            new Tournament(address(appToken), appCreator, treasury, 10 ether, 0, 0, 250, 100);
+        tournament = new Tournament(address(appToken), appCreator, treasury, 10 ether, 0, 0, 250, 100);
 
         rewards = new EpochRewards(address(appToken), appCreator);
 
@@ -115,8 +105,7 @@ contract AppModulesIntegrationTest is Test {
         assertEq(elta.balanceOf(treasury), CREATE_FEE);
 
         // Verify registry
-        (address storedAccess, address storedVault, address storedEpochs) =
-            factory.modulesByApp(address(appToken));
+        (address storedAccess, address storedVault, address storedEpochs) = factory.modulesByApp(address(appToken));
         assertEq(storedAccess, address(access));
         assertEq(storedVault, address(vault));
         assertTrue(storedEpochs != address(0));
@@ -168,12 +157,7 @@ contract AppModulesIntegrationTest is Test {
         vm.prank(appCreator);
         access.setFeatureGate(
             premiumFeature,
-            AppAccess1155.FeatureGate({
-                minStake: 500 ether,
-                requiredItem: 1,
-                requireBoth: true,
-                active: true
-            })
+            AppAccess1155.FeatureGate({minStake: 500 ether, requiredItem: 1, requireBoth: true, active: true})
         );
 
         // Player1: No access (nothing)
@@ -206,12 +190,7 @@ contract AppModulesIntegrationTest is Test {
         vm.prank(appCreator);
         access.setFeatureGate(
             tourneyAccess,
-            AppAccess1155.FeatureGate({
-                minStake: 100 ether,
-                requiredItem: 0,
-                requireBoth: false,
-                active: true
-            })
+            AppAccess1155.FeatureGate({minStake: 100 ether, requiredItem: 0, requireBoth: false, active: true})
         );
 
         // Note: Tournament owner is appCreator
@@ -269,8 +248,7 @@ contract AppModulesIntegrationTest is Test {
         rewards.fund(50000 ether);
 
         // Verify epoch state
-        (uint64 start, uint64 end, bytes32 root, uint256 funded, uint256 claimed) =
-            rewards.epochs(1);
+        (uint64 start, uint64 end, bytes32 root, uint256 funded, uint256 claimed) = rewards.epochs(1);
         assertEq(start, uint64(block.timestamp));
         assertEq(end, uint64(block.timestamp + 30 days));
         assertEq(root, 0); // Not finalized yet
@@ -289,16 +267,7 @@ contract AppModulesIntegrationTest is Test {
     function test_Integration_MultipleAppsCoexist() public {
         // Deploy second app
         AppToken app2 = new AppToken(
-            "BrainWaves",
-            "BWAVE",
-            18,
-            MAX_SUPPLY,
-            appCreator,
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
+            "BrainWaves", "BWAVE", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
         );
 
         // Mint ELTA for second deployment
@@ -352,12 +321,7 @@ contract AppModulesIntegrationTest is Test {
         vm.prank(appCreator);
         access.setFeatureGate(
             premium,
-            AppAccess1155.FeatureGate({
-                minStake: 1000 ether,
-                requiredItem: 0,
-                requireBoth: false,
-                active: true
-            })
+            AppAccess1155.FeatureGate({minStake: 1000 ether, requiredItem: 0, requireBoth: false, active: true})
         );
 
         // Player1 doesn't have access
@@ -445,34 +409,19 @@ contract AppModulesIntegrationTest is Test {
         // Bronze feature (just pass)
         access.setFeatureGate(
             keccak256("bronze"),
-            AppAccess1155.FeatureGate({
-                minStake: 0,
-                requiredItem: 1,
-                requireBoth: false,
-                active: true
-            })
+            AppAccess1155.FeatureGate({minStake: 0, requiredItem: 1, requireBoth: false, active: true})
         );
 
         // Silver feature (pass + 100 stake)
         access.setFeatureGate(
             keccak256("silver"),
-            AppAccess1155.FeatureGate({
-                minStake: 100 ether,
-                requiredItem: 2,
-                requireBoth: true,
-                active: true
-            })
+            AppAccess1155.FeatureGate({minStake: 100 ether, requiredItem: 2, requireBoth: true, active: true})
         );
 
         // Gold feature (pass + 500 stake)
         access.setFeatureGate(
             keccak256("gold"),
-            AppAccess1155.FeatureGate({
-                minStake: 500 ether,
-                requiredItem: 3,
-                requireBoth: true,
-                active: true
-            })
+            AppAccess1155.FeatureGate({minStake: 500 ether, requiredItem: 3, requireBoth: true, active: true})
         );
         vm.stopPrank();
 
@@ -635,16 +584,7 @@ contract AppModulesIntegrationTest is Test {
 
         // Deploy another app (pays ELTA fee)
         AppToken app2 = new AppToken(
-            "App2",
-            "APP2",
-            18,
-            MAX_SUPPLY,
-            appCreator,
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
+            "App2", "APP2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
         );
 
         vm.prank(appCreator);

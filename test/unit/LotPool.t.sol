@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {ElataXP} from "../../src/experience/ElataXP.sol";
+import {LotPool} from "../../src/governance/LotPool.sol";
+import {ELTA} from "../../src/token/ELTA.sol";
+import {Errors} from "../../src/utils/Errors.sol";
 import "forge-std/Test.sol";
-import { LotPool } from "../../src/governance/LotPool.sol";
-import { ElataXP } from "../../src/experience/ElataXP.sol";
-import { ELTA } from "../../src/token/ELTA.sol";
-import { Errors } from "../../src/utils/Errors.sol";
 
 contract LotPoolTest is Test {
     LotPool public lotPool;
@@ -97,10 +97,7 @@ contract LotPoolTest is Test {
 
         vm.expectEmit(true, false, false, true);
         emit RoundStarted(
-            1,
-            block.number > 0 ? block.number - 1 : 0,
-            uint64(block.timestamp),
-            uint64(block.timestamp + duration)
+            1, block.number > 0 ? block.number - 1 : 0, uint64(block.timestamp), uint64(block.timestamp + duration)
         );
 
         vm.prank(admin);
@@ -110,13 +107,8 @@ contract LotPoolTest is Test {
         assertEq(snapshotBlock, block.number > 0 ? block.number - 1 : 0);
         assertEq(lotPool.currentRoundId(), 1);
 
-        (
-            uint256 returnedSnapshotBlock,
-            uint64 start,
-            uint64 end,
-            bool finalized,
-            bytes32[] memory returnedOptions
-        ) = lotPool.getRound(roundId);
+        (uint256 returnedSnapshotBlock, uint64 start, uint64 end, bool finalized, bytes32[] memory returnedOptions) =
+            lotPool.getRound(roundId);
         assertEq(returnedSnapshotBlock, snapshotBlock);
         assertEq(start, block.timestamp);
         assertEq(end, block.timestamp + duration);

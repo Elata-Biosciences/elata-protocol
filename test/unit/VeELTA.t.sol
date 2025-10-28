@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {VeELTA} from "../../src/staking/VeELTA.sol";
+import {ELTA} from "../../src/token/ELTA.sol";
+import {Errors} from "../../src/utils/Errors.sol";
 import "forge-std/Test.sol";
-import { VeELTA } from "../../src/staking/VeELTA.sol";
-import { ELTA } from "../../src/token/ELTA.sol";
-import { Errors } from "../../src/utils/Errors.sol";
 
 /**
  * @title VeELTA V2 Tests
@@ -25,12 +25,8 @@ contract VeELTATest is Test {
     address public user2 = makeAddr("user2");
 
     event Locked(address indexed user, uint256 amount, uint64 unlockTime, uint256 veELTA);
-    event AmountIncreased(
-        address indexed user, uint256 addAmount, uint256 newPrincipal, uint256 newVeELTA
-    );
-    event LockExtended(
-        address indexed user, uint64 oldUnlockTime, uint64 newUnlockTime, uint256 newVeELTA
-    );
+    event AmountIncreased(address indexed user, uint256 addAmount, uint256 newPrincipal, uint256 newVeELTA);
+    event LockExtended(address indexed user, uint64 oldUnlockTime, uint64 newUnlockTime, uint256 newVeELTA);
     event Unlocked(address indexed user, uint256 principal, uint256 veELTABurned);
 
     function setUp() public {
@@ -69,8 +65,7 @@ contract VeELTATest is Test {
         veElta.lock(amount, unlockTime);
 
         // Check lock details
-        (uint256 principal, uint64 storedUnlockTime, uint256 veBalance,) =
-            veElta.getLockDetails(user1);
+        (uint256 principal, uint64 storedUnlockTime, uint256 veBalance,) = veElta.getLockDetails(user1);
         assertEq(principal, amount);
         assertEq(storedUnlockTime, unlockTime);
 

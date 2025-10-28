@@ -1,24 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AppBondingCurve} from "../../src/apps/AppBondingCurve.sol";
+import {AppFactory} from "../../src/apps/AppFactory.sol";
+import {AppStakingVault} from "../../src/apps/AppStakingVault.sol";
+import {AppToken} from "../../src/apps/AppToken.sol";
+import {ElataXP} from "../../src/experience/ElataXP.sol";
+import {AppFeeRouter} from "../../src/fees/AppFeeRouter.sol";
+import {IAppFeeRouter} from "../../src/interfaces/IAppFeeRouter.sol";
+import {IAppRewardsDistributor} from "../../src/interfaces/IAppRewardsDistributor.sol";
+import {IElataXP} from "../../src/interfaces/IElataXP.sol";
+import {IRewardsDistributor} from "../../src/interfaces/IRewardsDistributor.sol";
+import {IUniswapV2Router02} from "../../src/interfaces/IUniswapV2Router02.sol";
+import {IVeEltaVotes} from "../../src/interfaces/IVeEltaVotes.sol";
+import {AppRewardsDistributor} from "../../src/rewards/AppRewardsDistributor.sol";
+import {RewardsDistributor} from "../../src/rewards/RewardsDistributor.sol";
+import {VeELTA} from "../../src/staking/VeELTA.sol";
+import {ELTA} from "../../src/token/ELTA.sol";
+import {MockElataXP} from "../mocks/MockContracts.sol";
 import "forge-std/Test.sol";
-import { ELTA } from "../../src/token/ELTA.sol";
-import { ElataXP } from "../../src/experience/ElataXP.sol";
-import { AppFactory } from "../../src/apps/AppFactory.sol";
-import { AppToken } from "../../src/apps/AppToken.sol";
-import { AppBondingCurve } from "../../src/apps/AppBondingCurve.sol";
-import { AppStakingVault } from "../../src/apps/AppStakingVault.sol";
-import { AppRewardsDistributor } from "../../src/rewards/AppRewardsDistributor.sol";
-import { RewardsDistributor } from "../../src/rewards/RewardsDistributor.sol";
-import { AppFeeRouter } from "../../src/fees/AppFeeRouter.sol";
-import { VeELTA } from "../../src/staking/VeELTA.sol";
-import { IUniswapV2Router02 } from "../../src/interfaces/IUniswapV2Router02.sol";
-import { IRewardsDistributor } from "../../src/interfaces/IRewardsDistributor.sol";
-import { IAppRewardsDistributor } from "../../src/interfaces/IAppRewardsDistributor.sol";
-import { IAppFeeRouter } from "../../src/interfaces/IAppFeeRouter.sol";
-import { IElataXP } from "../../src/interfaces/IElataXP.sol";
-import { IVeEltaVotes } from "../../src/interfaces/IVeEltaVotes.sol";
-import { MockElataXP } from "../mocks/MockContracts.sol";
 
 /**
  * @title XP-Gated Launch and Transfer Fees Test
@@ -54,12 +54,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
     event TransferFeeUpdated(uint16 oldBps, uint16 newBps);
     event TransferFeeExemptSet(address indexed account, bool exempt);
     event TransferFeeCollected(
-        address indexed from,
-        address indexed to,
-        uint256 totalFee,
-        uint256 appFee,
-        uint256 veFee,
-        uint256 treasuryFee
+        address indexed from, address indexed to, uint256 totalFee, uint256 appFee, uint256 veFee, uint256 treasuryFee
     );
 
     function setUp() public {
@@ -84,8 +79,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
         );
 
         // Deploy fee router
-        appFeeRouter =
-            new AppFeeRouter(elta, IRewardsDistributor(address(rewardsDistributor)), governance);
+        appFeeRouter = new AppFeeRouter(elta, IRewardsDistributor(address(rewardsDistributor)), governance);
 
         // Setup mock Uniswap
         _setupMockUniswap();
@@ -125,19 +119,11 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
     function _setupMockUniswap() internal {
         vm.mockCall(mockRouter, abi.encodeWithSignature("factory()"), abi.encode(mockFactory));
-        vm.mockCall(
-            mockFactory, abi.encodeWithSignature("getPair(address,address)"), abi.encode(address(0))
-        );
-        vm.mockCall(
-            mockFactory,
-            abi.encodeWithSignature("createPair(address,address)"),
-            abi.encode(address(1))
-        );
+        vm.mockCall(mockFactory, abi.encodeWithSignature("getPair(address,address)"), abi.encode(address(0)));
+        vm.mockCall(mockFactory, abi.encodeWithSignature("createPair(address,address)"), abi.encode(address(1)));
         vm.mockCall(
             mockRouter,
-            abi.encodeWithSignature(
-                "addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint256)"
-            ),
+            abi.encodeWithSignature("addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint256)"),
             abi.encode(0, 0, 0)
         );
     }
@@ -482,8 +468,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
         uint256 appId = factory.createApp("StatusApp", "STAT", 0, "", "", "");
         vm.stopPrank();
 
-        (bool isInEarlyAccess, uint256 earlyAccessEndsAt, uint256 xpRequired) =
-            factory.getAppLaunchStatus(appId);
+        (bool isInEarlyAccess, uint256 earlyAccessEndsAt, uint256 xpRequired) = factory.getAppLaunchStatus(appId);
 
         assertTrue(isInEarlyAccess);
         assertEq(xpRequired, 100 ether);
@@ -522,8 +507,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
 
-        (uint256 launchTime, uint256 duration, uint256 xpMin, bool isActive) =
-            curve.getEarlyAccessInfo();
+        (uint256 launchTime, uint256 duration, uint256 xpMin, bool isActive) = curve.getEarlyAccessInfo();
 
         assertEq(launchTime, block.timestamp);
         assertEq(duration, 6 hours);

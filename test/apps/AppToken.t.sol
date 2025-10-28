@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AppToken} from "../../src/apps/AppToken.sol";
+import {Errors} from "../../src/utils/Errors.sol";
 import "forge-std/Test.sol";
-import { AppToken } from "../../src/apps/AppToken.sol";
-import { Errors } from "../../src/utils/Errors.sol";
 
 contract AppTokenTest is Test {
     AppToken public token;
@@ -22,16 +22,7 @@ contract AppTokenTest is Test {
 
     function setUp() public {
         token = new AppToken(
-            "TestApp Token",
-            "TEST",
-            18,
-            MAX_SUPPLY,
-            creator,
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
+            "TestApp Token", "TEST", 18, MAX_SUPPLY, creator, admin, address(1), address(1), address(1), address(1)
         );
     }
 
@@ -49,39 +40,17 @@ contract AppTokenTest is Test {
 
     function test_RevertWhen_DeploymentZeroAddress() public {
         vm.expectRevert("Zero address");
-        new AppToken(
-            "Test",
-            "TEST",
-            18,
-            MAX_SUPPLY,
-            address(0),
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
-        );
+        new AppToken("Test", "TEST", 18, MAX_SUPPLY, address(0), admin, address(1), address(1), address(1), address(1));
 
         vm.expectRevert("Zero address");
         new AppToken(
-            "Test",
-            "TEST",
-            18,
-            MAX_SUPPLY,
-            creator,
-            address(0),
-            address(1),
-            address(1),
-            address(1),
-            address(1)
+            "Test", "TEST", 18, MAX_SUPPLY, creator, address(0), address(1), address(1), address(1), address(1)
         );
     }
 
     function test_RevertWhen_DeploymentInvalidSupply() public {
         vm.expectRevert("Invalid supply");
-        new AppToken(
-            "Test", "TEST", 18, 0, creator, admin, address(1), address(1), address(1), address(1)
-        );
+        new AppToken("Test", "TEST", 18, 0, creator, admin, address(1), address(1), address(1), address(1));
     }
 
     function test_Mint() public {

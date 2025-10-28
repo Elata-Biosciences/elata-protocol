@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AppFeeRouter} from "../../src/fees/AppFeeRouter.sol";
+import {IRewardsDistributor} from "../../src/interfaces/IRewardsDistributor.sol";
+import {ELTA} from "../../src/token/ELTA.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "forge-std/Test.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ELTA } from "../../src/token/ELTA.sol";
-import { AppFeeRouter } from "../../src/fees/AppFeeRouter.sol";
-import { IRewardsDistributor } from "../../src/interfaces/IRewardsDistributor.sol";
 
 contract MockRewardsDistributor is IRewardsDistributor {
     IERC20 public immutable eltaToken;
@@ -34,9 +34,7 @@ contract AppFeeRouterTest is Test {
     address public trader = address(0x2);
     address public bondingCurve = address(0x3);
 
-    event FeeForwarded(
-        address indexed source, address indexed payer, uint256 grossAmount, uint256 fee
-    );
+    event FeeForwarded(address indexed source, address indexed payer, uint256 grossAmount, uint256 fee);
     event FeeBpsUpdated(uint256 oldBps, uint256 newBps);
     event GovernanceTransferred(address indexed oldGov, address indexed newGov);
 
@@ -48,8 +46,7 @@ contract AppFeeRouterTest is Test {
         rewardsDistributor = new MockRewardsDistributor(elta);
 
         // Deploy fee router - MockRewardsDistributor implements the IRewardsDistributor interface
-        feeRouter =
-            new AppFeeRouter(elta, IRewardsDistributor(address(rewardsDistributor)), governance);
+        feeRouter = new AppFeeRouter(elta, IRewardsDistributor(address(rewardsDistributor)), governance);
 
         // Fund trader
         vm.prank(governance);

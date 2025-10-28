@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { ELTA } from "../token/ELTA.sol";
-import { VeELTA } from "../staking/VeELTA.sol";
-import { ElataXP } from "../experience/ElataXP.sol";
-import { LotPool } from "../governance/LotPool.sol";
-import { RewardsDistributor } from "../rewards/RewardsDistributor.sol";
+import {ElataXP} from "../experience/ElataXP.sol";
+import {LotPool} from "../governance/LotPool.sol";
+import {RewardsDistributor} from "../rewards/RewardsDistributor.sol";
+import {VeELTA} from "../staking/VeELTA.sol";
+import {ELTA} from "../token/ELTA.sol";
 
 /**
  * @title ProtocolStats
@@ -53,13 +53,7 @@ contract ProtocolStats {
         uint256 totalFundingAllocated;
     }
 
-    constructor(
-        ELTA _elta,
-        VeELTA _staking,
-        ElataXP _xp,
-        LotPool _funding,
-        RewardsDistributor _rewards
-    ) {
+    constructor(ELTA _elta, VeELTA _staking, ElataXP _xp, LotPool _funding, RewardsDistributor _rewards) {
         elta = _elta;
         staking = _staking;
         xp = _xp;
@@ -82,7 +76,7 @@ contract ProtocolStats {
             totalVotingPower: staking.balanceOf(user),
             pendingRewards: rewards.estimatePendingVeRewards(user),
             totalClaimedRewards: 0 // No longer tracked globally in new architecture
-         });
+        });
     }
 
     /**
@@ -93,8 +87,7 @@ contract ProtocolStats {
      */
     function getUserPositions(address user) external view returns (PositionSummary[] memory) {
         // Single lock per user
-        (uint256 principal, uint64 unlockTime, uint256 veBalance, bool isExpired) =
-            staking.getLockDetails(user);
+        (uint256 principal, uint64 unlockTime, uint256 veBalance, bool isExpired) = staking.getLockDetails(user);
 
         if (principal == 0) return new PositionSummary[](0);
 
@@ -153,8 +146,7 @@ contract ProtocolStats {
     {
         uint256 currentRound = funding.currentRoundId();
         if (currentRound > 0) {
-            (snapshotBlock, startTime, endTime, finalized, options) =
-                funding.getRound(currentRound - 1);
+            (snapshotBlock, startTime, endTime, finalized, options) = funding.getRound(currentRound - 1);
             roundId = currentRound - 1;
         } else {
             return (0, 0, 0, 0, false, new bytes32[](0));
@@ -186,11 +178,7 @@ contract ProtocolStats {
      * @param users Array of user addresses
      * @return Array of ELTA balances
      */
-    function getBatchELTABalances(address[] calldata users)
-        external
-        view
-        returns (uint256[] memory)
-    {
+    function getBatchELTABalances(address[] calldata users) external view returns (uint256[] memory) {
         uint256[] memory balances = new uint256[](users.length);
         for (uint256 i = 0; i < users.length; i++) {
             balances[i] = elta.balanceOf(users[i]);
@@ -203,11 +191,7 @@ contract ProtocolStats {
      * @param users Array of user addresses
      * @return Array of XP balances
      */
-    function getBatchXPBalances(address[] calldata users)
-        external
-        view
-        returns (uint256[] memory)
-    {
+    function getBatchXPBalances(address[] calldata users) external view returns (uint256[] memory) {
         uint256[] memory balances = new uint256[](users.length);
         for (uint256 i = 0; i < users.length; i++) {
             balances[i] = xp.balanceOf(users[i]);

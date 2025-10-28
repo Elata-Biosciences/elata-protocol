@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AppBondingCurve} from "../../src/apps/AppBondingCurve.sol";
+import {AppToken} from "../../src/apps/AppToken.sol";
+import {IAppFeeRouter} from "../../src/interfaces/IAppFeeRouter.sol";
+import {IElataXP} from "../../src/interfaces/IElataXP.sol";
+import {IUniswapV2Router02} from "../../src/interfaces/IUniswapV2Router02.sol";
+import {ELTA} from "../../src/token/ELTA.sol";
 import "forge-std/Test.sol";
-import { ELTA } from "../../src/token/ELTA.sol";
-import { AppToken } from "../../src/apps/AppToken.sol";
-import { AppBondingCurve } from "../../src/apps/AppBondingCurve.sol";
-import { IUniswapV2Router02 } from "../../src/interfaces/IUniswapV2Router02.sol";
-import { IAppFeeRouter } from "../../src/interfaces/IAppFeeRouter.sol";
-import { IElataXP } from "../../src/interfaces/IElataXP.sol";
 
 // Mock XP token
 contract MockElataXP is IElataXP {
@@ -49,22 +49,11 @@ contract AppBondingCurveTest is Test {
         mockXP = new MockElataXP();
 
         appToken = new AppToken(
-            "TestApp",
-            "TEST",
-            18,
-            TOKEN_SUPPLY,
-            creator,
-            factory,
-            governance,
-            mockAppRewards,
-            mockRewards,
-            treasury
+            "TestApp", "TEST", 18, TOKEN_SUPPLY, creator, factory, governance, mockAppRewards, mockRewards, treasury
         );
 
         // Mock router calls
-        vm.mockCall(
-            mockRouter, abi.encodeWithSignature("factory()"), abi.encode(makeAddr("mockFactory"))
-        );
+        vm.mockCall(mockRouter, abi.encodeWithSignature("factory()"), abi.encode(makeAddr("mockFactory")));
 
         curve = new AppBondingCurve(
             0, // appId

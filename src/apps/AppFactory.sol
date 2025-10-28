@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import { IUniswapV2Router02 } from "../interfaces/IUniswapV2Router02.sol";
-import { IAppFeeRouter } from "../interfaces/IAppFeeRouter.sol";
-import { IAppRewardsDistributor } from "../interfaces/IAppRewardsDistributor.sol";
-import { IRewardsDistributor } from "../interfaces/IRewardsDistributor.sol";
-import { IElataXP } from "../interfaces/IElataXP.sol";
-import { AppToken } from "./AppToken.sol";
-import { AppStakingVault } from "./AppStakingVault.sol";
-import { AppBondingCurve, IAppFactory } from "./AppBondingCurve.sol";
-import { AppDeploymentLib } from "./libraries/AppDeploymentLib.sol";
+import {IAppFeeRouter} from "../interfaces/IAppFeeRouter.sol";
+import {IAppRewardsDistributor} from "../interfaces/IAppRewardsDistributor.sol";
+import {IElataXP} from "../interfaces/IElataXP.sol";
+import {IRewardsDistributor} from "../interfaces/IRewardsDistributor.sol";
+import {IUniswapV2Router02} from "../interfaces/IUniswapV2Router02.sol";
+import {AppBondingCurve, IAppFactory} from "./AppBondingCurve.sol";
+import {AppStakingVault} from "./AppStakingVault.sol";
+import {AppToken} from "./AppToken.sol";
+import {AppDeploymentLib} from "./libraries/AppDeploymentLib.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title AppFactory
@@ -128,9 +128,8 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         address _admin
     ) {
         require(
-            address(_elta) != address(0) && address(_router) != address(0)
-                && _treasury != address(0) && address(_appFeeRouter) != address(0)
-                && address(_appRewardsDistributor) != address(0)
+            address(_elta) != address(0) && address(_router) != address(0) && _treasury != address(0)
+                && address(_appFeeRouter) != address(0) && address(_appRewardsDistributor) != address(0)
                 && address(_rewardsDistributor) != address(0) && address(_elataXP) != address(0)
                 && _governance != address(0) && _admin != address(0),
             "Zero address"
@@ -180,9 +179,7 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         require(tokenSupply > 0, "Invalid supply");
 
         // Collect creation fees
-        require(
-            ELTA.transferFrom(msg.sender, address(this), creationFee + seedElta), "Transfer failed"
-        );
+        require(ELTA.transferFrom(msg.sender, address(this), creationFee + seedElta), "Transfer failed");
         if (creationFee > 0) require(ELTA.transfer(treasury, creationFee), "Transfer failed");
 
         // Deploy contracts via library (reduces AppFactory size)

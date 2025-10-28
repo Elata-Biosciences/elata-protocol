@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { IOwnable } from "./Interfaces.sol";
-import { AppAccess1155 } from "./AppAccess1155.sol";
-import { AppStakingVault } from "./AppStakingVault.sol";
-import { EpochRewards } from "./EpochRewards.sol";
+import {AppAccess1155} from "./AppAccess1155.sol";
+import {AppStakingVault} from "./AppStakingVault.sol";
+import {EpochRewards} from "./EpochRewards.sol";
+import {IOwnable} from "./Interfaces.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title AppModuleFactory
@@ -47,9 +47,7 @@ contract AppModuleFactory is Ownable {
     /// @notice ELTA fee for deploying modules
     uint256 public createFeeELTA;
 
-    event ModulesDeployed(
-        address indexed appToken, address access1155, address stakingVault, address epochRewards
-    );
+    event ModulesDeployed(address indexed appToken, address access1155, address stakingVault, address epochRewards);
     event TreasurySet(address treasury);
     event FeeSet(uint256 fee);
 
@@ -105,9 +103,7 @@ contract AppModuleFactory is Ownable {
         if (modulesByApp[appToken].access1155 != address(0)) revert ModulesAlreadyExist();
 
         // Collect ELTA fee if set
-        if (createFeeELTA > 0 && ELTA != address(0)) {
-            IERC20(ELTA).transferFrom(msg.sender, treasury, createFeeELTA);
-        }
+        if (createFeeELTA > 0 && ELTA != address(0)) IERC20(ELTA).transferFrom(msg.sender, treasury, createFeeELTA);
 
         // Deploy modules (msg.sender becomes owner of all)
         // Get token name and symbol for vault

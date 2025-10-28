@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {IAppRewardsDistributor} from "../../src/interfaces/IAppRewardsDistributor.sol";
+import {IVeEltaVotes} from "../../src/interfaces/IVeEltaVotes.sol";
+import {AppRewardsDistributor} from "../../src/rewards/AppRewardsDistributor.sol";
+import {RewardsDistributor} from "../../src/rewards/RewardsDistributor.sol";
+import {VeELTA} from "../../src/staking/VeELTA.sol";
+import {ELTA} from "../../src/token/ELTA.sol";
+import {Errors} from "../../src/utils/Errors.sol";
 import "forge-std/Test.sol";
-import { RewardsDistributor } from "../../src/rewards/RewardsDistributor.sol";
-import { AppRewardsDistributor } from "../../src/rewards/AppRewardsDistributor.sol";
-import { VeELTA } from "../../src/staking/VeELTA.sol";
-import { ELTA } from "../../src/token/ELTA.sol";
-import { IVeEltaVotes } from "../../src/interfaces/IVeEltaVotes.sol";
-import { IAppRewardsDistributor } from "../../src/interfaces/IAppRewardsDistributor.sol";
-import { Errors } from "../../src/utils/Errors.sol";
 
 /**
  * @title RewardsDistributor V2 Tests
@@ -49,11 +49,7 @@ contract RewardsDistributorTest is Test {
 
         // Deploy RewardsDistributor with all dependencies
         rewardsDistributor = new RewardsDistributor(
-            elta,
-            IVeEltaVotes(address(veElta)),
-            IAppRewardsDistributor(address(appRewardsDistributor)),
-            treasury,
-            admin
+            elta, IVeEltaVotes(address(veElta)), IAppRewardsDistributor(address(appRewardsDistributor)), treasury, admin
         );
 
         // Grant DISTRIBUTOR_ROLE to revenueSource
@@ -73,9 +69,7 @@ contract RewardsDistributorTest is Test {
     function test_Deployment() public view {
         assertEq(address(rewardsDistributor.ELTA()), address(elta));
         assertEq(address(rewardsDistributor.veELTA()), address(veElta));
-        assertEq(
-            address(rewardsDistributor.appRewardsDistributor()), address(appRewardsDistributor)
-        );
+        assertEq(address(rewardsDistributor.appRewardsDistributor()), address(appRewardsDistributor));
         assertEq(rewardsDistributor.treasury(), treasury);
         assertEq(rewardsDistributor.BIPS_APP(), 7000); // 70%
         assertEq(rewardsDistributor.BIPS_VEELTA(), 1500); // 15%

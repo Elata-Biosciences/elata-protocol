@@ -188,12 +188,7 @@ contract AppFactoryViews {
     function getLaunchStats()
         external
         view
-        returns (
-            uint256 totalApps,
-            uint256 graduatedApps,
-            uint256 totalValueLocked,
-            uint256 totalFeesCollected
-        )
+        returns (uint256 totalApps, uint256 graduatedApps, uint256 totalValueLocked, uint256 totalFeesCollected)
     {
         IAppFactoryState factoryState = IAppFactoryState(factory);
         totalApps = factoryState.appCount();

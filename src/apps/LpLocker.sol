@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { IUniswapV2Pair } from "../interfaces/IUniswapV2Pair.sol";
+import {IUniswapV2Pair} from "../interfaces/IUniswapV2Pair.sol";
 
 /**
  * @title LpLocker
@@ -23,13 +23,7 @@ contract LpLocker {
 
     bool public claimed;
 
-    event LpLocked(
-        uint256 indexed appId,
-        address lpToken,
-        address beneficiary,
-        uint256 unlockAt,
-        uint256 amount
-    );
+    event LpLocked(uint256 indexed appId, address lpToken, address beneficiary, uint256 unlockAt, uint256 amount);
     event LpClaimed(uint256 indexed appId, address beneficiary, uint256 amount);
 
     error NotYetUnlocked();

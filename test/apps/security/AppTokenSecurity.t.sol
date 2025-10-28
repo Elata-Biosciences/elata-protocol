@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AppToken} from "../../../src/apps/AppToken.sol";
 import "forge-std/Test.sol";
-import { AppToken } from "../../../src/apps/AppToken.sol";
 
 /**
  * @title AppTokenSecurityTest
@@ -21,16 +21,7 @@ contract AppTokenSecurityTest is Test {
 
     function setUp() public {
         token = new AppToken(
-            "TestApp",
-            "TEST",
-            18,
-            MAX_SUPPLY,
-            creator,
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
+            "TestApp", "TEST", 18, MAX_SUPPLY, creator, admin, address(1), address(1), address(1), address(1)
         );
     }
 
@@ -244,9 +235,7 @@ contract AppTokenSecurityTest is Test {
         assertEq(token.balanceOf(user1), 500 ether); // Sender pays full amount
     }
 
-    function testFuzz_Security_TransferPreservesSupply(uint256 mintAmount, uint256 transferAmount)
-        public
-    {
+    function testFuzz_Security_TransferPreservesSupply(uint256 mintAmount, uint256 transferAmount) public {
         mintAmount = bound(mintAmount, 1, MAX_SUPPLY);
         transferAmount = bound(transferAmount, 0, mintAmount);
 

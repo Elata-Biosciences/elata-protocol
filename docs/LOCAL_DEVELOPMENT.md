@@ -23,14 +23,21 @@ This guide will help you set up a full local development environment with all sm
    ```
 
 3. **Git**
+4. **Docker Desktop** (for App Store database via docker compose)
+   ```bash
+   docker --version
+   docker compose version
+   ```
+   - Ensure Docker Desktop is running before starting the App Store (`npm run local:full`).
+
    ```bash
    git --version
    ```
 
-### One-Command Setup
+### One-Command Setup (Recommended)
 
 ```bash
-npm run dev
+bash scripts/dev-local.sh
 ```
 
 This single command will:
@@ -50,7 +57,7 @@ This single command will:
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Complete setup (start Anvil + deploy + seed) |
+| `bash scripts/dev-local.sh` | Complete setup (start Anvil + deploy + seed) |
 | `npm run dev:stop` | Stop Anvil blockchain |
 | `npm run dev:restart` | Stop and restart everything |
 | `cd ../elata-appstore && npm run local:full` | Start the App Store frontend |
@@ -236,7 +243,7 @@ The appstore reads contract addresses from these env vars and ABIs from src/abi.
 
 ```bash
 # 1. Start local blockchain with everything
-npm run dev
+bash scripts/dev-local.sh
 
 # 2. In another terminal, start the App Store frontend
 cd ../elata-appstore
@@ -319,7 +326,7 @@ Run tests from the `elata-appstore` repository.
 
 ```bash
 # Start local environment
-npm run dev
+bash scripts/dev-local.sh
 
 # Run E2E tests (in another terminal) from appstore
 cd ../elata-appstore
@@ -341,6 +348,20 @@ kill -9 <PID>
 
 # Or use our stop script
 npm run dev:stop
+```
+
+### Problem: Contracts hang "Waiting for pending transactions"
+
+This happens if an old Anvil instance or stale broadcast cache confuses receipt polling.
+
+```bash
+# Clean restart
+npm run dev:stop
+bash scripts/dev-local.sh
+
+# If it persists, clear broadcast cache (safe):
+rm -rf broadcast/Deploy.sol/31337 broadcast/SeedLocalData.s.sol/31337
+bash scripts/dev-local.sh
 ```
 
 ### Problem: Contracts not deploying
@@ -386,6 +407,16 @@ The seed script should fund accounts automatically. If they're empty:
 ```bash
 # Manually run seed script
 npm run dev:seed
+```
+
+### Problem: I need ETH for gas on local network
+
+```bash
+# Send 10 ETH from Anvil account #0 to your address
+npm run faucet:eth 0xYourAddress 10
+
+# Verify
+cast balance 0xYourAddress --rpc-url http://127.0.0.1:8545
 ```
 
 ---

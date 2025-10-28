@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { ElataXP } from "../experience/ElataXP.sol";
-import { Errors } from "../utils/Errors.sol";
+import {ElataXP} from "../experience/ElataXP.sol";
+import {Errors} from "../utils/Errors.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title LotPool
@@ -58,13 +58,7 @@ contract LotPool is AccessControl {
     function getRound(uint256 roundId)
         external
         view
-        returns (
-            uint256 snapshotBlock,
-            uint64 start,
-            uint64 end,
-            bool finalized,
-            bytes32[] memory options
-        )
+        returns (uint256 snapshotBlock, uint64 start, uint64 end, bool finalized, bytes32[] memory options)
     {
         Round storage r = _rounds[roundId];
         snapshotBlock = r.snapshotBlock;
@@ -82,14 +76,12 @@ contract LotPool is AccessControl {
 
     /// @notice Start a new round: captures current block for XP snapshot; defines options &
     /// recipients.
-    function startRound(
-        bytes32[] calldata options,
-        address[] calldata recipients,
-        uint64 durationSecs
-    ) external onlyRole(MANAGER_ROLE) returns (uint256 roundId, uint256 snapshotBlock) {
-        if (options.length == 0 || options.length != recipients.length) {
-            revert Errors.ArrayLengthMismatch();
-        }
+    function startRound(bytes32[] calldata options, address[] calldata recipients, uint64 durationSecs)
+        external
+        onlyRole(MANAGER_ROLE)
+        returns (uint256 roundId, uint256 snapshotBlock)
+    {
+        if (options.length == 0 || options.length != recipients.length) revert Errors.ArrayLengthMismatch();
         uint64 start = uint64(block.timestamp);
         uint64 end = start + durationSecs;
 
@@ -177,11 +169,7 @@ contract LotPool is AccessControl {
      * @return options Array of option IDs
      * @return votes Array of vote counts for each option
      */
-    function getRoundVotes(uint256 roundId)
-        external
-        view
-        returns (bytes32[] memory options, uint256[] memory votes)
-    {
+    function getRoundVotes(uint256 roundId) external view returns (bytes32[] memory options, uint256[] memory votes) {
         Round storage r = _rounds[roundId];
         options = r.options;
         votes = new uint256[](options.length);
@@ -223,10 +211,7 @@ contract LotPool is AccessControl {
     }
 
     /// @notice Finalize a round and pay out `amount` ELTA to the winner's recipient.
-    function finalize(uint256 roundId, bytes32 winner, uint256 amount)
-        external
-        onlyRole(MANAGER_ROLE)
-    {
+    function finalize(uint256 roundId, bytes32 winner, uint256 amount) external onlyRole(MANAGER_ROLE) {
         Round storage r = _rounds[roundId];
         if (r.finalized) revert();
         if (block.timestamp <= r.end) revert Errors.VotingClosed();

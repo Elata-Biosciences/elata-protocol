@@ -1,27 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AppFactory} from "../src/apps/AppFactory.sol";
+import {AppModuleFactory} from "../src/apps/AppModuleFactory.sol";
+import {TournamentFactory} from "../src/apps/TournamentFactory.sol";
+import {ElataXP} from "../src/experience/ElataXP.sol";
+import {AppFeeRouter} from "../src/fees/AppFeeRouter.sol";
+import {ElataGovernor} from "../src/governance/ElataGovernor.sol";
+import {ElataTimelock} from "../src/governance/ElataTimelock.sol";
+import {LotPool} from "../src/governance/LotPool.sol";
+import {IAppFeeRouter} from "../src/interfaces/IAppFeeRouter.sol";
+import {IAppRewardsDistributor} from "../src/interfaces/IAppRewardsDistributor.sol";
+import {IElataXP} from "../src/interfaces/IElataXP.sol";
+import {IRewardsDistributor} from "../src/interfaces/IRewardsDistributor.sol";
+import {IUniswapV2Router02} from "../src/interfaces/IUniswapV2Router02.sol";
+import {IVeEltaVotes} from "../src/interfaces/IVeEltaVotes.sol";
+import {AppRewardsDistributor} from "../src/rewards/AppRewardsDistributor.sol";
+import {RewardsDistributor} from "../src/rewards/RewardsDistributor.sol";
+import {VeELTA} from "../src/staking/VeELTA.sol";
+import {ELTA} from "../src/token/ELTA.sol";
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "forge-std/Script.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { TimelockController } from "@openzeppelin/contracts/governance/TimelockController.sol";
-import { ELTA } from "../src/token/ELTA.sol";
-import { ElataXP } from "../src/experience/ElataXP.sol";
-import { VeELTA } from "../src/staking/VeELTA.sol";
-import { LotPool } from "../src/governance/LotPool.sol";
-import { RewardsDistributor } from "../src/rewards/RewardsDistributor.sol";
-import { AppRewardsDistributor } from "../src/rewards/AppRewardsDistributor.sol";
-import { AppFeeRouter } from "../src/fees/AppFeeRouter.sol";
-import { ElataGovernor } from "../src/governance/ElataGovernor.sol";
-import { ElataTimelock } from "../src/governance/ElataTimelock.sol";
-import { AppFactory } from "../src/apps/AppFactory.sol";
-import { AppModuleFactory } from "../src/apps/AppModuleFactory.sol";
-import { TournamentFactory } from "../src/apps/TournamentFactory.sol";
-import { IUniswapV2Router02 } from "../src/interfaces/IUniswapV2Router02.sol";
-import { IAppRewardsDistributor } from "../src/interfaces/IAppRewardsDistributor.sol";
-import { IAppFeeRouter } from "../src/interfaces/IAppFeeRouter.sol";
-import { IVeEltaVotes } from "../src/interfaces/IVeEltaVotes.sol";
-import { IRewardsDistributor } from "../src/interfaces/IRewardsDistributor.sol";
-import { IElataXP } from "../src/interfaces/IElataXP.sol";
 
 /**
  * @title Deploy
@@ -43,10 +43,33 @@ import { IElataXP } from "../src/interfaces/IElataXP.sol";
  * - INITIAL_TREASURY: Treasury address
  * - UNISWAP_V2_ROUTER: Uniswap router address (network-specific)
  */
+// Minimal local mocks (used when deploying to Anvil without a router)
+contract MockUniswapV2Router {
+    address public immutable factory;
+
+    constructor(address _factory) {
+        factory = _factory;
+    }
+}
+
+contract MockUniswapV2Factory {
+    mapping(address => mapping(address => address)) public getPair;
+    address[] public allPairs;
+
+    function createPair(address tokenA, address tokenB) external returns (address pair) {
+        pair = address(uint160(uint256(keccak256(abi.encodePacked(tokenA, tokenB, block.timestamp)))));
+        getPair[tokenA][tokenB] = pair;
+        getPair[tokenB][tokenA] = pair;
+        allPairs.push(pair);
+        return pair;
+    }
+}
+
 contract Deploy is Script {
     // Configuration - Set via environment variables
-    address public ADMIN_MSIG = vm.envAddress("ADMIN_MSIG");
-    address public INITIAL_TREASURY = vm.envAddress("INITIAL_TREASURY");
+    // Defaults to broadcaster if not provided
+    address public ADMIN_MSIG = vm.envOr("ADMIN_MSIG", address(0));
+    address public INITIAL_TREASURY = vm.envOr("INITIAL_TREASURY", address(0));
 
     // Token configuration
     uint256 public constant INITIAL_MINT = 10_000_000 ether; // 10M ELTA initial
@@ -54,6 +77,10 @@ contract Deploy is Script {
 
     // Governance configuration
     uint256 public constant TIMELOCK_DELAY = 48 hours;
+
+    // Resolved values (set in run()) for reuse in helpers
+    address internal _resolvedAdmin;
+    address internal _resolvedTreasury;
 
     struct ProtocolContracts {
         ELTA token;
@@ -88,24 +115,29 @@ contract Deploy is Script {
     function run() external returns (ProtocolContracts memory protocol) {
         vm.startBroadcast();
 
+        // If env not provided, use the broadcaster
+        address admin = ADMIN_MSIG != address(0) ? ADMIN_MSIG : msg.sender;
+        address treasury = INITIAL_TREASURY != address(0) ? INITIAL_TREASURY : admin;
+        _resolvedAdmin = admin;
+        _resolvedTreasury = treasury;
+
         console2.log("=== ELATA PROTOCOL DEPLOYMENT ===");
-        console2.log("Admin:", ADMIN_MSIG);
-        console2.log("Treasury:", INITIAL_TREASURY);
+        console2.log("Admin:", admin);
+        console2.log("Treasury:", treasury);
         console2.log("Network:", block.chainid);
         console2.log("=====================================\n");
 
         // ===== STEP 1: Deploy Core Tokens =====
         console2.log("[1/9] Deploying Core Tokens...");
-        protocol.token =
-            new ELTA("ELTA", "ELTA", ADMIN_MSIG, INITIAL_TREASURY, INITIAL_MINT, MAX_SUPPLY);
+        protocol.token = new ELTA("ELTA", "ELTA", admin, treasury, INITIAL_MINT, MAX_SUPPLY);
         console2.log("   ELTA deployed at:", address(protocol.token));
 
-        protocol.xp = new ElataXP(ADMIN_MSIG);
+        protocol.xp = new ElataXP(admin);
         console2.log("   ElataXP deployed at:", address(protocol.xp));
 
         // ===== STEP 2: Deploy VeELTA (ERC20Votes) =====
         console2.log("\n[2/9] Deploying VeELTA (ERC20Votes)...");
-        protocol.staking = new VeELTA(protocol.token, ADMIN_MSIG);
+        protocol.staking = new VeELTA(protocol.token, admin);
         console2.log("   VeELTA deployed at:", address(protocol.staking));
 
         // ===== STEP 3: Deploy Governance =====
@@ -118,26 +150,25 @@ contract Deploy is Script {
 
         // ===== STEP 4: Deploy Funding =====
         console2.log("\n[4/9] Deploying Funding System...");
-        protocol.funding = new LotPool(protocol.token, protocol.xp, ADMIN_MSIG);
+        protocol.funding = new LotPool(protocol.token, protocol.xp, admin);
         console2.log("   LotPool deployed at:", address(protocol.funding));
 
         // ===== STEP 5: Deploy Rewards Architecture (Economic Upgrade V2) =====
         console2.log("\n[5/9] Deploying Rewards Architecture (70/15/15)...");
 
         // 5a. AppRewardsDistributor (receives 70% for app stakers)
-        protocol.appRewardsDistributor =
-            new AppRewardsDistributor(protocol.token, ADMIN_MSIG, address(0)); // Factory set later
-        console2.log(
-            "   AppRewardsDistributor deployed at:", address(protocol.appRewardsDistributor)
-        );
+        // AppRewardsDistributor requires a non-zero factory in constructor.
+        // Use admin as initial factory; grant FACTORY_ROLE to AppFactory after it is deployed.
+        protocol.appRewardsDistributor = new AppRewardsDistributor(protocol.token, admin, admin);
+        console2.log("   AppRewardsDistributor deployed at:", address(protocol.appRewardsDistributor));
 
         // 5b. RewardsDistributor (central hub with 70/15/15 split)
         protocol.rewards = new RewardsDistributor(
             protocol.token,
             IVeEltaVotes(address(protocol.staking)),
             IAppRewardsDistributor(address(protocol.appRewardsDistributor)),
-            INITIAL_TREASURY,
-            ADMIN_MSIG
+            treasury,
+            admin
         );
         console2.log("   RewardsDistributor deployed at:", address(protocol.rewards));
         console2.log("   - 70% to app stakers");
@@ -145,32 +176,38 @@ contract Deploy is Script {
         console2.log("   - 15% to treasury");
 
         // 5c. AppFeeRouter (collects trading fees)
-        protocol.appFeeRouter = new AppFeeRouter(
-            protocol.token, IRewardsDistributor(address(protocol.rewards)), ADMIN_MSIG
-        );
+        protocol.appFeeRouter = new AppFeeRouter(protocol.token, IRewardsDistributor(address(protocol.rewards)), admin);
         console2.log("   AppFeeRouter deployed at:", address(protocol.appFeeRouter));
         console2.log("   Fee rate: 100 bps (1%)");
 
         // ===== STEP 6: Deploy App Launch Framework =====
         console2.log("\n[6/9] Deploying App Launch Framework...");
 
-        address routerAddress = vm.envOr(
-            "UNISWAP_V2_ROUTER",
-            address(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D) // Mainnet default
-        );
+        address routerAddress = vm.envOr("UNISWAP_V2_ROUTER", address(0));
+        // Auto-provision a mock router on local chain if none provided
+        if (block.chainid == 31337 && routerAddress == address(0)) {
+            MockUniswapV2Factory mockFactory = new MockUniswapV2Factory();
+            MockUniswapV2Router mockRouter = new MockUniswapV2Router(address(mockFactory));
+            routerAddress = address(mockRouter);
+            console2.log("   Using local MockUniswapV2Router:", routerAddress);
+        }
+        // For non-local networks, require explicit router
+        if (block.chainid != 31337 && routerAddress == address(0)) {
+            revert("UNISWAP_V2_ROUTER not set for this network");
+        }
 
         if (routerAddress != address(0)) {
             // Deploy AppFactory with full parameters
             protocol.appFactory = new AppFactory(
                 IERC20(address(protocol.token)),
                 IUniswapV2Router02(routerAddress),
-                INITIAL_TREASURY,
+                treasury,
                 IAppFeeRouter(address(protocol.appFeeRouter)),
                 IAppRewardsDistributor(address(protocol.appRewardsDistributor)),
                 IRewardsDistributor(address(protocol.rewards)),
                 IElataXP(address(protocol.xp)),
-                ADMIN_MSIG,
-                ADMIN_MSIG
+                admin,
+                admin
             );
             console2.log("   AppFactory deployed at:", address(protocol.appFactory));
         } else {
@@ -180,11 +217,10 @@ contract Deploy is Script {
         // ===== STEP 7: Deploy App Utilities =====
         console2.log("\n[7/9] Deploying App Utilities...");
 
-        protocol.appModuleFactory =
-            new AppModuleFactory(address(protocol.token), ADMIN_MSIG, INITIAL_TREASURY);
+        protocol.appModuleFactory = new AppModuleFactory(address(protocol.token), admin, treasury);
         console2.log("   AppModuleFactory deployed at:", address(protocol.appModuleFactory));
 
-        protocol.tournamentFactory = new TournamentFactory(ADMIN_MSIG, INITIAL_TREASURY);
+        protocol.tournamentFactory = new TournamentFactory(admin, treasury);
         console2.log("   TournamentFactory deployed at:", address(protocol.tournamentFactory));
 
         // ===== STEP 8: Configure Permissions =====
@@ -228,7 +264,7 @@ contract Deploy is Script {
         address[] memory executors = new address[](1);
         executors[0] = address(0); // Anyone can execute after delay
 
-        return new ElataTimelock(TIMELOCK_DELAY, proposers, executors, ADMIN_MSIG);
+        return new ElataTimelock(TIMELOCK_DELAY, proposers, executors, _resolvedAdmin);
     }
 
     /**
@@ -242,6 +278,9 @@ contract Deploy is Script {
         // XP: Grant operator role to funding system
         protocol.xp.grantRole(protocol.xp.XP_OPERATOR_ROLE(), address(protocol.funding));
 
+        // XP: For local development, grant operator role to deployer for seeding
+        if (block.chainid == 31337) protocol.xp.grantRole(protocol.xp.XP_OPERATOR_ROLE(), msg.sender);
+
         // XP: Grant initial operators from env (XP_OPERATOR_1 .. XP_OPERATOR_10)
         // Set env vars like: XP_OPERATOR_1=0x..., XP_OPERATOR_2=0x...
         for (uint256 i = 1; i <= 10; i++) {
@@ -252,9 +291,7 @@ contract Deploy is Script {
         }
 
         // Rewards: Grant DISTRIBUTOR_ROLE to AppFeeRouter
-        protocol.rewards.grantRole(
-            protocol.rewards.DISTRIBUTOR_ROLE(), address(protocol.appFeeRouter)
-        );
+        protocol.rewards.grantRole(protocol.rewards.DISTRIBUTOR_ROLE(), address(protocol.appFeeRouter));
 
         // AppRewards: Grant FACTORY_ROLE to AppFactory
         if (address(protocol.appFactory) != address(0)) {
@@ -268,30 +305,69 @@ contract Deploy is Script {
      * @dev Saves deployment addresses to JSON file
      */
     function _saveDeploymentAddresses(ProtocolContracts memory protocol) internal {
-        string memory json = "deploymentData";
+        // Build JSON string (match structure used by local deploy for appstore tooling)
+        string memory json = string.concat(
+            "{\n",
+            '  "network": "',
+            _getNetworkName(),
+            '",\n',
+            '  "chainId": ',
+            vm.toString(block.chainid),
+            ",\n",
+            '  "deployer": "',
+            vm.toString(_resolvedAdmin),
+            '",\n',
+            '  "contracts": {\n',
+            '    "ELTA": "',
+            vm.toString(address(protocol.token)),
+            '",\n',
+            '    "ElataXP": "',
+            vm.toString(address(protocol.xp)),
+            '",\n',
+            '    "VeELTA": "',
+            vm.toString(address(protocol.staking)),
+            '",\n',
+            '    "LotPool": "',
+            vm.toString(address(protocol.funding)),
+            '",\n',
+            '    "RewardsDistributor": "',
+            vm.toString(address(protocol.rewards)),
+            '",\n',
+            '    "ElataTimelock": "',
+            vm.toString(address(protocol.timelock)),
+            '",\n',
+            '    "ElataGovernor": "',
+            vm.toString(address(protocol.governor)),
+            '",\n',
+            '    "AppFactory": "',
+            vm.toString(address(protocol.appFactory)),
+            '",\n',
+            '    "AppModuleFactory": "',
+            vm.toString(address(protocol.appModuleFactory)),
+            '",\n',
+            '    "TournamentFactory": "',
+            vm.toString(address(protocol.tournamentFactory)),
+            '",\n',
+            '    "UniswapV2Factory": "',
+            vm.toString(address(0)),
+            '",\n',
+            '    "UniswapV2Router": "',
+            vm.toString(address(0)),
+            '"\n',
+            "  }\n",
+            "}\n"
+        );
 
-        vm.serializeAddress(json, "elta", address(protocol.token));
-        vm.serializeAddress(json, "xp", address(protocol.xp));
-        vm.serializeAddress(json, "veElta", address(protocol.staking));
-        vm.serializeAddress(json, "funding", address(protocol.funding));
-        vm.serializeAddress(json, "appRewardsDistributor", address(protocol.appRewardsDistributor));
-        vm.serializeAddress(json, "rewardsDistributor", address(protocol.rewards));
-        vm.serializeAddress(json, "appFeeRouter", address(protocol.appFeeRouter));
-        vm.serializeAddress(json, "governor", address(protocol.governor));
-        vm.serializeAddress(json, "timelock", address(protocol.timelock));
-        vm.serializeAddress(json, "appFactory", address(protocol.appFactory));
-        vm.serializeAddress(json, "appModuleFactory", address(protocol.appModuleFactory));
-        vm.serializeAddress(json, "tournamentFactory", address(protocol.tournamentFactory));
-        vm.serializeAddress(json, "admin", ADMIN_MSIG);
-        vm.serializeAddress(json, "treasury", INITIAL_TREASURY);
+        string memory filename = string.concat("./deployments/", _getNetworkName(), "-deployment.json");
 
-        string memory finalJson = vm.serializeString(json, "network", _getNetworkName());
-
-        string memory filename =
-            string.concat("./deployments/", _getNetworkName(), "-deployment.json");
-
-        vm.writeJson(finalJson, filename);
+        vm.writeFile(filename, json);
         console2.log("   Deployment saved to:", filename);
+
+        // Also maintain legacy local path for appstore config script
+        if (block.chainid == 31337) {
+            vm.writeFile("./deployments/local.json", json);
+            console2.log("   Deployment saved to: ./deployments/local.json");
+        }
     }
 
     /**

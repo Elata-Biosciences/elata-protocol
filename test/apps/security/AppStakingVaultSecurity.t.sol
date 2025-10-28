@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AppStakingVault} from "../../../src/apps/AppStakingVault.sol";
+import {AppToken} from "../../../src/apps/AppToken.sol";
+import {Errors} from "../../../src/utils/Errors.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "forge-std/Test.sol";
-import { AppStakingVault } from "../../../src/apps/AppStakingVault.sol";
-import { AppToken } from "../../../src/apps/AppToken.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { Errors } from "../../../src/utils/Errors.sol";
 
 /**
  * @title AppStakingVaultSecurityTest
@@ -26,16 +26,7 @@ contract AppStakingVaultSecurityTest is Test {
 
     function setUp() public {
         appToken = new AppToken(
-            "TestApp",
-            "TEST",
-            18,
-            MAX_SUPPLY,
-            owner,
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
+            "TestApp", "TEST", 18, MAX_SUPPLY, owner, admin, address(1), address(1), address(1), address(1)
         );
         vault = new AppStakingVault("TestApp", "TAPP", appToken, owner);
 
@@ -170,9 +161,7 @@ contract AppStakingVaultSecurityTest is Test {
     // FUZZ TESTING
     // ────────────────────────────────────────────────────────────────────────────
 
-    function testFuzz_Security_StakeUnstakeInvariants(uint256 stakeAmount, uint256 unstakeAmount)
-        public
-    {
+    function testFuzz_Security_StakeUnstakeInvariants(uint256 stakeAmount, uint256 unstakeAmount) public {
         stakeAmount = bound(stakeAmount, 1, 10000 ether);
         unstakeAmount = bound(unstakeAmount, 1, stakeAmount);
 

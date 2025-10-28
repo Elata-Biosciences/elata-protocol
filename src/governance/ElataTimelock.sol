@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { TimelockController } from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 
 /**
  * @title ElataTimelock
@@ -35,10 +35,7 @@ contract ElataTimelock is TimelockController {
      * @param executors Array of addresses that can execute operations
      * @param admin Address that will be the admin (can be zero to renounce)
      */
-    constructor(
-        uint256 minDelay,
-        address[] memory proposers,
-        address[] memory executors,
-        address admin
-    ) TimelockController(minDelay, proposers, executors, admin) { }
+    constructor(uint256 minDelay, address[] memory proposers, address[] memory executors, address admin)
+        TimelockController(minDelay, proposers, executors, admin)
+    {}
 }

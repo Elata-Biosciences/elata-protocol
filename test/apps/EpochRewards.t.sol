@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AppToken} from "../../src/apps/AppToken.sol";
+import {EpochRewards} from "../../src/apps/EpochRewards.sol";
 import "forge-std/Test.sol";
-import { EpochRewards } from "../../src/apps/EpochRewards.sol";
-import { AppToken } from "../../src/apps/AppToken.sol";
-import { Merkle } from "murky/src/Merkle.sol";
+import {Merkle} from "murky/src/Merkle.sol";
 
 contract EpochRewardsTest is Test {
     EpochRewards public rewards;
@@ -26,16 +26,7 @@ contract EpochRewardsTest is Test {
 
     function setUp() public {
         appToken = new AppToken(
-            "TestApp",
-            "TEST",
-            18,
-            MAX_SUPPLY,
-            owner,
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
+            "TestApp", "TEST", 18, MAX_SUPPLY, owner, admin, address(1), address(1), address(1), address(1)
         );
         rewards = new EpochRewards(address(appToken), owner);
         merkle = new Merkle();
@@ -71,13 +62,8 @@ contract EpochRewardsTest is Test {
 
         assertEq(rewards.epochId(), 1);
 
-        (
-            uint64 epochStart,
-            uint64 epochEnd,
-            bytes32 merkleRoot,
-            uint256 totalFunded,
-            uint256 totalClaimed
-        ) = rewards.epochs(1);
+        (uint64 epochStart, uint64 epochEnd, bytes32 merkleRoot, uint256 totalFunded, uint256 totalClaimed) =
+            rewards.epochs(1);
 
         assertEq(epochStart, start);
         assertEq(epochEnd, end);

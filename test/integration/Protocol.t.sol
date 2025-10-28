@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {ElataXP} from "../../src/experience/ElataXP.sol";
+import {ElataGovernor} from "../../src/governance/ElataGovernor.sol";
+import {LotPool} from "../../src/governance/LotPool.sol";
+import {RewardsDistributor} from "../../src/rewards/RewardsDistributor.sol";
+import {VeELTA} from "../../src/staking/VeELTA.sol";
+import {ELTA} from "../../src/token/ELTA.sol";
+import {Errors} from "../../src/utils/Errors.sol";
 import "forge-std/Test.sol";
-import { ELTA } from "../../src/token/ELTA.sol";
-import { VeELTA } from "../../src/staking/VeELTA.sol";
-import { ElataXP } from "../../src/experience/ElataXP.sol";
-import { LotPool } from "../../src/governance/LotPool.sol";
-import { RewardsDistributor } from "../../src/rewards/RewardsDistributor.sol";
-import { ElataGovernor } from "../../src/governance/ElataGovernor.sol";
-import { Errors } from "../../src/utils/Errors.sol";
 
 /**
  * @title Protocol Integration Test

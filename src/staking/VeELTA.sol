@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
-import { ERC20Votes } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { Nonces } from "@openzeppelin/contracts/utils/Nonces.sol";
-import { Errors } from "../utils/Errors.sol";
-import { IVeEltaVotes } from "../interfaces/IVeEltaVotes.sol";
+import {IVeEltaVotes} from "../interfaces/IVeEltaVotes.sol";
+import {Errors} from "../utils/Errors.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import {ERC20Votes} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
 
 /**
  * @title VeELTA (Vote-Escrowed ELTA)
@@ -59,12 +59,8 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
     mapping(address => Lock) public locks;
 
     event Locked(address indexed user, uint256 amount, uint64 unlockTime, uint256 veELTA);
-    event AmountIncreased(
-        address indexed user, uint256 addAmount, uint256 newPrincipal, uint256 newVeELTA
-    );
-    event LockExtended(
-        address indexed user, uint64 oldUnlockTime, uint64 newUnlockTime, uint256 newVeELTA
-    );
+    event AmountIncreased(address indexed user, uint256 addAmount, uint256 newPrincipal, uint256 newVeELTA);
+    event LockExtended(address indexed user, uint64 oldUnlockTime, uint64 newUnlockTime, uint256 newVeELTA);
     event Unlocked(address indexed user, uint256 principal, uint256 veELTABurned);
 
     /**
@@ -76,7 +72,9 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
         ERC20("veELTA Voting Power", "veELTA")
         ERC20Permit("veELTA Voting Power")
     {
-        if (address(_elta) == address(0) || _admin == address(0)) revert Errors.ZeroAddress();
+        if (address(_elta) == address(0) || _admin == address(0)) {
+            revert Errors.ZeroAddress();
+        }
 
         ELTA = _elta;
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
@@ -102,7 +100,7 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
         uint256 boost = _calculateBoost(duration);
         uint256 veAmount = (amount * boost) / 1e18;
 
-        locks[msg.sender] = Lock({ principal: uint128(amount), unlockTime: unlockTime });
+        locks[msg.sender] = Lock({principal: uint128(amount), unlockTime: unlockTime});
 
         _mint(msg.sender, veAmount);
 
@@ -153,9 +151,8 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
         if (newUnlockTime <= userLock.unlockTime) revert InvalidUnlockTime();
         if (newUnlockTime > block.timestamp + MAX_LOCK) revert Errors.LockTooLong();
 
-        uint256 oldRemainingTime = userLock.unlockTime > block.timestamp
-            ? userLock.unlockTime - uint64(block.timestamp)
-            : 0;
+        uint256 oldRemainingTime =
+            userLock.unlockTime > block.timestamp ? userLock.unlockTime - uint64(block.timestamp) : 0;
         uint256 newRemainingTime = newUnlockTime - uint64(block.timestamp);
 
         uint256 oldBoost = _calculateBoost(oldRemainingTime);
@@ -255,11 +252,7 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
      * @return unlockable Whether user can unlock now
      * @return timeRemaining Seconds until unlock (0 if expired)
      */
-    function canUnlock(address user)
-        external
-        view
-        returns (bool unlockable, uint256 timeRemaining)
-    {
+    function canUnlock(address user) external view returns (bool unlockable, uint256 timeRemaining) {
         Lock memory userLock = locks[user];
         if (userLock.principal == 0) return (false, 0);
 
@@ -270,10 +263,7 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
     /**
      * @dev Override to make tokens non-transferable (soulbound)
      */
-    function _update(address from, address to, uint256 amount)
-        internal
-        override(ERC20, ERC20Votes)
-    {
+    function _update(address from, address to, uint256 amount) internal override(ERC20, ERC20Votes) {
         // Allow minting (from == 0) and burning (to == 0)
         // Block transfers between users
         if (from != address(0) && to != address(0)) revert Errors.NonTransferable();

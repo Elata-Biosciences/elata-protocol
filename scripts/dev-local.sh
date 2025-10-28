@@ -9,6 +9,7 @@
 # ==============================================
 
 set -e  # Exit on error
+set -o pipefail
 
 # Colors for output
 RED='\033[0;31m'
@@ -46,43 +47,69 @@ fi
 # Create deployments directory if it doesn't exist
 mkdir -p "$PROJECT_ROOT/deployments"
 
-echo -e "${YELLOW}[1/6] Checking if Anvil is running...${NC}"
+echo -e "${YELLOW}[1/7] Restarting Anvil cleanly...${NC}"
+# Kill any existing Anvil on 8545
 if lsof -Pi :8545 -sTCP:LISTEN -t >/dev/null ; then
-    echo -e "${GREEN}✓ Anvil is already running on port 8545${NC}"
-else
-    echo -e "${YELLOW}Starting Anvil in the background...${NC}"
-    anvil --chain-id 31337 --port 8545 > "$PROJECT_ROOT/anvil.log" 2>&1 &
-    ANVIL_PID=$!
-    echo $ANVIL_PID > "$PROJECT_ROOT/.anvil.pid"
-    echo -e "${GREEN}✓ Anvil started (PID: $ANVIL_PID)${NC}"
-    
-    # Wait for Anvil to be ready
-    echo "Waiting for Anvil to be ready..."
-    sleep 2
+    lsof -ti:8545 | xargs -r kill || true
+    sleep 1
 fi
 
-echo -e "${YELLOW}[2/6] Building contracts (this may take 30-60 seconds)...${NC}"
+echo -e "${YELLOW}Starting Anvil (block-time=1s, code-size-limit max)...${NC}"
+anvil --chain-id 31337 \
+      --port 8545 \
+      --host 127.0.0.1 \
+      --block-time 1 \
+      --code-size-limit 2147483647 > "$PROJECT_ROOT/anvil.log" 2>&1 &
+ANVIL_PID=$!
+echo $ANVIL_PID > "$PROJECT_ROOT/.anvil.pid"
+echo -e "${GREEN}✓ Anvil started (PID: $ANVIL_PID)${NC}"
+
+# Wait for Anvil to be healthy (RPC responsive)
+echo "Waiting for Anvil RPC to be ready..."
+for i in {1..20}; do
+  if cast rpc eth_blockNumber --rpc-url http://127.0.0.1:8545 >/dev/null 2>&1; then
+    echo -e "${GREEN}✓ Anvil RPC is ready${NC}"
+    break
+  fi
+  sleep 0.5
+  if [ "$i" -eq 20 ]; then
+    echo -e "${RED}Error: Anvil RPC did not become ready in time${NC}"
+    exit 1
+  fi
+done
+
+echo -e "${YELLOW}[2/7] Building contracts (this may take 30-60 seconds)...${NC}"
 cd "$PROJECT_ROOT"
 FOUNDRY_PROFILE=local forge build --force
 echo -e "${GREEN}✓ Contracts built successfully${NC}"
 
-echo -e "${YELLOW}[3/6] Deploying all contracts...${NC}"
-FOUNDRY_PROFILE=local forge script script/DeployLocalFull.s.sol:DeployLocalFull \
+echo -e "${YELLOW}[3/7] Clearing stale broadcast artifacts...${NC}"
+rm -rf "$PROJECT_ROOT/broadcast/Deploy.sol/31337" || true
+rm -rf "$PROJECT_ROOT/broadcast/SeedLocalData.s.sol/31337" || true
+echo -e "${GREEN}✓ Broadcast cache cleared${NC}"
+
+echo -e "${YELLOW}[4/7] Deploying all contracts...${NC}"
+# Use unified deployment that works for local/testnet
+FOUNDRY_PROFILE=local forge script script/Deploy.sol:Deploy \
     --rpc-url http://127.0.0.1:8545 \
     --broadcast \
     --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
-    --ffi
+    --ffi \
+    --skip-simulation \
+    --code-size-limit 2147483647
 echo -e "${GREEN}✓ All contracts deployed${NC}"
 
-echo -e "${YELLOW}[4/6] Seeding test data...${NC}"
+echo -e "${YELLOW}[5/7] Seeding test data...${NC}"
 FOUNDRY_PROFILE=local forge script script/SeedLocalData.s.sol:SeedLocalData \
     --rpc-url http://127.0.0.1:8545 \
     --broadcast \
     --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
-    --ffi
+    --ffi \
+    --skip-simulation \
+    --code-size-limit 2147483647
 echo -e "${GREEN}✓ Test data seeded${NC}"
 
-echo -e "${YELLOW}[5/6] Generating appstore configuration...${NC}"
+echo -e "${YELLOW}[6/7] Generating appstore configuration...${NC}"
 if [ -f "$PROJECT_ROOT/scripts/generate-config.ts" ]; then
     npx tsx "$PROJECT_ROOT/scripts/generate-config.ts"
     echo -e "${GREEN}✓ Appstore .env.local generated${NC}"
@@ -90,7 +117,7 @@ else
     echo -e "${YELLOW}⚠ Frontend config script not found, skipping...${NC}"
 fi
 
-echo -e "${YELLOW}[6/6] App Store instructions...${NC}"
+echo -e "${YELLOW}[7/7] App Store instructions...${NC}"
 echo "  To start the App Store frontend:"
 echo "    cd ../elata-appstore && npm run local:full"
 

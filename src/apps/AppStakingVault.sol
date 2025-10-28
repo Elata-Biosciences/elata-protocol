@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { IERC20, ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
-import { ERC20Votes } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { Nonces } from "@openzeppelin/contracts/utils/Nonces.sol";
-import { Errors } from "../utils/Errors.sol";
+import {Errors} from "../utils/Errors.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import {ERC20Votes} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title AppStakingVault
@@ -130,10 +130,7 @@ contract AppStakingVault is ERC20, ERC20Permit, ERC20Votes, Ownable, ReentrancyG
      * @dev Override to make tokens non-transferable
      * @dev Allows minting/burning but blocks transfers between users
      */
-    function _update(address from, address to, uint256 amount)
-        internal
-        override(ERC20, ERC20Votes)
-    {
+    function _update(address from, address to, uint256 amount) internal override(ERC20, ERC20Votes) {
         // Allow minting (from == 0) and burning (to == 0)
         // Block transfers between users
         if (from != address(0) && to != address(0)) revert Errors.NonTransferable();

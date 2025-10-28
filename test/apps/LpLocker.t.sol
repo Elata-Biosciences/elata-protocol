@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {LpLocker} from "../../src/apps/LpLocker.sol";
+import {IUniswapV2Pair} from "../../src/interfaces/IUniswapV2Pair.sol";
 import "forge-std/Test.sol";
-import { LpLocker } from "../../src/apps/LpLocker.sol";
-import { IUniswapV2Pair } from "../../src/interfaces/IUniswapV2Pair.sol";
 
 // Mock LP token for testing
 contract MockLpToken {
@@ -34,13 +34,7 @@ contract LpLockerTest is Test {
     uint256 public constant LOCK_DURATION = 365 days * 2; // 2 years
     uint256 public unlockTime;
 
-    event LpLocked(
-        uint256 indexed appId,
-        address lpToken,
-        address beneficiary,
-        uint256 unlockAt,
-        uint256 amount
-    );
+    event LpLocked(uint256 indexed appId, address lpToken, address beneficiary, uint256 unlockAt, uint256 amount);
     event LpClaimed(uint256 indexed appId, address beneficiary, uint256 amount);
 
     function setUp() public {

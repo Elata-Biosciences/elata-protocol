@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import { IUniswapV2Router02 } from "../interfaces/IUniswapV2Router02.sol";
-import { IUniswapV2Factory } from "../interfaces/IUniswapV2Factory.sol";
-import { IUniswapV2Pair } from "../interfaces/IUniswapV2Pair.sol";
-import { AppToken } from "./AppToken.sol";
-import { LpLocker } from "./LpLocker.sol";
-import { IAppFeeRouter } from "../interfaces/IAppFeeRouter.sol";
-import { IElataXP } from "../interfaces/IElataXP.sol";
+import {IAppFeeRouter} from "../interfaces/IAppFeeRouter.sol";
+import {IElataXP} from "../interfaces/IElataXP.sol";
+import {IUniswapV2Factory} from "../interfaces/IUniswapV2Factory.sol";
+import {IUniswapV2Pair} from "../interfaces/IUniswapV2Pair.sol";
+import {IUniswapV2Router02} from "../interfaces/IUniswapV2Router02.sol";
+import {AppToken} from "./AppToken.sol";
+import {LpLocker} from "./LpLocker.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 interface IAppFactory {
     function onAppGraduated(
@@ -82,9 +82,7 @@ contract AppBondingCurve is ReentrancyGuard {
     address public governance;
 
     // Events
-    event CurveInitialized(
-        uint256 indexed appId, uint256 seedElta, uint256 tokenSupply, uint256 initialK
-    );
+    event CurveInitialized(uint256 indexed appId, uint256 seedElta, uint256 tokenSupply, uint256 initialK);
     event XPGateUpdated(uint256 minXP, uint256 duration);
     event TokensPurchased(
         uint256 indexed appId,
@@ -257,12 +255,7 @@ contract AppBondingCurve is ReentrancyGuard {
      * @param minTokensOut Minimum tokens expected (slippage protection)
      * @return tokensOut Actual tokens received
      */
-    function buy(uint256 eltaIn, uint256 minTokensOut)
-        external
-        nonReentrant
-        notGraduated
-        returns (uint256 tokensOut)
-    {
+    function buy(uint256 eltaIn, uint256 minTokensOut) external nonReentrant notGraduated returns (uint256 tokensOut) {
         if (eltaIn == 0) revert ZeroInput();
         if (reserveElta == 0) revert NotInitialized();
 
@@ -272,8 +265,7 @@ contract AppBondingCurve is ReentrancyGuard {
         }
 
         // Calculate maximum ELTA we can accept before hitting target
-        uint256 remainingToTarget =
-            targetRaisedElta > reserveElta ? targetRaisedElta - reserveElta : 0;
+        uint256 remainingToTarget = targetRaisedElta > reserveElta ? targetRaisedElta - reserveElta : 0;
         uint256 actualEltaIn = eltaIn > remainingToTarget ? remainingToTarget : eltaIn;
 
         if (actualEltaIn == 0) revert InvalidAmount();
@@ -284,9 +276,7 @@ contract AppBondingCurve is ReentrancyGuard {
 
         // Calculate fee ON TOP of trade (buyer pays extra)
         uint256 tradingFee = 0;
-        if (address(appFeeRouter) != address(0)) {
-            tradingFee = (actualEltaIn * appFeeRouter.feeBps()) / 10_000;
-        }
+        if (address(appFeeRouter) != address(0)) tradingFee = (actualEltaIn * appFeeRouter.feeBps()) / 10_000;
 
         // Pull ELTA from buyer: curve amount + trading fee
         ELTA.safeTransferFrom(msg.sender, address(this), actualEltaIn + tradingFee);
@@ -308,9 +298,7 @@ contract AppBondingCurve is ReentrancyGuard {
         // Calculate new price for event
         uint256 newPrice = reserveToken > 0 ? (reserveElta * 1e18) / reserveToken : 0;
 
-        emit TokensPurchased(
-            appId, msg.sender, actualEltaIn, tokensOut, reserveElta, reserveToken, newPrice
-        );
+        emit TokensPurchased(appId, msg.sender, actualEltaIn, tokensOut, reserveElta, reserveToken, newPrice);
 
         // Refund excess ELTA if any
         uint256 refund = eltaIn - actualEltaIn;
@@ -365,9 +353,7 @@ contract AppBondingCurve is ReentrancyGuard {
 
         // Create or get existing pair
         address pairAddress = uniFactory.getPair(address(TOKEN), address(ELTA));
-        if (pairAddress == address(0)) {
-            pairAddress = uniFactory.createPair(address(TOKEN), address(ELTA));
-        }
+        if (pairAddress == address(0)) pairAddress = uniFactory.createPair(address(TOKEN), address(ELTA));
         pair = pairAddress;
 
         // Approve router for liquidity addition
@@ -395,14 +381,10 @@ contract AppBondingCurve is ReentrancyGuard {
         IUniswapV2Pair(pair).transfer(address(lpLocker), liquidity);
         lpLocker.lockLp(liquidity);
 
-        emit AppGraduated(
-            appId, address(TOKEN), pair, locker, lpUnlockAt, reserveElta, reserveToken
-        );
+        emit AppGraduated(appId, address(TOKEN), pair, locker, lpUnlockAt, reserveElta, reserveToken);
 
         // Notify factory
-        IAppFactory(appFactory).onAppGraduated(
-            appId, pair, locker, lpUnlockAt, reserveElta, reserveToken
-        );
+        IAppFactory(appFactory).onAppGraduated(appId, pair, locker, lpUnlockAt, reserveElta, reserveToken);
 
         // Clear reserves (all moved to LP)
         reserveElta = 0;

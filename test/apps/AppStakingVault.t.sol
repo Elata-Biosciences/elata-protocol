@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AppStakingVault} from "../../src/apps/AppStakingVault.sol";
+import {AppToken} from "../../src/apps/AppToken.sol";
+import {Errors} from "../../src/utils/Errors.sol";
 import "forge-std/Test.sol";
-import { AppStakingVault } from "../../src/apps/AppStakingVault.sol";
-import { AppToken } from "../../src/apps/AppToken.sol";
-import { Errors } from "../../src/utils/Errors.sol";
 
 contract AppStakingVaultTest is Test {
     AppStakingVault public vault;
@@ -22,16 +22,7 @@ contract AppStakingVaultTest is Test {
 
     function setUp() public {
         appToken = new AppToken(
-            "TestApp",
-            "TEST",
-            18,
-            MAX_SUPPLY,
-            owner,
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
+            "TestApp", "TEST", 18, MAX_SUPPLY, owner, admin, address(1), address(1), address(1), address(1)
         );
         vault = new AppStakingVault("TestApp", "TAPP", appToken, owner);
 

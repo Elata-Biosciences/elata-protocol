@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AppStakingVault} from "../../src/apps/AppStakingVault.sol";
+import {AppToken} from "../../src/apps/AppToken.sol";
+import {AppFeeRouter} from "../../src/fees/AppFeeRouter.sol";
+import {IAppRewardsDistributor} from "../../src/interfaces/IAppRewardsDistributor.sol";
+import {IRewardsDistributor} from "../../src/interfaces/IRewardsDistributor.sol";
+import {IVeEltaVotes} from "../../src/interfaces/IVeEltaVotes.sol";
+import {AppRewardsDistributor} from "../../src/rewards/AppRewardsDistributor.sol";
+import {RewardsDistributor} from "../../src/rewards/RewardsDistributor.sol";
+import {VeELTA} from "../../src/staking/VeELTA.sol";
+import {ELTA} from "../../src/token/ELTA.sol";
 import "forge-std/Test.sol";
-import { ELTA } from "../../src/token/ELTA.sol";
-import { VeELTA } from "../../src/staking/VeELTA.sol";
-import { AppToken } from "../../src/apps/AppToken.sol";
-import { AppStakingVault } from "../../src/apps/AppStakingVault.sol";
-import { AppFeeRouter } from "../../src/fees/AppFeeRouter.sol";
-import { AppRewardsDistributor } from "../../src/rewards/AppRewardsDistributor.sol";
-import { RewardsDistributor } from "../../src/rewards/RewardsDistributor.sol";
-import { IAppRewardsDistributor } from "../../src/interfaces/IAppRewardsDistributor.sol";
-import { IVeEltaVotes } from "../../src/interfaces/IVeEltaVotes.sol";
-import { IRewardsDistributor } from "../../src/interfaces/IRewardsDistributor.sol";
 
 /**
  * @title RevenueFlowTest
@@ -65,8 +65,7 @@ contract RevenueFlowTest is Test {
         );
 
         // Deploy AppFeeRouter (casting interface for constructor)
-        feeRouter =
-            new AppFeeRouter(elta, IRewardsDistributor(address(rewardsDistributor)), governance);
+        feeRouter = new AppFeeRouter(elta, IRewardsDistributor(address(rewardsDistributor)), governance);
 
         // Deploy app and vault
         appToken = new AppToken(
@@ -133,7 +132,7 @@ contract RevenueFlowTest is Test {
         uint256 expectedAppAmount = (tradingFee * BIPS_APP) / 10_000; // 70 ELTA
         uint256 expectedVeAmount = (tradingFee * BIPS_VEELTA) / 10_000; // 15 ELTA
         uint256 expectedTreasuryAmount = tradingFee - expectedAppAmount - expectedVeAmount; // 15
-            // ELTA
+        // ELTA
 
         // Treasury should have received immediately
         assertEq(elta.balanceOf(treasury), treasuryBalanceBefore + expectedTreasuryAmount);
@@ -146,8 +145,7 @@ contract RevenueFlowTest is Test {
 
         // App epoch should be recorded
         assertEq(appRewardsDistributor.getEpochCount(address(appVault)), 1);
-        (uint256 appBlockNumber, uint256 appAmount,) =
-            appRewardsDistributor.epochs(address(appVault), 0);
+        (uint256 appBlockNumber, uint256 appAmount,) = appRewardsDistributor.epochs(address(appVault), 0);
         assertEq(appBlockNumber, block.number);
         assertEq(appAmount, expectedAppAmount);
 

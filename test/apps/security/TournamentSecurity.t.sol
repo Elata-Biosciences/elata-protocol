@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AppToken} from "../../../src/apps/AppToken.sol";
+import {Tournament} from "../../../src/apps/Tournament.sol";
 import "forge-std/Test.sol";
-import { Tournament } from "../../../src/apps/Tournament.sol";
-import { AppToken } from "../../../src/apps/AppToken.sol";
-import { Merkle } from "murky/src/Merkle.sol";
+import {Merkle} from "murky/src/Merkle.sol";
 
 /**
  * @title TournamentSecurityTest
@@ -28,16 +28,7 @@ contract TournamentSecurityTest is Test {
 
     function setUp() public {
         appToken = new AppToken(
-            "TestApp",
-            "TEST",
-            18,
-            MAX_SUPPLY,
-            owner,
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
+            "TestApp", "TEST", 18, MAX_SUPPLY, owner, admin, address(1), address(1), address(1), address(1)
         );
         merkle = new Merkle();
 
@@ -332,17 +323,12 @@ contract TournamentSecurityTest is Test {
         assertEq(tournament.pool(), expectedNet);
     }
 
-    function testFuzz_Security_FeeCalculationCorrect(
-        uint256 poolAmount,
-        uint256 protocolBps,
-        uint256 burnBps
-    ) public {
+    function testFuzz_Security_FeeCalculationCorrect(uint256 poolAmount, uint256 protocolBps, uint256 burnBps) public {
         poolAmount = bound(poolAmount, 1 ether, 1000000 ether);
         protocolBps = bound(protocolBps, 0, 1000);
         burnBps = bound(burnBps, 0, 1500 - protocolBps); // Ensure total <= 15%
 
-        Tournament fuzzTourn =
-            new Tournament(address(appToken), owner, treasury, 1 ether, 0, 0, protocolBps, burnBps);
+        Tournament fuzzTourn = new Tournament(address(appToken), owner, treasury, 1 ether, 0, 0, protocolBps, burnBps);
 
         // Simulate pool
         vm.prank(admin);

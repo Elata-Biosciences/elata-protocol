@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title AppRewardsDistributor
@@ -81,13 +81,7 @@ contract AppRewardsDistributor is AccessControl {
     event AppPaused(address indexed vault, bool paused);
     event AppRemoved(address indexed vault);
     event AppDistributed(uint256 indexed blockNumber, uint256 totalAmount, uint256 activeApps);
-    event AppClaim(
-        address indexed vault,
-        address indexed user,
-        uint256 fromEpoch,
-        uint256 toEpoch,
-        uint256 amount
-    );
+    event AppClaim(address indexed vault, address indexed user, uint256 fromEpoch, uint256 toEpoch, uint256 amount);
 
     /**
      * @notice Initialize app rewards distributor
@@ -98,12 +92,12 @@ contract AppRewardsDistributor is AccessControl {
     constructor(IERC20 _elta, address _governance, address _factory) {
         require(address(_elta) != address(0), "Zero ELTA");
         require(_governance != address(0), "Zero gov");
-        require(_factory != address(0), "Zero factory");
 
         ELTA = _elta;
         _grantRole(DEFAULT_ADMIN_ROLE, _governance);
         _grantRole(GOVERNANCE_ROLE, _governance);
-        _grantRole(FACTORY_ROLE, _factory);
+        // Allow deferred factory assignment for local deploys; role can be granted later
+        if (_factory != address(0)) _grantRole(FACTORY_ROLE, _factory);
     }
 
     /**
@@ -191,13 +185,7 @@ contract AppRewardsDistributor is AccessControl {
             uint256 vaultTotalStaked = IStakeVaultVotes(vault).totalSupply();
             uint256 vaultShare = (totalWeight == 0) ? 0 : (amount * vaultTotalStaked) / totalWeight;
 
-            epochs[vault].push(
-                AppEpoch({
-                    blockNumber: blockNumber,
-                    amount: vaultShare,
-                    totalStaked: vaultTotalStaked
-                })
-            );
+            epochs[vault].push(AppEpoch({blockNumber: blockNumber, amount: vaultShare, totalStaked: vaultTotalStaked}));
 
             activeCount++;
         }
@@ -221,9 +209,7 @@ contract AppRewardsDistributor is AccessControl {
 
         // Create epoch denominated in this token (separate from ELTA epochs)
         uint256 totalStaked = IStakeVaultVotes(vault).totalSupply();
-        tokenEpochs[vault][token].push(
-            AppEpoch({ blockNumber: block.number, amount: amount, totalStaked: totalStaked })
-        );
+        tokenEpochs[vault][token].push(AppEpoch({blockNumber: block.number, amount: amount, totalStaked: totalStaked}));
     }
 
     /**
@@ -292,8 +278,7 @@ contract AppRewardsDistributor is AccessControl {
                 AppEpoch storage epoch = vaultEpochs[j];
                 if (epoch.totalStaked == 0 || epoch.amount == 0) continue;
 
-                uint256 userStake =
-                    IStakeVaultVotes(vault).getPastVotes(msg.sender, epoch.blockNumber);
+                uint256 userStake = IStakeVaultVotes(vault).getPastVotes(msg.sender, epoch.blockNumber);
                 if (userStake == 0) continue;
 
                 totalClaim += (epoch.amount * userStake) / epoch.totalStaked;
@@ -396,11 +381,7 @@ contract AppRewardsDistributor is AccessControl {
      * @param vault Vault address
      * @return estimated Estimated claimable amount
      */
-    function estimatePendingRewards(address user, address vault)
-        external
-        view
-        returns (uint256 estimated)
-    {
+    function estimatePendingRewards(address user, address vault) external view returns (uint256 estimated) {
         AppEpoch[] storage vaultEpochs = epochs[vault];
         uint256 fromEpoch = userCursor[user][vault];
         uint256 endEpoch = vaultEpochs.length;

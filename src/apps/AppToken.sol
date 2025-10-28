@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { ERC20Burnable } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
-import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC20Burnable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 
 /**
  * @title AppToken
@@ -54,12 +54,7 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
     event TransferFeeUpdated(uint16 oldBps, uint16 newBps);
     event TransferFeeExemptSet(address indexed account, bool exempt);
     event TransferFeeCollected(
-        address indexed from,
-        address indexed to,
-        uint256 totalFee,
-        uint256 appFee,
-        uint256 veFee,
-        uint256 treasuryFee
+        address indexed from, address indexed to, uint256 totalFee, uint256 appFee, uint256 veFee, uint256 treasuryFee
     );
 
     error SupplyCapExceeded();
@@ -157,11 +152,9 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
      * @param imageURI_ App image URI
      * @param website_ App website URL
      */
-    function updateMetadata(
-        string calldata description_,
-        string calldata imageURI_,
-        string calldata website_
-    ) external {
+    function updateMetadata(string calldata description_, string calldata imageURI_, string calldata website_)
+        external
+    {
         if (msg.sender != appCreator) revert OnlyCreator();
 
         appDescription = description_;
@@ -207,9 +200,7 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
      * @param exempt True to exempt from fees
      */
     function setTransferFeeExempt(address account, bool exempt) external {
-        if (msg.sender != governance && !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
-            revert OnlyGovernance();
-        }
+        if (msg.sender != governance && !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) revert OnlyGovernance();
         transferFeeExempt[account] = exempt;
         emit TransferFeeExemptSet(account, exempt);
     }
@@ -220,11 +211,7 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
      * @return maxFeeBps Maximum allowed fee rate
      * @return isExempt Whether caller is exempt from fees
      */
-    function getTransferFeeInfo()
-        external
-        view
-        returns (uint16 feeBps, uint16 maxFeeBps, bool isExempt)
-    {
+    function getTransferFeeInfo() external view returns (uint16 feeBps, uint16 maxFeeBps, bool isExempt) {
         feeBps = transferFeeBps;
         maxFeeBps = MAX_TRANSFER_FEE_BPS;
         isExempt = transferFeeExempt[msg.sender];
@@ -236,11 +223,7 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
      * @return fee Fee amount
      * @return netAmount Amount after fee
      */
-    function calculateTransferFee(uint256 amount)
-        external
-        view
-        returns (uint256 fee, uint256 netAmount)
-    {
+    function calculateTransferFee(uint256 amount) external view returns (uint256 fee, uint256 netAmount) {
         fee = (amount * transferFeeBps) / 10_000;
         netAmount = amount - fee;
     }
@@ -251,8 +234,8 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
     function _update(address from, address to, uint256 amount) internal override {
         // Skip fee for mints, burns, and exempt addresses
         if (
-            from == address(0) || to == address(0) || transferFeeExempt[from]
-                || transferFeeExempt[to] || transferFeeBps == 0
+            from == address(0) || to == address(0) || transferFeeExempt[from] || transferFeeExempt[to]
+                || transferFeeBps == 0
         ) {
             super._update(from, to, amount);
             return;

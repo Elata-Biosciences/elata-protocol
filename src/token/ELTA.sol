@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { ERC20Burnable } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
-import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
-import { ERC20Votes } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { Nonces } from "@openzeppelin/contracts/utils/Nonces.sol";
-import { Errors } from "../utils/Errors.sol";
+import {Errors} from "../utils/Errors.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC20Burnable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import {ERC20Votes} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
+import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
 
 /**
  * @title ELTA Token
@@ -53,7 +53,9 @@ contract ELTA is ERC20, ERC20Burnable, ERC20Permit, ERC20Votes, AccessControl {
         uint256 initialMint,
         uint256 maxSupply_
     ) ERC20(name_, symbol_) ERC20Permit(name_) {
-        if (admin_ == address(0) || initialRecipient == address(0)) revert Errors.ZeroAddress();
+        if (admin_ == address(0) || initialRecipient == address(0)) {
+            revert Errors.ZeroAddress();
+        }
         _grantRole(DEFAULT_ADMIN_ROLE, admin_);
         _grantRole(MINTER_ROLE, admin_);
 
@@ -91,15 +93,10 @@ contract ELTA is ERC20, ERC20Burnable, ERC20Permit, ERC20Votes, AccessControl {
      * @dev Enforces supply cap when minting (from == address(0))
      * @dev Updates vote checkpoints for governance functionality
      */
-    function _update(address from, address to, uint256 value)
-        internal
-        override(ERC20, ERC20Votes)
-    {
+    function _update(address from, address to, uint256 value) internal override(ERC20, ERC20Votes) {
         if (from == address(0)) {
             // Minting: check supply cap
-            if (MAX_SUPPLY != 0 && (totalSupply() + value > MAX_SUPPLY)) {
-                revert Errors.CapExceeded();
-            }
+            if (MAX_SUPPLY != 0 && (totalSupply() + value > MAX_SUPPLY)) revert Errors.CapExceeded();
         }
         super._update(from, to, value);
     }

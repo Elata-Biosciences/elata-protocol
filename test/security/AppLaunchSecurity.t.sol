@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-import { ELTA } from "../../src/token/ELTA.sol";
-import { AppFactory } from "../../src/apps/AppFactory.sol";
-import { AppToken } from "../../src/apps/AppToken.sol";
-import { AppBondingCurve } from "../../src/apps/AppBondingCurve.sol";
-import { LpLocker } from "../../src/apps/LpLocker.sol";
-import { IUniswapV2Router02 } from "../../src/interfaces/IUniswapV2Router02.sol";
-import { IAppFeeRouter } from "../../src/interfaces/IAppFeeRouter.sol";
-import { IAppRewardsDistributor } from "../../src/interfaces/IAppRewardsDistributor.sol";
+import {AppBondingCurve} from "../../src/apps/AppBondingCurve.sol";
+import {AppFactory} from "../../src/apps/AppFactory.sol";
+import {AppToken} from "../../src/apps/AppToken.sol";
+import {LpLocker} from "../../src/apps/LpLocker.sol";
+import {IAppFeeRouter} from "../../src/interfaces/IAppFeeRouter.sol";
+import {IAppRewardsDistributor} from "../../src/interfaces/IAppRewardsDistributor.sol";
+import {IRewardsDistributor} from "../../src/interfaces/IRewardsDistributor.sol";
+import {IUniswapV2Router02} from "../../src/interfaces/IUniswapV2Router02.sol";
+import {ELTA} from "../../src/token/ELTA.sol";
 import {
     MockAppFeeRouter,
     MockAppRewardsDistributor,
     MockElataXP,
     MockRewardsDistributor
 } from "../mocks/MockContracts.sol";
-import { IRewardsDistributor } from "../../src/interfaces/IRewardsDistributor.sol";
+import "forge-std/Test.sol";
 
 /**
  * @title App Launch Security Tests
@@ -39,9 +39,7 @@ contract AppLaunchSecurityTest is Test {
     function setUp() public {
         elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 77_000_000 ether);
 
-        vm.mockCall(
-            mockRouter, abi.encodeWithSignature("factory()"), abi.encode(makeAddr("mockFactory"))
-        );
+        vm.mockCall(mockRouter, abi.encodeWithSignature("factory()"), abi.encode(makeAddr("mockFactory")));
 
         // Deploy mocks
         MockAppFeeRouter mockFeeRouter = new MockAppFeeRouter();
@@ -314,18 +312,7 @@ contract AppLaunchSecurityTest is Test {
         );
 
         vm.expectRevert("Zero address");
-        new AppToken(
-            "Test",
-            "TEST",
-            18,
-            1000 ether,
-            address(0),
-            admin,
-            governance,
-            address(1),
-            address(1),
-            treasury
-        );
+        new AppToken("Test", "TEST", 18, 1000 ether, address(0), admin, governance, address(1), address(1), treasury);
 
         vm.expectRevert("Zero LP token");
         new LpLocker(1, address(0), treasury, block.timestamp + 365 days);

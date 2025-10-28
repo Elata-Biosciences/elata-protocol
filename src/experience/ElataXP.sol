@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {Errors} from "../utils/Errors.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/Nonces.sol";
-import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import { Errors } from "../utils/Errors.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 /**
  * @title ElataXP
@@ -26,9 +26,8 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl, ReentrancyGua
     mapping(address => uint256) public operatorNonces;
 
     // EIP-712 typehash for struct used in updateBySig (off-chain XP award authorization).
-    bytes32 public constant XPUPDATE_TYPEHASH = keccak256(
-        "XPUpdate(address operator,address user,uint256 amount,uint256 nonce,uint256 deadline)"
-    );
+    bytes32 public constant XPUPDATE_TYPEHASH =
+        keccak256("XPUpdate(address operator,address user,uint256 amount,uint256 nonce,uint256 deadline)");
 
     // Events for minting and burning XP:
     event XPAwarded(address indexed user, uint256 amount);
@@ -124,10 +123,7 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl, ReentrancyGua
      * @param amount The XP amount allocated to msg.sender for this distribution.
      * @param proof Merkle proof from the leaf (msg.sender, amount) to the root.
      */
-    function claimXP(uint256 distributionId, uint256 amount, bytes32[] calldata proof)
-        external
-        nonReentrant
-    {
+    function claimXP(uint256 distributionId, uint256 amount, bytes32[] calldata proof) external nonReentrant {
         bytes32 root = merkleRoots[distributionId];
         if (root == bytes32(0)) revert InvalidDistribution();
         if (amount == 0) revert Errors.InvalidAmount();
@@ -180,21 +176,16 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl, ReentrancyGua
         bytes32 s
     ) external {
         if (block.timestamp > deadline) revert Errors.SignatureExpired();
-        if (amount == 0 || user == address(0) || operator == address(0)) {
-            revert Errors.InvalidAmount();
-        }
+        if (amount == 0 || user == address(0) || operator == address(0)) revert Errors.InvalidAmount();
 
         // Construct the struct hash and message digest as per EIP-712
         uint256 currentNonce = operatorNonces[operator];
-        bytes32 structHash =
-            keccak256(abi.encode(XPUPDATE_TYPEHASH, operator, user, amount, currentNonce, deadline));
+        bytes32 structHash = keccak256(abi.encode(XPUPDATE_TYPEHASH, operator, user, amount, currentNonce, deadline));
         bytes32 hash = _hashTypedDataV4(structHash);
 
         // Recover the signer
         address signer = ECDSA.recover(hash, v, r, s);
-        if (signer != operator || !hasRole(XP_OPERATOR_ROLE, operator)) {
-            revert Errors.InvalidSignature();
-        }
+        if (signer != operator || !hasRole(XP_OPERATOR_ROLE, operator)) revert Errors.InvalidSignature();
 
         // Use up this signature nonce
         operatorNonces[operator] = currentNonce + 1;
@@ -221,10 +212,7 @@ contract ElataXP is ERC20, ERC20Permit, ERC20Votes, AccessControl, ReentrancyGua
     /**
      * @dev Override to disable transfers (soulbound)
      */
-    function _update(address from, address to, uint256 value)
-        internal
-        override(ERC20, ERC20Votes)
-    {
+    function _update(address from, address to, uint256 value) internal override(ERC20, ERC20Votes) {
         if (from != address(0) && to != address(0)) revert Errors.TransfersDisabled();
         super._update(from, to, value);
     }

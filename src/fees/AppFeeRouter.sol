@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { IRewardsDistributor } from "../interfaces/IRewardsDistributor.sol";
+import {IRewardsDistributor} from "../interfaces/IRewardsDistributor.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title AppFeeRouter
@@ -39,9 +39,7 @@ contract AppFeeRouter {
     /// @notice Maximum allowed fee (500 = 5%)
     uint256 public constant MAX_FEE_BPS = 500;
 
-    event FeeForwarded(
-        address indexed source, address indexed payer, uint256 grossAmount, uint256 fee
-    );
+    event FeeForwarded(address indexed source, address indexed payer, uint256 grossAmount, uint256 fee);
     event FeeBpsUpdated(uint256 oldBps, uint256 newBps);
     event GovernanceTransferred(address indexed oldGov, address indexed newGov);
 

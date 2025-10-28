@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AppToken} from "../../src/apps/AppToken.sol";
+import {Tournament} from "../../src/apps/Tournament.sol";
+import {TournamentFactory} from "../../src/apps/TournamentFactory.sol";
 import "forge-std/Test.sol";
-import { TournamentFactory } from "../../src/apps/TournamentFactory.sol";
-import { Tournament } from "../../src/apps/Tournament.sol";
-import { AppToken } from "../../src/apps/AppToken.sol";
 
 contract TournamentFactoryTest is Test {
     TournamentFactory public factory;
@@ -30,16 +30,7 @@ contract TournamentFactoryTest is Test {
     function setUp() public {
         factory = new TournamentFactory(factoryOwner, treasury);
         appToken = new AppToken(
-            "TestApp",
-            "TEST",
-            18,
-            MAX_SUPPLY,
-            appCreator,
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
+            "TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
         );
     }
 
@@ -99,17 +90,12 @@ contract TournamentFactoryTest is Test {
     function test_MultipleTournamentsForSameApp() public {
         // Create first tournament
         vm.prank(appCreator);
-        address tourn1 = factory.createTournament(
-            address(appToken), 10 ether, 0, uint64(block.timestamp + 7 days)
-        );
+        address tourn1 = factory.createTournament(address(appToken), 10 ether, 0, uint64(block.timestamp + 7 days));
 
         // Create second tournament
         vm.prank(appCreator);
         address tourn2 = factory.createTournament(
-            address(appToken),
-            20 ether,
-            uint64(block.timestamp + 7 days),
-            uint64(block.timestamp + 14 days)
+            address(appToken), 20 ether, uint64(block.timestamp + 7 days), uint64(block.timestamp + 14 days)
         );
 
         // Verify both exist and are different

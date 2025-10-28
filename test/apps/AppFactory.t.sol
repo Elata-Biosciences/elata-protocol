@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AppBondingCurve} from "../../src/apps/AppBondingCurve.sol";
+import {AppFactory} from "../../src/apps/AppFactory.sol";
+import {AppFactoryViews} from "../../src/apps/AppFactoryViews.sol";
+import {AppToken} from "../../src/apps/AppToken.sol";
+import {IAppFeeRouter} from "../../src/interfaces/IAppFeeRouter.sol";
+import {IAppRewardsDistributor} from "../../src/interfaces/IAppRewardsDistributor.sol";
+import {IElataXP} from "../../src/interfaces/IElataXP.sol";
+import {IRewardsDistributor} from "../../src/interfaces/IRewardsDistributor.sol";
+import {IUniswapV2Router02} from "../../src/interfaces/IUniswapV2Router02.sol";
+import {ELTA} from "../../src/token/ELTA.sol";
+import {MockAppFeeRouter, MockAppRewardsDistributor} from "../mocks/MockContracts.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "forge-std/Test.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ELTA } from "../../src/token/ELTA.sol";
-import { AppFactory } from "../../src/apps/AppFactory.sol";
-import { AppFactoryViews } from "../../src/apps/AppFactoryViews.sol";
-import { AppToken } from "../../src/apps/AppToken.sol";
-import { AppBondingCurve } from "../../src/apps/AppBondingCurve.sol";
-import { IUniswapV2Router02 } from "../../src/interfaces/IUniswapV2Router02.sol";
-import { IAppFeeRouter } from "../../src/interfaces/IAppFeeRouter.sol";
-import { IAppRewardsDistributor } from "../../src/interfaces/IAppRewardsDistributor.sol";
-import { IRewardsDistributor } from "../../src/interfaces/IRewardsDistributor.sol";
-import { IElataXP } from "../../src/interfaces/IElataXP.sol";
-import { MockAppFeeRouter, MockAppRewardsDistributor } from "../mocks/MockContracts.sol";
 
 // Mock ElataXP
 contract MockElataXP is IElataXP {
@@ -30,8 +30,8 @@ contract MockElataXP is IElataXP {
 
 // Mock RewardsDistributor
 contract MockRewardsDistributor is IRewardsDistributor {
-    function deposit(uint256) external pure { }
-    function depositVeInToken(IERC20, uint256) external pure { }
+    function deposit(uint256) external pure {}
+    function depositVeInToken(IERC20, uint256) external pure {}
 }
 
 contract AppFactoryTest is Test {
@@ -64,9 +64,7 @@ contract AppFactoryTest is Test {
 
         // For testing, we'll use a mock router address
         // In production, this would be the actual Uniswap router
-        vm.mockCall(
-            mockRouter, abi.encodeWithSignature("factory()"), abi.encode(makeAddr("mockFactory"))
-        );
+        vm.mockCall(mockRouter, abi.encodeWithSignature("factory()"), abi.encode(makeAddr("mockFactory")));
 
         factory = new AppFactory(
             elta,
@@ -171,12 +169,8 @@ contract AppFactoryTest is Test {
 
     function test_GetLaunchStats() public {
         // Initially no apps
-        (
-            uint256 totalApps,
-            uint256 graduatedApps,
-            uint256 totalValueLocked,
-            uint256 totalFeesCollected
-        ) = views.getLaunchStats();
+        (uint256 totalApps, uint256 graduatedApps, uint256 totalValueLocked, uint256 totalFeesCollected) =
+            views.getLaunchStats();
 
         assertEq(totalApps, 0);
         assertEq(graduatedApps, 0);

@@ -41,3 +41,9 @@ pnpm ts-node ../elata-protocol/scripts/xp/xp-publish-root.ts \
 
 ## Emergency
 - If a bad root is set, revoke the responsible operator. Use `revoke(user, amount)` to remove illegitimate XP.
+
+
+
+
+
+

@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AppAccess1155} from "../../src/apps/AppAccess1155.sol";
+import {AppModuleFactory} from "../../src/apps/AppModuleFactory.sol";
+import {AppStakingVault} from "../../src/apps/AppStakingVault.sol";
+import {AppToken} from "../../src/apps/AppToken.sol";
+import {EpochRewards} from "../../src/apps/EpochRewards.sol";
+import {Tournament} from "../../src/apps/Tournament.sol";
+import {ELTA} from "../../src/token/ELTA.sol";
 import "forge-std/Test.sol";
-import { AppToken } from "../../src/apps/AppToken.sol";
-import { AppAccess1155 } from "../../src/apps/AppAccess1155.sol";
-import { AppStakingVault } from "../../src/apps/AppStakingVault.sol";
-import { Tournament } from "../../src/apps/Tournament.sol";
-import { EpochRewards } from "../../src/apps/EpochRewards.sol";
-import { AppModuleFactory } from "../../src/apps/AppModuleFactory.sol";
-import { ELTA } from "../../src/token/ELTA.sol";
 
 /**
  * @title DesignValidationTest
@@ -36,21 +36,11 @@ contract DesignValidationTest is Test {
         factory = new AppModuleFactory(address(elta), factoryOwner, treasury);
 
         appToken = new AppToken(
-            "TestApp",
-            "TEST",
-            18,
-            MAX_SUPPLY,
-            appCreator,
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
+            "TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
         );
 
         vm.prank(appCreator);
-        (address accessAddr, address vaultAddr,) =
-            factory.deployModules(address(appToken), "https://metadata.test/");
+        (address accessAddr, address vaultAddr,) = factory.deployModules(address(appToken), "https://metadata.test/");
 
         access = AppAccess1155(accessAddr);
         vault = AppStakingVault(vaultAddr);
@@ -156,16 +146,7 @@ contract DesignValidationTest is Test {
 
         // Deploy modules
         AppToken app2 = new AppToken(
-            "App2",
-            "APP2",
-            18,
-            MAX_SUPPLY,
-            appCreator,
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
+            "App2", "APP2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
         );
 
         vm.prank(appCreator);
@@ -218,12 +199,7 @@ contract DesignValidationTest is Test {
         vm.prank(appCreator);
         access.setFeatureGate(
             featureId,
-            AppAccess1155.FeatureGate({
-                minStake: 1000 ether,
-                requiredItem: 1,
-                requireBoth: true,
-                active: true
-            })
+            AppAccess1155.FeatureGate({minStake: 1000 ether, requiredItem: 1, requireBoth: true, active: true})
         );
 
         // VALIDATION: Apps can query access via views
@@ -378,21 +354,11 @@ contract DesignValidationTest is Test {
     function test_Design_PerAppIsolation() public {
         // Deploy second app
         AppToken app2 = new AppToken(
-            "App2",
-            "APP2",
-            18,
-            MAX_SUPPLY,
-            appCreator,
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
+            "App2", "APP2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
         );
 
         vm.prank(appCreator);
-        (address access2Addr, address vault2Addr,) =
-            factory.deployModules(address(app2), "https://metadata.app2/");
+        (address access2Addr, address vault2Addr,) = factory.deployModules(address(app2), "https://metadata.app2/");
 
         AppAccess1155 access2 = AppAccess1155(access2Addr);
         AppStakingVault vault2 = AppStakingVault(vault2Addr);
@@ -419,8 +385,7 @@ contract DesignValidationTest is Test {
     // ────────────────────────────────────────────────────────────────────────────
 
     function test_Design_FeeCapEnforcement() public {
-        Tournament tourn =
-            new Tournament(address(appToken), appCreator, treasury, 10 ether, 0, 0, 0, 0);
+        Tournament tourn = new Tournament(address(appToken), appCreator, treasury, 10 ether, 0, 0, 0, 0);
 
         // VALIDATION: Max 15% total fees
         vm.prank(appCreator);

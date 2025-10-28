@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AppAccess1155} from "../../../src/apps/AppAccess1155.sol";
+import {AppStakingVault} from "../../../src/apps/AppStakingVault.sol";
+import {AppToken} from "../../../src/apps/AppToken.sol";
 import "forge-std/Test.sol";
-import { AppAccess1155 } from "../../../src/apps/AppAccess1155.sol";
-import { AppToken } from "../../../src/apps/AppToken.sol";
-import { AppStakingVault } from "../../../src/apps/AppStakingVault.sol";
 
 /**
  * @title AppAccess1155Security
@@ -25,20 +25,10 @@ contract AppAccess1155SecurityTest is Test {
 
     function setUp() public {
         appToken = new AppToken(
-            "TestApp",
-            "TEST",
-            18,
-            MAX_SUPPLY,
-            owner,
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
+            "TestApp", "TEST", 18, MAX_SUPPLY, owner, admin, address(1), address(1), address(1), address(1)
         );
         vault = new AppStakingVault("TestApp", "TAPP", appToken, owner);
-        access =
-            new AppAccess1155(address(appToken), address(vault), owner, "https://metadata.test/");
+        access = new AppAccess1155(address(appToken), address(vault), owner, "https://metadata.test/");
 
         // Mint tokens to users
         vm.startPrank(admin);
@@ -128,12 +118,7 @@ contract AppAccess1155SecurityTest is Test {
         vm.prank(attacker);
         access.setFeatureGate(
             keccak256("premium"),
-            AppAccess1155.FeatureGate({
-                minStake: 1000 ether,
-                requiredItem: 0,
-                requireBoth: false,
-                active: true
-            })
+            AppAccess1155.FeatureGate({minStake: 1000 ether, requiredItem: 0, requireBoth: false, active: true})
         );
     }
 
@@ -419,10 +404,7 @@ contract ReentrancyAttacker {
     }
 
     // Reentrancy attempt via ERC1155 callback
-    function onERC1155Received(address, address, uint256 id, uint256, bytes memory)
-        external
-        returns (bytes4)
-    {
+    function onERC1155Received(address, address, uint256 id, uint256, bytes memory) external returns (bytes4) {
         if (attacking) {
             attacking = false;
             // Attempt reentrancy
