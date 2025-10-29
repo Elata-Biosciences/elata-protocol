@@ -2,31 +2,30 @@
 pragma solidity ^0.8.24;
 
 import {AppAccess1155} from "./AppAccess1155.sol";
-import {AppStakingVault} from "./AppStakingVault.sol";
-import {EpochRewards} from "./EpochRewards.sol";
 import {IOwnable} from "./Interfaces.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title AppModuleFactory
  * @author Elata Protocol
- * @notice Factory for deploying app utility modules with ELTA fee support
+ * @notice Factory for deploying AppAccess1155 (NFT items) for apps
  * @dev Restricted to app token owners only, optional ELTA creation fee
  *
  * Key Features:
- * - Deploys Access1155 + StakingVault pair per app
+ * - Deploys AppAccess1155 for NFT items and feature gates
  * - Restricted: only AppToken owner can deploy
  * - Optional ELTA fee to align protocol value
  * - Registry for discovery
  * - Non-upgradeable, simple
  *
  * Usage:
- * 1. App creator deploys AppToken
- * 2. App creator calls deployModules() (pays ELTA fee if set)
- * 3. Receives configured Access1155 + StakingVault
- * 4. Configure items, gates, and launch
+ * 1. App creator launches app via AppFactory (gets AppToken + AppStakingVault automatically)
+ * 2. App creator calls deployModules() to add AppAccess1155 (pays ELTA fee if set)
+ * 3. Configure items, gates, and launch
+ *
+ * Note: AppStakingVault is already deployed by AppFactory during app creation.
+ * Note: EpochRewards removed - apps can use external airdrop services for rewards.
  */
 contract AppModuleFactory is Ownable {
     /// @notice ELTA token address (address(0) to disable fees)
@@ -35,24 +34,18 @@ contract AppModuleFactory is Ownable {
     /// @notice Protocol treasury for fee collection
     address public treasury;
 
-    struct Modules {
-        address access1155; // AppAccess1155 instance
-        address stakingVault; // AppStakingVault instance
-        address epochRewards; // EpochRewards instance
-    }
-
-    /// @notice Deployed modules by app token address
-    mapping(address => Modules) public modulesByApp;
+    /// @notice Deployed AppAccess1155 by app token address
+    mapping(address => address) public access1155ByApp;
 
     /// @notice ELTA fee for deploying modules
     uint256 public createFeeELTA;
 
-    event ModulesDeployed(address indexed appToken, address access1155, address stakingVault, address epochRewards);
+    event ModuleDeployed(address indexed appToken, address access1155);
     event TreasurySet(address treasury);
     event FeeSet(uint256 fee);
 
     error NotTokenOwner();
-    error ModulesAlreadyExist();
+    error ModuleAlreadyExists();
 
     /**
      * @notice Initialize factory
@@ -84,38 +77,33 @@ contract AppModuleFactory is Ownable {
     }
 
     /**
-     * @notice Deploy utility modules for an app token
+     * @notice Deploy AppAccess1155 for an app token
      * @dev Only callable by the AppToken owner
+     * @dev AppStakingVault is already deployed by AppFactory during app creation
      * @param appToken AppToken address (must implement owner())
+     * @param stakingVault AppStakingVault address (from AppFactory.apps[appId].vault)
      * @param baseURI Base URI for Access1155 metadata
      * @return access1155 Address of deployed AppAccess1155
-     * @return staking Address of deployed AppStakingVault
-     * @return epochs Address of deployed EpochRewards
      */
-    function deployModules(address appToken, string calldata baseURI)
+    function deployModules(address appToken, address stakingVault, string calldata baseURI)
         external
-        returns (address access1155, address staking, address epochs)
+        returns (address access1155)
     {
         // Verify caller is token owner
         if (IOwnable(appToken).owner() != msg.sender) revert NotTokenOwner();
 
         // Prevent duplicate deployments
-        if (modulesByApp[appToken].access1155 != address(0)) revert ModulesAlreadyExist();
+        if (access1155ByApp[appToken] != address(0)) revert ModuleAlreadyExists();
 
         // Collect ELTA fee if set
         if (createFeeELTA > 0 && ELTA != address(0)) IERC20(ELTA).transferFrom(msg.sender, treasury, createFeeELTA);
 
-        // Deploy modules (msg.sender becomes owner of all)
-        // Get token name and symbol for vault
-        string memory tokenName = ERC20(appToken).name();
-        string memory tokenSymbol = ERC20(appToken).symbol();
-        staking = address(new AppStakingVault(tokenName, tokenSymbol, IERC20(appToken), msg.sender));
-        access1155 = address(new AppAccess1155(appToken, staking, msg.sender, baseURI));
-        epochs = address(new EpochRewards(appToken, msg.sender));
+        // Deploy AppAccess1155 (msg.sender becomes owner)
+        access1155 = address(new AppAccess1155(appToken, stakingVault, msg.sender, baseURI));
 
-        // Register modules
-        modulesByApp[appToken] = Modules(access1155, staking, epochs);
+        // Register module
+        access1155ByApp[appToken] = access1155;
 
-        emit ModulesDeployed(appToken, access1155, staking, epochs);
+        emit ModuleDeployed(appToken, access1155);
     }
 }

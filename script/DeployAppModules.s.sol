@@ -5,7 +5,6 @@ import {AppAccess1155} from "../src/apps/AppAccess1155.sol";
 import {AppModuleFactory} from "../src/apps/AppModuleFactory.sol";
 import {AppStakingVault} from "../src/apps/AppStakingVault.sol";
 import {AppToken} from "../src/apps/AppToken.sol";
-import {EpochRewards} from "../src/apps/EpochRewards.sol";
 import {Tournament} from "../src/apps/Tournament.sol";
 import {TournamentFactory} from "../src/apps/TournamentFactory.sol";
 import {ELTA} from "../src/token/ELTA.sol";
@@ -129,11 +128,10 @@ contract DeployFullExample is Script {
 
         /* COMMENTED OUT - Needs AppToken migration
         // 4. Deploy modules via AppModuleFactory
-        (address access1155, address stakingVault, address epochRewards) =
-            factory.deployModules(address(appToken), "https://metadata.neuropong.game/");
+        // Note: AppStakingVault is deployed by AppFactory, pass vault address as parameter
+        address stakingVault = address(0); // Get from AppFactory.apps[appId].vault
+        address access1155 = factory.deployModules(address(appToken), stakingVault, "https://metadata.neuropong.game/");
         console.log("AppAccess1155 deployed at:", access1155);
-        console.log("AppStakingVault deployed at:", stakingVault);
-        console.log("EpochRewards deployed at:", epochRewards);
 
         // 5. Configure a sample item (Season Pass)
         AppAccess1155(access1155).setItem(
@@ -168,17 +166,6 @@ contract DeployFullExample is Script {
         );
         console.log("Tournament deployed at:", tournament);
 
-        // 8. Start first epoch for seasonal rewards
-        EpochRewards(epochRewards).startEpoch(
-            uint64(block.timestamp), uint64(block.timestamp + 30 days)
-        );
-        console.log("First 30-day epoch started");
-
-        // 9. Fund epoch from creator treasury
-        appToken.approve(epochRewards, 10_000_000 ether);
-        EpochRewards(epochRewards).fund(10_000_000 ether);
-        console.log("Epoch funded with 10M tokens from creator treasury");
-
         vm.stopBroadcast();
 
         // Summary
@@ -189,16 +176,16 @@ contract DeployFullExample is Script {
         console.log("AppToken:", address(appToken));
         console.log("AppAccess1155:", access1155);
         console.log("AppStakingVault:", stakingVault);
-        console.log("EpochRewards:", epochRewards);
         console.log("First Tournament:", tournament);
-        console.log("\nCreator Treasury: 90M tokens remaining for future rewards");
+        console.log("\nCreator Treasury: 90M tokens remaining");
+        console.log("\nNote: EpochRewards removed - use external airdrop services");
         console.log("\nNext steps:");
         console.log("1. Users purchase Season Pass (50 tokens, burns on purchase)");
         console.log("2. Users stake tokens to unlock premium_mode");
         console.log("3. Users enter tournament (5 token entry fee)");
         console.log("4. Creator finalizes tournament with winners Merkle root");
-        console.log("5. Creator finalizes epoch with rewards Merkle root");
-        console.log("6. Winners and players claim their rewards");
+        console.log("5. Winners claim their rewards");
+        console.log("6. Use external airdrop service for seasonal rewards if needed");
         */
     }
 }

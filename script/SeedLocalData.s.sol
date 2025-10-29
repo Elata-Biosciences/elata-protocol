@@ -26,7 +26,6 @@ contract SeedLocalData is Script {
         address token;
         address access1155;
         address stakingVault;
-        address rewards;
         string name;
         string symbol;
     }
@@ -232,10 +231,15 @@ contract SeedLocalData is Script {
         // Deploy utility modules
         elta.approve(address(moduleFactory), 0); // No fee for now
 
-        (app.access1155, app.stakingVault, app.rewards) =
-            moduleFactory.deployModules(app.token, string.concat("https://metadata.elata.bio/", symbol, "/"));
+        // Note: vault is already deployed by AppFactory, get it from the app struct
+        (,, address vaultAddr,,,,,,,,) = AppFactory(APP_FACTORY_ADDRESS).apps(app.appId);
+        address access1155 = moduleFactory.deployModules(
+            app.token, vaultAddr, string.concat("https://metadata.elata.bio/", symbol, "/")
+        );
+        app.access1155 = access1155;
+        app.stakingVault = vaultAddr;
 
-        console2.log("       Deployed modules: Access, Staking, Rewards");
+        console2.log("       Deployed module: AppAccess1155");
 
         return app;
     }

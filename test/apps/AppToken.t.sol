@@ -172,7 +172,7 @@ contract AppTokenTest is Test {
         // Account for 1% transfer fee on transferFrom
         assertEq(token.balanceOf(user1), 500 ether); // Sender pays full amount
         assertEq(token.balanceOf(user2), 500 ether + 198 ether + 297 ether); // 500 + 198 + 297 (99%
-            // of 300)
+        // of 300)
     }
 
     function test_BurnFrom() public {
