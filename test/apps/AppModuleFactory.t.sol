@@ -6,12 +6,14 @@ import {AppModuleFactory} from "../../src/apps/AppModuleFactory.sol";
 import {AppStakingVault} from "../../src/apps/AppStakingVault.sol";
 import {AppToken} from "../../src/apps/AppToken.sol";
 import {ELTA} from "../../src/token/ELTA.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "forge-std/Test.sol";
 
 contract AppModuleFactoryTest is Test {
     AppModuleFactory public factory;
     ELTA public elta;
     AppToken public appToken;
+    AppStakingVault public defaultVault;
 
     address public factoryOwner = makeAddr("factoryOwner");
     address public treasury = makeAddr("treasury");
@@ -22,7 +24,7 @@ contract AppModuleFactoryTest is Test {
     uint256 public constant MAX_SUPPLY = 1_000_000_000 ether;
     uint256 public constant CREATE_FEE = 50 ether;
 
-    event ModulesDeployed(address indexed appToken, address access1155, address stakingVault, address epochRewards);
+    event ModuleDeployed(address indexed appToken, address access1155);
     event TreasurySet(address treasury);
     event FeeSet(uint256 fee);
 
@@ -38,9 +40,20 @@ contract AppModuleFactoryTest is Test {
             "TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
         );
 
+        // Deploy default vault (simulating what AppFactory does)
+        defaultVault = new AppStakingVault("TestApp", "TEST", IERC20(address(appToken)), appCreator);
+
         // Mint ELTA to app creator for fees
         vm.prank(factoryOwner);
         elta.mint(appCreator, 1000 ether);
+    }
+
+    // Helper function to reduce stack depth
+    function _deployVault(string memory name, string memory symbol, address token, address owner)
+        internal
+        returns (AppStakingVault)
+    {
+        return new AppStakingVault(name, symbol, IERC20(token), owner);
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -68,38 +81,24 @@ contract AppModuleFactoryTest is Test {
         string memory baseURI = "https://metadata.test/";
 
         vm.expectEmit(true, false, false, false);
-        emit ModulesDeployed(address(appToken), address(0), address(0), address(0));
+        emit ModuleDeployed(address(appToken), address(0));
 
         vm.prank(appCreator);
-        (address access1155, address staking, address epochs) = factory.deployModules(address(appToken), baseURI);
+        address access1155 = factory.deployModules(address(appToken), address(defaultVault), baseURI);
 
-        // Verify addresses are non-zero
+        // Verify address is non-zero
         assertTrue(access1155 != address(0));
-        assertTrue(staking != address(0));
-        assertTrue(epochs != address(0));
 
         // Verify registry
-        (address storedAccess, address storedStaking, address storedEpochs) = factory.modulesByApp(address(appToken));
+        address storedAccess = factory.access1155ByApp(address(appToken));
         assertEq(storedAccess, access1155);
-        assertEq(storedStaking, staking);
-        assertEq(storedEpochs, epochs);
 
         // Verify ownership
         assertEq(AppAccess1155(access1155).owner(), appCreator);
-        assertEq(AppStakingVault(staking).owner(), appCreator);
 
         // Verify connections
         assertEq(address(AppAccess1155(access1155).APP()), address(appToken));
-        assertEq(address(AppAccess1155(access1155).STAKING()), staking);
-        assertEq(address(AppStakingVault(staking).APP()), address(appToken));
-    }
-
-    function test_EpochRewardsDeployment() public {
-        vm.prank(appCreator);
-        (,, address epochs) = factory.deployModules(address(appToken), "https://test/");
-
-        // Verify epoch rewards deployed correctly
-        assertTrue(epochs != address(0));
+        assertEq(address(AppAccess1155(access1155).STAKING()), address(defaultVault));
     }
 
     function test_DeployModulesWithELTAFee() public {
@@ -115,7 +114,7 @@ contract AppModuleFactoryTest is Test {
         uint256 creatorBalanceBefore = elta.balanceOf(appCreator);
 
         vm.prank(appCreator);
-        factory.deployModules(address(appToken), "https://metadata.test/");
+        factory.deployModules(address(appToken), address(defaultVault), "https://metadata.test/");
 
         // Verify fee was transferred
         assertEq(elta.balanceOf(treasury), treasuryBalanceBefore + CREATE_FEE);
@@ -125,16 +124,16 @@ contract AppModuleFactoryTest is Test {
     function test_RevertWhen_DeployModulesNotTokenOwner() public {
         vm.expectRevert(AppModuleFactory.NotTokenOwner.selector);
         vm.prank(user1);
-        factory.deployModules(address(appToken), "https://metadata.test/");
+        factory.deployModules(address(appToken), address(defaultVault), "https://metadata.test/");
     }
 
     function test_RevertWhen_DeployModulesTwice() public {
         vm.prank(appCreator);
-        factory.deployModules(address(appToken), "https://metadata.test/");
+        factory.deployModules(address(appToken), address(defaultVault), "https://metadata.test/");
 
-        vm.expectRevert(AppModuleFactory.ModulesAlreadyExist.selector);
+        vm.expectRevert(AppModuleFactory.ModuleAlreadyExists.selector);
         vm.prank(appCreator);
-        factory.deployModules(address(appToken), "https://metadata.test/");
+        factory.deployModules(address(appToken), address(defaultVault), "https://metadata.test/");
     }
 
     function test_RevertWhen_DeployModulesWithoutELTAApproval() public {
@@ -144,7 +143,7 @@ contract AppModuleFactoryTest is Test {
         // Don't approve ELTA
         vm.expectRevert();
         vm.prank(appCreator);
-        factory.deployModules(address(appToken), "https://metadata.test/");
+        factory.deployModules(address(appToken), address(defaultVault), "https://metadata.test/");
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -197,49 +196,43 @@ contract AppModuleFactoryTest is Test {
             "TestApp2", "TEST2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
         );
 
+        // Create vault for second app
+        AppStakingVault vault2 = _deployVault("TestApp2", "TEST2", address(appToken2), appCreator);
+
         // Deploy modules for first app
         vm.prank(appCreator);
-        (address access1, address stake1, address epochs1) =
-            factory.deployModules(address(appToken), "https://app1.test/");
+        address access1 = factory.deployModules(address(appToken), address(defaultVault), "https://app1.test/");
 
         // Deploy modules for second app
         vm.prank(appCreator);
-        (address access2, address stake2, address epochs2) =
-            factory.deployModules(address(appToken2), "https://app2.test/");
+        address access2 = factory.deployModules(address(appToken2), address(vault2), "https://app2.test/");
 
         // Verify both are registered correctly
-        (address storedAccess1, address storedStake1, address storedEpochs1) = factory.modulesByApp(address(appToken));
-        assertEq(storedAccess1, access1);
-        assertEq(storedStake1, stake1);
-        assertEq(storedEpochs1, epochs1);
-
-        (address storedAccess2, address storedStake2, address storedEpochs2) = factory.modulesByApp(address(appToken2));
-        assertEq(storedAccess2, access2);
-        assertEq(storedStake2, stake2);
-        assertEq(storedEpochs2, epochs2);
+        assertEq(factory.access1155ByApp(address(appToken)), access1);
+        assertEq(factory.access1155ByApp(address(appToken2)), access2);
 
         // Verify they're different
         assertTrue(access1 != access2);
-        assertTrue(stake1 != stake2);
     }
 
     function test_DeployModulesAndConfigureItems() public {
         // Deploy modules
         vm.prank(appCreator);
-        (address access1155,,) = factory.deployModules(address(appToken), "https://metadata.test/");
+        address access1155 = factory.deployModules(address(appToken), address(defaultVault), "https://metadata.test/");
 
         // Configure an item
         vm.prank(appCreator);
-        AppAccess1155(access1155).setItem(
-            1, // id
-            100 ether, // price
-            false, // not soulbound
-            true, // active
-            0, // no start time
-            0, // no end time
-            100, // max supply
-            "ipfs://item1"
-        );
+        AppAccess1155(access1155)
+            .setItem(
+                1, // id
+                100 ether, // price
+                false, // not soulbound
+                true, // active
+                0, // no start time
+                0, // no end time
+                100, // max supply
+                "ipfs://item1"
+            );
 
         // Verify item was configured
         (uint256 price,, bool active,,,,,) = AppAccess1155(access1155).items(1);
@@ -254,17 +247,17 @@ contract AppModuleFactoryTest is Test {
 
         // Deploy modules
         vm.prank(appCreator);
-        (, address stakingVault,) = factory.deployModules(address(appToken), "https://metadata.test/");
+        factory.deployModules(address(appToken), address(defaultVault), "https://metadata.test/");
 
         // User stakes
         vm.startPrank(user1);
-        appToken.approve(stakingVault, 500 ether);
-        AppStakingVault(stakingVault).stake(500 ether);
+        appToken.approve(address(defaultVault), 500 ether);
+        defaultVault.stake(500 ether);
         vm.stopPrank();
 
         // Verify stake
-        assertEq(AppStakingVault(stakingVault).stakedOf(user1), 500 ether);
-        assertEq(AppStakingVault(stakingVault).totalStaked(), 500 ether);
+        assertEq(defaultVault.stakedOf(user1), 500 ether);
+        assertEq(defaultVault.totalStaked(), 500 ether);
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -277,7 +270,7 @@ contract AppModuleFactoryTest is Test {
 
         // Should work without approval
         vm.prank(appCreator);
-        factory.deployModules(address(appToken), "https://metadata.test/");
+        factory.deployModules(address(appToken), address(defaultVault), "https://metadata.test/");
     }
 
     function test_DeployModulesWithFactoryELTADisabled() public {
@@ -289,6 +282,6 @@ contract AppModuleFactoryTest is Test {
 
         // Should work without ELTA transfer
         vm.prank(appCreator);
-        noEltaFactory.deployModules(address(appToken), "https://metadata.test/");
+        noEltaFactory.deployModules(address(appToken), address(defaultVault), "https://metadata.test/");
     }
 }

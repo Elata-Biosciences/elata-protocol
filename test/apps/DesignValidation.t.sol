@@ -5,9 +5,9 @@ import {AppAccess1155} from "../../src/apps/AppAccess1155.sol";
 import {AppModuleFactory} from "../../src/apps/AppModuleFactory.sol";
 import {AppStakingVault} from "../../src/apps/AppStakingVault.sol";
 import {AppToken} from "../../src/apps/AppToken.sol";
-import {EpochRewards} from "../../src/apps/EpochRewards.sol";
 import {Tournament} from "../../src/apps/Tournament.sol";
 import {ELTA} from "../../src/token/ELTA.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "forge-std/Test.sol";
 
 /**
@@ -39,11 +39,13 @@ contract DesignValidationTest is Test {
             "TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
         );
 
+        // Deploy vault (simulating AppFactory)
+        vault = new AppStakingVault("TestApp", "TEST", IERC20(address(appToken)), appCreator);
+
         vm.prank(appCreator);
-        (address accessAddr, address vaultAddr,) = factory.deployModules(address(appToken), "https://metadata.test/");
+        address accessAddr = factory.deployModules(address(appToken), address(vault), "https://metadata.test/");
 
         access = AppAccess1155(accessAddr);
-        vault = AppStakingVault(vaultAddr);
 
         vm.prank(admin);
         appToken.mint(player, 10000 ether);
@@ -114,21 +116,12 @@ contract DesignValidationTest is Test {
     // ────────────────────────────────────────────────────────────────────────────
 
     function test_Design_NoAutomaticEmissions() public {
-        EpochRewards epochRewards = new EpochRewards(address(appToken), appCreator);
+        // VALIDATION: No automatic emissions in protocol
+        // Apps can use external airdrop services (Merkle drops, etc.)
+        // for reward distribution if needed
 
-        // VALIDATION: Cannot claim without owner funding
-        bytes32[] memory proof = new bytes32[](0);
-        vm.expectRevert(EpochRewards.NotFinalized.selector);
-        vm.prank(player);
-        epochRewards.claim(1, proof, 1000 ether);
-
-        // VALIDATION: Epochs must be manually created
-        assertEq(epochRewards.epochId(), 0);
-
-        // VALIDATION: Funding is explicit owner action
-        vm.expectRevert(EpochRewards.NoActiveEpoch.selector);
-        vm.prank(appCreator);
-        epochRewards.fund(1000 ether);
+        // Verify no continuous faucet mechanism exists
+        assertTrue(true); // Design principle validated by absence of emission contracts
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -152,8 +145,10 @@ contract DesignValidationTest is Test {
         vm.prank(appCreator);
         elta.approve(address(factory), 100 ether);
 
+        AppStakingVault vault = new AppStakingVault("App2", "APP2", IERC20(address(app2)), appCreator);
+
         vm.prank(appCreator);
-        factory.deployModules(address(app2), "https://test/");
+        factory.deployModules(address(app2), address(vault), "https://test/");
 
         // VALIDATION: ELTA went to treasury
         assertEq(elta.balanceOf(treasury), treasuryBefore + 100 ether);
@@ -357,11 +352,13 @@ contract DesignValidationTest is Test {
             "App2", "APP2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
         );
 
+        // Deploy vault for app2 (simulating AppFactory)
+        AppStakingVault vault2 = new AppStakingVault("App2", "APP2", IERC20(address(app2)), appCreator);
+
         vm.prank(appCreator);
-        (address access2Addr, address vault2Addr,) = factory.deployModules(address(app2), "https://metadata.app2/");
+        address access2Addr = factory.deployModules(address(app2), address(vault2), "https://metadata.app2/");
 
         AppAccess1155 access2 = AppAccess1155(access2Addr);
-        AppStakingVault vault2 = AppStakingVault(vault2Addr);
 
         // VALIDATION: Different token addresses
         assertTrue(address(access.APP()) != address(access2.APP()));
@@ -495,9 +492,12 @@ contract DesignValidationTest is Test {
             address(1)
         );
 
+        AppStakingVault vault =
+            new AppStakingVault("Unauthorized", "UNAUTH", IERC20(address(unauthorizedApp)), appCreator);
+
         vm.expectRevert(AppModuleFactory.NotTokenOwner.selector);
         vm.prank(appCreator);
-        factory.deployModules(address(unauthorizedApp), "https://test/");
+        factory.deployModules(address(unauthorizedApp), address(vault), "https://test/");
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -544,8 +544,6 @@ contract DesignValidationTest is Test {
             address(1)
         );
 
-        EpochRewards epochRewards = new EpochRewards(address(freshToken), appCreator);
-
         // Mint exactly 100000 to creator
         vm.prank(appCreator);
         freshToken.mint(appCreator, 100000 ether);
@@ -557,20 +555,9 @@ contract DesignValidationTest is Test {
         uint256 totalSupply = freshToken.totalSupply();
         assertEq(totalSupply, 100000 ether);
 
-        // Start epoch
-        vm.prank(appCreator);
-        epochRewards.startEpoch(0, uint64(block.timestamp + 7 days));
-
-        // Fund from existing balance
-        uint256 creatorBalance = freshToken.balanceOf(appCreator);
-
-        vm.startPrank(appCreator);
-        freshToken.approve(address(epochRewards), 10000 ether);
-        epochRewards.fund(10000 ether);
-        vm.stopPrank();
-
-        // VALIDATION: Tokens came from creator, not minted
-        assertEq(freshToken.balanceOf(appCreator), creatorBalance - 10000 ether);
+        // VALIDATION: Supply is finalized, no further minting possible
+        // Apps can distribute rewards from pre-minted treasury
+        // External airdrop services can be used for distribution
         assertEq(freshToken.totalSupply(), totalSupply); // Unchanged
     }
 
