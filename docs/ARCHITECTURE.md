@@ -1,774 +1,325 @@
-# Elata Protocol Architecture
+# Architecture Overview
 
-## 🏗️ **System Architecture Overview**
+This document explains how the Elata Protocol contracts fit together, the design decisions behind them, and how data flows through the system.
+
+## System Overview
+
+The protocol consists of three layers:
+
+1. **Core Token Layer** — ELTA token, veELTA staking, and XP reputation
+2. **Governance Layer** — On-chain voting, timelocks, and funding allocation
+3. **App Ecosystem Layer** — Token launches, bonding curves, and utility modules
+
+Each layer builds on the one below it. Apps use the governance layer for funding decisions, and governance uses the token layer for voting power calculations.
 
 ```mermaid
 graph TB
-    subgraph "Application Layer"
-        APP1[EEG Games]
-        APP2[Meditation Apps]
-        APP3[Research Tools]
-        APP4[Analytics Dashboard]
+    subgraph "App Ecosystem"
+        AppFactory[AppFactory]
+        AppToken[AppToken]
+        BondingCurve[BondingCurve]
+        Modules[Utility Modules]
     end
     
-    subgraph "Protocol Layer"
-        subgraph "Core Contracts"
-            ELTA[ELTA Token<br/>Governance & Utility]
-            VE[VeELTA<br/>Multi-position Staking]
-            XP[ElataXP<br/>Reputation System]
-            LP[LotPool<br/>Funding Governance]
-        end
-        
-        subgraph "Advanced Contracts"
-            RD[RewardsDistributor<br/>Yield Distribution]
-            GOV[ElataGovernor<br/>Onchain Voting]
-            TL[ElataTimelock<br/>Execution Delays]
-            STATS[ProtocolStats<br/>Data Aggregation]
-        end
+    subgraph "Governance"
+        Governor[ElataGovernor]
+        Timelock[ElataTimelock]
+        LotPool[LotPool]
+        Rewards[RewardsDistributor]
     end
     
-    subgraph "Infrastructure Layer"
-        ZORP[ZORP Protocol<br/>Data Submission]
-        IPFS[IPFS Storage<br/>Decentralized Data]
-        KEEPERS[Keeper Network<br/>Automation]
+    subgraph "Core Tokens"
+        ELTA[ELTA]
+        VeELTA[VeELTA]
+        XP[ElataXP]
     end
     
-    subgraph "Hardware Layer"
-        EEG[EEG Devices<br/>Data Collection]
-        PI[Raspberry Pi<br/>Processing]
-        ADS[ADS1299<br/>Signal Acquisition]
-    end
+    AppFactory --> AppToken
+    AppFactory --> BondingCurve
+    AppToken --> Modules
     
-    APP1 --> ELTA
-    APP2 --> XP
-    APP3 --> LP
-    APP4 --> STATS
+    Governor --> Timelock
+    LotPool --> XP
+    Rewards --> VeELTA
     
-    ELTA --> VE
-    VE --> RD
-    XP --> LP
-    GOV --> TL
-    
-    LP --> ZORP
-    RD --> KEEPERS
-    STATS --> IPFS
-    
-    ZORP --> EEG
-    EEG --> PI
-    PI --> ADS
-    
-    style ELTA fill:#ff9999
-    style VE fill:#99ccff
-    style XP fill:#99ff99
-    style LP fill:#ffcc99
+    ELTA --> VeELTA
+    ELTA --> Governor
+    ELTA --> AppFactory
 ```
 
-## 📊 **Contract Interaction Matrix**
+## Core Token Layer
 
-```mermaid
-graph TD
-    subgraph "Token Economics"
-        direction TB
-        ELTA[ELTA Token<br/>77M Supply Cap]
-        MINT[Minting Logic<br/>Role-gated]
-        BURN[Burning Logic<br/>Deflationary]
-        
-        ELTA --> MINT
-        ELTA --> BURN
-    end
-    
-    subgraph "Staking Economics"
-        direction TB
-        LOCK[Lock Creation<br/>NFT Positions]
-        POWER[Voting Power<br/>Linear Decay]
-        DELEGATE[Delegation<br/>Flexible Control]
-        
-        LOCK --> POWER
-        POWER --> DELEGATE
-    end
-    
-    subgraph "Reputation Economics"
-        direction TB
-        EARN[XP Earning<br/>Activity-based]
-        HOLD[XP Balance<br/>Permanent Reputation]
-        VOTE[Voting Rights<br/>Funding Rounds]
-        
-        EARN --> HOLD
-        HOLD --> VOTE
-    end
-    
-    subgraph "Funding Economics"
-        direction TB
-        ROUNDS[Weekly Rounds<br/>Community Voting]
-        ALLOCATION[Fund Allocation<br/>Merit-based]
-        PAYOUT[Research Payouts<br/>Transparent]
-        
-        ROUNDS --> ALLOCATION
-        ALLOCATION --> PAYOUT
-    end
-    
-    ELTA -.-> LOCK
-    POWER -.-> DELEGATE
-    VOTE -.-> ROUNDS
-    PAYOUT -.-> ELTA
-    
-    style ELTA fill:#ff9999
-    style LOCK fill:#99ccff
-    style EARN fill:#99ff99
-    style ROUNDS fill:#ffcc99
+### ELTA Token
+
+ELTA is a standard ERC20 token with governance extensions. It serves as the economic unit for the entire protocol.
+
+**Key properties:**
+- 77 million maximum supply (hard cap, enforced in contract)
+- ERC20Votes for on-chain governance delegation
+- ERC20Permit for gasless approvals
+- Burnable for deflationary mechanics
+- No transfer fees or taxes
+
+The token uses OpenZeppelin's AccessControl for minting permissions. Only addresses with `MINTER_ROLE` can mint new tokens, and minting always respects the supply cap.
+
+Source: [src/token/ELTA.sol](../src/token/ELTA.sol)
+
+### VeELTA Staking
+
+VeELTA represents locked ELTA with time-weighted voting power. Users lock ELTA for a duration between 7 days and 2 years, receiving veELTA that determines their governance influence and reward share.
+
+**How the boost works:**
+
+Locking for longer gives more veELTA per ELTA locked:
+- 7 days (minimum): 1x boost
+- 1 year: 1.5x boost
+- 2 years (maximum): 2x boost
+
+The formula is linear interpolation:
+
+```
+boost = 1 + (duration / MAX_LOCK)
+veELTA_minted = ELTA_locked × boost
 ```
 
-## 🔄 **State Transitions**
+**Lock lifecycle:**
 
-### VeELTA Position Lifecycle
+1. User calls `lock(amount, unlockTime)` to create a position
+2. veELTA is minted based on amount and duration
+3. User can call `increaseAmount()` to add more ELTA
+4. User can call `extendLock()` to push out the unlock time
+5. After unlock time passes, user calls `unlock()` to retrieve ELTA
 
-```mermaid
-stateDiagram-v2
-    [*] --> Created: createLock()
-    Created --> Active: Position NFT minted
-    Active --> Increased: increaseAmount()
-    Active --> Extended: increaseUnlockTime()
-    Active --> Merged: mergePositions()
-    Active --> Split: splitPosition()
-    Split --> Active: New positions created
-    Merged --> Active: Combined position
-    Increased --> Active: More ELTA locked
-    Extended --> Active: Longer duration
-    Active --> Expired: Time passes
-    Active --> EmergencyUnlocked: emergencyUnlock()
-    Expired --> Withdrawn: withdraw()
-    EmergencyUnlocked --> Withdrawn: withdraw()
-    Withdrawn --> [*]: NFT burned
-    
-    note right of Created
-        Initial voting power:
-        amount × duration ÷ MAX_LOCK
-    end note
-    
-    note right of Active
-        Voting power decays linearly:
-        amount × time_remaining ÷ MAX_LOCK
-    end note
-    
-    note right of EmergencyUnlocked
-        50% penalty applied
-        Immediate withdrawal allowed
-    end note
-```
+The veELTA balance is used for both governance voting and reward distribution snapshots. It's non-transferable to prevent vote buying.
 
-### XP State Machine
+Source: [src/staking/VeELTA.sol](../src/staking/VeELTA.sol)
 
-```mermaid
-stateDiagram-v2
-    [*] --> Awarded: XP Granted
-    Awarded --> Held: Permanent Balance
-    Held --> Voting: Used in Governance
-    Held --> Revoked: Admin Revokes
-    Voting --> Held: After Vote
-    Revoked --> [*]: XP Burned
-    
-    note right of Awarded
-        XP minted via operator
-        or signature authorization
-    end note
-    
-    note right of Held
-        Permanent reputation
-        Snapshot-based tracking
-    end note
-    
-    note right of Revoked
-        Only by XP_OPERATOR_ROLE
-        Exceptional circumstances
-    end note
-```
+### ElataXP Reputation
 
-### Funding Round State Flow
+XP tracks user participation and contribution. Unlike ELTA, XP cannot be transferred or traded. It's earned through protocol activity and used to weight votes in funding decisions.
 
-```mermaid
-stateDiagram-v2
-    [*] --> Setup: Admin creates round
-    Setup --> Active: startRound()
-    Active --> Voting: Users cast votes
-    Voting --> Voting: More votes
-    Voting --> Closed: Duration expires
-    Closed --> Finalized: finalize()
-    Finalized --> [*]: Funds distributed
-    
-    note right of Setup
-        - Define options
-        - Set recipients
-        - Take XP snapshot
-    end note
-    
-    note right of Voting
-        - XP allocation
-        - Cannot exceed snapshot
-        - Immutable votes
-    end note
-    
-    note right of Finalized
-        - Winner determined
-        - ELTA transferred
-        - Events emitted
-    end note
-```
+**Distribution methods:**
 
-## 📐 **Mathematical Models**
+1. **Direct award** — Operators with `XP_OPERATOR_ROLE` call `award(user, amount)`
+2. **Signature-based** — Off-chain operators sign EIP-712 messages that users submit
+3. **Merkle claims** — Batch distributions via Merkle tree proofs
 
-### Voting Power Decay Function
+XP is permanent by default. Once earned, it stays unless explicitly revoked by an operator. This simplifies accounting and makes reputation predictable.
 
-```mermaid
-graph LR
-    subgraph "Linear Decay Model"
-        INPUT[Lock: 1000 ELTA<br/>Duration: 104 weeks]
-        FORMULA[f(t) = 1000 × (104-t)/104]
-        OUTPUT[Voting Power over Time]
-    end
-    
-    INPUT --> FORMULA --> OUTPUT
-```
+**Why separate XP from ELTA?**
 
-**Mathematical Expression:**
-$$
-VP(t) = A \times \frac{\max(0, D - t)}{MAX\_LOCK}
-$$
+XP represents *participation* (voice in funding decisions), while ELTA represents *ownership* (economic stake and yield). Keeping them separate prevents users from simply buying reputation. You have to earn XP through actual contribution.
 
-Where:
-- $VP(t)$ = Voting power at time $t$
-- $A$ = Locked amount
-- $D$ = Lock duration
-- $t$ = Time elapsed since lock creation
-- $MAX\_LOCK$ = 104 weeks (2 years)
+Source: [src/experience/ElataXP.sol](../src/experience/ElataXP.sol)
 
-### XP Balance Function
+See also: [xp-system.md](./xp-system.md) for Merkle distribution details.
 
-```mermaid
-graph LR
-    subgraph "Permanent Reputation Model"
-        XP_INPUT[XP Awarded: 1000 XP<br/>Timestamp: t₀]
-        XP_BALANCE[Balance = 1000 XP<br/>Permanent]
-        XP_OUTPUT[Voting Power = Balance<br/>at Snapshot]
-    end
-    
-    XP_INPUT --> XP_BALANCE --> XP_OUTPUT
-```
+## Governance Layer
 
-**Mathematical Expression:**
-$$
-XP_{balance}(t) = \sum_{i=1}^{n} XP_i - \sum_{j=1}^{m} XP_{revoked,j}
-$$
+### LotPool Funding Rounds
 
-Where:
-- $XP_{balance}(t)$ = Total XP balance (permanent unless revoked)
-- $XP_i$ = Amount of XP award $i$
-- $XP_{revoked,j}$ = Amount of XP revoked in event $j$
-- No time decay applied
+LotPool runs weekly funding rounds where the community decides how to allocate treasury funds. Votes are weighted by XP, not ELTA, so funding decisions reflect participation rather than capital.
 
-### Reward Distribution Formula
+**Round lifecycle:**
 
-$$
-R_u = \frac{VP_u}{\sum_{i=1}^{n} VP_i} \times R_{total}
-$$
+1. Admin calls `startRound()` with a list of proposals and their recipient addresses
+2. Contract takes an XP snapshot at the current block
+3. Users vote by allocating their XP across proposals
+4. After the voting period (typically 7 days), admin calls `finalize()`
+5. The winning proposal's recipient receives ELTA from the pool
 
-Where:
-- $R_u$ = Reward for user $u$
-- $VP_u$ = User's voting power at epoch snapshot
-- $R_{total}$ = Total epoch rewards
+Users can split their XP across multiple proposals. The snapshot ensures nobody can earn XP mid-round to influence the vote.
 
-## 🔗 **Integration Patterns**
+Source: [src/governance/LotPool.sol](../src/governance/LotPool.sol)
 
-### Frontend Data Flow
+### ElataGovernor
+
+The Governor handles protocol parameter changes and upgrades through on-chain voting. It uses ELTA (via delegation) for voting power.
+
+**Standard proposals:**
+- Voting delay: 1 day (time between proposal and voting start)
+- Voting period: 7 days
+- Proposal threshold: 0.1% of total supply (~77,000 ELTA)
+- Quorum: 4% of total supply (~3.08M ELTA)
+
+**Emergency proposals:**
+- Proposal threshold: 5% of total supply
+- Voting period: 3 days (expedited)
+
+Emergency proposals allow faster response to critical issues while requiring higher threshold to prevent abuse.
+
+The Governor can be connected to ElataTimelock for execution delays, though the initial deployment operates without timelock integration.
+
+Source: [src/governance/ElataGovernor.sol](../src/governance/ElataGovernor.sol)
+
+### RewardsDistributor
+
+The RewardsDistributor collects protocol fees and splits them according to a fixed ratio:
+
+- 70% to app token stakers (proportional to their stake)
+- 15% to veELTA holders (proportional to their veELTA)
+- 15% to treasury
+
+Revenue sources include trading fees from bonding curves (1%), tournament rake, and app-specific fees. The distributor accepts both ELTA and app tokens, tracking them in separate epochs.
+
+Claims use on-chain snapshots rather than Merkle trees, so users can claim directly without needing off-chain proof generation.
+
+Source: [src/rewards/RewardsDistributor.sol](../src/rewards/RewardsDistributor.sol)
+
+## App Ecosystem Layer
+
+The app ecosystem allows developers to launch their own tokens with built-in economic infrastructure.
+
+### App Launch Flow
 
 ```mermaid
 sequenceDiagram
-    participant Frontend
-    participant ProtocolStats
-    participant ELTA
-    participant VeELTA
-    participant ElataXP
-    participant LotPool
+    participant Dev as Developer
+    participant Factory as AppFactory
+    participant Token as AppToken
+    participant Curve as BondingCurve
+    participant Users
     
-    Note over Frontend, LotPool: Dashboard Load
-    Frontend->>ProtocolStats: getUserSummary(address)
-    ProtocolStats->>ELTA: balanceOf(user)
-    ProtocolStats->>VeELTA: getUserVotingPower(user)
-    ProtocolStats->>ElataXP: balanceOf(user)
-    ProtocolStats->>LotPool: getUserVotingStatus(user, round)
-    ProtocolStats-->>Frontend: Complete user data
+    Dev->>Factory: createApp() + 110 ELTA
+    Factory->>Token: Deploy token (1B supply)
+    Factory->>Curve: Deploy bonding curve
+    Factory->>Token: 50% to dev (auto-staked)
+    Factory->>Curve: 50% to curve
     
-    Note over Frontend, LotPool: Real-time Updates
-    ELTA->>Frontend: Transfer event
-    VeELTA->>Frontend: LockCreated event
-    ElataXP->>Frontend: XPAwarded event
-    LotPool->>Frontend: Voted event
+    Users->>Curve: buy() with ELTA
+    Curve->>Users: App tokens at curve price
     
-    Frontend->>Frontend: Update UI state
+    Note over Curve: At 42k ELTA raised
+    Curve->>Curve: Graduate to DEX
+    Curve->>Curve: Lock LP for 2 years
 ```
 
-### Cross-Contract Communication
+**Step by step:**
 
-```mermaid
-graph TD
-    subgraph "Contract Dependencies"
-        direction TB
-        
-        ELTA --> VE_DEP[VeELTA depends on ELTA<br/>for token transfers]
-        XP --> LP_DEP[LotPool depends on ElataXP<br/>for voting snapshots]
-        VE --> RD_DEP[RewardsDistributor depends on VeELTA<br/>for voting power calculations]
-        ELTA --> GOV_DEP[ElataGovernor depends on ELTA<br/>for voting tokens]
-    end
-    
-    subgraph "Data Flow"
-        direction LR
-        
-        USER_ACTION[User Action] --> CONTRACT_CALL[Contract Function]
-        CONTRACT_CALL --> STATE_CHANGE[State Update]
-        STATE_CHANGE --> EVENT_EMIT[Event Emission]
-        EVENT_EMIT --> FRONTEND_UPDATE[Frontend Update]
-    end
-    
-    style VE_DEP fill:#e3f2fd
-    style LP_DEP fill:#f3e5f5
-    style RD_DEP fill:#e8f5e8
-    style GOV_DEP fill:#fff3e0
-```
+1. Developer pays 110 ELTA (100 seed + 10 creation fee)
+2. AppFactory deploys an AppToken with 1 billion supply
+3. AppFactory deploys a bonding curve for price discovery
+4. 50% of tokens go to the developer (auto-staked for alignment)
+5. 50% go to the bonding curve for public trading
+6. Users buy tokens with ELTA; price rises along the curve
+7. When 42,000 ELTA is raised, the curve graduates
+8. Graduation creates a DEX liquidity pair and locks it for 2 years
 
-## 🛡️ **Security Model Deep Dive**
+### AppFactory
 
-### Access Control Matrix
+The factory deploys new app tokens and their bonding curves. It also registers apps in an on-chain registry for discovery.
 
-```mermaid
-graph TD
-    subgraph "Role Hierarchy"
-        ADMIN[DEFAULT_ADMIN_ROLE<br/>🔑 Master Control]
-        MINTER[MINTER_ROLE<br/>🏭 Token Creation]
-        MANAGER[MANAGER_ROLE<br/>⚙️ Operations]
-        DISTRIBUTOR[DISTRIBUTOR_ROLE<br/>💰 Rewards]
-        KEEPER[KEEPER_ROLE<br/>🤖 Automation]
-        PAUSER[PAUSER_ROLE<br/>⏸️ Emergency Stop]
-        EMERGENCY[EMERGENCY_ROLE<br/>🚨 Critical Actions]
-    end
-    
-    ADMIN --> MINTER
-    ADMIN --> MANAGER
-    ADMIN --> DISTRIBUTOR
-    ADMIN --> KEEPER
-    ADMIN --> PAUSER
-    ADMIN --> EMERGENCY
-    
-    style ADMIN fill:#ff9999
-    style EMERGENCY fill:#ffcdd2
-```
+**XP-gated early access:**
 
-### Security Layers
+For the first 6 hours after launch, only users with at least 100 XP can buy. This rewards active community members and prevents bot sniping.
+
+Source: [src/apps/AppFactory.sol](../src/apps/AppFactory.sol)
+
+### AppBondingCurve
+
+The bonding curve provides fair price discovery without traditional liquidity provision. Price increases as more tokens are bought, following a predetermined curve.
+
+A 1% trading fee on each buy/sell routes to the RewardsDistributor. After graduation, all trading happens on the DEX instead.
+
+Source: [src/apps/AppBondingCurve.sol](../src/apps/AppBondingCurve.sol)
+
+### Utility Modules
+
+After launching a token, developers can add utility modules:
+
+| Module | Purpose | Source |
+|--------|---------|--------|
+| AppStakingVault | Per-app token staking | [AppStakingVault.sol](../src/apps/AppStakingVault.sol) |
+| AppAccess1155 | NFT items and access passes | [AppAccess1155.sol](../src/apps/AppAccess1155.sol) |
+| EpochRewards | Time-boxed reward distribution | [src/apps/EpochRewards.sol](../src/apps/) |
+| Tournament | Competitive events with prizes | [Tournament.sol](../src/apps/Tournament.sol) |
+
+Modules are deployed via AppModuleFactory and configured by the app developer.
+
+Source: [src/apps/AppModuleFactory.sol](../src/apps/AppModuleFactory.sol)
+
+## Fee Flow
 
 ```mermaid
 graph LR
-    subgraph "Layer 1: Input Validation"
-        L1_1[Zero Address Checks]
-        L1_2[Amount Validation]
-        L1_3[Array Length Matching]
-        L1_4[Boundary Conditions]
-    end
+    Trading[Trading Fees 1%] --> Router[AppFeeRouter]
+    Tournament[Tournament Rake] --> Router
+    AppFees[App-specific Fees] --> Router
     
-    subgraph "Layer 2: Access Control"
-        L2_1[Role-based Permissions]
-        L2_2[Multi-signature Requirements]
-        L2_3[Function Modifiers]
-        L2_4[Emergency Controls]
-    end
+    Router --> Distributor[RewardsDistributor]
     
-    subgraph "Layer 3: Economic Security"
-        L3_1[Time-locked Positions]
-        L3_2[Non-transferable Assets]
-        L3_3[Supply Caps]
-        L3_4[Linear Decay]
-    end
-    
-    subgraph "Layer 4: Operational Security"
-        L4_1[Reentrancy Guards]
-        L4_2[State Validation]
-        L4_3[External Call Safety]
-        L4_4[Event Logging]
-    end
-    
-    L1_1 --> L2_1
-    L1_2 --> L2_2
-    L1_3 --> L2_3
-    L1_4 --> L2_4
-    
-    L2_1 --> L3_1
-    L2_2 --> L3_2
-    L2_3 --> L3_3
-    L2_4 --> L3_4
-    
-    L3_1 --> L4_1
-    L3_2 --> L4_2
-    L3_3 --> L4_3
-    L3_4 --> L4_4
+    Distributor --> AppStakers[70% App Stakers]
+    Distributor --> VeELTA[15% veELTA Holders]
+    Distributor --> Treasury[15% Treasury]
 ```
 
-### Attack Vector Mitigation
+All protocol fees flow through AppFeeRouter to RewardsDistributor. This ensures consistent distribution regardless of the fee source.
 
-```mermaid
-graph TD
-    subgraph "Flash Loan Attacks"
-        FA1[Attacker borrows large ELTA amount]
-        FA2[Tries to create governance positions]
-        FA3[❌ BLOCKED: Time-locked staking required]
-    end
-    
-    subgraph "Voting Manipulation"
-        VM1[Attacker tries to buy XP/votes]
-        VM2[Attempts to transfer reputation]
-        VM3[❌ BLOCKED: Non-transferable XP]
-    end
-    
-    subgraph "Supply Manipulation"
-        SM1[Attacker tries to mint unlimited tokens]
-        SM2[Attempts to exceed supply cap]
-        SM3[❌ BLOCKED: Hard cap enforcement]
-    end
-    
-    subgraph "Governance Takeover"
-        GT1[Attacker accumulates voting power]
-        GT2[Tries to pass malicious proposals]
-        GT3[❌ BLOCKED: Quorum + timelock delays]
-    end
-    
-    style FA3 fill:#c8e6c9
-    style VM3 fill:#c8e6c9
-    style SM3 fill:#c8e6c9
-    style GT3 fill:#c8e6c9
+## Design Decisions
+
+### Why non-upgradeable contracts?
+
+Upgradeable contracts (proxies) add complexity and trust assumptions. By making contracts immutable:
+- Users can verify the code they're interacting with
+- No admin can change contract logic after deployment
+- Security audits remain valid indefinitely
+
+The tradeoff is that bugs cannot be fixed in place. We mitigate this with thorough testing and the ability to deploy new versions that users can migrate to.
+
+### Why separate governance tokens?
+
+The protocol uses three different tokens for different purposes:
+- **ELTA** for economic ownership and protocol governance
+- **veELTA** for time-weighted voting power
+- **XP** for participation-weighted funding decisions
+
+This separation prevents plutocracy (money buying all influence) while still rewarding economic stakeholders.
+
+### Why time-locked staking?
+
+Time-locking ELTA into veELTA:
+- Prevents flash loan governance attacks
+- Aligns voters with long-term protocol health
+- Creates predictable token supply dynamics
+
+### Why bonding curves for app launches?
+
+Bonding curves provide:
+- Fair price discovery without market makers
+- Transparent, deterministic pricing
+- Protection against rug pulls (LP is locked on graduation)
+- Equal opportunity for all buyers (no insider allocations)
+
+## Contract Dependencies
+
+```
+ELTA
+├── VeELTA (locks ELTA)
+├── ElataGovernor (uses ELTA for voting)
+└── AppFactory (accepts ELTA for app creation)
+
+ElataXP
+└── LotPool (uses XP for funding votes)
+
+VeELTA
+└── RewardsDistributor (uses veELTA for reward claims)
+
+AppToken
+├── AppBondingCurve (handles trading)
+├── AppStakingVault (handles staking)
+└── AppAccess1155 (handles item purchases)
 ```
 
-## 💰 **Economic Mechanism Design**
+## Gas Costs
 
-### Token Value Accrual Model
+Typical operation costs on Ethereum mainnet (at 20 gwei):
 
-```mermaid
-graph TD
-    subgraph "Revenue Sources"
-        RS1[App Store Fees<br/>15% take rate]
-        RS2[Tournament Rake<br/>5-10% of prizes]
-        RS3[Infrastructure Fees<br/>Protocol usage]
-        RS4[Premium Features<br/>ELTA-gated access]
-    end
-    
-    subgraph "Value Distribution"
-        VD1[Treasury: 50%<br/>Operations & Growth]
-        VD2[Staker Yields: 25%<br/>Real Returns]
-        VD3[Buyback & Burn: 25%<br/>Supply Reduction]
-    end
-    
-    subgraph "Demand Drivers"
-        DD1[Governance Participation]
-        DD2[Yield Expectations]
-        DD3[App Ecosystem Access]
-        DD4[Speculative Premium]
-    end
-    
-    RS1 --> VD1
-    RS2 --> VD2
-    RS3 --> VD3
-    RS4 --> VD1
-    
-    VD2 --> DD1
-    VD2 --> DD2
-    VD3 --> DD3
-    VD1 --> DD4
-    
-    style VD2 fill:#e8f5e8
-    style VD3 fill:#ffebee
-```
+| Operation | Gas | Cost |
+|-----------|-----|------|
+| ELTA transfer | 56k | $2.20 |
+| Create staking lock | 88k | $3.50 |
+| Vote in funding round | 86k | $3.40 |
+| Claim rewards | 80k | $3.20 |
+| Create app | 7.2M | $288 |
 
-### Staking Incentive Alignment
-
-```mermaid
-graph LR
-    subgraph "Short-term Stakers"
-        ST1[1-4 week locks]
-        ST2[Low voting power]
-        ST3[Minimal rewards]
-        ST4[High flexibility]
-    end
-    
-    subgraph "Medium-term Stakers"
-        MT1[6 month - 1 year locks]
-        MT2[Moderate voting power]
-        MT3[Proportional rewards]
-        MT4[Balanced commitment]
-    end
-    
-    subgraph "Long-term Stakers"
-        LT1[2-4 year locks]
-        LT2[Maximum voting power]
-        LT3[Highest rewards]
-        LT4[Strong alignment]
-    end
-    
-    ST1 --> ST2 --> ST3 --> ST4
-    MT1 --> MT2 --> MT3 --> MT4
-    LT1 --> LT2 --> LT3 --> LT4
-    
-    style LT1 fill:#4caf50
-    style LT2 fill:#4caf50
-    style LT3 fill:#4caf50
-    style LT4 fill:#4caf50
-```
-
-## 🎮 **User Journey Flows**
-
-### New User Onboarding
-
-```mermaid
-journey
-    title New User Journey
-    section Discovery
-      Learn about Elata: 5: User
-      Read documentation: 4: User
-      Join community: 5: User
-    section First Interaction
-      Get ELTA tokens: 3: User
-      Try EEG app: 5: User
-      Earn first XP: 5: User
-    section Engagement
-      Participate in funding: 4: User
-      Create staking position: 3: User
-      Delegate voting power: 3: User
-    section Advanced Usage
-      Manage multiple positions: 4: User
-      Claim staking rewards: 5: User
-      Participate in governance: 4: User
-```
-
-### Researcher Journey
-
-```mermaid
-journey
-    title Researcher Journey
-    section Proposal Creation
-      Identify research need: 5: Researcher
-      Create funding proposal: 4: Researcher
-      Submit to community: 4: Researcher
-    section Community Voting
-      Present to community: 4: Researcher
-      Community votes with XP: 5: Community
-      Results announced: 5: Researcher
-    section Funding & Execution
-      Receive ELTA funding: 5: Researcher
-      Execute research: 5: Researcher
-      Publish results: 4: Researcher
-    section Impact
-      Data benefits community: 5: Community
-      Researcher reputation grows: 5: Researcher
-      More funding opportunities: 5: Researcher
-```
-
-### Developer Integration Journey
-
-```mermaid
-journey
-    title Developer Integration
-    section Setup
-      Read documentation: 4: Developer
-      Clone repository: 5: Developer
-      Run local tests: 5: Developer
-    section Integration
-      Connect to contracts: 4: Developer
-      Implement XP rewards: 4: Developer
-      Add staking features: 3: Developer
-    section Advanced Features
-      Integrate governance: 3: Developer
-      Add reward claiming: 4: Developer
-      Optimize gas usage: 4: Developer
-    section Production
-      Deploy to testnet: 4: Developer
-      Community testing: 5: Community
-      Mainnet launch: 5: Developer
-```
-
-## 🔄 **Data Flow Diagrams**
-
-### Complete Protocol Data Flow
-
-```mermaid
-flowchart TD
-    subgraph "User Actions"
-        UA1[Play EEG Games]
-        UA2[Submit Data]
-        UA3[Stake ELTA]
-        UA4[Vote in Rounds]
-    end
-    
-    subgraph "Smart Contract Layer"
-        SC1[ElataXP.award()]
-        SC2[VeELTA.createLock()]
-        SC3[LotPool.vote()]
-        SC4[RewardsDistributor.claim()]
-    end
-    
-    subgraph "State Changes"
-        ST1[XP Balance Updated]
-        ST2[NFT Position Minted]
-        ST3[Vote Recorded]
-        ST4[Rewards Claimed]
-    end
-    
-    subgraph "Events Emitted"
-        EV1[XPAwarded]
-        EV2[LockCreated]
-        EV3[Voted]
-        EV4[RewardClaimed]
-    end
-    
-    subgraph "Frontend Updates"
-        FE1[Update XP Display]
-        FE2[Show New Position]
-        FE3[Update Vote Status]
-        FE4[Show Claimed Rewards]
-    end
-    
-    UA1 --> SC1 --> ST1 --> EV1 --> FE1
-    UA3 --> SC2 --> ST2 --> EV2 --> FE2
-    UA4 --> SC3 --> ST3 --> EV3 --> FE3
-    UA4 --> SC4 --> ST4 --> EV4 --> FE4
-    
-    style SC1 fill:#e8f5e8
-    style SC2 fill:#e3f2fd
-    style SC3 fill:#f3e5f5
-    style SC4 fill:#fff3e0
-```
-
-## 🎯 **Performance Analysis**
-
-### Gas Cost Breakdown
-
-```mermaid
-graph TD
-    subgraph "Contract Deployment"
-        CD1[ELTA: 2.3M gas<br/>$46 @ 20 gwei]
-        CD2[VeELTA: 3.3M gas<br/>$66 @ 20 gwei]
-        CD3[ElataXP: 3.0M gas<br/>$60 @ 20 gwei]
-        CD4[LotPool: 1.4M gas<br/>$28 @ 20 gwei]
-        CD5[Others: 2.0M gas<br/>$40 @ 20 gwei]
-        TOTAL[Total: 13M gas<br/>$260 @ 20 gwei]
-    end
-    
-    CD1 --> TOTAL
-    CD2 --> TOTAL
-    CD3 --> TOTAL
-    CD4 --> TOTAL
-    CD5 --> TOTAL
-    
-    style TOTAL fill:#e8f5e8
-```
-
-### Operation Cost Comparison
-
-```mermaid
-graph LR
-    subgraph "Basic Operations"
-        BO1[ELTA Transfer<br/>56K gas]
-        BO2[ERC20 Standard<br/>~21K gas]
-        BO3[2.7x overhead<br/>Due to voting features]
-    end
-    
-    subgraph "Staking Operations"
-        SO1[Create Lock<br/>257K gas]
-        SO2[Increase Amount<br/>52K gas]
-        SO3[Withdraw<br/>78K gas]
-    end
-    
-    subgraph "Governance Operations"
-        GO1[XP Award<br/>230K gas]
-        GO2[Vote in Round<br/>86K gas]
-        GO3[Claim Rewards<br/>80K gas]
-    end
-    
-    style BO1 fill:#fff3e0
-    style SO1 fill:#e3f2fd
-    style GO1 fill:#f3e5f5
-```
-
-## 🔮 **Future Architecture**
-
-### Planned Integrations
-
-```mermaid
-graph TB
-    subgraph "Current Protocol"
-        CURRENT[Elata Protocol v2.0<br/>Complete Implementation]
-    end
-    
-    subgraph "Phase 3: Ecosystem Integration"
-        ZORP_INT[ZORP Integration<br/>Data submission rewards]
-        EEG_INT[EEG Hardware<br/>Direct device integration]
-        APP_STORE[App Ecosystem<br/>Revenue sharing]
-        DATA_MARKET[Data Marketplace<br/>Monetization]
-    end
-    
-    subgraph "Phase 4: Advanced Features"
-        CROSS_CHAIN[Cross-chain Bridge<br/>Multi-network support]
-        ZK_PRIVACY[ZK Privacy<br/>Anonymous participation]
-        AI_MODELS[AI Marketplace<br/>Model monetization]
-        MOBILE_SDK[Mobile SDK<br/>Native app integration]
-    end
-    
-    CURRENT --> ZORP_INT
-    CURRENT --> EEG_INT
-    CURRENT --> APP_STORE
-    CURRENT --> DATA_MARKET
-    
-    ZORP_INT --> CROSS_CHAIN
-    EEG_INT --> ZK_PRIVACY
-    APP_STORE --> AI_MODELS
-    DATA_MARKET --> MOBILE_SDK
-    
-    style CURRENT fill:#4caf50
-    style ZORP_INT fill:#2196f3
-    style CROSS_CHAIN fill:#9c27b0
-```
-
----
-
-## 📚 **Documentation Map**
-
-```mermaid
-graph TD
-    subgraph "User Documentation"
-        UD1[README.md<br/>📖 Overview & Quick Start]
-        UD2[CONTRIBUTING.md<br/>👥 Developer Guide]
-        UD3[FAQ.md<br/>❓ Common Questions]
-    end
-    
-    subgraph "Technical Documentation"
-        TD1[ARCHITECTURE.md<br/>🏗️ System Design]
-        TD2[DEPLOYMENT.md<br/>🚀 Deployment Guide]
-        TD3[FRONTEND_INTEGRATION.md<br/>🖥️ API Reference]
-    end
-    
-    subgraph "Reference Documentation"
-        RD1[Contract ABIs<br/>📋 Interface Specs]
-        RD2[Gas Reports<br/>⛽ Cost Analysis]
-        RD3[Test Coverage<br/>🧪 Quality Metrics]
-    end
-    
-    UD1 --> TD1
-    UD2 --> TD2
-    UD3 --> TD3
-    
-    TD1 --> RD1
-    TD2 --> RD2
-    TD3 --> RD3
-    
-    style UD1 fill:#e8f5e8
-    style TD1 fill:#e3f2fd
-    style RD1 fill:#fff3e0
-```
-
----
-
-*This architecture represents a complete, production-ready DeFi protocol designed specifically for neuroscience research coordination and community governance.*
-
+App creation is expensive due to deploying multiple contracts. On L2s like Base, these costs are 50-100x lower.

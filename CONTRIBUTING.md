@@ -1,228 +1,203 @@
 # Contributing to Elata Protocol
 
-We welcome contributions from the community! This guide will help you get started with contributing to the Elata Protocol.
-
-## Table of Contents
-
-- [Code of Conduct](#code-of-conduct)
-- [Getting Started](#getting-started)
-- [Development Process](#development-process)
-- [Pull Request Guidelines](#pull-request-guidelines)
-- [Testing](#testing)
-- [Code Style](#code-style)
-- [Security](#security)
-
-## Code of Conduct
-
-By participating in this project, you agree to abide by our Code of Conduct. We are committed to providing a welcoming and inclusive environment for all contributors.
+This guide covers everything you need to contribute to the smart contracts.
 
 ## Getting Started
 
 ### Prerequisites
 
-- [Foundry](https://getfoundry.sh/) - Ethereum development toolkit
-- [Git](https://git-scm.com/) - Version control
-- [Node.js](https://nodejs.org/) (optional, for frontend integration)
+- [Foundry](https://getfoundry.sh/) — `curl -L https://foundry.paradigm.xyz | bash && foundryup`
+- [Node.js](https://nodejs.org/) v18+
+- Git
 
 ### Setup
 
-1. Fork the repository
-2. Clone your fork:
-   ```bash
-   git clone https://github.com/your-username/elata-protocol
-   cd elata-protocol
-   ```
-3. Install dependencies:
-   ```bash
-   forge install
-   ```
-4. Build the project:
-   ```bash
-   forge build
-   ```
-5. Run tests to ensure everything works:
-   ```bash
-   forge test
-   ```
+```bash
+# Clone your fork
+git clone https://github.com/your-username/elata-protocol
+cd elata-protocol
 
-## Development Process
+# Install dependencies and git hooks
+make install
 
-### Branch Naming
+# Build contracts
+make build
 
-Use descriptive branch names that follow this pattern:
-- `feature/description-of-feature`
-- `fix/description-of-fix`
-- `docs/description-of-docs-change`
-- `test/description-of-test-addition`
-
-### Commit Messages
-
-Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
-
-```
-type(scope): description
-
-[optional body]
-
-[optional footer]
+# Run tests
+make test
 ```
 
-Examples:
-- `feat(token): add burn functionality to ELTA token`
-- `fix(staking): correct voting power calculation in VeELTA`
-- `docs(readme): update installation instructions`
-- `test(lotpool): add comprehensive fuzz testing`
+The `make install` command sets up pre-commit hooks that format code and run tests before each commit.
 
-### Development Workflow
+## Development Workflow
 
-1. Create a new branch from `main`
-2. Make your changes
-3. Add tests for new functionality
-4. Ensure all tests pass
-5. Update documentation if needed
-6. Submit a pull request
+### 1. Create a branch
 
-## Pull Request Guidelines
+Use descriptive names with prefixes:
 
-### Before Submitting
-
-- [ ] All tests pass (`forge test`)
-- [ ] Code follows style guidelines
-- [ ] Documentation is updated
-- [ ] Commit messages follow conventions
-- [ ] No merge conflicts with main branch
-
-### PR Description Template
-
-```markdown
-## Description
-Brief description of changes made.
-
-## Type of Change
-- [ ] Bug fix (non-breaking change that fixes an issue)
-- [ ] New feature (non-breaking change that adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] Documentation update
-
-## Testing
-- [ ] Unit tests added/updated
-- [ ] Integration tests added/updated
-- [ ] Fuzz tests added/updated
-- [ ] All tests pass
-
-## Checklist
-- [ ] Code follows project style guidelines
-- [ ] Self-review completed
-- [ ] Documentation updated
-- [ ] No new warnings introduced
+```
+feature/add-emergency-withdraw
+fix/voting-power-calculation
+docs/update-deployment-guide
+test/add-lotpool-fuzz-tests
 ```
 
-## Testing
+### 2. Make changes
 
-### Test Categories
+Edit contracts in `src/`, add tests in `test/`. Run tests frequently:
 
-1. **Unit Tests**: Test individual contract functions
-   ```bash
-   forge test --match-contract ELTATest
-   ```
+```bash
+# Quick test run
+forge test
 
-2. **Integration Tests**: Test multi-contract interactions
-   ```bash
-   forge test --match-contract ProtocolIntegrationTest
-   ```
+# Test specific contract
+forge test --match-contract VeELTATest
 
-3. **Fuzz Tests**: Property-based testing with random inputs
-   ```bash
-   forge test --match-test testFuzz_
-   ```
+# Test with gas report
+make gas-report
 
-### Writing Tests
-
-- Use descriptive test names: `test_RevertWhen_InvalidInput()`
-- Test both success and failure cases
-- Include edge cases and boundary conditions
-- Add fuzz tests for functions with numeric inputs
-- Use appropriate assertions and error checking
-
-### Test Structure
-
-```solidity
-function test_DescriptiveTestName() public {
-    // Setup
-    uint256 amount = 1000 ether;
-    
-    // Action
-    vm.prank(user);
-    contract.someFunction(amount);
-    
-    // Assertions
-    assertEq(contract.balance(), amount);
-}
+# Run all CI checks
+make ci
 ```
+
+### 3. Format and lint
+
+```bash
+make fmt        # Format code
+make fmt-check  # Check formatting without changes
+```
+
+### 4. Commit with conventional commits
+
+```
+feat(token): add burn functionality
+fix(staking): correct boost calculation for edge case
+docs(readme): update deployment instructions
+test(lotpool): add fuzz tests for voting
+refactor(apps): extract deployment library
+```
+
+### 5. Open a pull request
+
+Include in your PR description:
+- What changed and why
+- How to test it
+- Any breaking changes
 
 ## Code Style
 
-### Solidity Style Guide
+### Solidity
 
-We follow the [Solidity Style Guide](https://docs.soliditylang.org/en/latest/style-guide.html) with these additions:
+Follow the [Solidity Style Guide](https://docs.soliditylang.org/en/latest/style-guide.html):
 
-- Use explicit imports: `import {Contract} from "./Contract.sol";`
-- Group imports by category (external, internal)
-- Use NatSpec documentation for all public functions
-- Maximum line length: 100 characters
-- Use descriptive variable names
-- Include error handling with custom errors
-
-### Documentation Standards
-
-- All public functions must have NatSpec comments
-- Include `@param` and `@return` descriptions
-- Add `@notice` for user-facing functions
-- Use `@dev` for developer notes
-
-Example:
 ```solidity
+// Use explicit imports
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+// Document public functions with NatSpec
 /**
- * @notice Creates a new lock for the specified amount and duration
- * @param amount The amount of ELTA tokens to lock
- * @param lockDuration The duration of the lock in seconds
- * @dev Lock duration must be between MIN_LOCK and MAX_LOCK
+ * @notice Creates a new staking position
+ * @param amount ELTA tokens to lock
+ * @param duration Lock duration in seconds
+ * @return positionId The ID of the created position
  */
-function createLock(uint256 amount, uint256 lockDuration) external {
+function createLock(uint256 amount, uint256 duration) external returns (uint256 positionId) {
     // Implementation
 }
 ```
 
-## Security
+### Testing
 
-### Security Guidelines
+Name tests descriptively:
 
-- Follow the [ConsenSys Smart Contract Best Practices](https://consensys.github.io/smart-contract-best-practices/)
-- Use OpenZeppelin contracts when possible
-- Implement proper access controls
-- Add reentrancy guards where needed
-- Validate all inputs
-- Use safe math operations (Solidity 0.8+)
+```solidity
+function test_CreateLock_WithMinDuration() public { }
+function test_CreateLock_RevertWhen_AmountIsZero() public { }
+function testFuzz_CreateLock_AnyValidDuration(uint256 duration) public { }
+```
+
+Test both success paths and revert conditions. Add fuzz tests for functions with numeric inputs.
+
+### Custom Errors
+
+Use custom errors instead of require strings:
+
+```solidity
+// In src/utils/Errors.sol
+error AmountTooLow();
+error LockExpired();
+
+// In contract
+if (amount < MIN_AMOUNT) revert Errors.AmountTooLow();
+```
+
+## Project Structure
+
+```
+src/
+├── token/ELTA.sol              # Governance token
+├── staking/VeELTA.sol          # Vote-escrowed staking
+├── experience/ElataXP.sol      # Reputation system
+├── governance/                 # Governor, timelock, funding
+├── rewards/                    # Fee distribution
+├── apps/                       # App token framework
+└── utils/Errors.sol            # Shared error definitions
+
+test/
+├── token/ELTATest.t.sol        # Unit tests per contract
+├── staking/VeELTATest.t.sol
+├── integration/                # Cross-contract tests
+└── fuzz/                       # Property-based tests
+
+script/
+├── Deploy.sol                  # Main deployment script
+└── SeedLocalData.s.sol         # Local test data seeding
+```
+
+## Running the Full CI Suite
+
+Before pushing, run the same checks CI will run:
+
+```bash
+make ci
+```
+
+This runs:
+1. `forge fmt --check` — formatting check
+2. `forge build` — compilation
+3. `forge test` — all tests
+4. Gas report generation
+
+## Security Guidelines
+
+When modifying contracts:
+
+- Use OpenZeppelin contracts where possible
+- Add reentrancy guards to functions that transfer tokens
+- Validate all inputs (zero addresses, array lengths, bounds)
+- Consider edge cases in math operations
+- Add access control to admin functions
+- Write tests for the security properties you're relying on
 
 ### Reporting Security Issues
 
-If you discover a security vulnerability, please:
+If you find a security vulnerability:
 
-1. **DO NOT** open a public issue
+1. Do not open a public issue
 2. Email security@elata.bio with details
-3. Allow time for the issue to be addressed before disclosure
+3. Allow time for a fix before disclosure
 
 ## Getting Help
 
-- Join our [Discord](https://discord.gg/elata) for community support
-- Check existing issues and discussions on GitHub
-- Read the documentation at [docs.elata.bio](https://docs.elata.bio)
+- Check existing [GitHub Issues](https://github.com/Elata-Biosciences/elata-protocol/issues)
+- Read the [architecture docs](./docs/ARCHITECTURE.md)
+- Ask in the community Discord
 
 ## Recognition
 
-Contributors will be recognized in our documentation and may be eligible for:
-- ELTA token rewards for significant contributions
-- Recognition in project credits
-- Invitation to contributor events
+Significant contributions may be eligible for:
+- ELTA token grants
+- Recognition in release notes
+- Contributor role in the community
 
-Thank you for contributing to Elata Protocol! 🧠⚡
+Thanks for contributing.
