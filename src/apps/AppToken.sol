@@ -45,6 +45,11 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
     address public governance;
     mapping(address => bool) public transferFeeExempt;
 
+    // Burn configuration (portion of transfer fee that gets burned)
+    uint16 public burnFeeBps = 0; // Default: no burn
+    uint16 public constant MAX_BURN_FEE_BPS = 200; // 2% max burn
+    address public constant BURN_SINK = 0x000000000000000000000000000000000000dEaD;
+
     // LP-keyed tax: only tax transfers to/from liquidity pools
     mapping(address => bool) public isLiquidityPool;
 
@@ -62,6 +67,7 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
     event MintingFinalized();
     event Minted(address indexed to, uint256 amount);
     event TransferFeeUpdated(uint16 oldBps, uint16 newBps);
+    event BurnFeeBpsUpdated(uint16 oldBps, uint16 newBps);
     event TransferFeeExemptSet(address indexed account, bool exempt);
     event LPAddressUpdated(address indexed lp, bool isLP);
     event FeeCollectorUpdated(address indexed oldCollector, address indexed newCollector, uint256 appId);
@@ -331,22 +337,52 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
         // Transfer net amount to recipient
         super._update(from, to, netAmount);
 
-        // Route fee to FeeCollector (if configured) or legacy distributors
-        if (feeCollector != address(0)) {
-            // New path: FeeCollector handles distribution
-            super._update(from, feeCollector, fee);
-            emit TransferTaxCollected(appId, address(this), fee, from, to);
-        } else {
-            // Legacy path: direct 70/15/15 split (for backwards compatibility)
-            uint256 appFee = (fee * 7000) / 10_000;
-            uint256 veFee = (fee * 1500) / 10_000;
-            uint256 treasuryFee = fee - appFee - veFee;
-
-            if (appFee > 0) super._update(from, appRewardsDistributor, appFee);
-            if (veFee > 0) super._update(from, rewardsDistributor, veFee);
-            if (treasuryFee > 0) super._update(from, treasury, treasuryFee);
-
-            emit TransferFeeCollected(from, to, fee, appFee, veFee, treasuryFee);
+        // Calculate and apply burn (proportional portion of fee)
+        uint256 burnAmount = 0;
+        if (burnFeeBps > 0 && fee > 0) {
+            burnAmount = (fee * burnFeeBps) / transferFeeBps;
+            if (burnAmount > 0) {
+                super._update(from, BURN_SINK, burnAmount);
+            }
         }
+        uint256 routedFee = fee - burnAmount;
+
+        // Route remaining fee to FeeCollector (if configured) or legacy distributors
+        if (routedFee > 0) {
+            if (feeCollector != address(0)) {
+                // New path: FeeCollector handles distribution
+                super._update(from, feeCollector, routedFee);
+                emit TransferTaxCollected(appId, address(this), routedFee, from, to);
+            } else {
+                // Legacy path: direct 70/15/15 split (for backwards compatibility)
+                uint256 appFee = (routedFee * 7000) / 10_000;
+                uint256 veFee = (routedFee * 1500) / 10_000;
+                uint256 treasuryFee = routedFee - appFee - veFee;
+
+                if (appFee > 0) super._update(from, appRewardsDistributor, appFee);
+                if (veFee > 0) super._update(from, rewardsDistributor, veFee);
+                if (treasuryFee > 0) super._update(from, treasury, treasuryFee);
+
+                emit TransferFeeCollected(from, to, routedFee, appFee, veFee, treasuryFee);
+            }
+        }
+    }
+
+    /**
+     * @notice Set burn fee (portion of transfer fee that gets burned)
+     * @param newBps New burn fee in basis points (max 2%)
+     */
+    function setBurnFeeBps(uint16 newBps) external {
+        if (
+            msg.sender != governance && !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)
+                && !hasRole(APP_OPERATOR_ROLE, msg.sender)
+        ) {
+            revert OnlyGovernance();
+        }
+        require(newBps <= MAX_BURN_FEE_BPS, "Exceeds max burn fee");
+
+        uint16 oldBps = burnFeeBps;
+        burnFeeBps = newBps;
+        emit BurnFeeBpsUpdated(oldBps, newBps);
     }
 }

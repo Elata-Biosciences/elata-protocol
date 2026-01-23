@@ -58,6 +58,7 @@ contract ContentStore is AccessControl, ReentrancyGuard {
     error ContentDoesNotExist();
     error InsufficientPayment();
     error InvalidFeeBps();
+    error InvalidBurnBps();
     error MaxSupplyReached();
 
     // =========== Events ===========
@@ -70,6 +71,7 @@ contract ContentStore is AccessControl, ReentrancyGuard {
     event ProtocolFeeBpsUpdated(uint256 oldBps, uint256 newBps);
     event FeeCollectorUpdated(address oldCollector, address newCollector);
     event RevenueWithdrawn(address indexed to, uint256 amount);
+    event BurnBpsUpdated(uint256 oldBps, uint256 newBps);
 
     // =========== Structs ===========
 
@@ -110,6 +112,15 @@ contract ContentStore is AccessControl, ReentrancyGuard {
 
     /// @notice Maximum protocol fee (15%)
     uint256 public constant MAX_PROTOCOL_FEE_BPS = 1500;
+
+    /// @notice Optional burn fee in basis points (portion of purchase burned)
+    uint256 public burnBps = 0;
+
+    /// @notice Maximum burn fee (5%)
+    uint256 public constant MAX_BURN_BPS = 500;
+
+    /// @notice Burn sink address for deflationary mechanism
+    address public constant BURN_SINK = 0x000000000000000000000000000000000000dEaD;
 
     /// @notice Basis points denominator
     uint256 public constant BPS = 10_000;
@@ -237,8 +248,18 @@ contract ContentStore is AccessControl, ReentrancyGuard {
         // Collect payment
         paymentToken.safeTransferFrom(msg.sender, address(this), price);
 
-        // Calculate and route protocol fee
-        uint256 protocolFee = (price * protocolFeeBps) / BPS;
+        // Calculate and apply burn (if enabled)
+        uint256 burnAmount = 0;
+        if (burnBps > 0) {
+            burnAmount = (price * burnBps) / BPS;
+            if (burnAmount > 0) {
+                paymentToken.safeTransfer(BURN_SINK, burnAmount);
+            }
+        }
+
+        // Calculate and route protocol fee (from remaining amount)
+        uint256 remainingAfterBurn = price - burnAmount;
+        uint256 protocolFee = (remainingAfterBurn * protocolFeeBps) / BPS;
         if (protocolFee > 0 && _canRouteProtocolFee(paymentType)) {
             _routeProtocolFee(paymentType, paymentToken, protocolFee);
         } else {
@@ -247,7 +268,7 @@ contract ContentStore is AccessControl, ReentrancyGuard {
         }
 
         // Remaining goes to creator revenue
-        creatorRevenue[paymentType] += price - protocolFee;
+        creatorRevenue[paymentType] += remainingAfterBurn - protocolFee;
 
         // Increment minted count
         content.minted++;
@@ -349,6 +370,17 @@ contract ContentStore is AccessControl, ReentrancyGuard {
         address oldCollector = feeCollector;
         feeCollector = _feeCollector;
         emit FeeCollectorUpdated(oldCollector, _feeCollector);
+    }
+
+    /**
+     * @notice Set burn fee for content purchases
+     * @param newBps New burn fee in basis points (max 5%)
+     */
+    function setBurnBps(uint256 newBps) external onlyRole(MODULE_ADMIN_ROLE) {
+        if (newBps > MAX_BURN_BPS) revert InvalidBurnBps();
+        uint256 oldBps = burnBps;
+        burnBps = newBps;
+        emit BurnBpsUpdated(oldBps, newBps);
     }
 
     // =========== View Functions ===========
