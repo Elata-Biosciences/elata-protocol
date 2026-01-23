@@ -111,12 +111,19 @@ contract AppBondingCurve is ReentrancyGuard {
     uint256 public earlyBuyDuration = 6 hours; // governance-configurable (default 6 hours)
     address public governance;
 
+    // Sniper protection configuration
+    uint256 public sniperFeeBps = 500; // 5% extra fee during early window
+    uint256 public sniperFeeDuration = 1 hours; // Duration of elevated fees
+    bool public sniperFeeEnabled = false; // Governance can enable
+    uint256 public constant MAX_SNIPER_FEE_BPS = 1000; // 10% max
+
     // Creator address (for cancel functionality)
     address public immutable creator;
 
     // Events
     event CurveInitialized(uint256 indexed appId, uint256 seedElta, uint256 tokenSupply, uint256 initialK);
     event XPGateUpdated(uint256 minXP, uint256 duration);
+    event SniperFeeConfigUpdated(uint256 feeBps, uint256 duration, bool enabled);
     event TokensPurchased(
         uint256 indexed appId,
         address indexed buyer,
@@ -158,6 +165,7 @@ contract AppBondingCurve is ReentrancyGuard {
     error DeadlineNotReached();
     error AlreadyCancelled();
     error OnlyCreator();
+    error SniperFeeTooHigh();
 
     modifier onlyFactory() {
         if (msg.sender != appFactory) revert OnlyFactory();
@@ -357,7 +365,14 @@ contract AppBondingCurve is ReentrancyGuard {
         // Calculate fee ON TOP of trade (buyer pays extra)
         uint256 tradingFee = 0;
         if (address(appFeeRouter) != address(0)) {
-            tradingFee = (actualEltaIn * appFeeRouter.feeBps()) / 10_000;
+            uint256 effectiveFeeBps = appFeeRouter.feeBps();
+
+            // Apply sniper fee during early window if enabled
+            if (sniperFeeEnabled && block.timestamp < activationTime + sniperFeeDuration) {
+                effectiveFeeBps += sniperFeeBps;
+            }
+
+            tradingFee = (actualEltaIn * effectiveFeeBps) / 10_000;
         }
 
         // Pull ELTA from buyer: curve amount + trading fee
@@ -486,6 +501,21 @@ contract AppBondingCurve is ReentrancyGuard {
         xpMinForEarlyBuy = _minXP;
         earlyBuyDuration = _duration;
         emit XPGateUpdated(_minXP, _duration);
+    }
+
+    /**
+     * @notice Set sniper protection fee configuration
+     * @param _feeBps Sniper fee in basis points (max 10%)
+     * @param _duration Duration of elevated fees from activation
+     * @param _enabled Whether sniper fee is enabled
+     */
+    function setSniperFeeConfig(uint256 _feeBps, uint256 _duration, bool _enabled) external {
+        if (msg.sender != governance) revert OnlyGovernance();
+        if (_feeBps > MAX_SNIPER_FEE_BPS) revert SniperFeeTooHigh();
+        sniperFeeBps = _feeBps;
+        sniperFeeDuration = _duration;
+        sniperFeeEnabled = _enabled;
+        emit SniperFeeConfigUpdated(_feeBps, _duration, _enabled);
     }
 
     /**

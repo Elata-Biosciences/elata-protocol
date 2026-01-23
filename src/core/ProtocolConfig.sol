@@ -47,6 +47,7 @@ contract ProtocolConfig {
     // Tax bounds (BPS)
     uint256 public constant MAX_BONDING_CURVE_TAX_BPS = 500; // 5%
     uint256 public constant MAX_TRANSFER_TAX_BPS = 1000; // 10% absolute max
+    uint256 public constant MAX_SNIPER_FEE_BPS = 1000; // 10% max sniper protection fee
 
     // Graduation bounds
     uint256 public constant MIN_GRADUATION_TARGET = 1000 ether;
