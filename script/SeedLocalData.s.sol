@@ -212,9 +212,9 @@ contract SeedLocalData is Script {
         );
 
         // Get app token address (apps mapping returns the full struct as tuple)
-        // App struct: creator, token, vault, curve, pair, locker, createdAt, graduatedAt,
-        // graduated, totalRaised, finalSupply
-        (, app.token,,,,,,,,,) = factory.apps(app.appId);
+        // App struct: creator, token, vault, curve, vestingWallet, ecosystemVault, pair, locker,
+        // createdAt, graduatedAt, graduated, totalRaised, finalSupply
+        (, app.token,,,,,,,,,,,) = factory.apps(app.appId);
         app.name = name;
         app.symbol = symbol;
 
@@ -224,7 +224,7 @@ contract SeedLocalData is Script {
         elta.approve(address(moduleFactory), 0); // No fee for now
 
         // Note: vault is already deployed by AppFactory, get it from the app struct
-        (,, address vaultAddr,,,,,,,,) = AppFactory(APP_FACTORY_ADDRESS).apps(app.appId);
+        (,, address vaultAddr,,,,,,,,,,) = AppFactory(APP_FACTORY_ADDRESS).apps(app.appId);
         address access1155 = moduleFactory.deployModules(
             app.token, vaultAddr, string.concat("https://metadata.elata.bio/", symbol, "/")
         );

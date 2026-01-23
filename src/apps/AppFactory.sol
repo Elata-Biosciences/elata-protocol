@@ -10,6 +10,8 @@ import {AppBondingCurve, IAppFactory} from "./AppBondingCurve.sol";
 import {AppStakingVault} from "./AppStakingVault.sol";
 import {AppToken} from "./AppToken.sol";
 import {AppDeploymentLib} from "./libraries/AppDeploymentLib.sol";
+import {AppVestingWallet} from "../vesting/AppVestingWallet.sol";
+import {AppEcosystemVault} from "../vesting/AppEcosystemVault.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -18,21 +20,21 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 /**
  * @title AppFactory
  * @author Elata Biosciences
- * @notice Permissionless factory for launching app tokens with auto-staked creator shares
+ * @notice Permissionless factory for launching app tokens with vesting and ecosystem allocations
  * @dev Central registry and launch mechanism for the Elata app ecosystem
  *
  * Features:
  * - Permissionless app token creation
  * - Standardized bonding curve launches
- * - Auto-staked creator alignment (50% of supply)
- * - Snapshot-enabled vault for rewards
+ * - Team vesting wallet deployment
+ * - Ecosystem vault for airdrops
  * - Protocol fee collection via router
  * - Emergency pause mechanism
  *
- * Economics:
- * - Creators stake ELTA to launch apps
- * - Creator receives 50% of supply as staked position (not liquid)
+ * Economics (50/25/25 split):
  * - 50% goes to bonding curve for public sale
+ * - 25% goes to team vesting wallet (cliff + linear vest)
+ * - 25% goes to ecosystem vault (for airdrops/initiatives)
  * - Protocol collects trading fees (forwarded to rewards)
  * - Automated liquidity provision on graduation
  * - LP token locking for security
@@ -64,8 +66,10 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
     struct App {
         address creator;
         address token;
-        address vault; // NEW: staking vault
+        address vault; // Staking vault (optional, for compatibility)
         address curve;
+        address vestingWallet; // Team vesting wallet (25%)
+        address ecosystemVault; // Ecosystem vault for airdrops (25%)
         address pair; // Set after graduation
         address locker; // Set after graduation
         uint64 createdAt;
@@ -74,6 +78,10 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         uint256 totalRaised; // Total ELTA raised
         uint256 finalSupply; // Final circulating supply
     }
+
+    // Vesting defaults
+    uint64 public constant DEFAULT_VESTING_CLIFF = 90 days; // 3 months
+    uint64 public constant DEFAULT_VESTING_DURATION = 730 days; // 2 years
 
     uint256 public appCount;
     mapping(uint256 => App) public apps;
@@ -86,7 +94,9 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         address indexed token,
         address vault,
         address curve,
-        uint256 creatorStaked
+        address vestingWallet,
+        address ecosystemVault,
+        uint256 curveShare
     );
 
     event AppGraduated(
@@ -213,9 +223,10 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
             30 days // maxDuration - TODO: read from ProtocolConfig
         );
 
-        // Configure token & curve
-        uint256 creatorShare = tokenSupply / 2;
-        uint256 curveShare = tokenSupply - creatorShare;
+        // Configure token & curve with 50/25/25 split
+        uint256 curveShare = tokenSupply / 2; // 50% to bonding curve
+        uint256 teamShare = tokenSupply / 4; // 25% to team vesting
+        uint256 ecosystemShare = tokenSupply - curveShare - teamShare; // 25% to ecosystem
 
         AppToken token = AppToken(tokenAddr);
 
@@ -225,8 +236,30 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         // Mark bonding curve as exempt from transfer fees
         token.setTransferFeeExempt(curveAddr, true);
 
-        token.mint(address(this), creatorShare);
+        // Deploy vesting wallet for team allocation
+        AppVestingWallet vestingWallet = new AppVestingWallet(
+            appCount,
+            tokenAddr,
+            msg.sender, // beneficiary = creator (team multisig)
+            uint64(block.timestamp), // start = now
+            DEFAULT_VESTING_CLIFF,
+            DEFAULT_VESTING_DURATION,
+            msg.sender // admin = creator
+        );
+        address vestingWalletAddr = address(vestingWallet);
+
+        // Deploy ecosystem vault
+        AppEcosystemVault ecosystemVault = new AppEcosystemVault(appCount, tokenAddr, msg.sender);
+        address ecosystemVaultAddr = address(ecosystemVault);
+
+        // Mark vesting and ecosystem vaults as exempt from transfer fees
+        token.setTransferFeeExempt(vestingWalletAddr, true);
+        token.setTransferFeeExempt(ecosystemVaultAddr, true);
+
+        // Mint tokens according to 50/25/25 split
         token.mint(curveAddr, curveShare);
+        token.mint(vestingWalletAddr, teamShare);
+        token.mint(ecosystemVaultAddr, ecosystemShare);
         token.revokeMinter(address(this));
         token.grantRole(token.DEFAULT_ADMIN_ROLE(), msg.sender);
         token.revokeRole(token.DEFAULT_ADMIN_ROLE(), address(this));
@@ -234,16 +267,8 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         require(ELTA.transfer(curveAddr, seedElta), "Transfer failed");
         AppBondingCurve(curveAddr).initializeCurve(seedElta, curveShare);
 
-        // Auto-stake creator share (50% of supply)
+        // Transfer vault ownership to creator
         AppStakingVault vault = AppStakingVault(vaultAddr);
-
-        // Approve vault to pull tokens from factory
-        token.approve(vaultAddr, creatorShare);
-
-        // Stake on behalf of creator (factory is still owner at this point)
-        vault.stakeFor(msg.sender, creatorShare);
-
-        // Transfer vault ownership to creator AFTER auto-staking
         vault.transferOwnership(msg.sender);
 
         // Register vault in rewards distributor with token mapping
@@ -256,6 +281,8 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
             token: tokenAddr,
             vault: vaultAddr,
             curve: curveAddr,
+            vestingWallet: vestingWalletAddr,
+            ecosystemVault: ecosystemVaultAddr,
             pair: address(0),
             locker: address(0),
             createdAt: uint64(block.timestamp),
@@ -267,7 +294,9 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
 
         tokenToAppId[tokenAddr] = appId;
 
-        emit AppCreated(appId, msg.sender, tokenAddr, vaultAddr, curveAddr, creatorShare);
+        emit AppCreated(
+            appId, msg.sender, tokenAddr, vaultAddr, curveAddr, vestingWalletAddr, ecosystemVaultAddr, curveShare
+        );
 
         // NOTE: Metadata must be set by creator in separate transaction
         // token.updateMetadata() requires msg.sender == appCreator

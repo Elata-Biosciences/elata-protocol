@@ -14,7 +14,10 @@ contract AppFactoryViews {
     struct App {
         address creator;
         address token;
+        address vault;
         address curve;
+        address vestingWallet;
+        address ecosystemVault;
         address pair;
         address locker;
         uint64 createdAt;
@@ -38,7 +41,10 @@ contract AppFactoryViews {
         (
             address creator,
             address token,
+            address vault,
             address curve,
+            address vestingWallet,
+            address ecosystemVault,
             address pair,
             address locker,
             uint64 createdAt,
@@ -51,7 +57,10 @@ contract AppFactoryViews {
         return App({
             creator: creator,
             token: token,
+            vault: vault,
             curve: curve,
+            vestingWallet: vestingWallet,
+            ecosystemVault: ecosystemVault,
             pair: pair,
             locker: locker,
             createdAt: createdAt,
@@ -76,7 +85,7 @@ contract AppFactoryViews {
 
         // Count apps by this creator
         for (uint256 i = 0; i < appCount; i++) {
-            (address appCreator,,,,,,,,,) = factoryState.apps(i);
+            (address appCreator,,,,,,,,,,,,) = factoryState.apps(i);
             if (appCreator == creator) count++;
         }
 
@@ -85,7 +94,7 @@ contract AppFactoryViews {
         uint256 index = 0;
 
         for (uint256 i = 0; i < appCount; i++) {
-            (address appCreator,,,,,,,,,) = factoryState.apps(i);
+            (address appCreator,,,,,,,,,,,,) = factoryState.apps(i);
             if (appCreator == creator) {
                 result[index] = i;
                 index++;
@@ -159,7 +168,7 @@ contract AppFactoryViews {
 
         // Count graduated apps
         for (uint256 i = 0; i < appCount; i++) {
-            (,,,,,,, bool isGrad,,) = factoryState.apps(i);
+            (,,,,,,,,,, bool isGrad,,) = factoryState.apps(i);
             if (isGrad) graduatedCount++;
         }
 
@@ -168,7 +177,7 @@ contract AppFactoryViews {
         uint256 index = 0;
 
         for (uint256 i = 0; i < appCount; i++) {
-            (,,,,,,, bool isGrad,,) = factoryState.apps(i);
+            (,,,,,,,,,, bool isGrad,,) = factoryState.apps(i);
             if (isGrad) {
                 graduatedList[index] = i;
                 index++;
@@ -194,7 +203,7 @@ contract AppFactoryViews {
         totalApps = factoryState.appCount();
 
         for (uint256 i = 0; i < totalApps; i++) {
-            (,,,,,,, bool graduated, uint256 totalRaised,) = factoryState.apps(i);
+            (,,,,,,,,,, bool graduated, uint256 totalRaised,) = factoryState.apps(i);
             if (graduated) {
                 graduatedApps++;
                 totalValueLocked += totalRaised;
@@ -216,7 +225,10 @@ interface IAppFactoryState {
         returns (
             address creator,
             address token,
+            address vault,
             address curve,
+            address vestingWallet,
+            address ecosystemVault,
             address pair,
             address locker,
             uint64 createdAt,

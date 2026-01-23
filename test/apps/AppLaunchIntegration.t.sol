@@ -144,17 +144,18 @@ contract AppLaunchIntegrationTest is Test {
         // Verify token details
         AppToken token = AppToken(app.token);
         uint256 defaultSupply = factory.defaultSupply();
-        uint256 creatorStaked = defaultSupply / 2; // 50% auto-staked to creator
-        uint256 curveSupply = defaultSupply - creatorStaked; // 50% to curve
+        uint256 curveSupply = defaultSupply / 2; // 50% to curve
+        uint256 teamSupply = defaultSupply / 4; // 25% to vesting
+        uint256 ecosystemSupply = defaultSupply - curveSupply - teamSupply; // 25% to ecosystem
 
         assertEq(token.name(), "NeuroRacing");
         assertEq(token.symbol(), "RACE");
         assertEq(token.totalSupply(), defaultSupply);
 
-        // V2: Creator's 50% is auto-staked in vault (not liquid)
-        AppStakingVault vault = AppStakingVault(app.vault);
-        assertEq(vault.balanceOf(creator1), creatorStaked); // Creator has 50% staked
+        // V3: 50/25/25 split - curve, vesting wallet, ecosystem vault
         assertEq(token.balanceOf(app.curve), curveSupply); // Curve has 50%
+        assertEq(token.balanceOf(app.vestingWallet), teamSupply); // Vesting has 25%
+        assertEq(token.balanceOf(app.ecosystemVault), ecosystemSupply); // Ecosystem has 25%
 
         console2.log("[OK] App created successfully");
     }
@@ -213,7 +214,7 @@ contract AppLaunchIntegrationTest is Test {
         (uint256 eltaReserve, uint256 tokenReserve,,,, uint256 progress) = curve.getCurveState();
 
         uint256 defaultSupply = factory.defaultSupply();
-        uint256 curveSupply = defaultSupply / 2; // V2: 50% to curve, 50% auto-staked
+        uint256 curveSupply = defaultSupply / 2; // V3: 50% to curve, 25% vesting, 25% ecosystem
 
         assertGt(eltaReserve, factory.seedElta()); // Should have more than seed
         assertEq(tokenReserve, curveSupply - totalTokensPurchased);
@@ -447,9 +448,9 @@ contract AppLaunchIntegrationTest is Test {
         uint256 creationGas = gasBefore - gasAfter;
         console2.log("App creation gas:", creationGas);
 
-        // V4: Gas increased due to lifecycle state management
-        // Threshold updated to 8.5M to account for additional state tracking
-        assertLt(creationGas, 8_500_000);
+        // V5: Gas increased due to vesting and ecosystem vault deployment
+        // Threshold updated to 9.5M to account for additional contract deployments
+        assertLt(creationGas, 9_500_000);
 
         // Test purchase gas costs
         AppFactory.App memory app = factory.getApp(appId);
@@ -555,13 +556,14 @@ contract AppLaunchIntegrationTest is Test {
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
         AppToken token = AppToken(app.token);
-        AppStakingVault vault = AppStakingVault(app.vault);
 
-        uint256 creatorStaked = supply / 2; // 50% auto-staked
-        uint256 curveSupply = supply - creatorStaked;
+        uint256 curveSupply = supply / 2; // 50% to curve
+        uint256 teamSupply = supply / 4; // 25% to vesting
+        uint256 ecosystemSupply = supply - curveSupply - teamSupply; // 25% to ecosystem
 
         assertEq(token.maxSupply(), supply);
-        assertEq(vault.balanceOf(creator1), creatorStaked); // Creator has 50% staked
+        assertEq(token.balanceOf(app.vestingWallet), teamSupply); // Vesting has 25%
+        assertEq(token.balanceOf(app.ecosystemVault), ecosystemSupply); // Ecosystem has 25%
         assertEq(curve.targetRaisedElta(), targetAmount);
         assertEq(curve.reserveElta(), seedAmount);
         assertEq(curve.reserveToken(), curveSupply); // Curve has 50%
