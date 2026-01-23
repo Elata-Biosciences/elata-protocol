@@ -178,10 +178,10 @@ contract DesignValidationTest is Test {
         vm.prank(appCreator);
         tourn.finalize(bytes32(0));
 
-        // VALIDATION: Protocol fee captured (account for 1% transfer fee)
+        // VALIDATION: Protocol fee captured (LP-keyed tax: no fee for wallet-to-wallet)
         uint256 expectedFee = (10 ether * 250) / 10000;
-        uint256 expectedFeeAfterTransfer = (expectedFee * 99) / 100; // 1% transfer fee
-        assertEq(appToken.balanceOf(treasury), treasuryBefore + expectedFeeAfterTransfer);
+        // No transfer fee since tournament->treasury is wallet-to-wallet
+        assertEq(appToken.balanceOf(treasury), treasuryBefore + expectedFee);
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -260,9 +260,9 @@ contract DesignValidationTest is Test {
         vm.prank(sender);
         appToken.transfer(recipient, 500 ether);
 
-        // VALIDATION: 1% transfer fee applied - recipient gets 99%
-        assertEq(appToken.balanceOf(recipient), 495 ether); // 500 * 0.99
-        assertEq(appToken.balanceOf(sender), 500 ether); // sender pays full amount
+        // VALIDATION: LP-keyed tax - wallet-to-wallet has NO fee
+        assertEq(appToken.balanceOf(recipient), 500 ether); // Full amount
+        assertEq(appToken.balanceOf(sender), 500 ether);
     }
 
     function test_Design_PermitGaslessApprovals() public {

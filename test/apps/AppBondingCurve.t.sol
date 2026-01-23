@@ -127,12 +127,10 @@ contract AppBondingCurveTest is Test {
         vm.stopPrank();
 
         assertEq(tokensOut, expectedTokens);
-        // Account for 1% transfer fee - buyer receives 99% of tokens
+        // LP-keyed tax: curve->buyer is wallet-to-wallet, NO fee
         uint256 actualReceived = tokensAfter - tokensBefore;
-        uint256 expectedReceived = (expectedTokens * 99) / 100;
+        assertEq(actualReceived, expectedTokens); // Full amount received
 
-        // Allow for small rounding differences
-        assertApproxEqRel(actualReceived, expectedReceived, 0.01e18); // 0.01% tolerance
         // No protocol fee deducted - all ELTA goes to reserves
         assertEq(curve.reserveElta(), SEED_ELTA + eltaIn);
     }

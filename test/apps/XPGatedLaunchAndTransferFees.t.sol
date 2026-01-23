@@ -249,9 +249,9 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
         curve.setXPGate(200 ether, 12 hours);
     }
 
-    // ===== Fee-on-Transfer Tests =====
+    // ===== Fee-on-Transfer Tests (LP-Keyed) =====
 
-    function test_FoT_TransferFeeAppliedCorrectly() public {
+    function test_FoT_WalletToWalletNoTax() public {
         // Create app
         uint256 totalCost = factory.creationFee() + factory.seedElta();
 
@@ -272,19 +272,55 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
         uint256 tokensOut = curve.buy(purchaseAmount, 0);
         vm.stopPrank();
 
-        // Transfer tokens - should apply 1% fee
+        // Wallet-to-wallet transfer - LP-keyed tax means NO fee
         uint256 transferAmount = 1000 ether;
         address recipient = makeAddr("recipient");
 
         vm.prank(xpUser);
         token.transfer(recipient, transferAmount);
 
-        // Recipient should receive 99% (1% fee)
-        uint256 expectedNet = transferAmount * 99 / 100;
-        assertEq(token.balanceOf(recipient), expectedNet);
+        // Recipient should receive FULL amount (no tax for wallet-to-wallet)
+        assertEq(token.balanceOf(recipient), transferAmount);
     }
 
-    function test_FoT_FeesSplitCorrectly() public {
+    function test_FoT_TransferFeeAppliedToLPTransfer() public {
+        // Create app
+        uint256 totalCost = factory.creationFee() + factory.seedElta();
+
+        vm.startPrank(creator);
+        elta.approve(address(factory), totalCost);
+        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "");
+        vm.stopPrank();
+
+        AppFactory.App memory app = factory.getApp(appId);
+        AppToken token = AppToken(app.token);
+        AppBondingCurve curve = AppBondingCurve(app.curve);
+
+        // Buy some tokens
+        uint256 purchaseAmount = 1000 ether;
+
+        vm.startPrank(xpUser);
+        elta.approve(address(curve), purchaseAmount * 101 / 100);
+        uint256 tokensOut = curve.buy(purchaseAmount, 0);
+        vm.stopPrank();
+
+        // Set up an LP address
+        address lpAddress = makeAddr("lpAddress");
+        vm.prank(governance); // Governance can set LP addresses
+        token.setLiquidityPool(lpAddress, true);
+
+        // Transfer TO LP - should apply 1% fee
+        uint256 transferAmount = 1000 ether;
+
+        vm.prank(xpUser);
+        token.transfer(lpAddress, transferAmount);
+
+        // LP should receive 99% (1% fee applied)
+        uint256 expectedNet = transferAmount * 99 / 100;
+        assertEq(token.balanceOf(lpAddress), expectedNet);
+    }
+
+    function test_FoT_FeesSplitCorrectlyOnLPTransfer() public {
         // Create app
         uint256 totalCost = factory.creationFee() + factory.seedElta();
 
@@ -305,7 +341,12 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
         uint256 tokensOut = curve.buy(purchaseAmount, 0);
         vm.stopPrank();
 
-        // Get distributor balances before
+        // Set up an LP address for LP-keyed tax
+        address lpAddress = makeAddr("lpAddress");
+        vm.prank(governance); // Governance can set LP addresses
+        token.setLiquidityPool(lpAddress, true);
+
+        // Get distributor balances before (legacy 70/15/15 split when no FeeCollector)
         address appRewards = token.appRewardsDistributor();
         address veRewards = token.rewardsDistributor();
         address treasuryAddr = token.treasury();
@@ -314,12 +355,11 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
         uint256 veRewardsBefore = token.balanceOf(veRewards);
         uint256 treasuryBefore = token.balanceOf(treasuryAddr);
 
-        // Transfer 10000 tokens
+        // Transfer TO LP (LP-keyed tax applies)
         uint256 transferAmount = 10000 ether;
-        address recipient = makeAddr("recipient");
 
         vm.prank(xpUser);
-        token.transfer(recipient, transferAmount);
+        token.transfer(lpAddress, transferAmount);
 
         // Check fee split: 1% fee = 100 tokens
         // 70% = 70, 15% = 15, 15% = 15

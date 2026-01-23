@@ -359,12 +359,12 @@ contract AppLaunchSecurityTest is Test {
         vm.prank(user1);
         token.transfer(attacker, transferAmount);
 
-        // Account for 1% transfer fee - use actual balances instead of calculated
+        // LP-keyed tax: wallet-to-wallet transfers have NO fee
         uint256 actualReceived = token.balanceOf(attacker);
         uint256 actualRemaining = token.balanceOf(user1);
 
-        // Verify attacker received less than transfer amount due to fee
-        assertLt(actualReceived, transferAmount);
+        // Verify attacker received FULL transfer amount (no fee for wallet-to-wallet)
+        assertEq(actualReceived, transferAmount);
         // Verify user1's remaining balance is correct
         assertEq(actualRemaining, tokensOut - transferAmount);
     }

@@ -42,7 +42,14 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
     address public governance;
     mapping(address => bool) public transferFeeExempt;
 
-    // Reward distributor addresses
+    // LP-keyed tax: only tax transfers to/from liquidity pools
+    mapping(address => bool) public isLiquidityPool;
+
+    // Fee collection
+    address public feeCollector;
+    uint256 public appId; // App ID for FeeCollector accounting
+
+    // Reward distributor addresses (legacy - kept for compatibility)
     address public appRewardsDistributor;
     address public rewardsDistributor;
     address public treasury;
@@ -53,6 +60,9 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
     event Minted(address indexed to, uint256 amount);
     event TransferFeeUpdated(uint16 oldBps, uint16 newBps);
     event TransferFeeExemptSet(address indexed account, bool exempt);
+    event LPAddressUpdated(address indexed lp, bool isLP);
+    event FeeCollectorUpdated(address indexed oldCollector, address indexed newCollector, uint256 appId);
+    event TransferTaxCollected(uint256 indexed appId, address indexed token, uint256 amount, address from, address to);
     event TransferFeeCollected(
         address indexed from, address indexed to, uint256 totalFee, uint256 appFee, uint256 veFee, uint256 treasuryFee
     );
@@ -206,6 +216,35 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
     }
 
     /**
+     * @notice Set liquidity pool status for LP-keyed taxation
+     * @dev Transfers to/from LP addresses are taxed; wallet-to-wallet is not
+     * @param lp Address to update
+     * @param isLP True if address is a liquidity pool
+     */
+    function setLiquidityPool(address lp, bool isLP) external {
+        if (msg.sender != governance && !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) revert OnlyGovernance();
+        isLiquidityPool[lp] = isLP;
+        emit LPAddressUpdated(lp, isLP);
+    }
+
+    /**
+     * @notice Set the FeeCollector address and app ID for tax routing
+     * @dev Called by factory after app creation
+     * @param _feeCollector FeeCollector contract address
+     * @param _appId App ID for per-app accounting
+     */
+    function setFeeCollector(address _feeCollector, uint256 _appId) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        address oldCollector = feeCollector;
+        feeCollector = _feeCollector;
+        appId = _appId;
+        // Exempt fee collector from taxes
+        if (_feeCollector != address(0)) {
+            transferFeeExempt[_feeCollector] = true;
+        }
+        emit FeeCollectorUpdated(oldCollector, _feeCollector, _appId);
+    }
+
+    /**
      * @notice Get transfer fee info for caller
      * @return feeBps Current fee rate in basis points
      * @return maxFeeBps Maximum allowed fee rate
@@ -229,35 +268,64 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
     }
 
     /**
-     * @dev Override _update to implement fee-on-transfer with 70/15/15 split
+     * @dev Override _update to implement LP-keyed fee-on-transfer
+     *
+     * LP-Keyed Tax Rules:
+     * - Tax only applies when: neither side is exempt AND (isLiquidityPool[from] || isLiquidityPool[to])
+     * - Wallet-to-wallet transfers are NOT taxed
+     * - Mints and burns are NOT taxed
+     * - Tax is routed to FeeCollector for per-app accounting and later distribution
      */
     function _update(address from, address to, uint256 amount) internal override {
-        // Skip fee for mints, burns, and exempt addresses
-        if (
-            from == address(0) || to == address(0) || transferFeeExempt[from] || transferFeeExempt[to]
-                || transferFeeBps == 0
-        ) {
+        // Skip fee for mints and burns
+        if (from == address(0) || to == address(0)) {
             super._update(from, to, amount);
             return;
         }
 
-        // Calculate and distribute fee
+        // Skip fee if either party is exempt
+        if (transferFeeExempt[from] || transferFeeExempt[to]) {
+            super._update(from, to, amount);
+            return;
+        }
+
+        // Skip fee if fee rate is zero
+        if (transferFeeBps == 0) {
+            super._update(from, to, amount);
+            return;
+        }
+
+        // LP-KEYED TAX: Only tax transfers involving liquidity pools
+        // Wallet-to-wallet transfers are NOT taxed
+        bool involvesLP = isLiquidityPool[from] || isLiquidityPool[to];
+        if (!involvesLP) {
+            super._update(from, to, amount);
+            return;
+        }
+
+        // Calculate fee for LP transfer
         uint256 fee = (amount * transferFeeBps) / 10_000;
         uint256 netAmount = amount - fee;
 
         // Transfer net amount to recipient
         super._update(from, to, netAmount);
 
-        // Split fee 70/15/15
-        uint256 appFee = (fee * 7000) / 10_000;
-        uint256 veFee = (fee * 1500) / 10_000;
-        uint256 treasuryFee = fee - appFee - veFee; // Avoid rounding issues
+        // Route fee to FeeCollector (if configured) or legacy distributors
+        if (feeCollector != address(0)) {
+            // New path: FeeCollector handles distribution
+            super._update(from, feeCollector, fee);
+            emit TransferTaxCollected(appId, address(this), fee, from, to);
+        } else {
+            // Legacy path: direct 70/15/15 split (for backwards compatibility)
+            uint256 appFee = (fee * 7000) / 10_000;
+            uint256 veFee = (fee * 1500) / 10_000;
+            uint256 treasuryFee = fee - appFee - veFee;
 
-        // Distribute fees (from sender to distributors)
-        if (appFee > 0) super._update(from, appRewardsDistributor, appFee);
-        if (veFee > 0) super._update(from, rewardsDistributor, veFee);
-        if (treasuryFee > 0) super._update(from, treasury, treasuryFee);
+            if (appFee > 0) super._update(from, appRewardsDistributor, appFee);
+            if (veFee > 0) super._update(from, rewardsDistributor, veFee);
+            if (treasuryFee > 0) super._update(from, treasury, treasuryFee);
 
-        emit TransferFeeCollected(from, to, fee, appFee, veFee, treasuryFee);
+            emit TransferFeeCollected(from, to, fee, appFee, veFee, treasuryFee);
+        }
     }
 }

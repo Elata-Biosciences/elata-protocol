@@ -154,25 +154,24 @@ contract AppTokenTest is Test {
         token.mint(user2, 500 ether);
         vm.stopPrank();
 
-        // Test transfer
+        // Test transfer (LP-keyed tax: wallet-to-wallet has NO fee)
         vm.prank(user1);
         token.transfer(user2, 200 ether);
 
-        // Account for 1% transfer fee
-        assertEq(token.balanceOf(user1), 800 ether); // Sender pays full amount
-        assertEq(token.balanceOf(user2), 500 ether + 198 ether); // 500 + 198 (99% of 200)
+        // No fee for wallet-to-wallet transfer
+        assertEq(token.balanceOf(user1), 800 ether);
+        assertEq(token.balanceOf(user2), 500 ether + 200 ether); // Full amount
 
-        // Test approval and transferFrom
+        // Test approval and transferFrom (also no fee for wallet-to-wallet)
         vm.prank(user1);
         token.approve(user2, 300 ether);
 
         vm.prank(user2);
         token.transferFrom(user1, user2, 300 ether);
 
-        // Account for 1% transfer fee on transferFrom
-        assertEq(token.balanceOf(user1), 500 ether); // Sender pays full amount
-        assertEq(token.balanceOf(user2), 500 ether + 198 ether + 297 ether); // 500 + 198 + 297 (99%
-        // of 300)
+        // No fee for wallet-to-wallet transferFrom
+        assertEq(token.balanceOf(user1), 500 ether);
+        assertEq(token.balanceOf(user2), 500 ether + 200 ether + 300 ether); // Full amounts
     }
 
     function test_BurnFrom() public {
