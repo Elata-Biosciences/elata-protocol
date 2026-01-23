@@ -26,7 +26,9 @@ library AppCurveDeployer {
         address treasury,
         IAppFeeRouter appFeeRouter,
         IElataXP elataXP,
-        address governance
+        address governance,
+        uint256 activationDelay,
+        uint256 maxDuration
     ) external returns (address) {
         return address(
             new AppBondingCurve(
@@ -41,7 +43,10 @@ library AppCurveDeployer {
                 treasury,
                 appFeeRouter,
                 elataXP,
-                governance
+                governance,
+                activationDelay,
+                maxDuration,
+                creator
             )
         );
     }

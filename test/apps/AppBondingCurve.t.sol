@@ -67,7 +67,10 @@ contract AppBondingCurveTest is Test {
             treasury, // treasury
             IAppFeeRouter(address(0)), // No fee router in tests
             mockXP,
-            governance
+            governance,
+            0, // activationDelay - immediate activation for tests
+            30 days, // maxDuration
+            creator // creator
         );
 
         // Setup: mint tokens to curve and initialize
@@ -81,6 +84,9 @@ contract AppBondingCurveTest is Test {
 
         vm.prank(factory);
         curve.initializeCurve(SEED_ELTA, TOKEN_SUPPLY);
+
+        // Activate the curve (activationDelay is 0, so we can activate immediately)
+        curve.activate();
 
         // Give buyers some ELTA
         vm.startPrank(treasury);

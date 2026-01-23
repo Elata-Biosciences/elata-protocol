@@ -142,6 +142,10 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
 
+        // Warp past activation delay (1 hour) and activate curve
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
+
         // User with XP can buy immediately
         uint256 purchaseAmount = 1000 ether;
 
@@ -165,6 +169,10 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
+
+        // Warp past activation delay (1 hour) and activate curve
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
 
         // User without XP cannot buy during early access
         uint256 purchaseAmount = 1000 ether;
@@ -190,8 +198,9 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
 
-        // Fast forward past early access period (6 hours default)
+        // Fast forward past early access period (6 hours default) - also past activation delay
         vm.warp(block.timestamp + 6 hours + 1);
+        curve.activate();
 
         // Now user without XP can buy
         uint256 purchaseAmount = 1000 ether;
@@ -264,6 +273,10 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
         AppToken token = AppToken(app.token);
         AppBondingCurve curve = AppBondingCurve(app.curve);
 
+        // Activate curve
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
+
         // Buy some tokens
         uint256 purchaseAmount = 1000 ether;
 
@@ -295,6 +308,10 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
         AppFactory.App memory app = factory.getApp(appId);
         AppToken token = AppToken(app.token);
         AppBondingCurve curve = AppBondingCurve(app.curve);
+
+        // Activate curve
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
 
         // Buy some tokens
         uint256 purchaseAmount = 1000 ether;
@@ -332,6 +349,10 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
         AppFactory.App memory app = factory.getApp(appId);
         AppToken token = AppToken(app.token);
         AppBondingCurve curve = AppBondingCurve(app.curve);
+
+        // Activate curve
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
 
         // Buy tokens
         uint256 purchaseAmount = 1000 ether;

@@ -208,7 +208,9 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
             treasury,
             appFeeRouter,
             elataXP,
-            governance
+            governance,
+            1 hours, // activationDelay - TODO: read from ProtocolConfig
+            30 days // maxDuration - TODO: read from ProtocolConfig
         );
 
         // Configure token & curve

@@ -29,6 +29,8 @@ contract ProtocolConfig {
     event BondingCurveTaxUpdated(uint256 oldBps, uint256 newBps);
     event GraduationTargetUpdated(uint256 oldTarget, uint256 newTarget);
     event LpLockDurationUpdated(uint256 oldDuration, uint256 newDuration);
+    event ActivationDelayUpdated(uint256 oldDelay, uint256 newDelay);
+    event MaxCurveDurationUpdated(uint256 oldDuration, uint256 newDuration);
     event AppTransferTaxUpdated(uint256 oldBps, uint256 newBps);
     event MaxAppTransferTaxUpdated(uint256 oldMax, uint256 newMax);
     event FeeSplitsUpdated(uint256 appStakers, uint256 veElta, uint256 creator, uint256 treasury, uint256 referral);
@@ -64,6 +66,12 @@ contract ProtocolConfig {
     // Slippage bounds
     uint256 public constant MAX_SLIPPAGE_BPS = 1000; // 10%
 
+    // Curve lifecycle bounds
+    uint256 public constant MIN_ACTIVATION_DELAY = 0;
+    uint256 public constant MAX_ACTIVATION_DELAY = 24 hours;
+    uint256 public constant MIN_CURVE_DURATION = 7 days;
+    uint256 public constant MAX_CURVE_DURATION = 90 days;
+
     // =========== State ===========
     address public admin;
     address public timelock;
@@ -77,6 +85,8 @@ contract ProtocolConfig {
     uint256 public bondingCurveTradeTaxBps;
     uint256 public graduationTarget;
     uint256 public lpLockDuration;
+    uint256 public activationDelay;
+    uint256 public maxCurveDuration;
 
     // App transfer tax
     uint256 public appTransferTaxBps;
@@ -134,6 +144,8 @@ contract ProtocolConfig {
         bondingCurveTradeTaxBps = 100; // 1%
         graduationTarget = 42_000 ether;
         lpLockDuration = 365 days * 2; // 2 years
+        activationDelay = 1 hours; // 1 hour delay before curve becomes active
+        maxCurveDuration = 30 days; // 30 days max before forced graduation
 
         // App transfer tax defaults
         appTransferTaxBps = 100; // 1%
@@ -213,6 +225,21 @@ contract ProtocolConfig {
         uint256 oldDuration = lpLockDuration;
         lpLockDuration = newDuration;
         emit LpLockDurationUpdated(oldDuration, newDuration);
+    }
+
+    function setActivationDelay(uint256 newDelay) external onlyTimelock {
+        if (newDelay > MAX_ACTIVATION_DELAY) revert ExceedsMaxBound();
+        uint256 oldDelay = activationDelay;
+        activationDelay = newDelay;
+        emit ActivationDelayUpdated(oldDelay, newDelay);
+    }
+
+    function setMaxCurveDuration(uint256 newDuration) external onlyTimelock {
+        if (newDuration < MIN_CURVE_DURATION) revert BelowMinBound();
+        if (newDuration > MAX_CURVE_DURATION) revert ExceedsMaxBound();
+        uint256 oldDuration = maxCurveDuration;
+        maxCurveDuration = newDuration;
+        emit MaxCurveDurationUpdated(oldDuration, newDuration);
     }
 
     function setAppTransferTaxBps(uint256 newBps) external onlyTimelock {

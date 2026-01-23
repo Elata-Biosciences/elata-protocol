@@ -129,6 +129,10 @@ contract AppLaunchSecurityTest is Test {
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
 
+        // Activate curve
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
+
         // Verify reentrancy protection exists
         // The ReentrancyGuard should prevent multiple entries
 
@@ -181,6 +185,10 @@ contract AppLaunchSecurityTest is Test {
 
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
+
+        // Activate curve
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
 
         uint256 purchaseAmount = 1000 ether;
 
@@ -275,6 +283,10 @@ contract AppLaunchSecurityTest is Test {
         vm.prank(attacker);
         curve.initializeCurve(1000 ether, 1_000_000 ether);
 
+        // Activate curve
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
+
         // Curve math should be deterministic and manipulation-resistant
         uint256 eltaIn = 1000 ether;
         uint256 expectedTokens = curve.getTokensOut(eltaIn);
@@ -346,6 +358,10 @@ contract AppLaunchSecurityTest is Test {
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
         AppToken token = AppToken(app.token);
+
+        // Activate curve
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
 
         // Buy tokens
         vm.startPrank(user1);

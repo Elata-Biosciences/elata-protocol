@@ -104,6 +104,17 @@ contract MockAppFeeRouter {
         uint256 /* amount */
     )
         external {}
+
+    function feeBps() external pure returns (uint256) {
+        return 100; // 1%
+    }
+
+    function takeAndForwardFee(
+        address,
+        /* payer */
+        uint256 /* fee */
+    )
+        external {}
 }
 
 /**
@@ -183,6 +194,13 @@ contract CurveLifecycleTest is Test {
         // Mock router factory call
         vm.mockCall(address(router), abi.encodeWithSignature("factory()"), abi.encode(address(factory)));
 
+        // Mock appFactory graduation callback
+        vm.mockCall(
+            appFactory,
+            abi.encodeWithSignature("onAppGraduated(uint256,address,address,uint256,uint256,uint256)"),
+            abi.encode()
+        );
+
         curve = new AppBondingCurve(
             APP_ID,
             appFactory,
@@ -195,7 +213,10 @@ contract CurveLifecycleTest is Test {
             treasury,
             IAppFeeRouter(address(feeRouter)),
             IElataXP(address(xp)),
-            governance
+            governance,
+            1 hours, // activationDelay
+            30 days, // maxDuration
+            creator // creator
         );
     }
 
@@ -219,24 +240,116 @@ contract CurveLifecycleTest is Test {
 
     function test_InitialStateIsPending() public {
         _deployCurve();
-        // New curve should start in PENDING state (before initialize)
-        // Note: Current implementation doesn't have explicit states
-        // This test documents expected behavior
+        // New curve should start in PENDING state
+        assertEq(uint256(curve.state()), uint256(AppBondingCurve.CurveState.PENDING));
         assertFalse(curve.graduated());
     }
 
     function test_BuyRevertedWhenPending() public {
-        _deployCurve();
-        // Before initialize, should not be able to buy
-        // Note: Current implementation reverts with NotInitialized
+        _initializeCurve();
+        // While PENDING (not yet activated), buy should revert
+        vm.startPrank(buyer);
+        elta.approve(address(curve), 1000 ether);
+        vm.expectRevert(AppBondingCurve.NotActive.selector);
+        curve.buy(1000 ether, 0);
+        vm.stopPrank();
     }
 
     function test_StateAfterInitialize() public {
         _initializeCurve();
-        // After initialize, should be ACTIVE (can buy)
+        // After initialize, still PENDING (need to activate)
+        assertEq(uint256(curve.state()), uint256(AppBondingCurve.CurveState.PENDING));
         assertFalse(curve.graduated());
         assertGt(curve.reserveElta(), 0);
         assertGt(curve.reserveToken(), 0);
+    }
+
+    function test_ActivateTransitionsPendingToActive() public {
+        _initializeCurve();
+
+        // Warp past activation delay
+        vm.warp(block.timestamp + 1 hours + 1);
+
+        // Activate
+        curve.activate();
+
+        assertEq(uint256(curve.state()), uint256(AppBondingCurve.CurveState.ACTIVE));
+    }
+
+    function test_CannotActivateBeforeDelay() public {
+        _initializeCurve();
+
+        // Try to activate immediately (before delay)
+        vm.expectRevert(AppBondingCurve.TooEarlyToActivate.selector);
+        curve.activate();
+    }
+
+    function test_CanBuyAfterActivation() public {
+        _initializeCurve();
+
+        // Activate
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
+
+        // Now can buy
+        vm.startPrank(buyer);
+        elta.approve(address(curve), 2000 ether);
+        uint256 tokensOut = curve.buy(1000 ether, 0);
+        vm.stopPrank();
+
+        assertGt(tokensOut, 0);
+    }
+
+    function test_CreatorCanCancel() public {
+        _initializeCurve();
+
+        // Creator cancels
+        vm.prank(creator);
+        curve.cancel();
+
+        assertEq(uint256(curve.state()), uint256(AppBondingCurve.CurveState.CANCELLED));
+    }
+
+    function test_NonCreatorCannotCancel() public {
+        _initializeCurve();
+
+        vm.expectRevert(AppBondingCurve.OnlyCreator.selector);
+        vm.prank(buyer);
+        curve.cancel();
+    }
+
+    function test_CannotCancelAfterActivation() public {
+        _initializeCurve();
+
+        // Activate
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
+
+        // Try to cancel
+        vm.expectRevert(AppBondingCurve.NotPending.selector);
+        vm.prank(creator);
+        curve.cancel();
+    }
+
+    function test_ForceGraduateAfterDeadline() public {
+        _initializeCurve();
+
+        // Warp past deadline (1 hour activation + 30 days max duration)
+        vm.warp(block.timestamp + 1 hours + 30 days + 1);
+
+        // Force graduate
+        curve.forceGraduate();
+
+        assertEq(uint256(curve.state()), uint256(AppBondingCurve.CurveState.GRADUATED));
+        assertTrue(curve.graduated());
+    }
+
+    function test_CannotForceGraduateBeforeDeadline() public {
+        _initializeCurve();
+
+        // Try to force graduate before deadline
+        vm.expectRevert(AppBondingCurve.DeadlineNotReached.selector);
+        curve.forceGraduate();
     }
 
     /*
@@ -285,6 +398,10 @@ contract CurveLifecycleTest is Test {
 
     function test_NonXPUserCannotBuyEarly() public {
         _initializeCurve();
+
+        // Activate curve
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
 
         address noXpUser = makeAddr("noXpUser");
         vm.prank(treasury);

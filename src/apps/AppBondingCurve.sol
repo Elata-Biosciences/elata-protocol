@@ -23,6 +23,10 @@ interface IAppFactory {
     ) external;
 }
 
+interface IFeeCollector {
+    function depositElta(uint256 appId, uint256 amount) external;
+}
+
 /**
  * @title AppBondingCurve
  * @author Elata Biosciences
@@ -46,6 +50,16 @@ interface IAppFactory {
 contract AppBondingCurve is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
+    // =========== Enums ===========
+
+    /// @notice Curve lifecycle states
+    enum CurveState {
+        PENDING, // Created, not yet active
+        ACTIVE, // Buy enabled
+        GRADUATED, // LP created, curve closed
+        CANCELLED // Creator cancelled before activation
+    }
+
     // Core assets
     IERC20 public immutable ELTA;
     AppToken public immutable TOKEN;
@@ -62,6 +76,15 @@ contract AppBondingCurve is ReentrancyGuard {
     uint256 public immutable targetRaisedElta;
     uint256 public immutable initialK; // k = x * y at start
     bool public graduated;
+
+    // Lifecycle state
+    CurveState public state;
+    uint256 public activationTime; // When curve becomes ACTIVE
+    uint256 public deadline; // When forced graduation can happen
+
+    // Fee accumulation for FeeCollector
+    uint256 public pendingFees;
+    address public feeCollector;
 
     // Post-graduation data
     address public pair;
@@ -80,6 +103,9 @@ contract AppBondingCurve is ReentrancyGuard {
     uint256 public xpMinForEarlyBuy = 100e18; // governance-configurable (default 100 XP)
     uint256 public earlyBuyDuration = 6 hours; // governance-configurable (default 6 hours)
     address public governance;
+
+    // Creator address (for cancel functionality)
+    address public immutable creator;
 
     // Events
     event CurveInitialized(uint256 indexed appId, uint256 seedElta, uint256 tokenSupply, uint256 initialK);
@@ -102,6 +128,12 @@ contract AppBondingCurve is ReentrancyGuard {
         uint256 totalRaisedElta,
         uint256 tokensToLp
     );
+    event StateChanged(uint256 indexed appId, CurveState oldState, CurveState newState);
+    event CurveActivated(uint256 indexed appId, uint256 activationTime, uint256 deadline);
+    event CurveCancelled(uint256 indexed appId, uint256 eltaRefunded, uint256 tokensRefunded);
+    event ForceGraduated(uint256 indexed appId, uint256 eltaRaised);
+    event FeesSwepted(uint256 indexed appId, uint256 amount, address indexed feeCollector);
+    event FeeCollectorUpdated(address indexed oldCollector, address indexed newCollector);
 
     error AlreadyGraduated();
     error NotGraduated();
@@ -112,6 +144,12 @@ contract AppBondingCurve is ReentrancyGuard {
     error InvalidAmount();
     error InsufficientXP();
     error OnlyGovernance();
+    error NotPending();
+    error NotActive();
+    error TooEarlyToActivate();
+    error DeadlineNotReached();
+    error AlreadyCancelled();
+    error OnlyCreator();
 
     modifier onlyFactory() {
         if (msg.sender != appFactory) revert OnlyFactory();
@@ -120,6 +158,16 @@ contract AppBondingCurve is ReentrancyGuard {
 
     modifier notGraduated() {
         if (graduated) revert AlreadyGraduated();
+        _;
+    }
+
+    modifier onlyActive() {
+        if (state != CurveState.ACTIVE) revert NotActive();
+        _;
+    }
+
+    modifier onlyPending() {
+        if (state != CurveState.PENDING) revert NotPending();
         _;
     }
 
@@ -137,6 +185,9 @@ contract AppBondingCurve is ReentrancyGuard {
      * @param _appFeeRouter App fee router for revenue forwarding
      * @param _elataXP ElataXP token address for early access gating
      * @param _governance Governance address for XP gate configuration
+     * @param _activationDelay Delay before curve becomes active
+     * @param _maxDuration Maximum duration before forced graduation
+     * @param _creator Creator address who can cancel
      */
     constructor(
         uint256 _appId,
@@ -150,7 +201,10 @@ contract AppBondingCurve is ReentrancyGuard {
         address _treasury,
         IAppFeeRouter _appFeeRouter,
         IElataXP _elataXP,
-        address _governance
+        address _governance,
+        uint256 _activationDelay,
+        uint256 _maxDuration,
+        address _creator
     ) {
         require(_factory != address(0), "Zero factory");
         require(address(_elta) != address(0), "Zero ELTA");
@@ -161,6 +215,7 @@ contract AppBondingCurve is ReentrancyGuard {
         require(_treasury != address(0), "Zero treasury");
         require(address(_elataXP) != address(0), "Zero XP");
         require(_governance != address(0), "Zero governance");
+        require(_creator != address(0), "Zero creator");
         // appFeeRouter can be address(0) to disable fee forwarding
 
         appId = _appId;
@@ -177,6 +232,12 @@ contract AppBondingCurve is ReentrancyGuard {
         elataXP = _elataXP;
         governance = _governance;
         launchTimestamp = block.timestamp;
+        creator = _creator;
+
+        // Set lifecycle timestamps
+        state = CurveState.PENDING;
+        activationTime = block.timestamp + _activationDelay;
+        deadline = activationTime + _maxDuration;
     }
 
     /**
@@ -255,7 +316,7 @@ contract AppBondingCurve is ReentrancyGuard {
      * @param minTokensOut Minimum tokens expected (slippage protection)
      * @return tokensOut Actual tokens received
      */
-    function buy(uint256 eltaIn, uint256 minTokensOut) external nonReentrant notGraduated returns (uint256 tokensOut) {
+    function buy(uint256 eltaIn, uint256 minTokensOut) external nonReentrant onlyActive returns (uint256 tokensOut) {
         if (eltaIn == 0) revert ZeroInput();
         if (reserveElta == 0) revert NotInitialized();
 
@@ -349,7 +410,11 @@ contract AppBondingCurve is ReentrancyGuard {
      * @dev Internal graduation logic
      */
     function _graduate() internal {
+        CurveState oldState = state;
+        state = CurveState.GRADUATED;
         graduated = true;
+
+        emit StateChanged(appId, oldState, CurveState.GRADUATED);
 
         // Create or get existing pair
         address pairAddress = uniFactory.getPair(address(TOKEN), address(ELTA));
@@ -430,5 +495,129 @@ contract AppBondingCurve is ReentrancyGuard {
         duration = earlyBuyDuration;
         xpMin = xpMinForEarlyBuy;
         isActive = block.timestamp < launchTimestamp + duration;
+    }
+
+    // =========== Lifecycle Functions ===========
+
+    /**
+     * @notice Activate the curve after activation delay
+     * @dev Permissionless - anyone can call once activation time is reached
+     */
+    function activate() external onlyPending {
+        if (block.timestamp < activationTime) revert TooEarlyToActivate();
+
+        CurveState oldState = state;
+        state = CurveState.ACTIVE;
+
+        emit StateChanged(appId, oldState, CurveState.ACTIVE);
+        emit CurveActivated(appId, activationTime, deadline);
+    }
+
+    /**
+     * @notice Force graduation after deadline is reached
+     * @dev Permissionless - anyone can call once deadline is passed
+     *      Graduates with whatever ELTA has been raised, even if below target
+     */
+    function forceGraduate() external nonReentrant {
+        if (state == CurveState.GRADUATED) revert AlreadyGraduated();
+        if (state == CurveState.CANCELLED) revert AlreadyCancelled();
+        if (block.timestamp < deadline) revert DeadlineNotReached();
+
+        // If still pending, activate first
+        if (state == CurveState.PENDING) {
+            state = CurveState.ACTIVE;
+            emit StateChanged(appId, CurveState.PENDING, CurveState.ACTIVE);
+        }
+
+        emit ForceGraduated(appId, reserveElta);
+
+        // Graduate with whatever has been raised
+        _graduate();
+    }
+
+    /**
+     * @notice Cancel the curve before activation
+     * @dev Only creator can cancel, only while PENDING
+     *      Refunds seed ELTA and tokens to creator
+     */
+    function cancel() external nonReentrant onlyPending {
+        if (msg.sender != creator) revert OnlyCreator();
+
+        CurveState oldState = state;
+        state = CurveState.CANCELLED;
+
+        uint256 eltaToRefund = reserveElta;
+        uint256 tokensToRefund = reserveToken;
+
+        // Clear reserves
+        reserveElta = 0;
+        reserveToken = 0;
+
+        // Refund to creator
+        if (eltaToRefund > 0) {
+            ELTA.safeTransfer(creator, eltaToRefund);
+        }
+        if (tokensToRefund > 0) {
+            TOKEN.transfer(creator, tokensToRefund);
+        }
+
+        emit StateChanged(appId, oldState, CurveState.CANCELLED);
+        emit CurveCancelled(appId, eltaToRefund, tokensToRefund);
+    }
+
+    /**
+     * @notice Sweep accumulated fees to FeeCollector
+     * @dev Permissionless - anyone can trigger fee forwarding
+     */
+    function sweepFees() external nonReentrant {
+        if (feeCollector == address(0)) return;
+        if (pendingFees == 0) return;
+
+        uint256 amount = pendingFees;
+        pendingFees = 0;
+
+        ELTA.approve(feeCollector, amount);
+        IFeeCollector(feeCollector).depositElta(appId, amount);
+
+        emit FeesSwepted(appId, amount, feeCollector);
+    }
+
+    /**
+     * @notice Set the FeeCollector address
+     * @param _feeCollector New FeeCollector address
+     */
+    function setFeeCollector(address _feeCollector) external {
+        if (msg.sender != governance) revert OnlyGovernance();
+
+        address oldCollector = feeCollector;
+        feeCollector = _feeCollector;
+
+        emit FeeCollectorUpdated(oldCollector, _feeCollector);
+    }
+
+    /**
+     * @notice Get lifecycle state information
+     * @return currentState Current curve state
+     * @return activation When curve becomes/became active
+     * @return deadlineTime When forced graduation can happen
+     * @return canActivate Whether curve can be activated now
+     * @return canForceGraduate Whether curve can be force graduated now
+     */
+    function getLifecycleInfo()
+        external
+        view
+        returns (
+            CurveState currentState,
+            uint256 activation,
+            uint256 deadlineTime,
+            bool canActivate,
+            bool canForceGraduate
+        )
+    {
+        currentState = state;
+        activation = activationTime;
+        deadlineTime = deadline;
+        canActivate = state == CurveState.PENDING && block.timestamp >= activationTime;
+        canForceGraduate = state != CurveState.GRADUATED && state != CurveState.CANCELLED && block.timestamp >= deadline;
     }
 }

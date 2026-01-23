@@ -164,6 +164,10 @@ contract AppLaunchIntegrationTest is Test {
         AppBondingCurve curve = AppBondingCurve(app.curve);
         AppToken token = AppToken(app.token);
 
+        // Activate curve (warp past activation delay)
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
+
         // Test multiple purchases with different amounts
         uint256[] memory purchaseAmounts = new uint256[](3);
         purchaseAmounts[0] = 100 ether;
@@ -265,6 +269,11 @@ contract AppLaunchIntegrationTest is Test {
         AppBondingCurve curve1 = AppBondingCurve(app1.curve);
         AppBondingCurve curve2 = AppBondingCurve(app2.curve);
 
+        // Activate both curves
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve1.activate();
+        curve2.activate();
+
         // Investors can buy from different curves simultaneously
         vm.startPrank(investor1);
         // Approve with 1% fee on top
@@ -306,6 +315,10 @@ contract AppLaunchIntegrationTest is Test {
         // Test protocol fees during trading
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
+
+        // Activate curve
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
 
         uint256 purchaseAmount = 1000 ether;
 
@@ -434,13 +447,17 @@ contract AppLaunchIntegrationTest is Test {
         uint256 creationGas = gasBefore - gasAfter;
         console2.log("App creation gas:", creationGas);
 
-        // V3: Gas increased due to transfer fee logic and additional setup
-        // Threshold updated to 7.5M to account for transfer fee calculations
-        assertLt(creationGas, 7_500_000);
+        // V4: Gas increased due to lifecycle state management
+        // Threshold updated to 8.5M to account for additional state tracking
+        assertLt(creationGas, 8_500_000);
 
         // Test purchase gas costs
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
+
+        // Activate curve
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
 
         vm.startPrank(investor1);
         // Approve with 1% fee
@@ -472,6 +489,15 @@ contract AppLaunchIntegrationTest is Test {
 
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
+
+        // Test buying when curve is not active
+        vm.expectRevert(AppBondingCurve.NotActive.selector);
+        vm.prank(makeAddr("poorUser"));
+        curve.buy(1000 ether, 0);
+
+        // Activate curve
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
 
         // Test buying with insufficient balance
         vm.expectRevert();
@@ -539,6 +565,10 @@ contract AppLaunchIntegrationTest is Test {
         assertEq(curve.targetRaisedElta(), targetAmount);
         assertEq(curve.reserveElta(), seedAmount);
         assertEq(curve.reserveToken(), curveSupply); // Curve has 50%
+
+        // Activate curve
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
 
         // Test purchase with fuzzed amount
         vm.prank(treasury);

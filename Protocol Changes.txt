@@ -1,0 +1,668 @@
+﻿Elata Protocol 
+Self‑contained smart contract upgrade plan (Base Sepolia first; mainnet‑ready)
+This document is the updated, consolidated plan for all Solidity changes. It is intended for two uses:
+* Engineering execution: you can paste sections into Cursor and implement contract-by-contract;
+* Stakeholder alignment: it explains the design principles in plain language; then gets very specific about flows, roles, parameters, and tests.
+The guiding theme is simple and old-fashioned: simplicity is security; revenue is only real if it ends in something you can spend.
+________________
+
+
+0) Scope and non-goals
+Scope
+* All contracts in elata-protocol that define:
+   * app creation and app token launch;
+   * bonding curve sale and graduation to Uniswap V2 liquidity;
+   * protocol fee capture and distribution;
+   * staking and reward distribution for app tokens and veELTA;
+   * modules: tournaments; in‑app content; airdrops; referrals (if included).
+Non-goals
+* No “app status registry” or on-chain censorship; front end curation only.
+* No per‑app on‑chain governance; app “governance” is roles + multisig, with off‑chain Snapshot voting as advisory.
+* No complex token-voting mechanics (no ERC20Votes on app tokens); vote weight is computed off‑chain from on‑chain balances.
+________________
+
+
+1) The two invariants that matter
+Invariant A: Treasury revenue must be spendable
+Treasury revenue must end up in native USDC on Base; not primarily app tokens; not “maybe we sell later.”
+If we do not enforce this; the protocol can appear “profitable” while being unable to pay for audits, ops, liquidity, or growth.
+Invariant B: The system must remain auditable
+No unbounded loops in any function that must succeed for funds to be claimable; no implicit state machines; no “magic balances.”
+________________
+
+
+2) The high-level mental model (general audience)
+Elata is an “app token launchpad + fee router”:
+1. Developers launch an app token through the protocol;
+2. The token sells along a bonding curve for ELTA;
+3. The app graduates to a Uniswap V2 pool (AppToken/ELTA); LP tokens are locked;
+4. Trades on the DEX incur a transfer tax inside AppToken (only on LP interactions);
+5. Those taxed app tokens are periodically swept; swapped into ELTA; and then a portion is settled into USDC for the protocol treasury;
+6. The remainder is distributed to ecosystem stakeholders (app stakers; veELTA stakers; optionally creators; optionally referral rewards).
+Two consequences fall out:
+* If users trade and spend; the protocol earns revenue; and the treasury balance in USDC rises.
+* If there is no usage; no on-chain design can save the business. The goal is simply to ensure that when usage occurs, it turns into real treasury assets automatically and safely.
+________________
+
+
+3) Key decisions (locked)
+3.1 App tokens are fee-on-transfer exactly in the “Virtuals-style” sense
+* Tax applies only when from or to is an allowlisted LP/pair address (DEX buys and sells);
+* Normal wallet-to-wallet transfers are not taxed;
+* The set of taxable LP addresses is explicit (allowlist), not automatically detected.
+This preserves usability while capturing DEX volume.
+3.2 No on-chain governance for app tokens
+* No per-app Governor; no on-chain proposals; no on-chain voting.
+* App-level knobs are controlled by roles; with the team multisig as ultimate admin.
+* Token-holder voting is supported via Snapshot; it is advisory; the multisig executes results.
+This is the simplest secure structure that still gives you “DAO-like” coordination.
+3.3 Team vesting starts immediately; uses OpenZeppelin standards
+* Team allocation is held in an OZ-style vesting wallet from app creation time (T0);
+* The vesting schedule begins at T0; a cliff may exist, but the schedule is defined at creation.
+3.4 Fees distribute in daily windows
+* Fees are accrued continuously but distributed in epochs (target: 1 day);
+* Anyone can trigger epoch settlement; caller receives a small incentive;
+* Incentive is paid in USDC; capped; only paid when meaningful work occurs.
+3.5 Treasury settles into USDC only
+* Settlement asset for treasury is native USDC on Base;
+* The contracts treat USDC as the “cash register.”
+3.6 App token supply is always fixed at 10,000,000
+* Always 10,000,000; 18 decimals; minted at app creation.
+________________
+
+
+4) Triage and sequencing (how you ship safely)
+This is the correct order; it minimizes refactors fighting each other.
+P0; foundation (must ship before next meaningful testnet)
+1. Remove LotPool completely;
+2. Protocol governance uses veELTA; add Timelock for parameter changes;
+3. Introduce ProtocolConfig with bounds for every tunable parameter;
+4. Implement fee pipeline: FeeCollector + Swapper + daily settlement + treasury USDC vault;
+5. Implement AppToken LP-keyed transfer tax; route tax to FeeCollector;
+6. Bonding curve correctness and reclaimability; deadline; forced graduation; no stuck funds;
+7. Team multisig + operational roles at app creation; vesting wallet and allocations;
+8. External dependency plan: Uniswap V2 addresses configurable; Base Sepolia uses trusted deployments; Foundry local deploys its own V2 stack.
+P1; ecosystem modules (only after P0 is stable)
+9. Tournament module v1 (multi-currency; Merkle payouts);
+10. In-app content module (renamed; ERC-721; metadata; optional royalties);
+11. Developer airdrops (Merkle distributor fed by ecosystem pool);
+12. Referrals (simple; spaced out; paid from existing fees; not inflation).
+P2; only if demanded
+13. Sniper-protection fee window at launch (optional);
+14. USD-denominated app creation fee (oracle introduces risk; avoid unless needed);
+15. Burns (optional; configurable; do not complicate P0).
+________________
+
+
+5) Contract architecture (what exists after vNext)
+Core protocol contracts
+* ELTA (ERC-20); should remain “plain” for maximal compatibility
+* veELTA (vote-escrow staking); provides voting power for protocol governance
+* ElataGovernor (protocol governance)
+* ElataTimelock (timelock for governance changes)
+* ProtocolConfig (all fee rates and parameters; bounded; evented)
+App creation and trading
+* AppFactory (creates apps; app token; bonding curve; staking vault; vesting wallet; ecosystem vault)
+* AppToken (ERC-20; fixed supply; LP-keyed transfer tax; AccessControl roles)
+* AppBondingCurve (sale contract; reclaimability; graduation to Uniswap V2; fee capture)
+* LPLocker (locks LP tokens; time-locked; no early exit)
+Revenue pipeline
+* FeeCollector (receives fee assets; app tokens; ELTA; module fees; keeps per-app accounting)
+* FeeSwapper (swaps non-ELTA assets to ELTA; strictly bounded slippage; router allowlist)
+* FeeManager (epoch accounting; splits; pushes rewards)
+* TreasuryUSDCVault (custody; receives USDC; emits clean revenue events)
+Stake and rewards
+* AppStakingVault (per app; deposits app tokens; tracks stake; provides stakedBalanceOf)
+* AppRewardsDistributor (per app; ELTA rewards to stakers; epoch-based deposits)
+* veELTARewardsDistributor (global; ELTA rewards to veELTA stakers; epoch-based deposits)
+Optional modules
+* TournamentFactory / Tournament (Merkle payout)
+* InAppContent721 (ERC-721)
+* ContentStore (optional purchase logic)
+* AirdropDistributor (Merkle claim for ecosystem pool)
+* ReferralRegistry + ReferralDistributor (if enabled)
+________________
+
+
+6) Roles model (app-level; minimal and explicit)
+We keep “control” very simple:
+AppToken roles
+* DEFAULT_ADMIN_ROLE: team multisig (ultimate admin)
+* APP_OPERATOR_ROLE: team members who can manage day-to-day parameters (within bounds)
+* LP_MANAGER_ROLE: can add/remove taxable LP addresses (bounded; allowlist)
+* FEE_EXEMPT_MANAGER_ROLE: can set exemptions (router; swapper; protocol contracts; within a strict allowlist)
+Module roles (tournaments; content store)
+* MODULE_ADMIN_ROLE: team multisig
+* MODULE_OPERATOR_ROLE: team members; can publish Merkle roots; set pricing; etc.
+Protocol-level roles remain governed by veELTA + timelock, not by app teams.
+________________
+
+
+7) Economic flows (with concrete examples)
+This section is deliberately explicit; if it is not legible to a non-engineer, the design is too complicated.
+7.1 App creation fee
+* Developer calls AppFactory.createApp(...)
+* Pays appCreationFeeElta in ELTA; configurable in ProtocolConfig
+* This fee routes directly into the fee pipeline; ultimately a portion settles to treasury USDC
+Example defaults
+* appCreationFeeElta: 110 ELTA (configurable)
+* 100% of creation fees treated as protocol revenue (split like other fees)
+7.2 Bonding curve trading fees
+Bonding curve buys and sells should be the most reliable fee source; because they run through your contracts.
+* User buys: pays ELTA; receives app tokens
+* A configurable bondingCurveTradeTaxBps is taken in ELTA
+* The ELTA tax is forwarded to FeeCollector under that app’s accounting bucket
+Example
+* user buys with 1,000 ELTA
+* bondingCurveTradeTaxBps = 100 (1%)
+* fee = 10 ELTA; net = 990 ELTA into curve mechanics
+7.3 DEX trading fees via AppToken LP-keyed transfer tax
+After graduation, the app token is traded on Uniswap V2.
+* Whenever app tokens move into or out of an allowlisted LP, a tax is taken in app tokens;
+* The tax is transferred to FeeCollector.
+Example
+* app token transfer tax = 100 bps (1%)
+* user buys from LP and receives 10,000 app tokens
+* tax = 100 app tokens
+* user receives 9,900; FeeCollector receives 100
+7.4 Daily settlement and distribution (the “number goes up” mechanism)
+At most once per day per app (or per token bucket), anyone can call settleAppFees(appId).
+Settlement does:
+1. Swap accumulated app-token fees into ELTA (via Uniswap V2 router allowlist)
+2. Split ELTA into buckets (percentages in ProtocolConfig):
+   * app stakers rewards
+   * veELTA rewards
+   * creator/team share (optional; strongly recommended)
+   * treasury share
+   * referrals (optional; if enabled)
+3. Treasury share of ELTA is swapped into USDC and deposited into TreasuryUSDCVault
+4. Caller receives a small USDC incentive; capped; taken from the amount being settled
+Example split (illustrative; tune later)
+* app stakers: 45%
+* veELTA: 15%
+* creator/team: 10%
+* treasury: 25%
+* referrals: 5% (only if enabled)
+If you want the treasury to grow faster, raise the treasury share; keep bounds.
+________________
+
+
+8) Revenue pipeline design (detailed; Cursor-ready)
+8.1 Design goals
+* No idle balances without a permissionless sweep path
+* No slippage-free swaps
+* No reliance on a privileged keeper
+* No unbounded loops over “all apps”
+* Treasury ends in USDC
+8.2 FeeCollector (what it does)
+FeeCollector is the single “sink” for protocol fee assets.
+Responsibilities:
+* Receive:
+   * taxed app tokens from AppToken transfers
+   * ELTA fees from bonding curve and modules
+   * optional: USDC fees from modules
+* Maintain per-app accounting:
+   * pendingAppTokenFees[appId][token]
+   * pendingEltaFees[appId]
+* Expose permissionless sweep(appId, token) which forwards assets to FeeSwapper or directly to FeeManager
+Key design rule:
+* FeeCollector must not attempt to process “all apps”; sweeps are always per-app.
+8.3 FeeSwapper (safe swapping)
+FeeSwapper holds non-ELTA assets and swaps them into ELTA.
+Hard requirements:
+* Router allowlist; set via protocol governance timelock
+* Slippage bounds:
+   * caller supplies minOut; and contract enforces it
+   * additionally enforce maxSlippageBps relative to quoted output when feasible
+* Uses Uniswap V2 router “supporting fee-on-transfer” functions when swapping app tokens
+* Reentrancy guard
+* Emits: tokenIn; amountIn; tokenOut; amountOut; appId
+8.4 FeeManager (daily epochs; distribution)
+FeeManager holds ELTA and handles daily distribution windows.
+Per app:
+* lastEpochClose[appId]
+* pendingEltaToDistribute[appId]
+Flow:
+* depositEltaForApp(appId, amount) can be called by FeeSwapper or bonding curve
+* closeEpoch(appId):
+   * require block.timestamp >= lastEpochClose + epochLength (epochLength = 1 day)
+   * compute splits; transfer:
+      * ELTA to AppRewardsDistributor(appId)
+      * ELTA to veELTARewardsDistributor
+      * ELTA to creator/team (optional)
+      * ELTA to TreasurySettlement path (swap ELTA→USDC; deposit to vault)
+      * ELTA to referral pool (if enabled)
+   * pay caller incentive in USDC (see below)
+   * update lastEpochClose
+8.5 TreasuryUSDCVault (simple custody; clean accounting)
+This contract should be intentionally boring.
+Responsibilities:
+* Receive USDC from FeeManager settlement step
+* Emit events:
+   * TreasuryRevenue(appId, usdcAmount, epochId)
+* Optionally restrict transfers:
+   * only allow withdrawals to a treasury multisig
+   * optionally time-lock large withdrawals off-chain via multisig policy; do not over-engineer on-chain
+8.6 Caller incentive mechanics (USDC; capped; not gameable)
+Goal: someone should be happy to press the “settle” button daily.
+Mechanism:
+* Incentive is paid only when usdcSettled >= minIncentiveThresholdUSDC
+* Incentive is:
+   * min(maxCallerIncentiveUSDC, usdcSettled * callerIncentiveBps / 10_000)
+* Incentive comes out of the treasury settlement slice, not out of staker rewards
+Recommended defaults:
+* epochLength = 1 day
+* callerIncentiveBps = 10 (0.10%)
+* maxCallerIncentiveUSDC = 25 USDC
+* minIncentiveThresholdUSDC = 100 USDC
+These values make spam unprofitable; but make real settlements worthwhile.
+________________
+
+
+9) Bonding curve changes (correctness and reclaimability)
+Your bonding curve is the part that can destroy trust if it breaks. It must satisfy three properties:
+1. It cannot lock funds indefinitely;
+2. It can only graduate once;
+3. It behaves safely under adversarial conditions (sandwiching; flash loans; reentrancy).
+9.1 Explicit lifecycle states
+Implement explicit states in AppBondingCurve:
+* PENDING (created; not active yet)
+* ACTIVE (buy/sell enabled)
+* GRADUATED (LP created; curve closed)
+* CANCELLED (creator cancels before activation)
+* optionally FAILED (if you later implement refunds)
+9.2 Activation window (optional but helpful)
+A short activation delay reduces bot sniping and gives humans time to react.
+* activationTime = now + activationDelay
+* enforce no trading before activationTime
+9.3 Deadline and forced graduation (no indefinite lock)
+Add:
+* deadline = activationTime + maxDuration
+If deadline reached and not graduated:
+* force graduation with whatever has been raised; do not attempt refunds in P0 (refunds are storage-heavy and increase attack surface)
+9.4 Graduation steps (must execute exactly once)
+At graduation:
+* create Uniswap V2 pair (AppToken/ELTA) if not existing
+* add liquidity using deterministic amounts
+* lock LP tokens in LPLocker
+* mark state GRADUATED
+* permanently disable curve trading
+9.5 Slippage protections
+Any call that swaps or adds liquidity must accept minOut parameters and enforce them.
+9.6 Fee routing
+Bonding curve trade fees are in ELTA; they should flow to FeeCollector/FeeManager; not sit inside the curve.
+If you want daily windows:
+* curve can accumulate fees and expose sweepFees(); permissionless; forwards to FeeCollector
+________________
+
+
+10) App token design (10M supply; vesting; LP tax)
+10.1 Supply and minting
+* Total supply: exactly 10,000,000 * 10^18
+* Minted once at creation; no minting after
+10.2 Allocation buckets (recommended structure)
+At creation, AppFactory mints supply into buckets:
+1. Community Sale / Liquidity Bucket
+   * minted to the bonding curve contract
+   * used for bonding curve distribution and LP seeding
+2. Team Vesting Bucket
+   * minted to an OZ-style vesting wallet
+   * beneficiary is the team multisig
+   * schedule starts immediately at creation (T0)
+3. Ecosystem / Developer Airdrop Bucket
+   * minted to an AppEcosystemVault (simple custody)
+   * distributed via Merkle airdrops and developer incentives
+4. Optional: Protocol Reserve Bucket
+   * if you want it; otherwise omit; keep it simple
+You will need to pick exact percentages; the protocol can enforce bounds. A reasonable starting point:
+* 50% community bucket (5,000,000)
+* 25% team vesting (2,500,000)
+* 25% ecosystem pool (2,500,000)
+If you want a “liquid airdrop pool,” take it from the ecosystem bucket.
+10.3 LP-keyed transfer tax (exact semantics)
+Inside AppToken _transfer(from, to, amount):
+* if neither side is exempt; and (isLiquidityPool[from] || isLiquidityPool[to]) then tax
+* tax amount is sent to FeeCollector
+* remainder is transferred to recipient
+Critical details:
+* The router must be in the exemption list, or tax swaps will tax themselves
+* LP addresses must be allowlisted; you do not auto-detect them
+* Tax bps is bounded in ProtocolConfig; e.g., 0–200 bps
+10.4 No ERC20Votes on app tokens
+AppToken remains a plain ERC-20 + AccessControl; no vote checkpoints.
+________________
+
+
+11) Teams and vesting (OpenZeppelin; simple and safe)
+11.1 Team multisig is the ultimate admin
+At app creation:
+* teamTreasury (multisig) becomes DEFAULT_ADMIN_ROLE for app contracts
+* operational roles are granted to provided operators[]
+11.2 Vesting wallet design
+Use an OpenZeppelin-style vesting wallet pattern; either:
+* OZ VestingWallet; or
+* a thin wrapper AppVestingWallet that adds:
+   * metadata (appId; token address; beneficiary)
+   * events
+   * optional: the ability to update beneficiary only via multisig (rarely needed)
+Default schedule:
+* start: immediately at app creation time
+* cliff: 3 months
+* duration: 24 months linear vest after cliff
+This is easy to reason about and widely understood.
+11.3 “Do vested creators get fees?”
+Yes; but do not overcomplicate staking mechanics.
+The simplest model:
+* creators receive a creator/team fee share paid directly to team multisig (in ELTA)
+* community stakers receive the app staker share via staking vault
+* the vesting wallet does not need to participate in staking to earn creator fees
+This preserves incentives without building complicated “vesting counts as stake” logic.
+________________
+
+
+12) Off-chain voting plan (Snapshot) that reconciles liquid, staked, and vesting
+You want token-holder voting; but you do not want on-chain voting contracts. That is the correct instinct.
+12.1 What Snapshot needs
+Snapshot can compute voting power by reading chain state; it does not require ERC20Votes.
+For each app space, define vote power as:
+VotingPower(addr) = liquidBalance(addr) + stakedBalance(addr) + attributedVestingBalance(addr)
+Where:
+* liquidBalance(addr) = AppToken.balanceOf(addr)
+* stakedBalance(addr) = AppStakingVault.stakedBalanceOf(addr)
+* attributedVestingBalance(addr):
+   * for the team multisig only, add AppVestingWallet.totalTokenBalance() (or AppToken.balanceOf(vestingWallet))
+   * this is attributed to the vesting wallet beneficiary; not to the vesting wallet address itself
+This is off-chain code; it does not increase the protocol’s on-chain attack surface.
+12.2 Enforcement policy
+* Snapshot outcomes are advisory but documented as the “expected governance process.”
+* Team multisig executes the chosen outcome by calling role-gated functions.
+* In emergencies (exploits; broken modules), multisig can act unilaterally; document this openly.
+________________
+
+
+13) Uniswap V2 dependencies (Base Sepolia and Foundry local)
+13.1 Production/testnet philosophy
+* Never hardcode Uniswap addresses in core contracts.
+* Store router; factory; WETH addresses in ProtocolConfig (or a dedicated DexRegistry).
+* All swaps only use allowlisted routers.
+13.2 Base Sepolia plan
+* Prefer existing, trusted, verified Uniswap V2 deployments if available.
+* If not available or uncertain, deploy your own V2 Factory + Router + WETH9 to Base Sepolia; then pin those addresses in config.
+This avoids mysterious external risk.
+13.3 Foundry local plan (deterministic tests)
+For local tests you almost always want your own deterministic deployments.
+In Foundry:
+* Deploy WETH9
+* Deploy UniswapV2Factory
+* Deploy UniswapV2Router02
+* Create pairs as needed
+* Provide helper functions for liquidity seeding
+This ensures:
+* no flaky tests due to external state;
+* no reliance on forked network availability.
+________________
+
+
+14) Referrals (simple; spaced out; practical)
+Referrals are easy to get wrong; the goal is “useful and honest,” not “clever.”
+14.1 What referrals are for
+* Reward users who bring in new users;
+* Do not inflate; do not add new taxes;
+* Pay from existing fee streams.
+14.2 What referrals apply to (P1/P2 recommendation)
+Do referrals only on protocol-routed actions:
+* Bonding curve buys (best)
+* In-app purchases (if you have a ContentStore)
+* Tournament entries (if routed through protocol)
+Do not attempt referrals on arbitrary DEX trades; you do not control the router and cannot reliably attach attribution.
+14.3 Minimal referral mechanism
+At bonding curve buy:
+* buy(amountEltaIn, referrer)
+Rules:
+* referrer must not be zero; must not equal buyer
+* if buyer already has a stored referrer for this app; ignore new referrer
+* store referrerOf[buyer] = referrer once
+When a fee is generated on a referred user’s action:
+   * take referralBps out of the existing fee split
+   * accrue it to pendingReferralRewards[referrer] (in ELTA)
+   * pay out daily during epoch close; or via a claim function
+14.4 Concrete example
+Assume:
+   * bonding curve trade fee = 1% (100 bps)
+   * referral share = 5% of the fee (not 5% of the trade)
+User A refers user B.
+User B buys 1,000 ELTA of tokens.
+   * fee = 10 ELTA
+   * referral cut = 0.5 ELTA
+   * the remaining 9.5 ELTA is split among app stakers; veELTA; treasury; creator
+This is economically sane and non-extractive.
+14.5 Abuse considerations
+   * Sybil attacks; referral farming; self-referral
+Mitigations:
+   * one-time referrer binding
+   * optional minimum purchase size to set referrer
+   * optional “referrer must have staked X” requirement (later)
+Keep P0 free of this complexity.
+________________
+
+
+15) In-app content (renamed; ERC-721; optional royalties)
+This is important, but not P0.
+15.1 Naming
+Do not call them NFTs in the product; call them “In-App Content” or “Digital Items.”
+15.2 Contract approach
+      * InAppContent721 implements ERC-721 metadata
+      * Optional ERC-2981 royalties for secondary markets
+      * Primary sales are enforced on-chain through ContentStore:
+      * accept app token by default
+      * optional support for ELTA and USDC later
+15.3 Economics
+Default for v1:
+      * No burn by default
+      * Route a configurable share of purchase revenue into the fee pipeline
+      * Later you can introduce “burnBps” if you want deflationary pressure; bounded; per app
+15.4 OpenSea readiness
+Focus on:
+      * stable URIs
+      * metadata correctness
+      * events emitted on mint and metadata updates
+No special registration API should be assumed.
+________________
+
+
+16) Tournaments (multi-currency; Merkle payouts)
+Again; not P0; but plan it now so it fits the fee pipeline.
+16.1 Basic v1 design
+         * Tournament entry can be denominated in:
+         * ELTA (default)
+         * USDC (optional; useful for stable revenue)
+         * app token (optional)
+         * Tournament contract holds entry fees; takes rake; remainder is prize pool
+         * Results are off-chain; payouts are committed on-chain via Merkle root
+         * Users claim prizes with Merkle proofs
+16.2 Admin controls
+Tournament admin role:
+         * set Merkle root once per contest window
+         * can rotate to a new root if a mistake is made; with strict constraints and events
+16.3 Fee routing
+Tournament rake should be forwarded to FeeCollector; then distributed in daily windows.
+________________
+
+
+17) Remove LotPool (complete deletion)
+This should be a clean delete:
+         * remove contracts
+         * remove deployment scripts
+         * remove tests
+         * remove any fee routes that referenced it
+Anything “half removed” becomes a permanent audit liability.
+________________
+
+
+18) Protocol governance (veELTA) and config changes
+Even if you want app-level simplicity, protocol-level economics must be governed with restraint.
+18.1 Switch protocol governance to veELTA
+         * Voting power is derived from veELTA locks; with boosting logic
+         * Ensure vote snapshots behave deterministically
+18.2 Add Timelock
+         * All changes to ProtocolConfig must go through timelock
+         * Timelock delay is a social circuit breaker; it gives you time to react if governance is attacked
+18.3 ProtocolConfig; what must be configurable
+The following should not be hardcoded:
+App creation
+         * appCreationFeeElta
+         * appCreationSeedElta (if used)
+Bonding curve
+         * bondingCurveTradeTaxBps
+         * graduationTarget
+         * lpLockDuration
+         * maxDuration; activationDelay
+         * XP gate parameters (if retained)
+App token transfer tax
+         * appTransferTaxBps (default)
+         * max appTransferTaxBps cap
+         * per-app override bounds (if you allow overrides)
+Fee splits
+         * appStakersBps
+         * veELTABps
+         * creatorBps
+         * treasuryBps
+         * referralBps (optional)
+All bounded; must sum to 10,000.
+Settlement
+            * epochLength
+            * router allowlist
+            * maxSlippageBps
+            * minSwapThresholds
+            * caller incentive caps
+________________
+
+
+19) External dependency safety rules
+Every external call is a liability.
+            * Only allowlisted routers
+            * All swaps include minOut
+            * NonReentrant on sweep and claim paths
+            * No approvals left unlimited when not necessary; if you do infinite approvals, restrict to allowlisted routers
+            * Emit events for:
+            * LP allowlist changes
+            * fee exemption changes
+            * settlement events and amounts
+            * config changes
+________________
+
+
+20) New files and repo structure (recommended)
+Keep the repo modular without splitting repos yet.
+Suggested directories
+            * core/
+            * ELTA; veELTA; governance; timelock; ProtocolConfig
+            * apps/
+            * AppFactory; AppToken; AppBondingCurve; LPLocker; AppStakingVault
+            * fees/
+            * FeeCollector; FeeSwapper; FeeManager; TreasuryUSDCVault
+            * modules/
+            * tournaments; content; airdrops; referrals
+            * libs/
+            * math; merkle; fee policy helpers
+Expected new contracts (P0)
+            * fees/FeeCollector.sol
+            * fees/FeeSwapper.sol
+            * fees/FeeManager.sol
+            * fees/TreasuryUSDCVault.sol
+            * core/ProtocolConfig.sol
+            * apps/AppStakingVault.sol (if not already robust)
+            * vesting/AppVestingWallet.sol (wrapper around OZ VestingWallet)
+Expected changes (P0)
+            * AppToken tax hook and allowlists
+            * Bonding curve lifecycle and graduation correctness
+            * Removal of LotPool everywhere
+            * Governance wiring: veELTA + timelock + config control
+________________
+
+
+21) Test plan (Foundry; invariants that prove correctness)
+This is where you earn safety.
+21.1 Fee pipeline invariants
+            * Any taxed app token received by FeeCollector can be swept into ELTA
+            * Daily settlement cannot be called twice for the same app within epoch
+            * TreasuryUSDCVault receives USDC; not app tokens
+            * Caller incentive never exceeds cap; only paid when settlement occurs
+            * If swaps would exceed slippage bounds; settlement reverts safely; funds remain in FeeCollector/FeeSwapper
+21.2 AppToken tax invariants
+            * wallet→wallet transfer: no tax
+            * wallet↔LP transfer: tax applied
+            * router-exempt swaps do not self-tax
+            * changing LP allowlist changes tax behavior immediately and only as intended
+21.3 Bonding curve invariants
+            * cannot trade before activation time
+            * graduation executes exactly once
+            * LP tokens are locked; cannot be withdrawn early
+            * forced graduation after deadline works; no funds stuck
+            * fee amounts are conserved and routed properly
+21.4 Vesting invariants
+            * team tokens vest correctly over time
+            * cannot withdraw before cliff
+            * beneficiary receives released tokens
+            * if beneficiary changes (if allowed), only multisig can do it
+21.5 Snapshot support tests (optional but valuable)
+            * AppStakingVault.stakedBalanceOf matches internal accounting
+            * vesting wallet balance is visible and attributable
+________________
+
+
+22) Practical PR breakdown (engineering execution)
+This gives you a straight path.
+PR‑01: Delete LotPool
+            * Remove contracts; scripts; tests; any wiring
+PR‑02: ProtocolConfig + governance wiring
+            * veELTA Governor; Timelock; ProtocolConfig with bounds and events
+PR‑03: Fee pipeline skeleton
+            * FeeCollector; TreasuryUSDCVault; basic events; no swaps yet
+PR‑04: AppToken LP-keyed transfer tax
+            * LP allowlist; fee exemptions; route to FeeCollector; tests
+PR‑05: FeeSwapper + daily settlement
+            * router allowlist
+            * safe swap functions
+            * FeeManager epoch close per app
+            * treasury ELTA→USDC settlement and deposit
+PR‑06: Bonding curve lifecycle fixes
+            * states; activation delay; deadline; forced graduation; LP lock
+PR‑07: Team vesting + roles at creation
+            * AppFactory accepts multisig and operators[]
+            * deploy vesting wallet; assign roles; mint allocations
+PR‑08: Modules (optional; after P0 stable)
+            * tournaments; content; airdrops; referrals
+________________
+
+
+23) Recommended defaults (start conservative)
+These are initial settings; governance can change them; keep bounds tight early.
+            * appTransferTaxBps: 100 (1%); cap 200 (2%)
+            * bondingCurveTradeTaxBps: 100 (1%); cap 200 (2%)
+            * treasuryBps: 25% of fee flow; cap 40%
+            * creatorBps: 10% of fee flow; cap 20%
+            * veELTABps: 15% of fee flow; cap 25%
+            * appStakersBps: remainder
+            * epochLength: 1 day
+            * callerIncentiveBps: 10 (0.10%); max 25 USDC; min threshold 100 USDC
+            * slippage cap: 100–200 bps depending on asset; lower is safer; higher increases liveness
+________________
+
+
+24) Final notes on “simplicity vs power”
+You are making the right trade:
+            * App token governance on-chain sounds principled but increases complexity dramatically; and complexity is where protocols die.
+            * Off-chain voting + multisig execution is how many successful systems actually operate; it is legible; it is auditable; it is upgradeable culturally without contract risk.
+            * The “hard” on-chain component you truly need is the revenue pipeline: fees must become treasury USDC without trusting a human.
+If you implement P0 exactly as described; you will have:
+            * a protocol that is simpler than most;
+            * a revenue story that is mechanically true;
+            * and a codebase that can pass serious security review without apologizing for unnecessary gadgets.
+________________
+
+
+If you want, I can convert this into two additional artifacts immediately (no extra decisions needed):
+            1. a concrete interface spec for each new contract (function signatures; events; storage layout);
+            2. a Foundry test checklist written as test names and invariants, so the team can implement tests in parallel with the contracts.
+            *
