@@ -194,7 +194,7 @@ contract AppLaunchIntegrationTest is Test {
             vm.startPrank(buyer);
             // Approve amount + 1% trading fee (fee paid ON TOP)
             elta.approve(address(curve), amount * 101 / 100);
-            uint256 tokensOut = curve.buy(amount, expectedTokens);
+            uint256 tokensOut = curve.buy(amount, expectedTokens, address(0));
             vm.stopPrank();
 
             uint256 priceAfter = curve.getCurrentPrice();
@@ -282,8 +282,8 @@ contract AppLaunchIntegrationTest is Test {
         elta.approve(address(curve1), 500 ether * 101 / 100);
         elta.approve(address(curve2), 500 ether * 101 / 100);
 
-        uint256 tokens1 = curve1.buy(500 ether, 0);
-        uint256 tokens2 = curve2.buy(500 ether, 0);
+        uint256 tokens1 = curve1.buy(500 ether, 0, address(0));
+        uint256 tokens2 = curve2.buy(500 ether, 0, address(0));
 
         vm.stopPrank();
 
@@ -327,7 +327,7 @@ contract AppLaunchIntegrationTest is Test {
         vm.startPrank(investor1);
         // Approve with 1% trading fee
         elta.approve(address(curve), purchaseAmount * 101 / 100);
-        curve.buy(purchaseAmount, 0);
+        curve.buy(purchaseAmount, 0, address(0));
         vm.stopPrank();
 
         // Trading fees now route through RewardsDistributor (70/15/15 split)
@@ -466,7 +466,7 @@ contract AppLaunchIntegrationTest is Test {
         elta.approve(address(curve), 100 ether * 101 / 100);
 
         gasBefore = gasleft();
-        curve.buy(100 ether, 0);
+        curve.buy(100 ether, 0, address(0));
         gasAfter = gasleft();
 
         vm.stopPrank();
@@ -495,7 +495,7 @@ contract AppLaunchIntegrationTest is Test {
         // Test buying when curve is not active
         vm.expectRevert(AppBondingCurve.NotActive.selector);
         vm.prank(makeAddr("poorUser"));
-        curve.buy(1000 ether, 0);
+        curve.buy(1000 ether, 0, address(0));
 
         // Activate curve
         vm.warp(block.timestamp + 1 hours + 1);
@@ -504,7 +504,7 @@ contract AppLaunchIntegrationTest is Test {
         // Test buying with insufficient balance
         vm.expectRevert();
         vm.prank(makeAddr("poorUser"));
-        curve.buy(1000 ether, 0);
+        curve.buy(1000 ether, 0, address(0));
 
         // Test buying with insufficient approval
         vm.startPrank(investor1);
@@ -512,7 +512,7 @@ contract AppLaunchIntegrationTest is Test {
         elta.approve(address(curve), 50 ether);
 
         vm.expectRevert();
-        curve.buy(100 ether, 0); // Tries to spend more than approved
+        curve.buy(100 ether, 0, address(0)); // Tries to spend more than approved
 
         vm.stopPrank();
 
@@ -525,7 +525,7 @@ contract AppLaunchIntegrationTest is Test {
         elta.approve(address(curve), eltaIn * 101 / 100);
 
         vm.expectRevert(AppBondingCurve.InsufficientOutput.selector);
-        curve.buy(eltaIn, expectedTokens + 1); // Set minimum too high
+        curve.buy(eltaIn, expectedTokens + 1, address(0)); // Set minimum too high
 
         vm.stopPrank();
 
@@ -580,7 +580,7 @@ contract AppLaunchIntegrationTest is Test {
         vm.startPrank(investor1);
         // Approve with 1% fee
         elta.approve(address(curve), purchaseAmount * 101 / 100);
-        uint256 tokensOut = curve.buy(purchaseAmount, 0);
+        uint256 tokensOut = curve.buy(purchaseAmount, 0, address(0));
         vm.stopPrank();
 
         assertGt(tokensOut, 0);

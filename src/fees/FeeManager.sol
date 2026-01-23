@@ -46,7 +46,9 @@ contract FeeManager is ReentrancyGuard {
     event EltaDeposited(uint256 indexed appId, uint256 amount, address indexed from);
     event EpochClosed(uint256 indexed appId, uint256 indexed epochId, uint256 totalDistributed);
     event CallerIncentivePaid(address indexed caller, uint256 amount, uint256 indexed epochId);
-    event FeeSplitsUpdated(uint256 appStakersBps, uint256 veEltaBps, uint256 creatorBps, uint256 treasuryBps);
+    event FeeSplitsUpdated(
+        uint256 appStakersBps, uint256 veEltaBps, uint256 creatorBps, uint256 treasuryBps, uint256 referralBps
+    );
     event DepositorUpdated(address indexed depositor, bool allowed);
     event AppCreatorUpdated(uint256 indexed appId, address indexed creator);
     event TreasurySwapExecuted(uint256 eltaIn, uint256 usdcOut);
@@ -95,9 +97,13 @@ contract FeeManager is ReentrancyGuard {
         uint256 veEltaBps;
         uint256 creatorBps;
         uint256 treasuryBps;
+        uint256 referralBps;
     }
 
     FeeSplitConfig public feeSplitConfig;
+
+    /// @notice ReferralRegistry for distributing referral rewards
+    address public referralRegistry;
 
     // =========== Modifiers ===========
     modifier onlyAdmin() {
@@ -144,8 +150,10 @@ contract FeeManager is ReentrancyGuard {
         epochLength = _epochLength;
         deploymentTime = block.timestamp;
 
-        // Default fee splits: 50% app stakers, 30% veELTA, 10% creator, 10% treasury
-        feeSplitConfig = FeeSplitConfig({appStakersBps: 5000, veEltaBps: 3000, creatorBps: 1000, treasuryBps: 1000});
+        // Default fee splits: 45% app stakers, 30% veELTA, 10% creator, 10% treasury, 5% referral
+        feeSplitConfig = FeeSplitConfig({
+            appStakersBps: 4500, veEltaBps: 3000, creatorBps: 1000, treasuryBps: 1000, referralBps: 500
+        });
     }
 
     // =========== Deposit Function ===========
@@ -197,7 +205,8 @@ contract FeeManager is ReentrancyGuard {
         uint256 appShare = (amountToDistribute * feeSplitConfig.appStakersBps) / 10000;
         uint256 veShare = (amountToDistribute * feeSplitConfig.veEltaBps) / 10000;
         uint256 creatorShare = (amountToDistribute * feeSplitConfig.creatorBps) / 10000;
-        uint256 treasuryShare = amountToDistribute - appShare - veShare - creatorShare;
+        uint256 referralShare = (amountToDistribute * feeSplitConfig.referralBps) / 10000;
+        uint256 treasuryShare = amountToDistribute - appShare - veShare - creatorShare - referralShare;
 
         // Distribute to app stakers
         if (appShare > 0 && appRewardsDistributor != address(0)) {
@@ -216,6 +225,15 @@ contract FeeManager is ReentrancyGuard {
         } else if (creatorShare > 0) {
             // If no creator set, add to treasury
             treasuryShare += creatorShare;
+        }
+
+        // Distribute to referral pool
+        // Note: ReferralRegistry tracks individual rewards via accrueReferralReward() on buy()
+        if (referralShare > 0 && referralRegistry != address(0)) {
+            ELTA.safeTransfer(referralRegistry, referralShare);
+        } else if (referralShare > 0) {
+            // If no referral registry, add to treasury
+            treasuryShare += referralShare;
         }
 
         // Treasury share - swap to USDC and send to treasury vault
@@ -320,14 +338,14 @@ contract FeeManager is ReentrancyGuard {
     /**
      * @notice Get fee splits configuration
      */
-    function feeSplits() external view returns (uint256, uint256, uint256, uint256) {
-        return
-            (
-                feeSplitConfig.appStakersBps,
-                feeSplitConfig.veEltaBps,
-                feeSplitConfig.creatorBps,
-                feeSplitConfig.treasuryBps
-            );
+    function feeSplits() external view returns (uint256, uint256, uint256, uint256, uint256) {
+        return (
+            feeSplitConfig.appStakersBps,
+            feeSplitConfig.veEltaBps,
+            feeSplitConfig.creatorBps,
+            feeSplitConfig.treasuryBps,
+            feeSplitConfig.referralBps
+        );
     }
 
     // =========== Admin Functions ===========
@@ -360,11 +378,11 @@ contract FeeManager is ReentrancyGuard {
      * @param creatorShare Basis points for creator
      * @param treasury Basis points for treasury
      */
-    function setFeeSplits(uint256 appStakers, uint256 veElta, uint256 creatorShare, uint256 treasury)
+    function setFeeSplits(uint256 appStakers, uint256 veElta, uint256 creatorShare, uint256 treasury, uint256 referral)
         external
         onlyGovernance
     {
-        if (appStakers + veElta + creatorShare + treasury != 10000) {
+        if (appStakers + veElta + creatorShare + treasury + referral != 10000) {
             revert InvalidFeeSplits();
         }
 
@@ -372,8 +390,9 @@ contract FeeManager is ReentrancyGuard {
         feeSplitConfig.veEltaBps = veElta;
         feeSplitConfig.creatorBps = creatorShare;
         feeSplitConfig.treasuryBps = treasury;
+        feeSplitConfig.referralBps = referral;
 
-        emit FeeSplitsUpdated(appStakers, veElta, creatorShare, treasury);
+        emit FeeSplitsUpdated(appStakers, veElta, creatorShare, treasury, referral);
     }
 
     /**
@@ -411,5 +430,13 @@ contract FeeManager is ReentrancyGuard {
      */
     function setSwapTreasuryToUsdc(bool enabled) external onlyGovernance {
         swapTreasuryToUsdc = enabled;
+    }
+
+    /**
+     * @notice Set ReferralRegistry for referral reward distribution
+     * @param _referralRegistry New referral registry address
+     */
+    function setReferralRegistry(address _referralRegistry) external onlyAdmin {
+        referralRegistry = _referralRegistry;
     }
 }

@@ -91,7 +91,9 @@ contract FeeManagerTest is Test {
     event EltaDeposited(uint256 indexed appId, uint256 amount, address indexed from);
     event EpochClosed(uint256 indexed appId, uint256 indexed epochId, uint256 totalDistributed);
     event CallerIncentivePaid(address indexed caller, uint256 amount, uint256 indexed epochId);
-    event FeeSplitsUpdated(uint256 appStakersBps, uint256 veEltaBps, uint256 creatorBps, uint256 treasuryBps);
+    event FeeSplitsUpdated(
+        uint256 appStakersBps, uint256 veEltaBps, uint256 creatorBps, uint256 treasuryBps, uint256 referralBps
+    );
 
     function setUp() public {
         elta = new MockELTA();
@@ -230,8 +232,8 @@ contract FeeManagerTest is Test {
         vm.prank(caller);
         feeManager.closeEpoch(APP_ID_1);
 
-        // Verify distribution (default: 50% app, 30% veELTA, 10% creator, 10% treasury)
-        uint256 appShare = (amount * 5000) / 10000;
+        // Verify distribution (default: 45% app, 30% veELTA, 10% creator, 10% treasury, 5% referral)
+        uint256 appShare = (amount * 4500) / 10000;
         uint256 veShare = (amount * 3000) / 10000;
         uint256 creatorShare = (amount * 1000) / 10000;
 
@@ -306,33 +308,35 @@ contract FeeManagerTest is Test {
     // =========== Fee Split Configuration Tests ===========
 
     function test_SetFeeSplits() public {
-        uint256 appStakers = 4000;
+        uint256 appStakers = 3500;
         uint256 veElta = 4000;
         uint256 creatorShare = 1000;
         uint256 treasury = 1000;
+        uint256 referral = 500;
 
         vm.prank(governance);
         vm.expectEmit(true, true, true, true);
-        emit FeeSplitsUpdated(appStakers, veElta, creatorShare, treasury);
-        feeManager.setFeeSplits(appStakers, veElta, creatorShare, treasury);
+        emit FeeSplitsUpdated(appStakers, veElta, creatorShare, treasury, referral);
+        feeManager.setFeeSplits(appStakers, veElta, creatorShare, treasury, referral);
 
-        (uint256 a, uint256 v, uint256 c, uint256 t) = feeManager.feeSplits();
+        (uint256 a, uint256 v, uint256 c, uint256 t, uint256 r) = feeManager.feeSplits();
         assertEq(a, appStakers);
         assertEq(v, veElta);
         assertEq(c, creatorShare);
         assertEq(t, treasury);
+        assertEq(r, referral);
     }
 
     function test_RevertWhen_FeeSplitsDontSumTo100() public {
         vm.prank(governance);
         vm.expectRevert(FeeManager.InvalidFeeSplits.selector);
-        feeManager.setFeeSplits(5000, 3000, 1000, 500); // 95% total
+        feeManager.setFeeSplits(5000, 3000, 1000, 500, 0); // 95% total
     }
 
     function test_RevertWhen_NonGovernanceSetsFeeSplits() public {
         vm.prank(caller);
         vm.expectRevert(FeeManager.OnlyGovernance.selector);
-        feeManager.setFeeSplits(5000, 3000, 1000, 1000);
+        feeManager.setFeeSplits(4500, 3000, 1000, 1000, 500);
     }
 
     // =========== Caller Incentive Tests ===========
@@ -421,10 +425,11 @@ contract FeeManagerTest is Test {
         uint256 totalAfter =
             elta.balanceOf(address(appRewards)) + elta.balanceOf(address(veRewards)) + elta.balanceOf(creator);
 
-        // Distribution should account for 90% of the amount (treasury takes 10%)
+        // Distribution should account for 85% of the amount (treasury takes 10%, referral takes 5%
+        // but referral goes to treasury when registry not set)
         uint256 distributed = totalAfter - totalBefore;
-        // With 50% + 30% + 10% = 90% to non-treasury, verify distributed is at least 89.9%
+        // With 45% + 30% + 10% = 85% to app/ve/creator, verify distributed is at least 84.9%
         // Use assertGe with slight tolerance for rounding errors
-        assertGe(distributed * 10000 / amount, 8990); // At least 89.9%
+        assertGe(distributed * 10000 / amount, 8490); // At least 84.9%
     }
 }

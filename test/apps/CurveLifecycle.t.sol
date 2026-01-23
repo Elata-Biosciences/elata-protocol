@@ -251,7 +251,7 @@ contract CurveLifecycleTest is Test {
         vm.startPrank(buyer);
         elta.approve(address(curve), 1000 ether);
         vm.expectRevert(AppBondingCurve.NotActive.selector);
-        curve.buy(1000 ether, 0);
+        curve.buy(1000 ether, 0, address(0));
         vm.stopPrank();
     }
 
@@ -294,7 +294,7 @@ contract CurveLifecycleTest is Test {
         // Now can buy
         vm.startPrank(buyer);
         elta.approve(address(curve), 2000 ether);
-        uint256 tokensOut = curve.buy(1000 ether, 0);
+        uint256 tokensOut = curve.buy(1000 ether, 0, address(0));
         vm.stopPrank();
 
         assertGt(tokensOut, 0);
@@ -366,7 +366,7 @@ contract CurveLifecycleTest is Test {
         while (!curve.graduated()) {
             uint256 buyAmount = 10_000 ether;
             if (elta.balanceOf(buyer) < buyAmount) break;
-            curve.buy(buyAmount, 0);
+            curve.buy(buyAmount, 0, address(0));
         }
         vm.stopPrank();
 
@@ -391,7 +391,7 @@ contract CurveLifecycleTest is Test {
         // Users with XP can buy immediately
         vm.startPrank(buyer);
         elta.approve(address(curve), 1000 ether);
-        curve.buy(1000 ether, 0);
+        curve.buy(1000 ether, 0, address(0));
         vm.stopPrank();
     }
     */
@@ -412,7 +412,7 @@ contract CurveLifecycleTest is Test {
 
         // Should revert with InsufficientXP during early period
         vm.expectRevert(AppBondingCurve.InsufficientXP.selector);
-        curve.buy(1000 ether, 0);
+        curve.buy(1000 ether, 0, address(0));
         vm.stopPrank();
     }
 
@@ -429,7 +429,7 @@ contract CurveLifecycleTest is Test {
 
         vm.startPrank(noXpUser);
         elta.approve(address(curve), 1000 ether);
-        curve.buy(1000 ether, 0);
+        curve.buy(1000 ether, 0, address(0));
         vm.stopPrank();
 
         // Should succeed
@@ -447,7 +447,7 @@ contract CurveLifecycleTest is Test {
         // Buy tokens (fees should accumulate)
         vm.startPrank(buyer);
         elta.approve(address(curve), 10_000 ether);
-        curve.buy(10_000 ether, 0);
+        curve.buy(10_000 ether, 0, address(0));
         vm.stopPrank();
 
         // Note: Current implementation routes fees through AppFeeRouter
@@ -467,7 +467,7 @@ contract CurveLifecycleTest is Test {
         // Buy some tokens
         vm.startPrank(buyer);
         elta.approve(address(curve), 10_000 ether);
-        curve.buy(10_000 ether, 0);
+        curve.buy(10_000 ether, 0, address(0));
         vm.stopPrank();
 
         uint256 price2 = curve.getCurrentPrice();
@@ -496,7 +496,7 @@ contract CurveLifecycleTest is Test {
         // Buy some tokens
         vm.startPrank(buyer);
         elta.approve(address(curve), 10_000 ether);
-        curve.buy(10_000 ether, 0);
+        curve.buy(10_000 ether, 0, address(0));
         vm.stopPrank();
 
         (uint256 newResElta,,,,,) = curve.getCurveState();
@@ -517,7 +517,7 @@ contract CurveLifecycleTest is Test {
 
         vm.startPrank(buyer);
         elta.approve(address(curve), buyAmount);
-        curve.buy(buyAmount, 0);
+        curve.buy(buyAmount, 0, address(0));
         vm.stopPrank();
 
         assertGt(curve.getCurrentPrice(), priceBefore);

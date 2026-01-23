@@ -27,6 +27,10 @@ interface IFeeCollector {
     function depositElta(uint256 appId, uint256 amount) external;
 }
 
+interface IReferralRegistry {
+    function setReferrer(uint256 appId, address buyer, address referrer) external;
+}
+
 /**
  * @title AppBondingCurve
  * @author Elata Biosciences
@@ -86,6 +90,9 @@ contract AppBondingCurve is ReentrancyGuard {
     uint256 public pendingFees;
     address public feeCollector;
 
+    // Referral tracking
+    address public referralRegistry;
+
     // Post-graduation data
     address public pair;
     address public locker;
@@ -134,6 +141,7 @@ contract AppBondingCurve is ReentrancyGuard {
     event ForceGraduated(uint256 indexed appId, uint256 eltaRaised);
     event FeesSwepted(uint256 indexed appId, uint256 amount, address indexed feeCollector);
     event FeeCollectorUpdated(address indexed oldCollector, address indexed newCollector);
+    event ReferralRegistryUpdated(address indexed oldRegistry, address indexed newRegistry);
 
     error AlreadyGraduated();
     error NotGraduated();
@@ -314,11 +322,22 @@ contract AppBondingCurve is ReentrancyGuard {
      * @notice Buy app tokens with ELTA
      * @param eltaIn Amount of ELTA to spend
      * @param minTokensOut Minimum tokens expected (slippage protection)
+     * @param referrer Optional referrer address (address(0) for none)
      * @return tokensOut Actual tokens received
      */
-    function buy(uint256 eltaIn, uint256 minTokensOut) external nonReentrant onlyActive returns (uint256 tokensOut) {
+    function buy(uint256 eltaIn, uint256 minTokensOut, address referrer)
+        external
+        nonReentrant
+        onlyActive
+        returns (uint256 tokensOut)
+    {
         if (eltaIn == 0) revert ZeroInput();
         if (reserveElta == 0) revert NotInitialized();
+
+        // Set referrer if provided and registry is configured
+        if (referrer != address(0) && referralRegistry != address(0)) {
+            IReferralRegistry(referralRegistry).setReferrer(appId, msg.sender, referrer);
+        }
 
         // XP gating for early launch window
         if (block.timestamp < launchTimestamp + earlyBuyDuration) {
@@ -594,6 +613,20 @@ contract AppBondingCurve is ReentrancyGuard {
         feeCollector = _feeCollector;
 
         emit FeeCollectorUpdated(oldCollector, _feeCollector);
+    }
+
+    /**
+     * @notice Set ReferralRegistry for referral tracking
+     * @param _referralRegistry New referral registry address
+     * @dev Only callable by governance
+     */
+    function setReferralRegistry(address _referralRegistry) external {
+        if (msg.sender != governance) revert OnlyGovernance();
+
+        address oldRegistry = referralRegistry;
+        referralRegistry = _referralRegistry;
+
+        emit ReferralRegistryUpdated(oldRegistry, _referralRegistry);
     }
 
     /**

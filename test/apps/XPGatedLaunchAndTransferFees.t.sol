@@ -151,7 +151,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(xpUser);
         elta.approve(address(curve), purchaseAmount * 101 / 100);
-        uint256 tokensOut = curve.buy(purchaseAmount, 0);
+        uint256 tokensOut = curve.buy(purchaseAmount, 0, address(0));
         vm.stopPrank();
 
         assertGt(tokensOut, 0);
@@ -180,7 +180,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
         vm.startPrank(noXpUser);
         elta.approve(address(curve), purchaseAmount * 101 / 100);
         vm.expectRevert(AppBondingCurve.InsufficientXP.selector);
-        curve.buy(purchaseAmount, 0);
+        curve.buy(purchaseAmount, 0, address(0));
         vm.stopPrank();
 
         assertFalse(curve.canUserBuy(noXpUser));
@@ -207,7 +207,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(noXpUser);
         elta.approve(address(curve), purchaseAmount * 101 / 100);
-        uint256 tokensOut = curve.buy(purchaseAmount, 0);
+        uint256 tokensOut = curve.buy(purchaseAmount, 0, address(0));
         vm.stopPrank();
 
         assertGt(tokensOut, 0);
@@ -282,7 +282,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(xpUser);
         elta.approve(address(curve), purchaseAmount * 101 / 100);
-        uint256 tokensOut = curve.buy(purchaseAmount, 0);
+        uint256 tokensOut = curve.buy(purchaseAmount, 0, address(0));
         vm.stopPrank();
 
         // Wallet-to-wallet transfer - LP-keyed tax means NO fee
@@ -318,7 +318,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(xpUser);
         elta.approve(address(curve), purchaseAmount * 101 / 100);
-        uint256 tokensOut = curve.buy(purchaseAmount, 0);
+        uint256 tokensOut = curve.buy(purchaseAmount, 0, address(0));
         vm.stopPrank();
 
         // Set up an LP address
@@ -359,7 +359,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(xpUser);
         elta.approve(address(curve), purchaseAmount * 101 / 100);
-        uint256 tokensOut = curve.buy(purchaseAmount, 0);
+        uint256 tokensOut = curve.buy(purchaseAmount, 0, address(0));
         vm.stopPrank();
 
         // Set up an LP address for LP-keyed tax

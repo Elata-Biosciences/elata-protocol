@@ -139,7 +139,7 @@ contract AppLaunchSecurityTest is Test {
         vm.startPrank(user1);
         // Approve with 1% trading fee
         elta.approve(address(curve), 1000 ether * 101 / 100);
-        uint256 tokensOut = curve.buy(1000 ether, 0);
+        uint256 tokensOut = curve.buy(1000 ether, 0, address(0));
         vm.stopPrank();
 
         // Purchase should succeed normally
@@ -195,7 +195,7 @@ contract AppLaunchSecurityTest is Test {
         vm.startPrank(user1);
         // Approve with 1% trading fee
         elta.approve(address(curve), purchaseAmount * 101 / 100);
-        curve.buy(purchaseAmount, 0);
+        curve.buy(purchaseAmount, 0, address(0));
         vm.stopPrank();
 
         // Attacker cannot redirect fees
@@ -294,7 +294,7 @@ contract AppLaunchSecurityTest is Test {
         vm.startPrank(user1);
         // Approve with 1% fee
         elta.approve(address(curve), eltaIn * 101 / 100);
-        uint256 actualTokens = curve.buy(eltaIn, expectedTokens);
+        uint256 actualTokens = curve.buy(eltaIn, expectedTokens, address(0));
         vm.stopPrank();
 
         assertEq(actualTokens, expectedTokens);
@@ -367,7 +367,7 @@ contract AppLaunchSecurityTest is Test {
         vm.startPrank(user1);
         // Approve with 1% trading fee
         elta.approve(address(curve), 1000 ether * 101 / 100);
-        uint256 tokensOut = curve.buy(1000 ether, 0);
+        uint256 tokensOut = curve.buy(1000 ether, 0, address(0));
         vm.stopPrank();
 
         // Tokens should be transferable

@@ -127,7 +127,7 @@ contract AppBondingCurveTest is Test {
         elta.approve(address(curve), eltaIn);
 
         uint256 tokensBefore = appToken.balanceOf(buyer1);
-        uint256 tokensOut = curve.buy(eltaIn, expectedTokens);
+        uint256 tokensOut = curve.buy(eltaIn, expectedTokens, address(0));
         uint256 tokensAfter = appToken.balanceOf(buyer1);
 
         vm.stopPrank();
@@ -149,7 +149,7 @@ contract AppBondingCurveTest is Test {
         elta.approve(address(curve), eltaIn);
 
         vm.expectRevert(AppBondingCurve.InsufficientOutput.selector);
-        curve.buy(eltaIn, minTokensOut);
+        curve.buy(eltaIn, minTokensOut, address(0));
 
         vm.stopPrank();
     }
@@ -161,7 +161,7 @@ contract AppBondingCurveTest is Test {
         // Buy some tokens
         vm.startPrank(buyer1);
         elta.approve(address(curve), 5000 ether);
-        curve.buy(5000 ether, 0);
+        curve.buy(5000 ether, 0, address(0));
         vm.stopPrank();
 
         // Price should increase
@@ -194,7 +194,7 @@ contract AppBondingCurveTest is Test {
         // For now, test that buying zero amount fails
         vm.expectRevert(AppBondingCurve.ZeroInput.selector);
         vm.prank(buyer1);
-        curve.buy(0, 0);
+        curve.buy(0, 0, address(0));
     }
 
     // Removed test_ProtocolFeeCollection - legacy protocol fee removed in favor of unified 70/15/15
@@ -212,7 +212,7 @@ contract AppBondingCurveTest is Test {
 
         vm.startPrank(buyer1);
         elta.approve(address(curve), eltaAmount);
-        uint256 tokensOut = curve.buy(eltaAmount, 0);
+        uint256 tokensOut = curve.buy(eltaAmount, 0, address(0));
         vm.stopPrank();
 
         assertEq(tokensOut, expectedTokens);
