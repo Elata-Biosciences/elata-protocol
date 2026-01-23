@@ -136,7 +136,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("XPGatedApp", "XPG", 0, "", "", "");
+        uint256 appId = factory.createApp("XPGatedApp", "XPG", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -164,7 +164,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("XPGatedApp", "XPG", 0, "", "", "");
+        uint256 appId = factory.createApp("XPGatedApp", "XPG", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -192,7 +192,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("XPGatedApp", "XPG", 0, "", "", "");
+        uint256 appId = factory.createApp("XPGatedApp", "XPG", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -220,7 +220,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("XPGatedApp", "XPG", 0, "", "", "");
+        uint256 appId = factory.createApp("XPGatedApp", "XPG", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -246,7 +246,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("XPGatedApp", "XPG", 0, "", "", "");
+        uint256 appId = factory.createApp("XPGatedApp", "XPG", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -266,7 +266,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "");
+        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -302,7 +302,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "");
+        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -343,7 +343,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "");
+        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -399,7 +399,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "");
+        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -422,7 +422,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "");
+        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -445,7 +445,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "");
+        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -463,7 +463,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "");
+        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -488,7 +488,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("ViewApp", "VIEW", 0, "", "", "");
+        uint256 appId = factory.createApp("ViewApp", "VIEW", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -507,7 +507,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("ViewApp", "VIEW", 0, "", "", "");
+        uint256 appId = factory.createApp("ViewApp", "VIEW", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -526,7 +526,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("StatusApp", "STAT", 0, "", "", "");
+        uint256 appId = factory.createApp("StatusApp", "STAT", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         (bool isInEarlyAccess, uint256 earlyAccessEndsAt, uint256 xpRequired) = factory.getAppLaunchStatus(appId);
@@ -542,7 +542,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("BuyApp", "BUY", 0, "", "", "");
+        uint256 appId = factory.createApp("BuyApp", "BUY", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -562,7 +562,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("InfoApp", "INFO", 0, "", "", "");
+        uint256 appId = factory.createApp("InfoApp", "INFO", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);

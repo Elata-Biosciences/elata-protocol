@@ -174,6 +174,7 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
      * @param description App description
      * @param imageURI App image URI
      * @param website App website
+     * @param operators Array of operator addresses to grant granular roles
      * @return appId ID of created app
      */
     function createApp(
@@ -182,7 +183,8 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         uint256 supply,
         string calldata description,
         string calldata imageURI,
-        string calldata website
+        string calldata website,
+        address[] calldata operators
     ) external nonReentrant returns (uint256 appId) {
         if (paused) revert Paused();
         uint256 tokenSupply = supply == 0 ? defaultSupply : supply;
@@ -261,6 +263,17 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         token.mint(vestingWalletAddr, teamShare);
         token.mint(ecosystemVaultAddr, ecosystemShare);
         token.revokeMinter(address(this));
+
+        // Grant granular roles to operators
+        for (uint256 i = 0; i < operators.length; i++) {
+            if (operators[i] != address(0)) {
+                token.grantRole(token.APP_OPERATOR_ROLE(), operators[i]);
+                token.grantRole(token.LP_MANAGER_ROLE(), operators[i]);
+                token.grantRole(token.FEE_EXEMPT_MANAGER_ROLE(), operators[i]);
+            }
+        }
+
+        // Transfer admin role to creator
         token.grantRole(token.DEFAULT_ADMIN_ROLE(), msg.sender);
         token.revokeRole(token.DEFAULT_ADMIN_ROLE(), address(this));
 

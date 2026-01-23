@@ -71,7 +71,7 @@ contract AppLaunchSecurityTest is Test {
         // Attacker without enough ELTA cannot create app
         vm.expectRevert();
         vm.prank(attacker);
-        factory.createApp("Malicious", "MAL", 0, "", "", "");
+        factory.createApp("Malicious", "MAL", 0, "", "", "", new address[](0));
 
         // Verify no app was created
         assertEq(factory.appCount(), 0);
@@ -93,7 +93,7 @@ contract AppLaunchSecurityTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("SupplyTest", "SUPPLY", 1000 ether, "", "", "");
+        uint256 appId = factory.createApp("SupplyTest", "SUPPLY", 1000 ether, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -123,7 +123,7 @@ contract AppLaunchSecurityTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("ReentrancyTest", "REEN", 0, "", "", "");
+        uint256 appId = factory.createApp("ReentrancyTest", "REEN", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -180,7 +180,7 @@ contract AppLaunchSecurityTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("FeeTest", "FEE", 0, "", "", "");
+        uint256 appId = factory.createApp("FeeTest", "FEE", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -211,7 +211,7 @@ contract AppLaunchSecurityTest is Test {
         // App creation should be blocked
         vm.expectRevert(AppFactory.Paused.selector);
         vm.prank(creator);
-        factory.createApp("PausedApp", "PAUSE", 0, "", "", "");
+        factory.createApp("PausedApp", "PAUSE", 0, "", "", "", new address[](0));
 
         // Verify no app was created
         assertEq(factory.appCount(), 0);
@@ -229,7 +229,7 @@ contract AppLaunchSecurityTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("UnpausedApp", "UNPAUSE", 0, "", "", "");
+        uint256 appId = factory.createApp("UnpausedApp", "UNPAUSE", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         assertEq(appId, 0);
@@ -242,7 +242,7 @@ contract AppLaunchSecurityTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("MetaTest", "META", 0, "", "", "");
+        uint256 appId = factory.createApp("MetaTest", "META", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -272,7 +272,7 @@ contract AppLaunchSecurityTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("CurveTest", "CURVE", 0, "", "", "");
+        uint256 appId = factory.createApp("CurveTest", "CURVE", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -352,7 +352,7 @@ contract AppLaunchSecurityTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("TransferTest", "TRANS", 0, "", "", "");
+        uint256 appId = factory.createApp("TransferTest", "TRANS", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -393,12 +393,12 @@ contract AppLaunchSecurityTest is Test {
         // Attacker with insufficient ELTA cannot create
         vm.expectRevert();
         vm.prank(attacker);
-        factory.createApp("InsufficientStake", "INSUF", 0, "", "", "");
+        factory.createApp("InsufficientStake", "INSUF", 0, "", "", "", new address[](0));
 
         // Creator with sufficient ELTA can create
         vm.startPrank(creator);
         elta.approve(address(factory), requiredStake);
-        uint256 appId = factory.createApp("ValidStake", "VALID", 0, "", "", "");
+        uint256 appId = factory.createApp("ValidStake", "VALID", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         assertEq(appId, 0);

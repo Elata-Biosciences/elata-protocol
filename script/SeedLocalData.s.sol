@@ -208,7 +208,8 @@ contract SeedLocalData is Script {
             0, // Use default supply
             description,
             imageURI,
-            "https://app.elata.bio"
+            "https://app.elata.bio",
+            new address[](0)
         );
 
         // Get app token address (apps mapping returns the full struct as tuple)

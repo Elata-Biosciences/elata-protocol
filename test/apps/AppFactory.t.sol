@@ -109,7 +109,8 @@ contract AppFactoryTest is Test {
             0, // Use default supply
             "A revolutionary EEG-based game",
             "ipfs://QmHash...",
-            "https://neurogame.com"
+            "https://neurogame.com",
+            new address[](0)
         );
         vm.stopPrank();
 
@@ -146,14 +147,14 @@ contract AppFactoryTest is Test {
 
         vm.expectRevert(AppFactory.Paused.selector);
         vm.prank(creator);
-        factory.createApp("Test", "TEST", 0, "", "", "");
+        factory.createApp("Test", "TEST", 0, "", "", "", new address[](0));
     }
 
     function test_RevertWhen_CreateAppInsufficientFunds() public {
         // Creator doesn't have enough ELTA
         vm.expectRevert();
         vm.prank(creator);
-        factory.createApp("Test", "TEST", 0, "", "", "");
+        factory.createApp("Test", "TEST", 0, "", "", "", new address[](0));
     }
 
     // Parameters are now immutable (constants) for contract size optimization
@@ -181,7 +182,7 @@ contract AppFactoryTest is Test {
         uint256 totalCost = factory.creationFee() + factory.seedElta();
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        factory.createApp("Test", "TEST", 0, "", "", "");
+        factory.createApp("Test", "TEST", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         // Check stats updated
@@ -195,9 +196,9 @@ contract AppFactoryTest is Test {
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost * 3);
 
-        uint256 appId1 = factory.createApp("Game1", "GAME1", 0, "", "", "");
-        uint256 appId2 = factory.createApp("Game2", "GAME2", 0, "", "", "");
-        uint256 appId3 = factory.createApp("Game3", "GAME3", 0, "", "", "");
+        uint256 appId1 = factory.createApp("Game1", "GAME1", 0, "", "", "", new address[](0));
+        uint256 appId2 = factory.createApp("Game2", "GAME2", 0, "", "", "", new address[](0));
+        uint256 appId3 = factory.createApp("Game3", "GAME3", 0, "", "", "", new address[](0));
 
         vm.stopPrank();
 

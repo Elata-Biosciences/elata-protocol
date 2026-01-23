@@ -128,7 +128,8 @@ contract AppLaunchIntegrationTest is Test {
             0, // Use default supply
             "High-speed EEG racing game",
             "ipfs://QmRaceGame",
-            "https://neurorace.game"
+            "https://neurorace.game",
+            new address[](0) // No operators
         );
         vm.stopPrank();
 
@@ -234,8 +235,8 @@ contract AppLaunchIntegrationTest is Test {
         vm.startPrank(creator1);
         elta.approve(address(factory), totalCost * 2);
 
-        uint256 appId1 = factory.createApp("Game1", "GAME1", 0, "First game", "", "");
-        uint256 appId2 = factory.createApp("Game2", "GAME2", 0, "Second game", "", "");
+        uint256 appId1 = factory.createApp("Game1", "GAME1", 0, "First game", "", "", new address[](0));
+        uint256 appId2 = factory.createApp("Game2", "GAME2", 0, "Second game", "", "", new address[](0));
 
         vm.stopPrank();
 
@@ -243,7 +244,7 @@ contract AppLaunchIntegrationTest is Test {
         vm.startPrank(creator2);
         elta.approve(address(factory), totalCost);
 
-        uint256 appId3 = factory.createApp("Meditate", "ZEN", 0, "Meditation app", "", "");
+        uint256 appId3 = factory.createApp("Meditate", "ZEN", 0, "Meditation app", "", "", new address[](0));
 
         vm.stopPrank();
 
@@ -305,7 +306,7 @@ contract AppLaunchIntegrationTest is Test {
 
         vm.startPrank(creator1);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("EconTest", "ECON", 0, "", "", "");
+        uint256 appId = factory.createApp("EconTest", "ECON", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         uint256 treasuryAfterCreation = elta.balanceOf(treasury);
@@ -343,7 +344,7 @@ contract AppLaunchIntegrationTest is Test {
 
         vm.startPrank(creator1);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("NewParams", "NEW", 0, "", "", "");
+        uint256 appId = factory.createApp("NewParams", "NEW", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -371,13 +372,13 @@ contract AppLaunchIntegrationTest is Test {
 
         vm.startPrank(creator1);
         elta.approve(address(factory), totalCost * 2);
-        uint256 appId1 = factory.createApp("App1", "APP1", 0, "", "", "");
-        uint256 appId2 = factory.createApp("App2", "APP2", 0, "", "", "");
+        uint256 appId1 = factory.createApp("App1", "APP1", 0, "", "", "", new address[](0));
+        uint256 appId2 = factory.createApp("App2", "APP2", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         vm.startPrank(creator2);
         elta.approve(address(factory), totalCost);
-        uint256 appId3 = factory.createApp("App3", "APP3", 0, "", "", "");
+        uint256 appId3 = factory.createApp("App3", "APP3", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         // Test registry queries
@@ -409,7 +410,7 @@ contract AppLaunchIntegrationTest is Test {
 
         vm.expectRevert(AppFactory.Paused.selector);
         vm.prank(creator1);
-        factory.createApp("Paused", "PAUSE", 0, "", "", "");
+        factory.createApp("Paused", "PAUSE", 0, "", "", "", new address[](0));
 
         // Unpause and verify works
         vm.prank(admin);
@@ -418,7 +419,7 @@ contract AppLaunchIntegrationTest is Test {
         uint256 totalCost = factory.creationFee() + factory.seedElta();
         vm.startPrank(creator1);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("Unpaused", "UNPAUSE", 0, "", "", "");
+        uint256 appId = factory.createApp("Unpaused", "UNPAUSE", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         assertEq(appId, 0);
@@ -440,7 +441,7 @@ contract AppLaunchIntegrationTest is Test {
         elta.approve(address(factory), totalCost);
 
         uint256 gasBefore = gasleft();
-        uint256 appId = factory.createApp("GasTest", "GAS", 0, "", "", "");
+        uint256 appId = factory.createApp("GasTest", "GAS", 0, "", "", "", new address[](0));
         uint256 gasAfter = gasleft();
 
         vm.stopPrank();
@@ -485,7 +486,7 @@ contract AppLaunchIntegrationTest is Test {
 
         vm.startPrank(creator1);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("EdgeTest", "EDGE", 0, "", "", "");
+        uint256 appId = factory.createApp("EdgeTest", "EDGE", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -549,7 +550,7 @@ contract AppLaunchIntegrationTest is Test {
 
         vm.startPrank(creator1);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("FuzzApp", "FUZZ", supply, "", "", "");
+        uint256 appId = factory.createApp("FuzzApp", "FUZZ", supply, "", "", "", new address[](0));
         vm.stopPrank();
 
         // Verify app created correctly

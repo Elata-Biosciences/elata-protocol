@@ -23,6 +23,9 @@ import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20P
  */
 contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant APP_OPERATOR_ROLE = keccak256("APP_OPERATOR_ROLE");
+    bytes32 public constant LP_MANAGER_ROLE = keccak256("LP_MANAGER_ROLE");
+    bytes32 public constant FEE_EXEMPT_MANAGER_ROLE = keccak256("FEE_EXEMPT_MANAGER_ROLE");
 
     uint8 private immutable _decimals;
     uint256 public immutable maxSupply;
@@ -194,35 +197,53 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
     }
 
     /**
-     * @notice Set transfer fee in basis points (governance only)
+     * @notice Set transfer fee in basis points
+     * @dev Callable by governance, admin, or APP_OPERATOR_ROLE
      * @param newBps New fee rate (0-200 = 0-2%)
      */
     function setTransferFeeBps(uint16 newBps) external {
-        if (msg.sender != governance) revert OnlyGovernance();
+        if (
+            msg.sender != governance && !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)
+                && !hasRole(APP_OPERATOR_ROLE, msg.sender)
+        ) {
+            revert OnlyGovernance();
+        }
         if (newBps > MAX_TRANSFER_FEE_BPS) revert FeeTooHigh();
         emit TransferFeeUpdated(transferFeeBps, newBps);
         transferFeeBps = newBps;
     }
 
     /**
-     * @notice Set transfer fee exemption status (governance only)
+     * @notice Set transfer fee exemption status
+     * @dev Callable by governance, admin, or FEE_EXEMPT_MANAGER_ROLE
      * @param account Address to update
      * @param exempt True to exempt from fees
      */
     function setTransferFeeExempt(address account, bool exempt) external {
-        if (msg.sender != governance && !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) revert OnlyGovernance();
+        if (
+            msg.sender != governance && !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)
+                && !hasRole(FEE_EXEMPT_MANAGER_ROLE, msg.sender)
+        ) {
+            revert OnlyGovernance();
+        }
         transferFeeExempt[account] = exempt;
         emit TransferFeeExemptSet(account, exempt);
     }
 
     /**
      * @notice Set liquidity pool status for LP-keyed taxation
+     * @dev Callable by governance, admin, or LP_MANAGER_ROLE
      * @dev Transfers to/from LP addresses are taxed; wallet-to-wallet is not
      * @param lp Address to update
      * @param isLP True if address is a liquidity pool
      */
     function setLiquidityPool(address lp, bool isLP) external {
-        if (msg.sender != governance && !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) revert OnlyGovernance();
+        if (
+            msg.sender != governance && !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)
+                && !hasRole(LP_MANAGER_ROLE, msg.sender)
+        ) {
+            revert OnlyGovernance();
+        }
         isLiquidityPool[lp] = isLP;
         emit LPAddressUpdated(lp, isLP);
     }
