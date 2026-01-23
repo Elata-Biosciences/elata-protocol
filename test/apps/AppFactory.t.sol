@@ -92,7 +92,7 @@ contract AppFactoryTest is Test {
         assertEq(factory.treasury(), treasury);
         assertEq(factory.seedElta(), 100 ether);
         assertEq(factory.targetRaisedElta(), 42_000 ether);
-        assertEq(factory.defaultSupply(), 1_000_000_000 ether);
+        assertEq(factory.defaultSupply(), 10_000_000 ether);
         assertEq(factory.appCount(), 0);
         assertFalse(factory.paused());
     }
@@ -161,7 +161,7 @@ contract AppFactoryTest is Test {
     function test_ParametersAreImmutable() public view {
         assertEq(factory.seedElta(), 100 ether);
         assertEq(factory.targetRaisedElta(), 42_000 ether);
-        assertEq(factory.defaultSupply(), 1_000_000_000 ether);
+        assertEq(factory.defaultSupply(), 10_000_000 ether);
         assertEq(factory.lpLockDuration(), 365 days * 2);
         assertEq(factory.defaultDecimals(), 18);
         // Removed protocolFeeRate check - legacy fee removed in favor of unified 70/15/15 split

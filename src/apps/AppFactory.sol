@@ -60,7 +60,7 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
     // Launch parameters (immutable for size optimization)
     uint256 public constant seedElta = 100 ether;
     uint256 public constant targetRaisedElta = 42_000 ether;
-    uint256 public constant defaultSupply = 1_000_000_000 ether;
+    uint256 public constant defaultSupply = 10_000_000 ether;
     uint256 public constant lpLockDuration = 365 days * 2;
     uint8 public constant defaultDecimals = 18;
     uint256 public constant creationFee = 10 ether;
