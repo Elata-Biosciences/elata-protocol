@@ -40,6 +40,7 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
     error LockExpired();
     error InvalidUnlockTime();
     error Insufficient();
+    error AmountOverflow();
 
     IERC20 public immutable ELTA;
 
@@ -91,6 +92,7 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
         Lock memory userLock = locks[msg.sender];
         if (userLock.principal > 0) revert LockExists();
         if (amount == 0) revert Errors.InvalidAmount();
+        if (amount > type(uint128).max) revert AmountOverflow();
         if (unlockTime <= block.timestamp + MIN_LOCK) revert Errors.LockTooShort();
         if (unlockTime > block.timestamp + MAX_LOCK) revert Errors.LockTooLong();
 
@@ -129,6 +131,7 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
         // Calculate old and new voting power
         uint256 oldVeAmount = (uint256(userLock.principal) * boost) / 1e18;
         uint256 newPrincipal = uint256(userLock.principal) + amount;
+        if (newPrincipal > type(uint128).max) revert AmountOverflow();
         uint256 newVeAmount = (newPrincipal * boost) / 1e18;
 
         locks[msg.sender].principal = uint128(newPrincipal);

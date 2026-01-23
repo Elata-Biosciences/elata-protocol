@@ -68,6 +68,7 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
     error PurchaseTooLate();
     error SupplyExceeded();
     error SoulboundTransfer();
+    error AmountOverflow();
 
     /**
      * @notice Initialize access control contract
@@ -177,6 +178,7 @@ contract AppAccess1155 is ERC1155, Ownable, ReentrancyGuard {
         if (!it.active) revert ItemInactive();
         if (it.startTime != 0 && block.timestamp < it.startTime) revert PurchaseTooEarly();
         if (it.endTime != 0 && block.timestamp > it.endTime) revert PurchaseTooLate();
+        if (amount > type(uint64).max) revert AmountOverflow();
         if (it.maxSupply != 0 && it.minted + amount > it.maxSupply) revert SupplyExceeded();
 
         uint256 cost = it.price * amount;
