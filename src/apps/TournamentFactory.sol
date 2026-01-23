@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {IOwnable} from "./Interfaces.sol";
-import {Tournament} from "./Tournament.sol";
+import {Tournament, EntryTokenType} from "./Tournament.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
@@ -26,6 +26,9 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 contract TournamentFactory is Ownable {
     /// @notice Protocol treasury for tournament fees
     address public treasury;
+
+    /// @notice FeeCollector for routing protocol fees
+    address public feeCollector;
 
     /// @notice Default protocol fee (250 = 2.5%)
     uint256 public defaultProtocolFeeBps = 250;
@@ -83,6 +86,14 @@ contract TournamentFactory is Ownable {
     }
 
     /**
+     * @notice Set FeeCollector address
+     * @param feeCollector_ New fee collector address
+     */
+    function setFeeCollector(address feeCollector_) external onlyOwner {
+        feeCollector = feeCollector_;
+    }
+
+    /**
      * @notice Set default fee parameters
      * @param protocolFeeBps Default protocol fee in bps
      * @param burnFeeBps Default burn fee in bps
@@ -97,23 +108,25 @@ contract TournamentFactory is Ownable {
     /**
      * @notice Create a tournament with default fees
      * @param appToken App token address
+     * @param appId App ID for fee routing
      * @param entryFee Entry fee in app tokens
      * @param startTime Tournament start time (0 = immediate)
      * @param endTime Tournament end time (0 = no end)
      * @return tournament Address of deployed tournament
      */
-    function createTournament(address appToken, uint256 entryFee, uint64 startTime, uint64 endTime)
+    function createTournament(address appToken, uint256 appId, uint256 entryFee, uint64 startTime, uint64 endTime)
         external
         returns (address tournament)
     {
         return createTournamentWithFees(
-            appToken, entryFee, startTime, endTime, defaultProtocolFeeBps, defaultBurnFeeBps
+            appToken, appId, entryFee, startTime, endTime, defaultProtocolFeeBps, defaultBurnFeeBps
         );
     }
 
     /**
      * @notice Create a tournament with custom fees
      * @param appToken App token address
+     * @param appId App ID for fee routing
      * @param entryFee Entry fee in app tokens
      * @param startTime Tournament start time (0 = immediate)
      * @param endTime Tournament end time (0 = no end)
@@ -123,6 +136,7 @@ contract TournamentFactory is Ownable {
      */
     function createTournamentWithFees(
         address appToken,
+        uint256 appId,
         uint256 entryFee,
         uint64 startTime,
         uint64 endTime,
@@ -137,7 +151,19 @@ contract TournamentFactory is Ownable {
 
         // Deploy tournament (creator becomes owner)
         tournamentAddr = address(
-            new Tournament(appToken, msg.sender, treasury, entryFee, startTime, endTime, protocolFeeBps, burnFeeBps)
+            new Tournament(
+                appToken,
+                EntryTokenType.APP,
+                appId,
+                msg.sender,
+                feeCollector,
+                treasury,
+                entryFee,
+                startTime,
+                endTime,
+                protocolFeeBps,
+                burnFeeBps
+            )
         );
 
         // Register tournament

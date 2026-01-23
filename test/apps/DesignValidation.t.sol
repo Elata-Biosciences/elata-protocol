@@ -5,7 +5,7 @@ import {AppAccess1155} from "../../src/apps/AppAccess1155.sol";
 import {AppModuleFactory} from "../../src/apps/AppModuleFactory.sol";
 import {AppStakingVault} from "../../src/apps/AppStakingVault.sol";
 import {AppToken} from "../../src/apps/AppToken.sol";
-import {Tournament} from "../../src/apps/Tournament.sol";
+import {Tournament, EntryTokenType} from "../../src/apps/Tournament.sol";
 import {ELTA} from "../../src/token/ELTA.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "forge-std/Test.sol";
@@ -157,7 +157,10 @@ contract DesignValidationTest is Test {
     function test_Design_ProtocolFeesFromTournaments() public {
         Tournament tourn = new Tournament(
             address(appToken),
+            EntryTokenType.APP,
+            1, // appId
             appCreator,
+            address(0), // no fee collector
             treasury,
             10 ether,
             0,
@@ -382,7 +385,9 @@ contract DesignValidationTest is Test {
     // ────────────────────────────────────────────────────────────────────────────
 
     function test_Design_FeeCapEnforcement() public {
-        Tournament tourn = new Tournament(address(appToken), appCreator, treasury, 10 ether, 0, 0, 0, 0);
+        Tournament tourn = new Tournament(
+            address(appToken), EntryTokenType.APP, 1, appCreator, address(0), treasury, 10 ether, 0, 0, 0, 0
+        );
 
         // VALIDATION: Max 15% total fees
         vm.prank(appCreator);

@@ -6,30 +6,53 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
+/// @notice Interface for FeeCollector
+interface IFeeCollector {
+    function depositElta(uint256 appId, uint256 amount) external;
+    function depositAppToken(uint256 appId, address token, uint256 amount) external;
+}
+
+/// @notice Supported entry token types
+enum EntryTokenType {
+    APP, // App token (default)
+    ELTA, // ELTA token
+    USDC // USDC stablecoin
+}
+
 /**
  * @title Tournament
  * @author Elata Protocol
- * @notice Entry-fee tournaments with protocol & burn fees, Merkle-claim winners
+ * @notice Entry-fee tournaments with multi-currency support and FeeCollector integration
  * @dev On-chain paid competitions with transparent payouts
  *
  * Key Features:
  * - Entry fee pool accumulation
- * - Protocol fee to treasury
+ * - Multi-currency support (APP, ELTA, USDC)
+ * - Protocol fee routing to FeeCollector
  * - Burn fee for deflationary pressure
  * - Merkle proof winner claims
  * - One-time finalization
  *
  * Tournament Flow:
  * 1. Deploy tournament with parameters
- * 2. Users enter during time window (pay entry fee)
+ * 2. Users enter during time window (pay entry fee in selected currency)
  * 3. Owner finalizes with Merkle root of winners
  * 4. Winners claim rewards with proofs
  */
 contract Tournament is Ownable, ReentrancyGuard {
-    /// @notice App token used for entry fees and prizes
-    IERC20 public immutable APP;
+    /// @notice Entry token (APP, ELTA, or USDC)
+    IERC20 public immutable entryToken;
 
-    /// @notice Protocol treasury address for fees
+    /// @notice Type of entry token
+    EntryTokenType public immutable entryTokenType;
+
+    /// @notice App ID for fee routing
+    uint256 public immutable appId;
+
+    /// @notice FeeCollector for routing protocol fees
+    address public feeCollector;
+
+    /// @notice Legacy: Protocol treasury address (fallback or USDC direct)
     address public protocolTreasury;
 
     /// @notice Burn sink address (dead address)
@@ -87,9 +110,12 @@ contract Tournament is Ownable, ReentrancyGuard {
 
     /**
      * @notice Initialize tournament
-     * @param appToken App token address
+     * @param token_ Entry token address
+     * @param tokenType_ Entry token type (APP, ELTA, USDC)
+     * @param appId_ App ID for fee routing
      * @param owner_ Tournament owner
-     * @param protocolTreasury_ Protocol treasury address
+     * @param feeCollector_ FeeCollector address (can be address(0) for legacy)
+     * @param protocolTreasury_ Protocol treasury address (fallback or USDC direct)
      * @param entryFee_ Entry fee amount
      * @param start_ Start time (0 = immediate)
      * @param end_ End time (0 = no end)
@@ -97,8 +123,11 @@ contract Tournament is Ownable, ReentrancyGuard {
      * @param burnFeeBps_ Burn fee in bps
      */
     constructor(
-        address appToken,
+        address token_,
+        EntryTokenType tokenType_,
+        uint256 appId_,
         address owner_,
+        address feeCollector_,
         address protocolTreasury_,
         uint256 entryFee_,
         uint64 start_,
@@ -108,7 +137,10 @@ contract Tournament is Ownable, ReentrancyGuard {
     ) Ownable(owner_) {
         if (end_ != 0 && end_ <= start_) revert InvalidWindow();
 
-        APP = IERC20(appToken);
+        entryToken = IERC20(token_);
+        entryTokenType = tokenType_;
+        appId = appId_;
+        feeCollector = feeCollector_;
         protocolTreasury = protocolTreasury_;
         entryFee = entryFee_;
         startTime = start_;
@@ -161,13 +193,22 @@ contract Tournament is Ownable, ReentrancyGuard {
         emit EntryFeeSet(fee);
     }
 
+    /**
+     * @notice Set fee collector address
+     * @param feeCollector_ New fee collector address
+     */
+    function setFeeCollector(address feeCollector_) external onlyOwner {
+        if (finalized) revert AlreadyFinalized();
+        feeCollector = feeCollector_;
+    }
+
     // ────────────────────────────────────────────────────────────────────────────
     // PARTICIPANT FUNCTIONS
     // ────────────────────────────────────────────────────────────────────────────
 
     /**
      * @notice Enter tournament by paying entry fee
-     * @dev User must approve this contract for APP tokens first
+     * @dev User must approve this contract for entry tokens first
      */
     function enter() external nonReentrant {
         if (entered[msg.sender]) revert AlreadyEntered();
@@ -175,7 +216,7 @@ contract Tournament is Ownable, ReentrancyGuard {
         if (endTime != 0 && block.timestamp > endTime) revert TournamentEnded();
 
         entered[msg.sender] = true;
-        APP.transferFrom(msg.sender, address(this), entryFee);
+        entryToken.transferFrom(msg.sender, address(this), entryFee);
         pool += entryFee;
 
         emit Entered(msg.sender, entryFee);
@@ -183,7 +224,7 @@ contract Tournament is Ownable, ReentrancyGuard {
 
     /**
      * @notice Finalize tournament with winners Merkle root
-     * @dev Applies protocol and burn fees, sets net pool
+     * @dev Applies protocol and burn fees, routes fees to FeeCollector
      * @param winnersRoot_ Merkle root of (address, amount) pairs
      */
     function finalize(bytes32 winnersRoot_) external onlyOwner nonReentrant {
@@ -194,14 +235,42 @@ contract Tournament is Ownable, ReentrancyGuard {
         uint256 burnAmt = (pool * burnFeeBps) / BPS;
         uint256 netPool = pool - protocolFee - burnAmt;
 
-        // Transfer fees
-        if (protocolFee > 0) APP.transfer(protocolTreasury, protocolFee);
-        if (burnAmt > 0) APP.transfer(burnSink, burnAmt);
+        // Route protocol fees based on token type
+        if (protocolFee > 0) {
+            _routeProtocolFees(protocolFee);
+        }
+
+        // Burn tokens (all token types support burn sink)
+        if (burnAmt > 0) {
+            entryToken.transfer(burnSink, burnAmt);
+        }
 
         winnersRoot = winnersRoot_;
         pool = netPool;
 
         emit Finalized(winnersRoot_, netPool, protocolFee, burnAmt);
+    }
+
+    /**
+     * @dev Route protocol fees to FeeCollector or treasury
+     */
+    function _routeProtocolFees(uint256 amount) internal {
+        if (feeCollector != address(0)) {
+            // Route to FeeCollector based on token type
+            entryToken.approve(feeCollector, amount);
+
+            if (entryTokenType == EntryTokenType.ELTA) {
+                IFeeCollector(feeCollector).depositElta(appId, amount);
+            } else if (entryTokenType == EntryTokenType.APP) {
+                IFeeCollector(feeCollector).depositAppToken(appId, address(entryToken), amount);
+            } else {
+                // USDC goes directly to treasury
+                entryToken.transfer(protocolTreasury, amount);
+            }
+        } else {
+            // Fallback: send directly to treasury
+            entryToken.transfer(protocolTreasury, amount);
+        }
     }
 
     /**
@@ -217,7 +286,7 @@ contract Tournament is Ownable, ReentrancyGuard {
         if (!MerkleProof.verify(proof, winnersRoot, leaf)) revert InvalidProof();
 
         claimed[msg.sender] = true;
-        APP.transfer(msg.sender, amount);
+        entryToken.transfer(msg.sender, amount);
 
         emit Claimed(msg.sender, amount);
     }

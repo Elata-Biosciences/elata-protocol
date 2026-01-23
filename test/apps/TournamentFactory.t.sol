@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {AppToken} from "../../src/apps/AppToken.sol";
-import {Tournament} from "../../src/apps/Tournament.sol";
+import {Tournament, EntryTokenType} from "../../src/apps/Tournament.sol";
 import {TournamentFactory} from "../../src/apps/TournamentFactory.sol";
 import "forge-std/Test.sol";
 
@@ -16,6 +16,7 @@ contract TournamentFactoryTest is Test {
     address public user1 = makeAddr("user1");
     address public admin = makeAddr("admin");
 
+    uint256 public constant APP_ID = 1;
     uint256 public constant MAX_SUPPLY = 1_000_000_000 ether;
 
     event TournamentCreated(
@@ -43,11 +44,12 @@ contract TournamentFactoryTest is Test {
 
     function test_CreateTournament() public {
         vm.prank(appCreator);
-        address tournament = factory.createTournament(address(appToken), 10 ether, 0, 0);
+        address tournament = factory.createTournament(address(appToken), APP_ID, 10 ether, 0, 0);
 
         assertTrue(tournament != address(0));
         assertEq(Tournament(tournament).owner(), appCreator);
-        assertEq(address(Tournament(tournament).APP()), address(appToken));
+        assertEq(address(Tournament(tournament).entryToken()), address(appToken));
+        assertEq(uint256(Tournament(tournament).entryTokenType()), uint256(EntryTokenType.APP));
         assertEq(Tournament(tournament).entryFee(), 10 ether);
         assertEq(Tournament(tournament).protocolFeeBps(), 250);
         assertEq(Tournament(tournament).burnFeeBps(), 100);
@@ -57,6 +59,7 @@ contract TournamentFactoryTest is Test {
         vm.prank(appCreator);
         address tournament = factory.createTournamentWithFees(
             address(appToken),
+            APP_ID,
             20 ether,
             uint64(block.timestamp),
             uint64(block.timestamp + 7 days),
@@ -71,7 +74,7 @@ contract TournamentFactoryTest is Test {
     function test_RevertWhen_NotTokenOwner() public {
         vm.expectRevert(TournamentFactory.NotTokenOwner.selector);
         vm.prank(user1);
-        factory.createTournament(address(appToken), 10 ether, 0, 0);
+        factory.createTournament(address(appToken), APP_ID, 10 ether, 0, 0);
     }
 
     function test_RevertWhen_FeesTooHigh() public {
@@ -79,6 +82,7 @@ contract TournamentFactoryTest is Test {
         vm.prank(appCreator);
         factory.createTournamentWithFees(
             address(appToken),
+            APP_ID,
             10 ether,
             0,
             0,
@@ -90,12 +94,13 @@ contract TournamentFactoryTest is Test {
     function test_MultipleTournamentsForSameApp() public {
         // Create first tournament
         vm.prank(appCreator);
-        address tourn1 = factory.createTournament(address(appToken), 10 ether, 0, uint64(block.timestamp + 7 days));
+        address tourn1 =
+            factory.createTournament(address(appToken), APP_ID, 10 ether, 0, uint64(block.timestamp + 7 days));
 
         // Create second tournament
         vm.prank(appCreator);
         address tourn2 = factory.createTournament(
-            address(appToken), 20 ether, uint64(block.timestamp + 7 days), uint64(block.timestamp + 14 days)
+            address(appToken), APP_ID, 20 ether, uint64(block.timestamp + 7 days), uint64(block.timestamp + 14 days)
         );
 
         // Verify both exist and are different
@@ -111,8 +116,8 @@ contract TournamentFactoryTest is Test {
     function test_GetCreatorTournaments() public {
         // Create multiple tournaments
         vm.startPrank(appCreator);
-        address tourn1 = factory.createTournament(address(appToken), 10 ether, 0, 0);
-        address tourn2 = factory.createTournament(address(appToken), 20 ether, 0, 0);
+        address tourn1 = factory.createTournament(address(appToken), APP_ID, 10 ether, 0, 0);
+        address tourn2 = factory.createTournament(address(appToken), APP_ID, 20 ether, 0, 0);
         vm.stopPrank();
 
         address[] memory creatorTournaments = factory.getCreatorTournaments(appCreator);
