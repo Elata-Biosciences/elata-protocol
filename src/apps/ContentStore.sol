@@ -14,6 +14,14 @@ interface IInAppContent721 {
 /// @notice Interface for FeeCollector
 interface IFeeCollector {
     function depositAppToken(uint256 appId, address token, uint256 amount) external;
+    function depositElta(uint256 appId, uint256 amount) external;
+}
+
+/// @notice Supported payment token types
+enum PaymentTokenType {
+    APP, // App token (default)
+    ELTA, // ELTA token
+    USDC // USDC stablecoin
 }
 
 /**
@@ -67,10 +75,11 @@ contract ContentStore is AccessControl, ReentrancyGuard {
 
     struct Content {
         string uri; // Metadata URI for minted tokens
-        uint256 price; // Price in app tokens
+        uint256 price; // Price in payment token
         uint256 maxSupply; // 0 = unlimited
         uint256 minted; // Count of purchases
         bool active; // Whether available for purchase
+        PaymentTokenType paymentType; // Which token to accept
     }
 
     // =========== State ===========
@@ -80,6 +89,15 @@ contract ContentStore is AccessControl, ReentrancyGuard {
 
     /// @notice App token for payments
     IERC20 public immutable appToken;
+
+    /// @notice ELTA token for payments
+    IERC20 public immutable elta;
+
+    /// @notice USDC token for payments
+    IERC20 public immutable usdc;
+
+    /// @notice Protocol treasury for USDC fees
+    address public immutable treasury;
 
     /// @notice InAppContent721 contract to mint to
     IInAppContent721 public immutable content721;
@@ -102,8 +120,8 @@ contract ContentStore is AccessControl, ReentrancyGuard {
     /// @notice Next content ID
     uint256 public nextContentId;
 
-    /// @notice Accumulated creator revenue
-    uint256 public creatorRevenue;
+    /// @notice Accumulated creator revenue per payment type
+    mapping(PaymentTokenType => uint256) public creatorRevenue;
 
     // =========== Constructor ===========
 
@@ -111,6 +129,9 @@ contract ContentStore is AccessControl, ReentrancyGuard {
      * @notice Create a new content store
      * @param _appId App ID for fee routing
      * @param _appToken App token for payments
+     * @param _elta ELTA token for payments
+     * @param _usdc USDC token for payments
+     * @param _treasury Protocol treasury for USDC fees
      * @param _content721 InAppContent721 contract
      * @param _admin Store admin (typically app creator)
      * @param _feeCollector FeeCollector for protocol fees
@@ -119,6 +140,9 @@ contract ContentStore is AccessControl, ReentrancyGuard {
     constructor(
         uint256 _appId,
         address _appToken,
+        address _elta,
+        address _usdc,
+        address _treasury,
         address _content721,
         address _admin,
         address _feeCollector,
@@ -130,6 +154,9 @@ contract ContentStore is AccessControl, ReentrancyGuard {
 
         appId = _appId;
         appToken = IERC20(_appToken);
+        elta = IERC20(_elta);
+        usdc = IERC20(_usdc);
+        treasury = _treasury;
         content721 = IInAppContent721(_content721);
         feeCollector = _feeCollector;
         protocolFeeBps = _protocolFeeBps;
@@ -145,11 +172,12 @@ contract ContentStore is AccessControl, ReentrancyGuard {
     /**
      * @notice List new content for sale
      * @param uri Metadata URI
-     * @param price Price in app tokens
+     * @param price Price in payment token
      * @param maxSupply Maximum purchases (0 = unlimited)
+     * @param paymentType Which token type to accept (APP, ELTA, USDC)
      * @return contentId The new content ID
      */
-    function listContent(string memory uri, uint256 price, uint256 maxSupply)
+    function listContent(string memory uri, uint256 price, uint256 maxSupply, PaymentTokenType paymentType)
         external
         onlyRole(MODULE_OPERATOR_ROLE)
         returns (uint256 contentId)
@@ -157,7 +185,8 @@ contract ContentStore is AccessControl, ReentrancyGuard {
         if (price == 0) revert ZeroPrice();
 
         contentId = nextContentId++;
-        contents[contentId] = Content({uri: uri, price: price, maxSupply: maxSupply, minted: 0, active: true});
+        contents[contentId] =
+            Content({uri: uri, price: price, maxSupply: maxSupply, minted: 0, active: true, paymentType: paymentType});
 
         emit ContentListed(contentId, uri, price, maxSupply);
     }
@@ -188,7 +217,7 @@ contract ContentStore is AccessControl, ReentrancyGuard {
      * @notice Purchase content and receive minted token
      * @param contentId Content to purchase
      * @return tokenId The minted token ID
-     * @dev User must approve this contract for app tokens first
+     * @dev User must approve this contract for payment tokens first
      */
     function purchase(uint256 contentId) external nonReentrant returns (uint256 tokenId) {
         Content storage content = contents[contentId];
@@ -200,22 +229,25 @@ contract ContentStore is AccessControl, ReentrancyGuard {
         }
 
         uint256 price = content.price;
+        PaymentTokenType paymentType = content.paymentType;
+
+        // Get the appropriate payment token
+        IERC20 paymentToken = _getPaymentToken(paymentType);
 
         // Collect payment
-        appToken.safeTransferFrom(msg.sender, address(this), price);
+        paymentToken.safeTransferFrom(msg.sender, address(this), price);
 
         // Calculate and route protocol fee
         uint256 protocolFee = (price * protocolFeeBps) / BPS;
-        if (protocolFee > 0 && feeCollector != address(0)) {
-            appToken.approve(feeCollector, protocolFee);
-            IFeeCollector(feeCollector).depositAppToken(appId, address(appToken), protocolFee);
+        if (protocolFee > 0 && _canRouteProtocolFee(paymentType)) {
+            _routeProtocolFee(paymentType, paymentToken, protocolFee);
         } else {
             // If no fee collector, all goes to creator
             protocolFee = 0;
         }
 
         // Remaining goes to creator revenue
-        creatorRevenue += price - protocolFee;
+        creatorRevenue[paymentType] += price - protocolFee;
 
         // Increment minted count
         content.minted++;
@@ -226,19 +258,72 @@ contract ContentStore is AccessControl, ReentrancyGuard {
         emit ContentPurchased(contentId, msg.sender, tokenId, price, protocolFee);
     }
 
+    /**
+     * @dev Check if protocol fee can be routed for a given payment type
+     */
+    function _canRouteProtocolFee(PaymentTokenType paymentType) internal view returns (bool) {
+        if (paymentType == PaymentTokenType.APP || paymentType == PaymentTokenType.ELTA) {
+            return feeCollector != address(0);
+        } else {
+            // USDC goes to treasury
+            return treasury != address(0);
+        }
+    }
+
+    /**
+     * @dev Get the payment token for a given type
+     */
+    function _getPaymentToken(PaymentTokenType paymentType) internal view returns (IERC20) {
+        if (paymentType == PaymentTokenType.APP) {
+            return appToken;
+        } else if (paymentType == PaymentTokenType.ELTA) {
+            return elta;
+        } else {
+            return usdc;
+        }
+    }
+
+    /**
+     * @dev Route protocol fee to FeeCollector or treasury
+     */
+    function _routeProtocolFee(PaymentTokenType paymentType, IERC20 token, uint256 amount) internal {
+        if (paymentType == PaymentTokenType.APP) {
+            if (feeCollector != address(0)) {
+                token.approve(feeCollector, amount);
+                IFeeCollector(feeCollector).depositAppToken(appId, address(token), amount);
+            }
+        } else if (paymentType == PaymentTokenType.ELTA) {
+            if (feeCollector != address(0)) {
+                token.approve(feeCollector, amount);
+                IFeeCollector(feeCollector).depositElta(appId, amount);
+            }
+        } else {
+            // USDC goes directly to treasury
+            if (treasury != address(0)) {
+                token.safeTransfer(treasury, amount);
+            }
+        }
+    }
+
     // =========== Admin Functions ===========
 
     /**
-     * @notice Withdraw accumulated creator revenue
+     * @notice Withdraw accumulated creator revenue for a specific token type
      * @param to Recipient address
+     * @param paymentType Which revenue type to withdraw (APP, ELTA, USDC)
      */
-    function withdrawRevenue(address to) external onlyRole(MODULE_ADMIN_ROLE) nonReentrant {
+    function withdrawRevenue(address to, PaymentTokenType paymentType)
+        external
+        onlyRole(MODULE_ADMIN_ROLE)
+        nonReentrant
+    {
         if (to == address(0)) revert ZeroAddress();
 
-        uint256 amount = creatorRevenue;
-        creatorRevenue = 0;
+        uint256 amount = creatorRevenue[paymentType];
+        creatorRevenue[paymentType] = 0;
 
-        appToken.safeTransfer(to, amount);
+        IERC20 token = _getPaymentToken(paymentType);
+        token.safeTransfer(to, amount);
 
         emit RevenueWithdrawn(to, amount);
     }
@@ -272,18 +357,26 @@ contract ContentStore is AccessControl, ReentrancyGuard {
      * @notice Get content details
      * @param contentId Content ID
      * @return uri Metadata URI
-     * @return price Price in app tokens
+     * @return price Price in payment token
      * @return maxSupply Maximum supply (0 = unlimited)
      * @return minted Number minted
      * @return active Whether available for purchase
+     * @return paymentType Which token type is accepted
      */
     function getContent(uint256 contentId)
         external
         view
-        returns (string memory uri, uint256 price, uint256 maxSupply, uint256 minted, bool active)
+        returns (
+            string memory uri,
+            uint256 price,
+            uint256 maxSupply,
+            uint256 minted,
+            bool active,
+            PaymentTokenType paymentType
+        )
     {
         Content storage content = contents[contentId];
-        return (content.uri, content.price, content.maxSupply, content.minted, content.active);
+        return (content.uri, content.price, content.maxSupply, content.minted, content.active, content.paymentType);
     }
 
     /**

@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {AppToken} from "../../src/apps/AppToken.sol";
 import {InAppContent721} from "../../src/apps/InAppContent721.sol";
-import {ContentStore} from "../../src/apps/ContentStore.sol";
+import {ContentStore, PaymentTokenType} from "../../src/apps/ContentStore.sol";
 import "forge-std/Test.sol";
 
 contract ContentStoreTest is Test {
@@ -14,6 +14,9 @@ contract ContentStoreTest is Test {
     address public owner = makeAddr("owner");
     address public admin = makeAddr("admin");
     address public feeCollector = makeAddr("feeCollector");
+    address public treasury = makeAddr("treasury");
+    address public elta = makeAddr("elta");
+    address public usdc = makeAddr("usdc");
     address public user1 = makeAddr("user1");
     address public user2 = makeAddr("user2");
 
@@ -47,7 +50,9 @@ contract ContentStoreTest is Test {
         );
 
         // Deploy content store
-        store = new ContentStore(APP_ID, address(appToken), address(content721), owner, feeCollector, PROTOCOL_FEE_BPS);
+        store = new ContentStore(
+            APP_ID, address(appToken), elta, usdc, treasury, address(content721), owner, feeCollector, PROTOCOL_FEE_BPS
+        );
 
         // Set store as minter
         vm.prank(owner);
@@ -80,17 +85,23 @@ contract ContentStoreTest is Test {
 
     function test_RevertWhen_DeployWithZeroAppToken() public {
         vm.expectRevert(ContentStore.ZeroAddress.selector);
-        new ContentStore(APP_ID, address(0), address(content721), owner, feeCollector, PROTOCOL_FEE_BPS);
+        new ContentStore(
+            APP_ID, address(0), elta, usdc, treasury, address(content721), owner, feeCollector, PROTOCOL_FEE_BPS
+        );
     }
 
     function test_RevertWhen_DeployWithZeroContent721() public {
         vm.expectRevert(ContentStore.ZeroAddress.selector);
-        new ContentStore(APP_ID, address(appToken), address(0), owner, feeCollector, PROTOCOL_FEE_BPS);
+        new ContentStore(
+            APP_ID, address(appToken), elta, usdc, treasury, address(0), owner, feeCollector, PROTOCOL_FEE_BPS
+        );
     }
 
     function test_RevertWhen_DeployWithInvalidFeeBps() public {
         vm.expectRevert(ContentStore.InvalidFeeBps.selector);
-        new ContentStore(APP_ID, address(appToken), address(content721), owner, feeCollector, 1501);
+        new ContentStore(
+            APP_ID, address(appToken), elta, usdc, treasury, address(content721), owner, feeCollector, 1501
+        );
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -104,12 +115,12 @@ contract ContentStoreTest is Test {
         vm.prank(owner);
         vm.expectEmit(true, true, true, true);
         emit ContentListed(0, uri, CONTENT_PRICE, maxSupply);
-        uint256 contentId = store.listContent(uri, CONTENT_PRICE, maxSupply);
+        uint256 contentId = store.listContent(uri, CONTENT_PRICE, maxSupply, PaymentTokenType.APP);
 
         assertEq(contentId, 0);
         assertEq(store.contentCount(), 1);
 
-        (string memory storedUri, uint256 price, uint256 storedMaxSupply, uint256 minted, bool active) =
+        (string memory storedUri, uint256 price, uint256 storedMaxSupply, uint256 minted, bool active,) =
             store.getContent(0);
 
         assertEq(storedUri, uri);
@@ -121,16 +132,16 @@ contract ContentStoreTest is Test {
 
     function test_ListUnlimitedContent() public {
         vm.prank(owner);
-        uint256 contentId = store.listContent("ipfs://QmUnlimited", CONTENT_PRICE, 0);
+        uint256 contentId = store.listContent("ipfs://QmUnlimited", CONTENT_PRICE, 0, PaymentTokenType.APP);
 
-        (,, uint256 maxSupply,,) = store.getContent(contentId);
+        (,, uint256 maxSupply,,,) = store.getContent(contentId);
         assertEq(maxSupply, 0);
     }
 
     function test_RevertWhen_ListWithZeroPrice() public {
         vm.expectRevert(ContentStore.ZeroPrice.selector);
         vm.prank(owner);
-        store.listContent("ipfs://Qm", 0, 100);
+        store.listContent("ipfs://Qm", 0, 100, PaymentTokenType.APP);
     }
 
     function test_RevertWhen_NonOperatorLists() public {
@@ -140,25 +151,25 @@ contract ContentStoreTest is Test {
             )
         );
         vm.prank(user1);
-        store.listContent("ipfs://Qm", CONTENT_PRICE, 100);
+        store.listContent("ipfs://Qm", CONTENT_PRICE, 100, PaymentTokenType.APP);
     }
 
     function test_DeactivateContent() public {
         vm.prank(owner);
-        store.listContent("ipfs://Qm", CONTENT_PRICE, 100);
+        store.listContent("ipfs://Qm", CONTENT_PRICE, 100, PaymentTokenType.APP);
 
         vm.prank(owner);
         vm.expectEmit(true, true, true, true);
         emit ContentDeactivated(0);
         store.deactivateContent(0);
 
-        (,,,, bool active) = store.getContent(0);
+        (,,,, bool active,) = store.getContent(0);
         assertFalse(active);
     }
 
     function test_ReactivateContent() public {
         vm.prank(owner);
-        store.listContent("ipfs://Qm", CONTENT_PRICE, 100);
+        store.listContent("ipfs://Qm", CONTENT_PRICE, 100, PaymentTokenType.APP);
 
         vm.prank(owner);
         store.deactivateContent(0);
@@ -168,7 +179,7 @@ contract ContentStoreTest is Test {
         emit ContentReactivated(0);
         store.reactivateContent(0);
 
-        (,,,, bool active) = store.getContent(0);
+        (,,,, bool active,) = store.getContent(0);
         assertTrue(active);
     }
 
@@ -185,7 +196,7 @@ contract ContentStoreTest is Test {
     function test_Purchase() public {
         // List content
         vm.prank(owner);
-        store.listContent("ipfs://QmContent", CONTENT_PRICE, 100);
+        store.listContent("ipfs://QmContent", CONTENT_PRICE, 100, PaymentTokenType.APP);
 
         // Approve and purchase
         vm.startPrank(user1);
@@ -204,17 +215,17 @@ contract ContentStoreTest is Test {
         assertEq(content721.ownerOf(0), user1);
 
         // Verify minted count incremented
-        (,,, uint256 minted,) = store.getContent(0);
+        (,,, uint256 minted,,) = store.getContent(0);
         assertEq(minted, 1);
 
         // Verify creator revenue
         uint256 expectedCreatorRevenue = CONTENT_PRICE - expectedProtocolFee;
-        assertEq(store.creatorRevenue(), expectedCreatorRevenue);
+        assertEq(store.creatorRevenue(PaymentTokenType.APP), expectedCreatorRevenue);
     }
 
     function test_PurchaseMultipleTimes() public {
         vm.prank(owner);
-        store.listContent("ipfs://Qm", CONTENT_PRICE, 0); // unlimited
+        store.listContent("ipfs://Qm", CONTENT_PRICE, 0, PaymentTokenType.APP); // unlimited
 
         // User1 purchases
         vm.startPrank(user1);
@@ -229,7 +240,7 @@ contract ContentStoreTest is Test {
         store.purchase(0);
         vm.stopPrank();
 
-        (,,, uint256 minted,) = store.getContent(0);
+        (,,, uint256 minted,,) = store.getContent(0);
         assertEq(minted, 3);
         assertEq(content721.ownerOf(0), user1);
         assertEq(content721.ownerOf(1), user1);
@@ -244,7 +255,7 @@ contract ContentStoreTest is Test {
 
     function test_RevertWhen_PurchaseDeactivated() public {
         vm.prank(owner);
-        store.listContent("ipfs://Qm", CONTENT_PRICE, 100);
+        store.listContent("ipfs://Qm", CONTENT_PRICE, 100, PaymentTokenType.APP);
 
         vm.prank(owner);
         store.deactivateContent(0);
@@ -258,7 +269,7 @@ contract ContentStoreTest is Test {
 
     function test_RevertWhen_MaxSupplyReached() public {
         vm.prank(owner);
-        store.listContent("ipfs://Qm", CONTENT_PRICE, 1); // max 1
+        store.listContent("ipfs://Qm", CONTENT_PRICE, 1, PaymentTokenType.APP); // max 1
 
         // First purchase succeeds
         vm.startPrank(user1);
@@ -273,8 +284,9 @@ contract ContentStoreTest is Test {
 
     function test_PurchaseWithNoFeeCollector() public {
         // Deploy store with no fee collector
-        ContentStore noFeeStore =
-            new ContentStore(APP_ID, address(appToken), address(content721), owner, address(0), PROTOCOL_FEE_BPS);
+        ContentStore noFeeStore = new ContentStore(
+            APP_ID, address(appToken), elta, usdc, treasury, address(content721), owner, address(0), PROTOCOL_FEE_BPS
+        );
 
         // Update minter
         vm.prank(owner);
@@ -282,7 +294,7 @@ contract ContentStoreTest is Test {
 
         // List content
         vm.prank(owner);
-        noFeeStore.listContent("ipfs://Qm", CONTENT_PRICE, 100);
+        noFeeStore.listContent("ipfs://Qm", CONTENT_PRICE, 100, PaymentTokenType.APP);
 
         // Purchase - all goes to creator since no fee collector
         vm.startPrank(user1);
@@ -291,7 +303,7 @@ contract ContentStoreTest is Test {
         vm.stopPrank();
 
         // All revenue goes to creator
-        assertEq(noFeeStore.creatorRevenue(), CONTENT_PRICE);
+        assertEq(noFeeStore.creatorRevenue(PaymentTokenType.APP), CONTENT_PRICE);
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -300,7 +312,7 @@ contract ContentStoreTest is Test {
 
     function test_WithdrawRevenue() public {
         vm.prank(owner);
-        store.listContent("ipfs://Qm", CONTENT_PRICE, 100);
+        store.listContent("ipfs://Qm", CONTENT_PRICE, 100, PaymentTokenType.APP);
 
         vm.startPrank(user1);
         appToken.approve(address(store), CONTENT_PRICE);
@@ -313,15 +325,15 @@ contract ContentStoreTest is Test {
         vm.prank(owner);
         vm.expectEmit(true, true, true, true);
         emit RevenueWithdrawn(recipient, expectedRevenue);
-        store.withdrawRevenue(recipient);
+        store.withdrawRevenue(recipient, PaymentTokenType.APP);
 
         assertEq(appToken.balanceOf(recipient), expectedRevenue);
-        assertEq(store.creatorRevenue(), 0);
+        assertEq(store.creatorRevenue(PaymentTokenType.APP), 0);
     }
 
     function test_RevertWhen_WithdrawToZeroAddress() public {
         vm.prank(owner);
-        store.listContent("ipfs://Qm", CONTENT_PRICE, 100);
+        store.listContent("ipfs://Qm", CONTENT_PRICE, 100, PaymentTokenType.APP);
 
         vm.startPrank(user1);
         appToken.approve(address(store), CONTENT_PRICE);
@@ -330,7 +342,7 @@ contract ContentStoreTest is Test {
 
         vm.expectRevert(ContentStore.ZeroAddress.selector);
         vm.prank(owner);
-        store.withdrawRevenue(address(0));
+        store.withdrawRevenue(address(0), PaymentTokenType.APP);
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -365,7 +377,7 @@ contract ContentStoreTest is Test {
 
     function test_CanPurchase() public {
         vm.prank(owner);
-        store.listContent("ipfs://Qm", CONTENT_PRICE, 100);
+        store.listContent("ipfs://Qm", CONTENT_PRICE, 100, PaymentTokenType.APP);
 
         (bool canPurchase_, uint8 reason) = store.canPurchase(0);
         assertTrue(canPurchase_);
@@ -380,7 +392,7 @@ contract ContentStoreTest is Test {
 
     function test_CannotPurchaseDeactivated() public {
         vm.prank(owner);
-        store.listContent("ipfs://Qm", CONTENT_PRICE, 100);
+        store.listContent("ipfs://Qm", CONTENT_PRICE, 100, PaymentTokenType.APP);
 
         vm.prank(owner);
         store.deactivateContent(0);
@@ -392,7 +404,7 @@ contract ContentStoreTest is Test {
 
     function test_CannotPurchaseSoldOut() public {
         vm.prank(owner);
-        store.listContent("ipfs://Qm", CONTENT_PRICE, 1);
+        store.listContent("ipfs://Qm", CONTENT_PRICE, 1, PaymentTokenType.APP);
 
         vm.startPrank(user1);
         appToken.approve(address(store), CONTENT_PRICE);
@@ -413,15 +425,16 @@ contract ContentStoreTest is Test {
         feeBps = bound(feeBps, 0, 1500);
 
         // Deploy store with variable fee
-        ContentStore varStore =
-            new ContentStore(APP_ID, address(appToken), address(content721), owner, feeCollector, feeBps);
+        ContentStore varStore = new ContentStore(
+            APP_ID, address(appToken), elta, usdc, treasury, address(content721), owner, feeCollector, feeBps
+        );
 
         vm.prank(owner);
         content721.setMinter(address(varStore));
 
         // List content
         vm.prank(owner);
-        varStore.listContent("ipfs://Qm", price, 0);
+        varStore.listContent("ipfs://Qm", price, 0, PaymentTokenType.APP);
 
         // Mint tokens to user
         vm.prank(admin);
@@ -436,7 +449,7 @@ contract ContentStoreTest is Test {
         // Verify revenue calculation
         uint256 expectedProtocolFee = (price * feeBps) / 10000;
         uint256 expectedCreatorRevenue = price - expectedProtocolFee;
-        assertEq(varStore.creatorRevenue(), expectedCreatorRevenue);
+        assertEq(varStore.creatorRevenue(PaymentTokenType.APP), expectedCreatorRevenue);
     }
 
     function testFuzz_MultipleListings(uint8 listingCount) public {
@@ -445,7 +458,10 @@ contract ContentStoreTest is Test {
         for (uint256 i = 0; i < listingCount; i++) {
             vm.prank(owner);
             store.listContent(
-                string(abi.encodePacked("ipfs://Qm", i)), CONTENT_PRICE + i * 1 ether, i == 0 ? 0 : i * 10
+                string(abi.encodePacked("ipfs://Qm", i)),
+                CONTENT_PRICE + i * 1 ether,
+                i == 0 ? 0 : i * 10,
+                PaymentTokenType.APP
             );
         }
 
