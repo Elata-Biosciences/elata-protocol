@@ -19,6 +19,7 @@ import {RewardsDistributor} from "../src/rewards/RewardsDistributor.sol";
 import {VeELTA} from "../src/staking/VeELTA.sol";
 import {ELTA} from "../src/token/ELTA.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "forge-std/Script.sol";
 
@@ -147,7 +148,8 @@ contract Deploy is Script {
         protocol.timelock = _deployTimelock();
         console2.log("   Timelock deployed at:", address(protocol.timelock));
 
-        protocol.governor = new ElataGovernor(protocol.token);
+        // Governor uses veELTA for voting power (IVotes interface)
+        protocol.governor = new ElataGovernor(IVotes(address(protocol.staking)), address(protocol.timelock));
         console2.log("   Governor deployed at:", address(protocol.governor));
 
         // ===== STEP 4: Deploy Rewards Architecture (Economic Upgrade V2) =====

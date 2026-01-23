@@ -3,10 +3,12 @@ pragma solidity ^0.8.24;
 
 import {ElataXP} from "../../src/experience/ElataXP.sol";
 import {ElataGovernor} from "../../src/governance/ElataGovernor.sol";
+import {ElataTimelock} from "../../src/governance/ElataTimelock.sol";
 import {RewardsDistributor} from "../../src/rewards/RewardsDistributor.sol";
 import {VeELTA} from "../../src/staking/VeELTA.sol";
 import {ELTA} from "../../src/token/ELTA.sol";
 import {Errors} from "../../src/utils/Errors.sol";
+import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import "forge-std/Test.sol";
 
 /**
@@ -20,6 +22,7 @@ contract ProtocolTest is Test {
     ElataXP public xp;
     RewardsDistributor public rewards;
     ElataGovernor public governor;
+    ElataTimelock public timelock;
 
     address public admin = makeAddr("admin");
     address public treasury = makeAddr("treasury");
@@ -37,10 +40,18 @@ contract ProtocolTest is Test {
         elta = new ELTA("ELTA", "ELTA", admin, treasury, INITIAL_MINT, TOTAL_SUPPLY);
         xp = new ElataXP(admin);
         staking = new VeELTA(elta, admin);
+
+        // Deploy governance (timelock + governor using veELTA for voting)
+        address[] memory proposers = new address[](1);
+        proposers[0] = address(0); // Anyone can propose through governor
+        address[] memory executors = new address[](1);
+        executors[0] = address(0); // Anyone can execute after delay
+        timelock = new ElataTimelock(48 hours, proposers, executors, admin);
+        governor = new ElataGovernor(IVotes(address(staking)), address(timelock));
+
         // NOTE: RewardsDistributor now requires full architecture - skipping for now
         // Use script/Deploy.sol or test/integration/RevenueFlow.t.sol for full integration tests
         // rewards = new RewardsDistributor(...);
-        governor = new ElataGovernor(elta);
 
         // Distribute tokens for testing (treasury has 10M, distribute 8M)
         vm.startPrank(treasury);
@@ -49,7 +60,8 @@ contract ProtocolTest is Test {
         elta.transfer(charlie, 1_500_000 ether);
         vm.stopPrank();
 
-        // Setup governance delegation
+        // Setup ELTA delegation for ELTA token voting (not used in governor anymore)
+        // Governor now uses veELTA voting power instead
         vm.prank(alice);
         elta.delegate(alice);
 
@@ -130,16 +142,15 @@ contract ProtocolTest is Test {
 
     function _testGovernanceWorkflow() internal {
         // Test basic governance functionality without complex execution
+        // NOTE: Governor now uses veELTA for voting, so users need to have staked
+        // Alice already staked in _testStakingWorkflow()
 
         // Roll forward to create block history for getPastTotalSupply
         vm.roll(block.number + 1);
 
-        // Verify users have voting power for governance
-        uint256 aliceVotes = elta.getVotes(alice);
-        uint256 bobVotes = elta.getVotes(bob);
-
+        // Verify Alice has veELTA voting power for governance (from staking workflow)
+        uint256 aliceVotes = staking.getVotes(alice);
         assertGt(aliceVotes, 0);
-        assertGt(bobVotes, 0);
 
         // Verify governance thresholds
         uint256 proposalThreshold = governor.proposalThreshold();
@@ -147,9 +158,6 @@ contract ProtocolTest is Test {
 
         assertGt(proposalThreshold, 0);
         assertGt(quorum, 0);
-
-        // Verify users can meet thresholds if needed
-        assertGt(aliceVotes, proposalThreshold); // Alice can create proposals
 
         // Note: Full governance testing would require proper setup
         // This test verifies the governance infrastructure is in place

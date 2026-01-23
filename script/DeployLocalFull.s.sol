@@ -13,6 +13,7 @@ import {RewardsDistributor} from "../src/rewards/RewardsDistributor.sol";
 import {VeELTA} from "../src/staking/VeELTA.sol";
 import {ELTA} from "../src/token/ELTA.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Script, console2} from "forge-std/Script.sol";
 
@@ -154,7 +155,8 @@ contract DeployLocalFull is Script {
         // ===== STEP 4: Deploy Governance =====
         console2.log("[4/9] Deploying Governance (Timelock + Governor)...");
         result.timelock = _deployTimelock(result.deployer);
-        result.governor = new ElataGovernor(result.token);
+        // Governor uses veELTA for voting power (IVotes interface)
+        result.governor = new ElataGovernor(IVotes(address(result.staking)), address(result.timelock));
         console2.log("       Timelock deployed at:", address(result.timelock));
         console2.log("       Governor deployed at:", address(result.governor));
 
