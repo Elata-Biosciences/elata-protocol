@@ -17,6 +17,10 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+interface IFeeManager {
+    function setAppCreator(uint256 appId, address creator) external;
+}
+
 /**
  * @title AppFactory
  * @author Elata Biosciences
@@ -62,6 +66,9 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
     uint256 public constant creationFee = 10 ether;
 
     bool public paused;
+
+    /// @notice FeeManager for creator registration
+    address public feeManager;
 
     struct App {
         address creator;
@@ -164,6 +171,14 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
      */
     function setPaused(bool _paused) external onlyRole(PAUSER_ROLE) {
         paused = _paused;
+    }
+
+    /**
+     * @notice Set FeeManager for creator registration
+     * @param _feeManager FeeManager address
+     */
+    function setFeeManager(address _feeManager) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        feeManager = _feeManager;
     }
 
     /**
@@ -310,6 +325,11 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         emit AppCreated(
             appId, msg.sender, tokenAddr, vaultAddr, curveAddr, vestingWalletAddr, ecosystemVaultAddr, curveShare
         );
+
+        // Register creator with FeeManager for fee share
+        if (feeManager != address(0)) {
+            IFeeManager(feeManager).setAppCreator(appId, msg.sender);
+        }
 
         // NOTE: Metadata must be set by creator in separate transaction
         // token.updateMetadata() requires msg.sender == appCreator

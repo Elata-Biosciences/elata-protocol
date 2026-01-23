@@ -88,6 +88,9 @@ contract FeeManager is ReentrancyGuard {
     /// @notice Authorized depositors (FeeSwapper, FeeCollector)
     mapping(address => bool) public isDepositor;
 
+    /// @notice Authorized AppFactory contracts that can register creators
+    mapping(address => bool) public isAppFactory;
+
     /// @notice App creator addresses for creator fee share
     mapping(uint256 => address) public appCreator;
 
@@ -366,9 +369,28 @@ contract FeeManager is ReentrancyGuard {
      * @param appId App ID
      * @param creator Creator address
      */
-    function setAppCreator(uint256 appId, address creator) external onlyAdmin {
+    /**
+     * @notice Set app creator for fee distribution
+     * @dev Callable by admin or authorized AppFactory
+     * @param appId The app ID
+     * @param creator The creator address
+     */
+    function setAppCreator(uint256 appId, address creator) external {
+        if (msg.sender != admin && !isAppFactory[msg.sender]) {
+            revert OnlyAdmin();
+        }
         appCreator[appId] = creator;
         emit AppCreatorUpdated(appId, creator);
+    }
+
+    /**
+     * @notice Set AppFactory authorization
+     * @param factory AppFactory address
+     * @param authorized Whether to authorize
+     */
+    function setAppFactory(address factory, bool authorized) external onlyAdmin {
+        if (factory == address(0)) revert ZeroAddress();
+        isAppFactory[factory] = authorized;
     }
 
     /**
