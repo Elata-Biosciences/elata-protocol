@@ -71,7 +71,8 @@ contract ContentStoreTest is Test {
         assertEq(store.appId(), APP_ID);
         assertEq(address(store.appToken()), address(appToken));
         assertEq(address(store.content721()), address(content721));
-        assertEq(store.owner(), owner);
+        assertTrue(store.hasRole(store.MODULE_ADMIN_ROLE(), owner));
+        assertTrue(store.hasRole(store.MODULE_OPERATOR_ROLE(), owner));
         assertEq(store.feeCollector(), feeCollector);
         assertEq(store.protocolFeeBps(), PROTOCOL_FEE_BPS);
         assertEq(store.contentCount(), 0);
@@ -132,8 +133,12 @@ contract ContentStoreTest is Test {
         store.listContent("ipfs://Qm", 0, 100);
     }
 
-    function test_RevertWhen_NonOwnerLists() public {
-        vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", user1));
+    function test_RevertWhen_NonOperatorLists() public {
+        vm.expectRevert(
+            abi.encodeWithSignature(
+                "AccessControlUnauthorizedAccount(address,bytes32)", user1, store.MODULE_OPERATOR_ROLE()
+            )
+        );
         vm.prank(user1);
         store.listContent("ipfs://Qm", CONTENT_PRICE, 100);
     }

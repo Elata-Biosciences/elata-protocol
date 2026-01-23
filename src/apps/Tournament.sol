@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
@@ -39,7 +39,13 @@ enum EntryTokenType {
  * 3. Owner finalizes with Merkle root of winners
  * 4. Winners claim rewards with proofs
  */
-contract Tournament is Ownable, ReentrancyGuard {
+contract Tournament is AccessControl, ReentrancyGuard {
+    /// @notice Module admin role - can manage settings and withdraw
+    bytes32 public constant MODULE_ADMIN_ROLE = keccak256("MODULE_ADMIN_ROLE");
+
+    /// @notice Module operator role - can manage day-to-day operations
+    bytes32 public constant MODULE_OPERATOR_ROLE = keccak256("MODULE_OPERATOR_ROLE");
+
     /// @notice Entry token (APP, ELTA, or USDC)
     IERC20 public immutable entryToken;
 
@@ -113,7 +119,7 @@ contract Tournament is Ownable, ReentrancyGuard {
      * @param token_ Entry token address
      * @param tokenType_ Entry token type (APP, ELTA, USDC)
      * @param appId_ App ID for fee routing
-     * @param owner_ Tournament owner
+     * @param admin_ Tournament admin (receives MODULE_ADMIN_ROLE and MODULE_OPERATOR_ROLE)
      * @param feeCollector_ FeeCollector address (can be address(0) for legacy)
      * @param protocolTreasury_ Protocol treasury address (fallback or USDC direct)
      * @param entryFee_ Entry fee amount
@@ -126,7 +132,7 @@ contract Tournament is Ownable, ReentrancyGuard {
         address token_,
         EntryTokenType tokenType_,
         uint256 appId_,
-        address owner_,
+        address admin_,
         address feeCollector_,
         address protocolTreasury_,
         uint256 entryFee_,
@@ -134,7 +140,7 @@ contract Tournament is Ownable, ReentrancyGuard {
         uint64 end_,
         uint256 protocolFeeBps_,
         uint256 burnFeeBps_
-    ) Ownable(owner_) {
+    ) {
         if (end_ != 0 && end_ <= start_) revert InvalidWindow();
 
         entryToken = IERC20(token_);
@@ -145,6 +151,11 @@ contract Tournament is Ownable, ReentrancyGuard {
         entryFee = entryFee_;
         startTime = start_;
         endTime = end_;
+
+        // Grant roles to admin
+        _grantRole(DEFAULT_ADMIN_ROLE, admin_);
+        _grantRole(MODULE_ADMIN_ROLE, admin_);
+        _grantRole(MODULE_OPERATOR_ROLE, admin_);
 
         _setFees(protocolFeeBps_, burnFeeBps_);
     }
@@ -158,7 +169,7 @@ contract Tournament is Ownable, ReentrancyGuard {
      * @param protocolBps Protocol fee in basis points
      * @param burnBps Burn fee in basis points
      */
-    function setFees(uint256 protocolBps, uint256 burnBps) external onlyOwner {
+    function setFees(uint256 protocolBps, uint256 burnBps) external onlyRole(MODULE_OPERATOR_ROLE) {
         if (finalized) revert AlreadyFinalized();
         _setFees(protocolBps, burnBps);
     }
@@ -175,7 +186,7 @@ contract Tournament is Ownable, ReentrancyGuard {
      * @param start_ Start time
      * @param end_ End time
      */
-    function setWindow(uint64 start_, uint64 end_) external onlyOwner {
+    function setWindow(uint64 start_, uint64 end_) external onlyRole(MODULE_OPERATOR_ROLE) {
         if (finalized) revert AlreadyFinalized();
         if (end_ != 0 && end_ <= start_) revert InvalidWindow();
         startTime = start_;
@@ -187,7 +198,7 @@ contract Tournament is Ownable, ReentrancyGuard {
      * @notice Set entry fee
      * @param fee New entry fee
      */
-    function setEntryFee(uint256 fee) external onlyOwner {
+    function setEntryFee(uint256 fee) external onlyRole(MODULE_OPERATOR_ROLE) {
         if (finalized) revert AlreadyFinalized();
         entryFee = fee;
         emit EntryFeeSet(fee);
@@ -197,7 +208,7 @@ contract Tournament is Ownable, ReentrancyGuard {
      * @notice Set fee collector address
      * @param feeCollector_ New fee collector address
      */
-    function setFeeCollector(address feeCollector_) external onlyOwner {
+    function setFeeCollector(address feeCollector_) external onlyRole(MODULE_ADMIN_ROLE) {
         if (finalized) revert AlreadyFinalized();
         feeCollector = feeCollector_;
     }
@@ -227,7 +238,7 @@ contract Tournament is Ownable, ReentrancyGuard {
      * @dev Applies protocol and burn fees, routes fees to FeeCollector
      * @param winnersRoot_ Merkle root of (address, amount) pairs
      */
-    function finalize(bytes32 winnersRoot_) external onlyOwner nonReentrant {
+    function finalize(bytes32 winnersRoot_) external onlyRole(MODULE_OPERATOR_ROLE) nonReentrant {
         if (finalized) revert AlreadyFinalized();
         finalized = true;
 

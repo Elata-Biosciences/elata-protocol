@@ -66,7 +66,8 @@ contract TournamentTest is Test {
         assertEq(address(tournament.entryToken()), address(appToken));
         assertEq(uint256(tournament.entryTokenType()), uint256(EntryTokenType.APP));
         assertEq(tournament.appId(), APP_ID);
-        assertEq(tournament.owner(), owner);
+        assertTrue(tournament.hasRole(tournament.MODULE_ADMIN_ROLE(), owner));
+        assertTrue(tournament.hasRole(tournament.MODULE_OPERATOR_ROLE(), owner));
         assertEq(tournament.protocolTreasury(), treasury);
         assertEq(tournament.entryFee(), ENTRY_FEE);
         assertEq(tournament.protocolFeeBps(), PROTOCOL_FEE_BPS);

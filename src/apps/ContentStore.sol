@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 /// @notice Interface for InAppContent721
 interface IInAppContent721 {
@@ -34,8 +34,14 @@ interface IFeeCollector {
  * - Automatic fee split to protocol and creator
  * - Integration with FeeCollector for protocol fees
  */
-contract ContentStore is Ownable, ReentrancyGuard {
+contract ContentStore is AccessControl, ReentrancyGuard {
     using SafeERC20 for IERC20;
+
+    /// @notice Module admin role - can manage settings and withdraw
+    bytes32 public constant MODULE_ADMIN_ROLE = keccak256("MODULE_ADMIN_ROLE");
+
+    /// @notice Module operator role - can manage content listings
+    bytes32 public constant MODULE_OPERATOR_ROLE = keccak256("MODULE_OPERATOR_ROLE");
 
     // =========== Errors ===========
     error ZeroAddress();
@@ -106,7 +112,7 @@ contract ContentStore is Ownable, ReentrancyGuard {
      * @param _appId App ID for fee routing
      * @param _appToken App token for payments
      * @param _content721 InAppContent721 contract
-     * @param _owner Store admin (typically app creator)
+     * @param _admin Store admin (typically app creator)
      * @param _feeCollector FeeCollector for protocol fees
      * @param _protocolFeeBps Initial protocol fee in bps
      */
@@ -114,10 +120,10 @@ contract ContentStore is Ownable, ReentrancyGuard {
         uint256 _appId,
         address _appToken,
         address _content721,
-        address _owner,
+        address _admin,
         address _feeCollector,
         uint256 _protocolFeeBps
-    ) Ownable(_owner) {
+    ) {
         if (_appToken == address(0)) revert ZeroAddress();
         if (_content721 == address(0)) revert ZeroAddress();
         if (_protocolFeeBps > MAX_PROTOCOL_FEE_BPS) revert InvalidFeeBps();
@@ -127,6 +133,11 @@ contract ContentStore is Ownable, ReentrancyGuard {
         content721 = IInAppContent721(_content721);
         feeCollector = _feeCollector;
         protocolFeeBps = _protocolFeeBps;
+
+        // Grant roles to admin
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        _grantRole(MODULE_ADMIN_ROLE, _admin);
+        _grantRole(MODULE_OPERATOR_ROLE, _admin);
     }
 
     // =========== Listing Functions ===========
@@ -140,7 +151,7 @@ contract ContentStore is Ownable, ReentrancyGuard {
      */
     function listContent(string memory uri, uint256 price, uint256 maxSupply)
         external
-        onlyOwner
+        onlyRole(MODULE_OPERATOR_ROLE)
         returns (uint256 contentId)
     {
         if (price == 0) revert ZeroPrice();
@@ -155,7 +166,7 @@ contract ContentStore is Ownable, ReentrancyGuard {
      * @notice Deactivate content listing
      * @param contentId Content to deactivate
      */
-    function deactivateContent(uint256 contentId) external onlyOwner {
+    function deactivateContent(uint256 contentId) external onlyRole(MODULE_OPERATOR_ROLE) {
         if (contentId >= nextContentId) revert ContentDoesNotExist();
         contents[contentId].active = false;
         emit ContentDeactivated(contentId);
@@ -165,7 +176,7 @@ contract ContentStore is Ownable, ReentrancyGuard {
      * @notice Reactivate content listing
      * @param contentId Content to reactivate
      */
-    function reactivateContent(uint256 contentId) external onlyOwner {
+    function reactivateContent(uint256 contentId) external onlyRole(MODULE_OPERATOR_ROLE) {
         if (contentId >= nextContentId) revert ContentDoesNotExist();
         contents[contentId].active = true;
         emit ContentReactivated(contentId);
@@ -221,7 +232,7 @@ contract ContentStore is Ownable, ReentrancyGuard {
      * @notice Withdraw accumulated creator revenue
      * @param to Recipient address
      */
-    function withdrawRevenue(address to) external onlyOwner nonReentrant {
+    function withdrawRevenue(address to) external onlyRole(MODULE_ADMIN_ROLE) nonReentrant {
         if (to == address(0)) revert ZeroAddress();
 
         uint256 amount = creatorRevenue;
@@ -236,7 +247,7 @@ contract ContentStore is Ownable, ReentrancyGuard {
      * @notice Set protocol fee
      * @param newBps New fee in basis points
      */
-    function setProtocolFeeBps(uint256 newBps) external onlyOwner {
+    function setProtocolFeeBps(uint256 newBps) external onlyRole(MODULE_ADMIN_ROLE) {
         if (newBps > MAX_PROTOCOL_FEE_BPS) revert InvalidFeeBps();
 
         uint256 oldBps = protocolFeeBps;
@@ -249,7 +260,7 @@ contract ContentStore is Ownable, ReentrancyGuard {
      * @notice Set fee collector address
      * @param _feeCollector New fee collector
      */
-    function setFeeCollector(address _feeCollector) external onlyOwner {
+    function setFeeCollector(address _feeCollector) external onlyRole(MODULE_ADMIN_ROLE) {
         address oldCollector = feeCollector;
         feeCollector = _feeCollector;
         emit FeeCollectorUpdated(oldCollector, _feeCollector);

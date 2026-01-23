@@ -47,7 +47,7 @@ contract TournamentFactoryTest is Test {
         address tournament = factory.createTournament(address(appToken), APP_ID, 10 ether, 0, 0);
 
         assertTrue(tournament != address(0));
-        assertEq(Tournament(tournament).owner(), appCreator);
+        assertTrue(Tournament(tournament).hasRole(Tournament(tournament).MODULE_ADMIN_ROLE(), appCreator));
         assertEq(address(Tournament(tournament).entryToken()), address(appToken));
         assertEq(uint256(Tournament(tournament).entryTokenType()), uint256(EntryTokenType.APP));
         assertEq(Tournament(tournament).entryFee(), 10 ether);
