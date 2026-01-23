@@ -21,6 +21,10 @@ interface IFeeManager {
     function setAppCreator(uint256 appId, address creator) external;
 }
 
+interface IFeeCollector {
+    function depositElta(uint256 appId, uint256 amount) external;
+}
+
 /**
  * @title AppFactory
  * @author Elata Biosciences
@@ -69,6 +73,9 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
 
     /// @notice FeeManager for creator registration
     address public feeManager;
+
+    /// @notice FeeCollector for routing creation fees through fee pipeline
+    address public feeCollector;
 
     struct App {
         address creator;
@@ -182,6 +189,14 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
     }
 
     /**
+     * @notice Set FeeCollector for routing creation fees through fee pipeline
+     * @param _feeCollector FeeCollector address
+     */
+    function setFeeCollector(address _feeCollector) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        feeCollector = _feeCollector;
+    }
+
+    /**
      * @notice Create new app with auto-staked creator share
      * @param name App token name
      * @param symbol App token symbol
@@ -207,7 +222,17 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
 
         // Collect creation fees
         require(ELTA.transferFrom(msg.sender, address(this), creationFee + seedElta), "Transfer failed");
-        if (creationFee > 0) require(ELTA.transfer(treasury, creationFee), "Transfer failed");
+
+        // Route creation fee through fee pipeline (appId=0 for protocol-level fees)
+        if (creationFee > 0) {
+            if (feeCollector != address(0)) {
+                ELTA.approve(feeCollector, creationFee);
+                IFeeCollector(feeCollector).depositElta(0, creationFee);
+            } else {
+                // Fallback: direct to treasury
+                require(ELTA.transfer(treasury, creationFee), "Transfer failed");
+            }
+        }
 
         // Deploy contracts via library (reduces AppFactory size)
         address tokenAddr = AppDeploymentLib.deployToken(
