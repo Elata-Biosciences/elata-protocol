@@ -25,6 +25,11 @@ interface IFeeCollector {
     function depositElta(uint256 appId, uint256 amount) external;
 }
 
+interface IProtocolConfig {
+    function activationDelay() external view returns (uint256);
+    function maxCurveDuration() external view returns (uint256);
+}
+
 /**
  * @title AppFactory
  * @author Elata Biosciences
@@ -76,6 +81,9 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
 
     /// @notice FeeCollector for routing creation fees through fee pipeline
     address public feeCollector;
+
+    /// @notice ProtocolConfig for reading protocol parameters
+    address public protocolConfig;
 
     struct App {
         address creator;
@@ -197,6 +205,14 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
     }
 
     /**
+     * @notice Set ProtocolConfig for reading protocol parameters
+     * @param _protocolConfig ProtocolConfig address
+     */
+    function setProtocolConfig(address _protocolConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        protocolConfig = _protocolConfig;
+    }
+
+    /**
      * @notice Create new app with auto-staked creator share
      * @param name App token name
      * @param symbol App token symbol
@@ -248,6 +264,13 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
             treasury
         );
         address vaultAddr = AppDeploymentLib.deployVault(name, symbol, tokenAddr, address(this));
+
+        // Read activation delay and max duration from ProtocolConfig (with fallbacks)
+        uint256 _activationDelay =
+            protocolConfig != address(0) ? IProtocolConfig(protocolConfig).activationDelay() : 1 hours;
+        uint256 _maxDuration =
+            protocolConfig != address(0) ? IProtocolConfig(protocolConfig).maxCurveDuration() : 30 days;
+
         address curveAddr = AppDeploymentLib.deployCurve(
             appCount,
             address(this),
@@ -261,8 +284,8 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
             appFeeRouter,
             elataXP,
             governance,
-            1 hours, // activationDelay - TODO: read from ProtocolConfig
-            30 days // maxDuration - TODO: read from ProtocolConfig
+            _activationDelay,
+            _maxDuration
         );
 
         // Configure token & curve with 50/25/25 split

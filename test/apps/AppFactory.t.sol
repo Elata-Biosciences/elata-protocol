@@ -214,4 +214,25 @@ contract AppFactoryTest is Test {
         assertEq(creatorApps[1], 1);
         assertEq(creatorApps[2], 2);
     }
+
+    function test_SetProtocolConfig() public {
+        address mockConfig = makeAddr("protocolConfig");
+
+        // Initially should be zero
+        assertEq(factory.protocolConfig(), address(0));
+
+        // Set config
+        vm.prank(admin);
+        factory.setProtocolConfig(mockConfig);
+
+        assertEq(factory.protocolConfig(), mockConfig);
+    }
+
+    function test_RevertWhen_SetProtocolConfigUnauthorized() public {
+        address mockConfig = makeAddr("protocolConfig");
+
+        vm.expectRevert();
+        vm.prank(user1);
+        factory.setProtocolConfig(mockConfig);
+    }
 }
