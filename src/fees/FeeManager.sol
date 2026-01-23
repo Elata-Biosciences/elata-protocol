@@ -5,6 +5,17 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+/// @notice Minimal Uniswap V2 Router interface for swaps
+interface IUniswapV2Router {
+    function swapExactTokensForTokensSupportingFeeOnTransferTokens(
+        uint256 amountIn,
+        uint256 amountOutMin,
+        address[] calldata path,
+        address to,
+        uint256 deadline
+    ) external;
+}
+
 /**
  * @title FeeManager
  * @author Elata Biosciences
@@ -38,6 +49,8 @@ contract FeeManager is ReentrancyGuard {
     event FeeSplitsUpdated(uint256 appStakersBps, uint256 veEltaBps, uint256 creatorBps, uint256 treasuryBps);
     event DepositorUpdated(address indexed depositor, bool allowed);
     event AppCreatorUpdated(uint256 indexed appId, address indexed creator);
+    event TreasurySwapExecuted(uint256 eltaIn, uint256 usdcOut);
+    event SwapRouterUpdated(address indexed oldRouter, address indexed newRouter);
 
     // =========== Constants ===========
     uint256 public constant MIN_EPOCH_LENGTH = 1 hours;
@@ -54,6 +67,12 @@ contract FeeManager is ReentrancyGuard {
     address public appRewardsDistributor;
     address public veRewardsDistributor;
     address public treasuryVault;
+
+    /// @notice Uniswap V2 router for ELTA→USDC swaps
+    address public swapRouter;
+
+    /// @notice Whether to swap treasury portion to USDC (default: true)
+    bool public swapTreasuryToUsdc = true;
 
     uint256 public epochLength;
     uint256 public deploymentTime;
@@ -199,9 +218,19 @@ contract FeeManager is ReentrancyGuard {
             treasuryShare += creatorShare;
         }
 
-        // Treasury share (remains in contract or sent to treasury)
+        // Treasury share - swap to USDC and send to treasury vault
         if (treasuryShare > 0 && treasuryVault != address(0)) {
-            ELTA.safeTransfer(treasuryVault, treasuryShare);
+            if (swapTreasuryToUsdc && swapRouter != address(0)) {
+                // Swap ELTA to USDC for treasury
+                uint256 usdcOut = _swapEltaToUsdc(treasuryShare);
+                if (usdcOut > 0) {
+                    USDC.safeTransfer(treasuryVault, usdcOut);
+                    emit TreasurySwapExecuted(treasuryShare, usdcOut);
+                }
+            } else {
+                // Fallback: send ELTA directly
+                ELTA.safeTransfer(treasuryVault, treasuryShare);
+            }
         }
 
         // Pay caller incentive
@@ -209,6 +238,42 @@ contract FeeManager is ReentrancyGuard {
 
         uint256 epochId = getCurrentEpochId();
         emit EpochClosed(appId, epochId, amountToDistribute);
+    }
+
+    /**
+     * @dev Swap ELTA to USDC via router
+     * @param eltaAmount Amount of ELTA to swap
+     * @return usdcOut Amount of USDC received
+     */
+    function _swapEltaToUsdc(uint256 eltaAmount) internal returns (uint256 usdcOut) {
+        if (swapRouter == address(0) || eltaAmount == 0) return 0;
+
+        uint256 usdcBefore = USDC.balanceOf(address(this));
+
+        // Approve router
+        ELTA.approve(swapRouter, eltaAmount);
+
+        // Build path: ELTA -> USDC
+        address[] memory path = new address[](2);
+        path[0] = address(ELTA);
+        path[1] = address(USDC);
+
+        // Call router with fee-on-transfer support
+        // swapExactTokensForTokensSupportingFeeOnTransferTokens accepts any slippage (minOut = 0)
+        // In production, consider oracle-based minOut calculation
+        try IUniswapV2Router(swapRouter)
+            .swapExactTokensForTokensSupportingFeeOnTransferTokens(
+                eltaAmount,
+                0, // Accept any output (could add oracle-based min)
+                path,
+                address(this),
+                block.timestamp
+            ) {
+            usdcOut = USDC.balanceOf(address(this)) - usdcBefore;
+        } catch {
+            // Swap failed, return 0 and let caller handle fallback
+            usdcOut = 0;
+        }
     }
 
     /**
@@ -328,5 +393,23 @@ contract FeeManager is ReentrancyGuard {
     function transferAdmin(address _admin) external onlyAdmin {
         if (_admin == address(0)) revert ZeroAddress();
         admin = _admin;
+    }
+
+    /**
+     * @notice Set swap router for ELTA→USDC swaps
+     * @param _router New router address
+     */
+    function setSwapRouter(address _router) external onlyAdmin {
+        address oldRouter = swapRouter;
+        swapRouter = _router;
+        emit SwapRouterUpdated(oldRouter, _router);
+    }
+
+    /**
+     * @notice Enable/disable treasury swap to USDC
+     * @param enabled Whether to swap treasury share to USDC
+     */
+    function setSwapTreasuryToUsdc(bool enabled) external onlyGovernance {
+        swapTreasuryToUsdc = enabled;
     }
 }

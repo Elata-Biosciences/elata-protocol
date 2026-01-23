@@ -337,16 +337,17 @@ contract AppBondingCurve is ReentrancyGuard {
 
         // Calculate fee ON TOP of trade (buyer pays extra)
         uint256 tradingFee = 0;
-        if (address(appFeeRouter) != address(0)) tradingFee = (actualEltaIn * appFeeRouter.feeBps()) / 10_000;
+        if (address(appFeeRouter) != address(0)) {
+            tradingFee = (actualEltaIn * appFeeRouter.feeBps()) / 10_000;
+        }
 
         // Pull ELTA from buyer: curve amount + trading fee
         ELTA.safeTransferFrom(msg.sender, address(this), actualEltaIn + tradingFee);
 
-        // Forward trading fee to RewardsDistributor via router (70/15/15 split)
-        // FIXED: Use address(this) as payer since we already pulled the fee
+        // Accumulate trading fee for later sweep to FeeCollector
+        // This replaces the old appFeeRouter forwarding mechanism
         if (tradingFee > 0) {
-            ELTA.approve(address(appFeeRouter), tradingFee);
-            appFeeRouter.takeAndForwardFee(address(this), tradingFee);
+            pendingFees += tradingFee;
         }
 
         // Update reserves with ELTA (no more legacy protocol fee deduction)
