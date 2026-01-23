@@ -24,7 +24,6 @@ graph TB
     subgraph "Governance"
         Governor[ElataGovernor]
         Timelock[ElataTimelock]
-        LotPool[LotPool]
         Rewards[RewardsDistributor]
     end
     
@@ -39,7 +38,6 @@ graph TB
     AppToken --> Modules
     
     Governor --> Timelock
-    LotPool --> XP
     Rewards --> VeELTA
     
     ELTA --> VeELTA
@@ -115,22 +113,6 @@ Source: [src/experience/ElataXP.sol](../src/experience/ElataXP.sol)
 See also: [xp-system.md](./xp-system.md) for Merkle distribution details.
 
 ## Governance Layer
-
-### LotPool Funding Rounds
-
-LotPool runs weekly funding rounds where the community decides how to allocate treasury funds. Votes are weighted by XP, not ELTA, so funding decisions reflect participation rather than capital.
-
-**Round lifecycle:**
-
-1. Admin calls `startRound()` with a list of proposals and their recipient addresses
-2. Contract takes an XP snapshot at the current block
-3. Users vote by allocating their XP across proposals
-4. After the voting period (typically 7 days), admin calls `finalize()`
-5. The winning proposal's recipient receives ELTA from the pool
-
-Users can split their XP across multiple proposals. The snapshot ensures nobody can earn XP mid-round to influence the vote.
-
-Source: [src/governance/LotPool.sol](../src/governance/LotPool.sol)
 
 ### ElataGovernor
 
@@ -298,8 +280,7 @@ ELTA
 ├── ElataGovernor (uses ELTA for voting)
 └── AppFactory (accepts ELTA for app creation)
 
-ElataXP
-└── LotPool (uses XP for funding votes)
+ElataXP (used for app access gating and reputation)
 
 VeELTA
 └── RewardsDistributor (uses veELTA for reward claims)

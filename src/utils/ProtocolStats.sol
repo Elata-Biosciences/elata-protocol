@@ -2,7 +2,6 @@
 pragma solidity ^0.8.24;
 
 import {ElataXP} from "../experience/ElataXP.sol";
-import {LotPool} from "../governance/LotPool.sol";
 import {RewardsDistributor} from "../rewards/RewardsDistributor.sol";
 import {VeELTA} from "../staking/VeELTA.sol";
 import {ELTA} from "../token/ELTA.sol";
@@ -17,7 +16,6 @@ contract ProtocolStats {
     ELTA public immutable elta;
     VeELTA public immutable staking;
     ElataXP public immutable xp;
-    LotPool public immutable funding;
     RewardsDistributor public immutable rewards;
 
     struct UserSummary {
@@ -49,15 +47,12 @@ contract ProtocolStats {
         uint256 totalActivePositions;
         uint256 averageLockDuration;
         uint256 totalRewardsDistributed;
-        uint256 currentFundingRound;
-        uint256 totalFundingAllocated;
     }
 
-    constructor(ELTA _elta, VeELTA _staking, ElataXP _xp, LotPool _funding, RewardsDistributor _rewards) {
+    constructor(ELTA _elta, VeELTA _staking, ElataXP _xp, RewardsDistributor _rewards) {
         elta = _elta;
         staking = _staking;
         xp = _xp;
-        funding = _funding;
         rewards = _rewards;
     }
 
@@ -117,60 +112,8 @@ contract ProtocolStats {
             totalXPIssued: xp.totalSupply(),
             totalActivePositions: staking.totalSupply(),
             averageLockDuration: _calculateAverageLockDuration(),
-            totalRewardsDistributed: _getTotalRewardsDistributed(),
-            currentFundingRound: funding.currentRoundId(),
-            totalFundingAllocated: _getTotalFundingAllocated()
+            totalRewardsDistributed: _getTotalRewardsDistributed()
         });
-    }
-
-    /**
-     * @notice Gets active funding round information
-     * @param roundId Round ID to query
-     * @param snapshotBlock Block number for XP snapshot
-     * @param startTime Round start time
-     * @param endTime Round end time
-     * @param finalized Whether round is finalized
-     * @param options Array of voting options
-     */
-    function getCurrentFundingRound()
-        external
-        view
-        returns (
-            uint256 roundId,
-            uint256 snapshotBlock,
-            uint64 startTime,
-            uint64 endTime,
-            bool finalized,
-            bytes32[] memory options
-        )
-    {
-        uint256 currentRound = funding.currentRoundId();
-        if (currentRound > 0) {
-            (snapshotBlock, startTime, endTime, finalized, options) = funding.getRound(currentRound - 1);
-            roundId = currentRound - 1;
-        } else {
-            return (0, 0, 0, 0, false, new bytes32[](0));
-        }
-    }
-
-    /**
-     * @notice Gets user's voting status for a specific round
-     * @param user User address
-     * @param roundId Round ID
-     * @return userXP XP available for voting
-     * @return usedXP XP already used in voting
-     * @return remainingXP XP still available
-     */
-    function getUserVotingStatus(address user, uint256 roundId)
-        external
-        view
-        returns (uint256 userXP, uint256 usedXP, uint256 remainingXP)
-    {
-        (uint256 snapshotBlock,,,,) = funding.getRound(roundId);
-        userXP = xp.getPastXP(user, snapshotBlock);
-        // Note: usedXP would need to be tracked in LotPool - see enhancement below
-        usedXP = 0; // Placeholder
-        remainingXP = userXP - usedXP;
     }
 
     /**
@@ -244,10 +187,5 @@ contract ProtocolStats {
         }
 
         return totalDistributed;
-    }
-
-    function _getTotalFundingAllocated() internal view returns (uint256) {
-        // This would need to be tracked via events or additional state
-        return elta.balanceOf(address(funding));
     }
 }

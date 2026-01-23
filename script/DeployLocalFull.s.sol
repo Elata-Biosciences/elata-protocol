@@ -8,7 +8,6 @@ import {TournamentFactory} from "../src/apps/TournamentFactory.sol";
 import {ElataXP} from "../src/experience/ElataXP.sol";
 import {ElataGovernor} from "../src/governance/ElataGovernor.sol";
 import {ElataTimelock} from "../src/governance/ElataTimelock.sol";
-import {LotPool} from "../src/governance/LotPool.sol";
 import {IUniswapV2Router02} from "../src/interfaces/IUniswapV2Router02.sol";
 import {RewardsDistributor} from "../src/rewards/RewardsDistributor.sol";
 import {VeELTA} from "../src/staking/VeELTA.sol";
@@ -96,7 +95,6 @@ contract DeployLocalFull is Script {
         ELTA token;
         ElataXP xp;
         VeELTA staking;
-        LotPool funding;
         RewardsDistributor rewards;
         TimelockController timelock;
         ElataGovernor governor;
@@ -154,19 +152,14 @@ contract DeployLocalFull is Script {
         console2.log("       VeELTA deployed at:", address(result.staking));
 
         // ===== STEP 4: Deploy Governance =====
-        console2.log("[4/10] Deploying Governance (Timelock + Governor)...");
+        console2.log("[4/9] Deploying Governance (Timelock + Governor)...");
         result.timelock = _deployTimelock(result.deployer);
         result.governor = new ElataGovernor(result.token);
         console2.log("       Timelock deployed at:", address(result.timelock));
         console2.log("       Governor deployed at:", address(result.governor));
 
-        // ===== STEP 5: Deploy Funding System =====
-        console2.log("[5/10] Deploying LotPool Funding...");
-        result.funding = new LotPool(result.token, result.xp, result.deployer);
-        console2.log("       LotPool deployed at:", address(result.funding));
-
-        // ===== STEP 6: Deploy Rewards System =====
-        console2.log("[6/10] Deploying Rewards Distributor...");
+        // ===== STEP 5: Deploy Rewards System =====
+        console2.log("[5/9] Deploying Rewards Distributor...");
         // NOTE: RewardsDistributor deployment commented out - use script/Deploy.sol
         // RewardsDistributor now requires VeELTA, AppRewardsDistributor, and treasury
         // For full deployment, use: forge script script/Deploy.sol:Deploy --fork-url
@@ -174,15 +167,15 @@ contract DeployLocalFull is Script {
         // result.rewards = new RewardsDistributor(...);
         console2.log("       RewardsDistributor deployed at:", address(result.rewards));
 
-        // ===== STEP 7: Deploy Mock Uniswap =====
-        console2.log("[7/10] Deploying Mock Uniswap (Factory + Router)...");
+        // ===== STEP 6: Deploy Mock Uniswap =====
+        console2.log("[6/9] Deploying Mock Uniswap (Factory + Router)...");
         result.uniFactory = new MockUniswapV2Factory();
         result.uniRouter = new MockUniswapV2Router(address(result.uniFactory));
         console2.log("       Mock Uniswap Factory deployed at:", address(result.uniFactory));
         console2.log("       Mock Uniswap Router deployed at:", address(result.uniRouter));
 
-        // ===== STEP 8: Deploy App Launch Framework =====
-        console2.log("[8/10] Deploying App Factories...");
+        // ===== STEP 7: Deploy App Launch Framework =====
+        console2.log("[7/9] Deploying App Factories...");
         // NOTE: AppFactory deployment commented out - use script/Deploy.sol
         // AppFactory now requires AppFeeRouter, AppRewardsDistributor, RewardsDistributor, ElataXP,
         // and Governance
@@ -196,13 +189,13 @@ contract DeployLocalFull is Script {
         result.tournamentFactory = new TournamentFactory(result.deployer, result.treasury);
         console2.log("       TournamentFactory deployed at:", address(result.tournamentFactory));
 
-        // ===== STEP 9: Configure Permissions =====
-        console2.log("[9/10] Configuring Permissions...");
+        // ===== STEP 8: Configure Permissions =====
+        console2.log("[8/9] Configuring Permissions...");
         _configurePermissions(result);
         console2.log("       Permissions configured successfully");
 
-        // ===== STEP 10: Setup Test Accounts =====
-        console2.log("[10/10] Setting up Test Accounts...");
+        // ===== STEP 9: Setup Test Accounts =====
+        console2.log("[9/9] Setting up Test Accounts...");
         result.testAccounts = _setupTestAccounts(result.token);
         console2.log("       Test accounts funded successfully");
 
@@ -235,9 +228,6 @@ contract DeployLocalFull is Script {
         // NOTE: RewardsDistributor no longer has addRewardToken()
         // New architecture uses ELTA directly in deposit()
         // result.rewards.addRewardToken(result.token);
-
-        // Grant XP operator role to funding system
-        result.xp.grantRole(result.xp.XP_OPERATOR_ROLE(), address(result.funding));
     }
 
     function _setupTestAccounts(ELTA token) internal returns (address[] memory accounts) {
@@ -267,7 +257,6 @@ contract DeployLocalFull is Script {
         console2.log("ELTA Token:              ", address(result.token));
         console2.log("ElataXP:                 ", address(result.xp));
         console2.log("VeELTA Staking:          ", address(result.staking));
-        console2.log("LotPool Funding:         ", address(result.funding));
         console2.log("Rewards Distributor:     ", address(result.rewards));
         console2.log("Timelock Controller:     ", address(result.timelock));
         console2.log("Elata Governor:          ", address(result.governor));
@@ -321,9 +310,6 @@ contract DeployLocalFull is Script {
             '",\n',
             '    "VeELTA": "',
             vm.toString(address(result.staking)),
-            '",\n',
-            '    "LotPool": "',
-            vm.toString(address(result.funding)),
             '",\n',
             '    "RewardsDistributor": "',
             vm.toString(address(result.rewards)),

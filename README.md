@@ -48,7 +48,7 @@ src/
 ├── token/          # ELTA governance token
 ├── staking/        # veELTA time-locked staking
 ├── experience/     # ElataXP reputation system
-├── governance/     # Governor, Timelock, LotPool funding
+├── governance/     # Governor, Timelock
 ├── rewards/        # Fee distribution contracts
 ├── fees/           # Fee routing infrastructure
 ├── apps/           # App token launch framework
@@ -62,7 +62,6 @@ src/
 | ELTA | ERC20 governance token with 77M supply cap | [src/token/ELTA.sol](src/token/ELTA.sol) |
 | VeELTA | Vote-escrowed staking (7 days to 2 years) | [src/staking/VeELTA.sol](src/staking/VeELTA.sol) |
 | ElataXP | Non-transferable reputation points | [src/experience/ElataXP.sol](src/experience/ElataXP.sol) |
-| LotPool | XP-weighted funding rounds | [src/governance/LotPool.sol](src/governance/LotPool.sol) |
 | RewardsDistributor | Protocol fee distribution (70/15/15 split) | [src/rewards/RewardsDistributor.sol](src/rewards/RewardsDistributor.sol) |
 | ElataGovernor | On-chain governance with 4% quorum | [src/governance/ElataGovernor.sol](src/governance/ElataGovernor.sol) |
 | AppFactory | Permissionless app token launches | [src/apps/AppFactory.sol](src/apps/AppFactory.sol) |

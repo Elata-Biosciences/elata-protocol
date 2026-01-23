@@ -22,7 +22,6 @@ When it completes, your local blockchain is running with everything deployed.
 - ELTA Token (ERC20 governance token)
 - ElataXP (non-transferable reputation)
 - VeELTA (vote-escrowed staking)
-- LotPool (funding round governance)
 - RewardsDistributor (fee distribution)
 - ElataGovernor and ElataTimelock (on-chain governance)
 
@@ -35,7 +34,6 @@ When it completes, your local blockchain is running with everything deployed.
 - 5 users with XP balances (300–5,000 XP each)
 - Staking positions (10,000 ELTA locked for 2 years)
 - 3 sample apps (NeuroPong, MindfulBreath, FocusTrainer)
-- 1 active funding round with 10,000 ELTA
 
 ## Next Steps
 

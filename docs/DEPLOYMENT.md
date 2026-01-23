@@ -240,10 +240,9 @@ At 20 gwei on Ethereum mainnet:
 | ELTA | 2.3M | ~$46 |
 | VeELTA | 3.0M | ~$60 |
 | ElataXP | 1.8M | ~$36 |
-| LotPool | 1.1M | ~$22 |
 | AppFactory | 2.9M | ~$58 |
 | Other contracts | ~4M | ~$80 |
-| **Total** | ~15M | ~$300 |
+| **Total** | ~14M | ~$280 |
 
 On Base mainnet, expect costs 50-100x lower.
 

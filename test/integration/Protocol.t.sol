@@ -3,7 +3,6 @@ pragma solidity ^0.8.24;
 
 import {ElataXP} from "../../src/experience/ElataXP.sol";
 import {ElataGovernor} from "../../src/governance/ElataGovernor.sol";
-import {LotPool} from "../../src/governance/LotPool.sol";
 import {RewardsDistributor} from "../../src/rewards/RewardsDistributor.sol";
 import {VeELTA} from "../../src/staking/VeELTA.sol";
 import {ELTA} from "../../src/token/ELTA.sol";
@@ -19,7 +18,6 @@ contract ProtocolTest is Test {
     ELTA public elta;
     VeELTA public staking;
     ElataXP public xp;
-    LotPool public funding;
     RewardsDistributor public rewards;
     ElataGovernor public governor;
 
@@ -39,7 +37,6 @@ contract ProtocolTest is Test {
         elta = new ELTA("ELTA", "ELTA", admin, treasury, INITIAL_MINT, TOTAL_SUPPLY);
         xp = new ElataXP(admin);
         staking = new VeELTA(elta, admin);
-        funding = new LotPool(elta, xp, admin);
         // NOTE: RewardsDistributor now requires full architecture - skipping for now
         // Use script/Deploy.sol or test/integration/RevenueFlow.t.sol for full integration tests
         // rewards = new RewardsDistributor(...);
@@ -70,13 +67,10 @@ contract ProtocolTest is Test {
         // 2. Users earn and spend XP
         _testXPWorkflow();
 
-        // 3. Community funding rounds
-        _testFundingWorkflow();
-
-        // 4. Rewards distribution
+        // 3. Rewards distribution
         _testRewardsWorkflow();
 
-        // 5. Governance participation
+        // 4. Governance participation
         _testGovernanceWorkflow();
     }
 
@@ -125,55 +119,6 @@ contract ProtocolTest is Test {
         assertEq(xp.balanceOf(bob), 3000 ether);
     }
 
-    function _testFundingWorkflow() internal {
-        // Ensure users have XP for voting
-        vm.startPrank(admin);
-        xp.award(alice, 3000 ether);
-        xp.award(bob, 2000 ether);
-        vm.stopPrank();
-
-        // Fund the pool
-        vm.startPrank(treasury);
-        elta.approve(address(funding), 100_000 ether);
-        funding.fund(100_000 ether);
-        vm.stopPrank();
-
-        // Advance block for XP snapshot
-        vm.roll(block.number + 1);
-
-        // Start funding round
-        bytes32[] memory options = new bytes32[](2);
-        options[0] = keccak256("PTSD_RESEARCH");
-        options[1] = keccak256("DEPRESSION_STUDY");
-
-        address[] memory recipients = new address[](2);
-        recipients[0] = researcher1;
-        recipients[1] = researcher2;
-
-        vm.prank(admin);
-        (uint256 roundId,) = funding.startRound(options, recipients, 7 days);
-
-        // Users vote with their XP
-        vm.prank(alice);
-        funding.vote(roundId, options[0], 2500 ether); // PTSD research
-
-        vm.prank(bob);
-        funding.vote(roundId, options[1], 1800 ether); // Depression study
-
-        // Verify votes
-        assertEq(funding.votesFor(roundId, options[0]), 2500 ether);
-        assertEq(funding.votesFor(roundId, options[1]), 1800 ether);
-
-        // Finalize round
-        vm.warp(block.timestamp + 8 days);
-
-        vm.prank(admin);
-        funding.finalize(roundId, options[0], 50_000 ether); // PTSD research wins
-
-        // Verify payout
-        assertEq(elta.balanceOf(researcher1), 50_000 ether);
-    }
-
     function _testRewardsWorkflow() internal {
         // NOTE: V2 rewards workflow completely changed
         // - No addRewardToken() - only ELTA
@@ -185,6 +130,9 @@ contract ProtocolTest is Test {
 
     function _testGovernanceWorkflow() internal {
         // Test basic governance functionality without complex execution
+
+        // Roll forward to create block history for getPastTotalSupply
+        vm.roll(block.number + 1);
 
         // Verify users have voting power for governance
         uint256 aliceVotes = elta.getVotes(alice);
@@ -220,25 +168,9 @@ contract ProtocolTest is Test {
         vm.prank(admin);
         xp.award(alice, 2000 ether);
 
-        // 3. Use XP for funding votes
-        vm.roll(block.number + 1);
-
-        bytes32[] memory options = new bytes32[](1);
-        options[0] = keccak256("INTEGRATION_TEST");
-
-        address[] memory recipients = new address[](1);
-        recipients[0] = researcher1;
-
-        vm.prank(admin);
-        (uint256 roundId,) = funding.startRound(options, recipients, 7 days);
-
-        vm.prank(alice);
-        funding.vote(roundId, options[0], 1500 ether);
-
-        // 4. Verify all systems are working
+        // 3. Verify all systems are working
         assertGt(staking.balanceOf(alice), 0);
         assertGt(xp.balanceOf(alice), 0);
-        assertEq(funding.votesFor(roundId, options[0]), 1500 ether);
         assertGt(elta.getVotes(alice), 0); // Governance voting power
     }
 
@@ -255,16 +187,9 @@ contract ProtocolTest is Test {
         vm.prank(alice);
         xp.award(alice, 1000 ether);
 
-        // Funding access control
-        bytes32[] memory options = new bytes32[](1);
-        options[0] = keccak256("UNAUTHORIZED_TEST");
-
-        address[] memory recipients = new address[](1);
-        recipients[0] = researcher1;
-
-        vm.expectRevert();
-        vm.prank(alice);
-        funding.startRound(options, recipients, 7 days);
+        // VeELTA access control - admin can manage roles
+        assertTrue(staking.hasRole(staking.DEFAULT_ADMIN_ROLE(), admin));
+        assertFalse(staking.hasRole(staking.DEFAULT_ADMIN_ROLE(), alice));
     }
 
     function test_TokenTransferability() public {

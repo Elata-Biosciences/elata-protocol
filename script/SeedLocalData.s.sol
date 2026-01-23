@@ -7,7 +7,6 @@ import {AppModuleFactory} from "../src/apps/AppModuleFactory.sol";
 import {AppStakingVault} from "../src/apps/AppStakingVault.sol";
 import {AppToken} from "../src/apps/AppToken.sol";
 import {ElataXP} from "../src/experience/ElataXP.sol";
-import {LotPool} from "../src/governance/LotPool.sol";
 import {VeELTA} from "../src/staking/VeELTA.sol";
 import {ELTA} from "../src/token/ELTA.sol";
 import {Script, console2} from "forge-std/Script.sol";
@@ -34,7 +33,6 @@ contract SeedLocalData is Script {
     address ELTA_ADDRESS;
     address XP_ADDRESS;
     address STAKING_ADDRESS;
-    address FUNDING_ADDRESS;
     address APP_FACTORY_ADDRESS;
     address APP_MODULE_FACTORY_ADDRESS;
 
@@ -52,24 +50,20 @@ contract SeedLocalData is Script {
         _loadAddresses();
 
         // Step 1: Award XP to test users
-        console2.log("[1/5] Awarding XP to test users...");
+        console2.log("[1/4] Awarding XP to test users...");
         _awardTestXP();
 
         // Step 2: Create staking positions
-        console2.log("[2/5] Creating test staking positions...");
+        console2.log("[2/4] Creating test staking positions...");
         _createStakingPositions();
 
         // Step 3: Create test apps
-        console2.log("[3/5] Creating test apps...");
+        console2.log("[3/4] Creating test apps...");
         TestApp[] memory apps = _createTestApps();
 
         // Step 4: Configure app economies
-        console2.log("[4/5] Configuring app economies...");
+        console2.log("[4/4] Configuring app economies...");
         _configureAppEconomies(apps);
-
-        // Step 5: Start a funding round
-        console2.log("[5/5] Starting initial funding round...");
-        _startFundingRound();
 
         vm.stopBroadcast();
 
@@ -89,14 +83,12 @@ contract SeedLocalData is Script {
         ELTA_ADDRESS = stdJson.readAddress(json, ".contracts.ELTA");
         XP_ADDRESS = stdJson.readAddress(json, ".contracts.ElataXP");
         STAKING_ADDRESS = stdJson.readAddress(json, ".contracts.VeELTA");
-        FUNDING_ADDRESS = stdJson.readAddress(json, ".contracts.LotPool");
         APP_FACTORY_ADDRESS = stdJson.readAddress(json, ".contracts.AppFactory");
         APP_MODULE_FACTORY_ADDRESS = stdJson.readAddress(json, ".contracts.AppModuleFactory");
 
         require(ELTA_ADDRESS != address(0), "ELTA address missing");
         require(XP_ADDRESS != address(0), "XP address missing");
         require(STAKING_ADDRESS != address(0), "VeELTA address missing");
-        require(FUNDING_ADDRESS != address(0), "LotPool address missing");
         require(APP_MODULE_FACTORY_ADDRESS != address(0), "AppModuleFactory address missing");
 
         // AppFactory is required for creating apps; allow zero to skip app creation
@@ -308,47 +300,17 @@ contract SeedLocalData is Script {
         console2.log("       Configured feature gate for", app.name);
     }
 
-    function _startFundingRound() internal {
-        LotPool funding = LotPool(FUNDING_ADDRESS);
-        ELTA elta = ELTA(ELTA_ADDRESS);
-
-        // Create a funding round with 3 options
-        bytes32[] memory options = new bytes32[](3);
-        options[0] = keccak256("PTSD_RESEARCH");
-        options[1] = keccak256("DEPRESSION_STUDY");
-        options[2] = keccak256("FOCUS_ENHANCEMENT");
-
-        address[] memory recipients = new address[](3);
-        recipients[0] = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8; // Test recipient 1
-        recipients[1] = 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC; // Test recipient 2
-        recipients[2] = 0x90F79bf6EB2c4f870365E785982E1f101E93b906; // Test recipient 3
-
-        // Start 7-day round
-        (uint256 roundId,) = funding.startRound(options, recipients, 7 days);
-
-        console2.log("       Started funding round #", roundId);
-        console2.log("       Options: PTSD Research, Depression Study, Focus Enhancement");
-        console2.log("       Duration: 7 days");
-
-        // Fund the pool with some ELTA for distribution
-        uint256 fundingAmount = 10000 ether; // 10K ELTA
-        elta.approve(address(funding), fundingAmount);
-        elta.transfer(address(funding), fundingAmount);
-        console2.log("       Funded pool with", fundingAmount / 1 ether, "ELTA");
-    }
-
     function _printSeedSummary(TestApp[] memory apps) internal pure {
         console2.log("SUMMARY:");
         console2.log("--------");
         console2.log("- 5 test users with XP (300-5000 XP)");
-        console2.log("- 3 staking positions (2.5K-10K ELTA)");
+        console2.log("- 1 staking position (10K ELTA)");
         console2.log("- 3 test apps with full economies:");
 
         for (uint256 i = 0; i < apps.length; i++) {
             console2.log("  ", string.concat(vm.toString(i + 1), ". ", apps[i].name, " (", apps[i].symbol, ")"));
         }
 
-        console2.log("- 1 active funding round with 3 options");
         console2.log("");
         console2.log("Ready for development! Start the App Store frontend:");
         console2.log("  cd ../elata-appstore && npm run local:full");

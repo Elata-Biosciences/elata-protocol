@@ -8,7 +8,6 @@ import {ElataXP} from "../src/experience/ElataXP.sol";
 import {AppFeeRouter} from "../src/fees/AppFeeRouter.sol";
 import {ElataGovernor} from "../src/governance/ElataGovernor.sol";
 import {ElataTimelock} from "../src/governance/ElataTimelock.sol";
-import {LotPool} from "../src/governance/LotPool.sol";
 import {IAppFeeRouter} from "../src/interfaces/IAppFeeRouter.sol";
 import {IAppRewardsDistributor} from "../src/interfaces/IAppRewardsDistributor.sol";
 import {IElataXP} from "../src/interfaces/IElataXP.sol";
@@ -32,11 +31,10 @@ import "forge-std/Script.sol";
  * 1. Core Tokens (ELTA, XP)
  * 2. VeELTA (ERC20Votes)
  * 3. Governance (Governor, Timelock)
- * 4. Funding (LotPool)
- * 5. Rewards Architecture (AppRewardsDistributor, RewardsDistributor, AppFeeRouter)
- * 6. App Launch (AppFactory with auto-stake)
- * 7. Utilities (AppModuleFactory, TournamentFactory)
- * 8. Permissions & Configuration
+ * 4. Rewards Architecture (AppRewardsDistributor, RewardsDistributor, AppFeeRouter)
+ * 5. App Launch (AppFactory with auto-stake)
+ * 6. Utilities (AppModuleFactory, TournamentFactory)
+ * 7. Permissions & Configuration
  *
  * Environment Variables Required:
  * - ADMIN_MSIG: Governance multisig address
@@ -86,7 +84,6 @@ contract Deploy is Script {
         ELTA token;
         ElataXP xp;
         VeELTA staking;
-        LotPool funding;
         AppRewardsDistributor appRewardsDistributor;
         RewardsDistributor rewards;
         AppFeeRouter appFeeRouter;
@@ -103,7 +100,6 @@ contract Deploy is Script {
         address indexed token,
         address indexed staking,
         address indexed xp,
-        address funding,
         address appRewardsDistributor,
         address rewards,
         address appFeeRouter,
@@ -147,20 +143,15 @@ contract Deploy is Script {
         console2.log("   VeELTA deployed at:", address(protocol.staking));
 
         // ===== STEP 3: Deploy Governance =====
-        console2.log("\n[3/9] Deploying Governance...");
+        console2.log("\n[3/8] Deploying Governance...");
         protocol.timelock = _deployTimelock();
         console2.log("   Timelock deployed at:", address(protocol.timelock));
 
         protocol.governor = new ElataGovernor(protocol.token);
         console2.log("   Governor deployed at:", address(protocol.governor));
 
-        // ===== STEP 4: Deploy Funding =====
-        console2.log("\n[4/9] Deploying Funding System...");
-        protocol.funding = new LotPool(protocol.token, protocol.xp, initialAdmin);
-        console2.log("   LotPool deployed at:", address(protocol.funding));
-
-        // ===== STEP 5: Deploy Rewards Architecture (Economic Upgrade V2) =====
-        console2.log("\n[5/9] Deploying Rewards Architecture (70/15/15)...");
+        // ===== STEP 4: Deploy Rewards Architecture (Economic Upgrade V2) =====
+        console2.log("\n[4/8] Deploying Rewards Architecture (70/15/15)...");
 
         // 5a. AppRewardsDistributor (receives 70% for app stakers)
         // AppRewardsDistributor requires a non-zero factory in constructor.
@@ -187,8 +178,8 @@ contract Deploy is Script {
         console2.log("   AppFeeRouter deployed at:", address(protocol.appFeeRouter));
         console2.log("   Fee rate: 100 bps (1%)");
 
-        // ===== STEP 6: Deploy App Launch Framework =====
-        console2.log("\n[6/9] Deploying App Launch Framework...");
+        // ===== STEP 5: Deploy App Launch Framework =====
+        console2.log("\n[5/8] Deploying App Launch Framework...");
 
         address routerAddress = vm.envOr("UNISWAP_V2_ROUTER", address(0));
 
@@ -231,8 +222,8 @@ contract Deploy is Script {
             console2.log("   AppFactory skipped (no router configured)");
         }
 
-        // ===== STEP 7: Deploy App Utilities =====
-        console2.log("\n[7/9] Deploying App Utilities...");
+        // ===== STEP 6: Deploy App Utilities =====
+        console2.log("\n[6/8] Deploying App Utilities...");
 
         // AppModuleFactory: Now only deploys AppAccess1155 (vault already created by AppFactory)
         protocol.appModuleFactory = new AppModuleFactory(address(protocol.token), initialAdmin, treasury);
@@ -241,22 +232,22 @@ contract Deploy is Script {
         protocol.tournamentFactory = new TournamentFactory(initialAdmin, treasury);
         console2.log("   TournamentFactory deployed at:", address(protocol.tournamentFactory));
 
-        // ===== STEP 8: Configure Permissions =====
-        console2.log("\n[8/9] Configuring Permissions...");
+        // ===== STEP 7: Configure Permissions =====
+        console2.log("\n[7/8] Configuring Permissions...");
         _configurePermissions(protocol);
         console2.log("   Permissions configured");
 
-        // ===== STEP 9: Transfer Admin to Multisig =====
+        // ===== STEP 8: Transfer Admin to Multisig =====
         if (initialAdmin != finalAdmin) {
-            console2.log("\n[9/10] Transferring Admin to Multisig...");
+            console2.log("\n[8/8] Transferring Admin to Multisig...");
             _transferAdminToMultisig(protocol, initialAdmin, finalAdmin);
             console2.log("   Admin transferred to:", finalAdmin);
         } else {
-            console2.log("\n[9/10] Admin Transfer Skipped (deployer is final admin)");
+            console2.log("\n[8/8] Admin Transfer Skipped (deployer is final admin)");
         }
 
-        // ===== STEP 10: Save Deployment Addresses =====
-        console2.log("\n[10/10] Saving Deployment Addresses...");
+        // ===== Save Deployment Addresses =====
+        console2.log("\nSaving Deployment Addresses...");
         _saveDeploymentAddresses(protocol);
 
         // Log completion
@@ -267,7 +258,6 @@ contract Deploy is Script {
             address(protocol.token),
             address(protocol.staking),
             address(protocol.xp),
-            address(protocol.funding),
             address(protocol.appRewardsDistributor),
             address(protocol.rewards),
             address(protocol.appFeeRouter),
@@ -303,9 +293,6 @@ contract Deploy is Script {
         // Governance: Grant proposer/executor roles to governor
         protocol.timelock.grantRole(protocol.timelock.PROPOSER_ROLE(), address(protocol.governor));
         protocol.timelock.grantRole(protocol.timelock.EXECUTOR_ROLE(), address(protocol.governor));
-
-        // XP: Grant operator role to funding system
-        protocol.xp.grantRole(protocol.xp.XP_OPERATOR_ROLE(), address(protocol.funding));
 
         // XP: For local development, grant operator role to deployer for seeding
         if (block.chainid == 31337) protocol.xp.grantRole(protocol.xp.XP_OPERATOR_ROLE(), msg.sender);
@@ -345,10 +332,6 @@ contract Deploy is Script {
         // Transfer VeELTA admin
         protocol.staking.grantRole(DEFAULT_ADMIN_ROLE, to);
         protocol.staking.revokeRole(DEFAULT_ADMIN_ROLE, from);
-
-        // Transfer LotPool admin
-        protocol.funding.grantRole(DEFAULT_ADMIN_ROLE, to);
-        protocol.funding.revokeRole(DEFAULT_ADMIN_ROLE, from);
 
         // Transfer RewardsDistributor admin
         protocol.rewards.grantRole(DEFAULT_ADMIN_ROLE, to);
@@ -402,9 +385,6 @@ contract Deploy is Script {
             '",\n',
             '    "VeELTA": "',
             vm.toString(address(protocol.staking)),
-            '",\n',
-            '    "LotPool": "',
-            vm.toString(address(protocol.funding)),
             '",\n',
             '    "RewardsDistributor": "',
             vm.toString(address(protocol.rewards)),
@@ -477,7 +457,6 @@ contract Deploy is Script {
         console2.log("ELTA Token:              ", address(protocol.token));
         console2.log("ElataXP:                 ", address(protocol.xp));
         console2.log("VeELTA Staking:          ", address(protocol.staking));
-        console2.log("LotPool Funding:         ", address(protocol.funding));
         console2.log("AppRewardsDistributor:   ", address(protocol.appRewardsDistributor));
         console2.log("RewardsDistributor:      ", address(protocol.rewards));
         console2.log("AppFeeRouter:            ", address(protocol.appFeeRouter));
