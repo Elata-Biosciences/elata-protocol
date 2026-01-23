@@ -336,4 +336,62 @@ contract FeeSwapperTest is Test {
 
         assertGe(amountOut, minOut);
     }
+
+    // =========== MinSwapThreshold Tests ===========
+
+    function test_MinSwapThresholdDefault() public {
+        assertEq(swapper.minSwapThreshold(), 1 ether);
+    }
+
+    function test_SetMinSwapThreshold() public {
+        uint256 newThreshold = 5 ether;
+
+        vm.prank(governance);
+        vm.expectEmit(true, true, true, true);
+        emit MinSwapThresholdUpdated(1 ether, newThreshold);
+        swapper.setMinSwapThreshold(newThreshold);
+
+        assertEq(swapper.minSwapThreshold(), newThreshold);
+    }
+
+    function test_RevertWhen_SetMinSwapThresholdUnauthorized() public {
+        vm.expectRevert(FeeSwapper.OnlyGovernance.selector);
+        vm.prank(admin);
+        swapper.setMinSwapThreshold(5 ether);
+    }
+
+    function test_RevertWhen_SwapBelowMinThreshold() public {
+        // Set threshold higher than our swap amount
+        vm.prank(governance);
+        swapper.setMinSwapThreshold(10 ether);
+
+        // Try to swap 1 ether (below threshold)
+        appToken.mint(address(swapper), 1 ether);
+
+        address[] memory path = new address[](2);
+        path[0] = address(appToken);
+        path[1] = address(elta);
+
+        vm.expectRevert(FeeSwapper.BelowMinSwapThreshold.selector);
+        swapper.swapFromBalance(APP_ID_1, address(appToken), 1 ether, 0, address(router), path);
+    }
+
+    function test_SwapAtMinThreshold() public {
+        // Set threshold to 5 ether
+        vm.prank(governance);
+        swapper.setMinSwapThreshold(5 ether);
+
+        // Deposit exactly 5 ether
+        appToken.mint(address(swapper), 5 ether);
+
+        address[] memory path = new address[](2);
+        path[0] = address(appToken);
+        path[1] = address(elta);
+
+        // Should succeed at threshold
+        uint256 amountOut = swapper.swapFromBalance(APP_ID_1, address(appToken), 5 ether, 0, address(router), path);
+        assertGt(amountOut, 0);
+    }
+
+    event MinSwapThresholdUpdated(uint256 oldThreshold, uint256 newThreshold);
 }

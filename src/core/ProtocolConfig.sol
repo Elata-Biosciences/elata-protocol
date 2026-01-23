@@ -39,6 +39,7 @@ contract ProtocolConfig {
     event RouterAllowlisted(address indexed router, bool allowed);
     event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury);
     event AdminTransferred(address indexed oldAdmin, address indexed newAdmin);
+    event MinSwapThresholdUpdated(uint256 oldThreshold, uint256 newThreshold);
 
     // =========== Constants (Bounds) ===========
     // App creation bounds
@@ -66,6 +67,9 @@ contract ProtocolConfig {
 
     // Slippage bounds
     uint256 public constant MAX_SLIPPAGE_BPS = 1000; // 10%
+
+    // Swap threshold bounds
+    uint256 public constant MIN_SWAP_THRESHOLD_MAX = 1000 ether; // Max value for minSwapThreshold
 
     // Curve lifecycle bounds
     uint256 public constant MIN_ACTIVATION_DELAY = 0;
@@ -107,6 +111,7 @@ contract ProtocolConfig {
     // Settlement
     uint256 public epochLength;
     uint256 public maxSlippageBps;
+    uint256 public minSwapThreshold;
 
     // Router allowlist
     mapping(address => bool) internal _routerAllowed;
@@ -164,6 +169,7 @@ contract ProtocolConfig {
         // Settlement defaults
         epochLength = 1 days;
         maxSlippageBps = 500; // 5%
+        minSwapThreshold = 1 ether; // Minimum amount to swap
     }
 
     // =========== View Functions ===========
@@ -307,6 +313,13 @@ contract ProtocolConfig {
         uint256 oldBps = maxSlippageBps;
         maxSlippageBps = newBps;
         emit MaxSlippageUpdated(oldBps, newBps);
+    }
+
+    function setMinSwapThreshold(uint256 newThreshold) external onlyTimelock {
+        if (newThreshold > MIN_SWAP_THRESHOLD_MAX) revert ExceedsMaxBound();
+        uint256 oldThreshold = minSwapThreshold;
+        minSwapThreshold = newThreshold;
+        emit MinSwapThresholdUpdated(oldThreshold, newThreshold);
     }
 
     function setRouterAllowed(address router, bool allowed) external onlyAdmin {

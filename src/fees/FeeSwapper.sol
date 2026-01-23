@@ -28,6 +28,7 @@ contract FeeSwapper is ReentrancyGuard {
     error RouterNotAllowed();
     error SlippageTooHigh();
     error SwapFailed();
+    error BelowMinSwapThreshold();
 
     // =========== Events ===========
     event Swapped(
@@ -41,6 +42,7 @@ contract FeeSwapper is ReentrancyGuard {
     event RouterAllowlistUpdated(address indexed router, bool allowed);
     event MaxSlippageBpsUpdated(uint256 oldBps, uint256 newBps);
     event FeeManagerUpdated(address indexed oldFeeManager, address indexed newFeeManager);
+    event MinSwapThresholdUpdated(uint256 oldThreshold, uint256 newThreshold);
 
     // =========== Constants ===========
     uint256 public constant MAX_SLIPPAGE_BPS = 1000; // 10% absolute max
@@ -53,6 +55,9 @@ contract FeeSwapper is ReentrancyGuard {
 
     /// @notice Maximum allowed slippage in basis points
     uint256 public maxSlippageBps = 500; // 5% default
+
+    /// @notice Minimum amount required for a swap (prevents dust swaps)
+    uint256 public minSwapThreshold = 1 ether;
 
     /// @notice Allowlisted routers
     mapping(address => bool) public isRouterAllowed;
@@ -140,6 +145,7 @@ contract FeeSwapper is ReentrancyGuard {
     ) external nonReentrant returns (uint256 amountOut) {
         if (!isRouterAllowed[router]) revert RouterNotAllowed();
         if (amountIn == 0) revert InvalidAmount();
+        if (amountIn < minSwapThreshold) revert BelowMinSwapThreshold();
         if (path.length < 2) revert InvalidAmount();
         if (path[path.length - 1] != address(ELTA)) revert InvalidAmount();
 
@@ -239,6 +245,16 @@ contract FeeSwapper is ReentrancyGuard {
         uint256 oldBps = maxSlippageBps;
         maxSlippageBps = newBps;
         emit MaxSlippageBpsUpdated(oldBps, newBps);
+    }
+
+    /**
+     * @notice Set minimum swap threshold to prevent dust swaps
+     * @param newThreshold New minimum threshold
+     */
+    function setMinSwapThreshold(uint256 newThreshold) external onlyGovernance {
+        uint256 oldThreshold = minSwapThreshold;
+        minSwapThreshold = newThreshold;
+        emit MinSwapThresholdUpdated(oldThreshold, newThreshold);
     }
 
     /**

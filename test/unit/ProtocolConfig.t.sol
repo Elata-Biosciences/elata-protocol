@@ -401,4 +401,45 @@ contract ProtocolConfigTest is Test {
         config.setBondingCurveTradeTaxBps(bps);
         assertEq(config.bondingCurveTradeTaxBps(), bps);
     }
+
+    // =========== MinSwapThreshold Tests ===========
+
+    function test_MinSwapThresholdDefault() public {
+        assertEq(config.minSwapThreshold(), 1 ether);
+    }
+
+    function test_SetMinSwapThreshold() public {
+        uint256 newThreshold = 5 ether;
+
+        vm.prank(timelock);
+        vm.expectEmit(true, true, true, true);
+        emit MinSwapThresholdUpdated(1 ether, newThreshold);
+        config.setMinSwapThreshold(newThreshold);
+
+        assertEq(config.minSwapThreshold(), newThreshold);
+    }
+
+    function test_RevertWhen_SetMinSwapThresholdExceedsMax() public {
+        uint256 exceedMax = config.MIN_SWAP_THRESHOLD_MAX() + 1;
+
+        vm.expectRevert(ProtocolConfig.ExceedsMaxBound.selector);
+        vm.prank(timelock);
+        config.setMinSwapThreshold(exceedMax);
+    }
+
+    function test_RevertWhen_SetMinSwapThresholdUnauthorized() public {
+        vm.expectRevert(ProtocolConfig.OnlyTimelock.selector);
+        vm.prank(admin);
+        config.setMinSwapThreshold(5 ether);
+    }
+
+    function testFuzz_SetMinSwapThreshold(uint256 threshold) public {
+        threshold = bound(threshold, 0, config.MIN_SWAP_THRESHOLD_MAX());
+
+        vm.prank(timelock);
+        config.setMinSwapThreshold(threshold);
+        assertEq(config.minSwapThreshold(), threshold);
+    }
+
+    event MinSwapThresholdUpdated(uint256 oldThreshold, uint256 newThreshold);
 }
