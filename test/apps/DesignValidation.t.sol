@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {AppAccess1155} from "../../src/apps/AppAccess1155.sol";
+import {InAppContent721} from "../../src/apps/InAppContent721.sol";
+import {ContentStore, PaymentTokenType} from "../../src/apps/ContentStore.sol";
 import {AppModuleFactory} from "../../src/apps/AppModuleFactory.sol";
 import {AppStakingVault} from "../../src/apps/AppStakingVault.sol";
 import {AppToken} from "../../src/apps/AppToken.sol";
@@ -19,21 +20,24 @@ contract DesignValidationTest is Test {
     AppModuleFactory public factory;
     ELTA public elta;
     AppToken public appToken;
-    AppAccess1155 public access;
+    InAppContent721 public content721;
+    ContentStore public contentStore;
     AppStakingVault public vault;
 
     address public factoryOwner = makeAddr("factoryOwner");
     address public treasury = makeAddr("treasury");
+    address public feeCollector = makeAddr("feeCollector");
     address public appCreator = makeAddr("appCreator");
     address public player = makeAddr("player");
     address public admin = makeAddr("admin");
 
     uint256 public constant MAX_SUPPLY = 1_000_000_000 ether;
+    uint256 public constant APP_ID = 1;
 
     function setUp() public {
         elta = new ELTA("ELTA", "ELTA", factoryOwner, factoryOwner, 10000000 ether, 77000000 ether);
 
-        factory = new AppModuleFactory(address(elta), factoryOwner, treasury);
+        factory = new AppModuleFactory(address(elta), address(0), factoryOwner, treasury, feeCollector, 500);
 
         appToken = new AppToken(
             "TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
@@ -43,9 +47,11 @@ contract DesignValidationTest is Test {
         vault = new AppStakingVault("TestApp", "TEST", IERC20(address(appToken)), appCreator);
 
         vm.prank(appCreator);
-        address accessAddr = factory.deployModules(address(appToken), address(vault), "https://metadata.test/");
+        (address content721Addr, address contentStoreAddr) =
+            factory.deployModules(APP_ID, address(appToken), "TestApp Content", "TCNT", "ipfs://contract");
 
-        access = AppAccess1155(accessAddr);
+        content721 = InAppContent721(content721Addr);
+        contentStore = ContentStore(contentStoreAddr);
 
         vm.prank(admin);
         appToken.mint(player, 10000 ether);
@@ -53,35 +59,10 @@ contract DesignValidationTest is Test {
         // Make vault exempt from transfer fees to avoid circular fee issues
         vm.prank(admin);
         appToken.setTransferFeeExempt(address(vault), true);
-    }
 
-    // ────────────────────────────────────────────────────────────────────────────
-    // DESIGN ASSUMPTION: Burn-on-Purchase is Deflationary
-    // ────────────────────────────────────────────────────────────────────────────
-
-    function test_Design_BurnOnPurchaseReducesSupply() public {
-        vm.prank(appCreator);
-        access.setItem(1, 100 ether, false, true, 0, 0, 0, "ipfs://item");
-
-        uint256 initialSupply = appToken.totalSupply();
-
-        // Purchase burns tokens
-        vm.startPrank(player);
-        appToken.approve(address(access), 300 ether);
-        access.purchase(1, 3, bytes32(0));
-        vm.stopPrank();
-
-        // VALIDATION: Supply decreased permanently
-        assertEq(appToken.totalSupply(), initialSupply - 300 ether);
-
-        // VALIDATION: Tokens cannot be recovered
-        // (no mint function available post-finalize)
+        // Make contentStore exempt from transfer fees
         vm.prank(admin);
-        appToken.finalizeMinting();
-
-        vm.expectRevert(AppToken.MintingAlreadyFinalized.selector);
-        vm.prank(admin);
-        appToken.mint(player, 1);
+        appToken.setTransferFeeExempt(address(contentStore), true);
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -145,10 +126,8 @@ contract DesignValidationTest is Test {
         vm.prank(appCreator);
         elta.approve(address(factory), 100 ether);
 
-        AppStakingVault vault = new AppStakingVault("App2", "APP2", IERC20(address(app2)), appCreator);
-
         vm.prank(appCreator);
-        factory.deployModules(address(app2), address(vault), "https://test/");
+        factory.deployModules(2, address(app2), "App2 Content", "APP2", "ipfs://app2");
 
         // VALIDATION: ELTA went to treasury
         assertEq(elta.balanceOf(treasury), treasuryBefore + 100 ether);
@@ -188,21 +167,24 @@ contract DesignValidationTest is Test {
     }
 
     // ────────────────────────────────────────────────────────────────────────────
-    // DESIGN ASSUMPTION: Gating is App-Side
+    // DESIGN ASSUMPTION: Gating is App-Side via ContentStore
     // ────────────────────────────────────────────────────────────────────────────
 
-    function test_Design_GatingViews() public {
+    function test_Design_FeatureGatingViews() public {
         // Configure gate
         bytes32 featureId = keccak256("premium");
         vm.prank(appCreator);
-        access.setFeatureGate(
+        contentStore.setFeatureGate(
             featureId,
-            AppAccess1155.FeatureGate({minStake: 1000 ether, requiredItem: 1, requireBoth: true, active: true})
+            1000 ether, // minStake
+            0, // requiredContentId (0 = none)
+            false, // requireBoth
+            true // active
         );
 
         // VALIDATION: Apps can query access via views
-        bool hasAccess = access.checkFeatureAccess(player, featureId, 0);
-        assertFalse(hasAccess); // No stake, no item
+        bool hasAccess = contentStore.checkFeatureAccess(player, featureId, 0, 0);
+        assertFalse(hasAccess); // No stake
 
         // VALIDATION: No on-chain enforcement (that's app's job)
         // Contracts only provide data, apps enforce
@@ -212,21 +194,10 @@ contract DesignValidationTest is Test {
     // DESIGN ASSUMPTION: Non-Upgradeable
     // ────────────────────────────────────────────────────────────────────────────
 
-    function test_Design_ContractsAreImmutable() public {
-        // VALIDATION: No proxy patterns (check for implementation storage)
-        // Contracts should have code directly, not via delegatecall
-
-        // Get code size
-        uint256 accessSize;
-        uint256 vaultSize;
-
-        assembly {
-            accessSize := extcodesize(sload(access.slot))
-            vaultSize := extcodesize(sload(vault.slot))
-        }
-
+    function test_Design_ContractsAreImmutable() public view {
         // VALIDATION: Contracts have actual code (not proxies)
-        assertTrue(address(access).code.length > 0);
+        assertTrue(address(content721).code.length > 0);
+        assertTrue(address(contentStore).code.length > 0);
         assertTrue(address(vault).code.length > 0);
 
         // VALIDATION: No upgrade functions exist
@@ -239,14 +210,15 @@ contract DesignValidationTest is Test {
 
     function test_Design_OwnerControlled() public {
         // VALIDATION: App creator controls their modules
-        assertEq(access.owner(), appCreator);
+        assertEq(content721.owner(), appCreator);
         assertEq(vault.owner(), appCreator);
         assertEq(appToken.owner(), appCreator);
+        assertTrue(contentStore.hasRole(contentStore.MODULE_ADMIN_ROLE(), appCreator));
 
-        // VALIDATION: Only owner can configure
+        // VALIDATION: Only operator can list content
         vm.expectRevert();
         vm.prank(player);
-        access.setItem(1, 100 ether, false, true, 0, 0, 0, "ipfs://item");
+        contentStore.listContent("ipfs://item", 100 ether, 0, PaymentTokenType.APP);
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -268,7 +240,7 @@ contract DesignValidationTest is Test {
         assertEq(appToken.balanceOf(sender), 500 ether);
     }
 
-    function test_Design_PermitGaslessApprovals() public {
+    function test_Design_PermitGaslessApprovals() public view {
         // VALIDATION: ERC20Permit is available
         assertTrue(appToken.DOMAIN_SEPARATOR() != bytes32(0));
         assertEq(appToken.nonces(player), 0);
@@ -281,68 +253,51 @@ contract DesignValidationTest is Test {
     // ────────────────────────────────────────────────────────────────────────────
 
     function test_Design_ComprehensiveViews() public {
-        // Configure items
+        // List content
         vm.prank(appCreator);
-        access.setItem(1, 100 ether, true, true, 0, 0, 100, "ipfs://item1");
+        uint256 contentId = contentStore.listContent("ipfs://item1", 100 ether, 100, PaymentTokenType.APP);
 
-        // VALIDATION: Single item views
-        (uint256 price, bool soulbound, bool active,,,,,) = access.items(1);
-        assertEq(price, 100 ether);
-        assertTrue(soulbound);
-        assertTrue(active);
-
-        // VALIDATION: Batch views for UI
-        uint256[] memory ids = new uint256[](1);
-        ids[0] = 1;
-        AppAccess1155.Item[] memory items = access.getItems(ids);
-        assertEq(items.length, 1);
-        assertEq(items[0].price, 100 ether);
+        // VALIDATION: Content views
+        ContentStore.Content memory content = contentStore.getContent(contentId);
+        assertEq(content.price, 100 ether);
+        assertEq(content.maxSupply, 100);
+        assertTrue(content.active);
 
         // VALIDATION: Eligibility checks
-        (bool canPurchase, uint8 reason) = access.checkPurchaseEligibility(player, 1, 1);
+        (bool canPurchase, uint8 reason) = contentStore.canPurchase(contentId);
         assertTrue(canPurchase);
         assertEq(reason, 0);
-
-        // VALIDATION: Cost calculations
-        assertEq(access.getPurchaseCost(1, 5), 500 ether);
-        assertEq(access.getRemainingSupply(1), 100);
     }
 
     // ────────────────────────────────────────────────────────────────────────────
-    // DESIGN ASSUMPTION: Soulbound Items Work Correctly
+    // DESIGN ASSUMPTION: Soulbound Tokens Work Correctly
     // ────────────────────────────────────────────────────────────────────────────
 
     function test_Design_SoulboundMechanics() public {
-        // Configure soulbound item
-        vm.prank(appCreator);
-        access.setItem(1, 100 ether, true, true, 0, 0, 100, "ipfs://sbt");
+        // Mint a soulbound token directly
+        vm.prank(address(contentStore)); // ContentStore is minter
+        uint256 sbtId = content721.mintSoulbound(player, "ipfs://sbt");
 
-        // Purchase
-        vm.startPrank(player);
-        appToken.approve(address(access), 100 ether);
-        access.purchase(1, 1, bytes32(0));
-        vm.stopPrank();
+        // VALIDATION: Token is soulbound
+        assertTrue(content721.soulbound(sbtId));
 
         // VALIDATION: Cannot transfer soulbound
         address recipient = makeAddr("recipient");
-        vm.expectRevert(AppAccess1155.SoulboundTransfer.selector);
+        vm.expectRevert(InAppContent721.SoulboundTransfer.selector);
         vm.prank(player);
-        access.safeTransferFrom(player, recipient, 1, 1, "");
+        content721.transferFrom(player, recipient, sbtId);
 
-        // Configure transferable item
-        vm.prank(appCreator);
-        access.setItem(2, 100 ether, false, true, 0, 0, 100, "ipfs://nft");
+        // Mint a regular token
+        vm.prank(address(contentStore));
+        uint256 nftId = content721.mint(player, "ipfs://nft");
 
-        // Purchase
-        vm.startPrank(player);
-        appToken.approve(address(access), 100 ether);
-        access.purchase(2, 1, bytes32(0));
-        vm.stopPrank();
+        // VALIDATION: Regular token is not soulbound
+        assertFalse(content721.soulbound(nftId));
 
         // VALIDATION: Can transfer non-soulbound
         vm.prank(player);
-        access.safeTransferFrom(player, recipient, 2, 1, "");
-        assertEq(access.balanceOf(recipient, 2), 1);
+        content721.transferFrom(player, recipient, nftId);
+        assertEq(content721.ownerOf(nftId), recipient);
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -359,15 +314,12 @@ contract DesignValidationTest is Test {
         AppStakingVault vault2 = new AppStakingVault("App2", "APP2", IERC20(address(app2)), appCreator);
 
         vm.prank(appCreator);
-        address access2Addr = factory.deployModules(address(app2), address(vault2), "https://metadata.app2/");
+        (address content721_2, address contentStore2) =
+            factory.deployModules(2, address(app2), "App2 Content", "APP2", "ipfs://app2");
 
-        AppAccess1155 access2 = AppAccess1155(access2Addr);
-
-        // VALIDATION: Different token addresses
-        assertTrue(address(access.APP()) != address(access2.APP()));
-        assertTrue(address(vault.APP()) != address(vault2.APP()));
-
-        // VALIDATION: Different vault addresses
+        // VALIDATION: Different addresses
+        assertTrue(address(content721) != content721_2);
+        assertTrue(address(contentStore) != contentStore2);
         assertTrue(address(vault) != address(vault2));
 
         // VALIDATION: Staking in one doesn't affect the other
@@ -432,44 +384,45 @@ contract DesignValidationTest is Test {
     // DESIGN ASSUMPTION: Time Windows Work Correctly
     // ────────────────────────────────────────────────────────────────────────────
 
-    function test_Design_TimeWindowedItems() public {
+    function test_Design_TimeWindowedContent() public {
         uint64 start = uint64(block.timestamp + 100);
         uint64 end = uint64(block.timestamp + 200);
 
         vm.prank(appCreator);
-        access.setItem(1, 100 ether, false, true, start, end, 100, "ipfs://limited");
+        uint256 contentId =
+            contentStore.listContentWithTimeWindow("ipfs://limited", 100 ether, 100, PaymentTokenType.APP, start, end);
 
         // VALIDATION: Cannot purchase before start
         vm.startPrank(player);
-        appToken.approve(address(access), 100 ether);
+        appToken.approve(address(contentStore), 100 ether);
 
-        (bool canBuy, uint8 reason) = access.checkPurchaseEligibility(player, 1, 1);
+        (bool canBuy, uint8 reason) = contentStore.canPurchase(contentId);
         assertFalse(canBuy);
-        assertEq(reason, 2); // Too early
+        assertEq(reason, 4); // Too early
 
-        vm.expectRevert(AppAccess1155.PurchaseTooEarly.selector);
-        access.purchase(1, 1, bytes32(0));
+        vm.expectRevert(ContentStore.PurchaseTooEarly.selector);
+        contentStore.purchase(contentId);
         vm.stopPrank();
 
         // VALIDATION: Can purchase during window
         vm.warp(start + 50);
 
         vm.startPrank(player);
-        (canBuy, reason) = access.checkPurchaseEligibility(player, 1, 1);
+        (canBuy, reason) = contentStore.canPurchase(contentId);
         assertTrue(canBuy);
         assertEq(reason, 0);
 
-        access.purchase(1, 1, bytes32(0));
+        contentStore.purchase(contentId);
         vm.stopPrank();
 
         // VALIDATION: Cannot purchase after end
         vm.warp(end + 1);
 
         vm.startPrank(player);
-        appToken.approve(address(access), 100 ether);
-        (canBuy, reason) = access.checkPurchaseEligibility(player, 1, 1);
+        appToken.approve(address(contentStore), 100 ether);
+        (canBuy, reason) = contentStore.canPurchase(contentId);
         assertFalse(canBuy);
-        assertEq(reason, 3); // Too late
+        assertEq(reason, 5); // Too late
         vm.stopPrank();
     }
 
@@ -478,12 +431,13 @@ contract DesignValidationTest is Test {
     // ────────────────────────────────────────────────────────────────────────────
 
     function test_Design_ModuleOwnershipAlignment() public {
-        // VALIDATION: All modules owned by app creator
-        assertEq(access.owner(), appCreator);
+        // VALIDATION: All modules owned/controlled by app creator
+        assertEq(content721.owner(), appCreator);
         assertEq(vault.owner(), appCreator);
         assertEq(appToken.owner(), appCreator);
+        assertTrue(contentStore.hasRole(contentStore.DEFAULT_ADMIN_ROLE(), appCreator));
 
-        // VALIDATION: Only app creator can deploy modules
+        // VALIDATION: Only token owner can deploy modules
         AppToken unauthorizedApp = new AppToken(
             "Unauthorized",
             "UNAUTH",
@@ -497,42 +451,14 @@ contract DesignValidationTest is Test {
             address(1)
         );
 
-        AppStakingVault vault =
-            new AppStakingVault("Unauthorized", "UNAUTH", IERC20(address(unauthorizedApp)), appCreator);
-
         vm.expectRevert(AppModuleFactory.NotTokenOwner.selector);
         vm.prank(appCreator);
-        factory.deployModules(address(unauthorizedApp), address(vault), "https://test/");
+        factory.deployModules(99, address(unauthorizedApp), "Unauth", "UNAUTH", "ipfs://unauth");
     }
 
     // ────────────────────────────────────────────────────────────────────────────
     // DESIGN VALIDATION: Economic Invariants
     // ────────────────────────────────────────────────────────────────────────────
-
-    function test_Design_DeflatinaryPressure() public {
-        uint256 initialSupply = appToken.totalSupply();
-
-        // Configure multiple items
-        vm.startPrank(appCreator);
-        access.setItem(1, 100 ether, false, true, 0, 0, 0, "ipfs://item1");
-        access.setItem(2, 200 ether, false, true, 0, 0, 0, "ipfs://item2");
-        access.setItem(3, 300 ether, false, true, 0, 0, 0, "ipfs://item3");
-        vm.stopPrank();
-
-        // Simulate activity
-        vm.startPrank(player);
-        appToken.approve(address(access), 1000 ether);
-        access.purchase(1, 1, bytes32(0)); // -100
-        access.purchase(2, 1, bytes32(0)); // -200
-        access.purchase(3, 1, bytes32(0)); // -300
-        vm.stopPrank();
-
-        // VALIDATION: More usage = more burn = more deflationary
-        assertEq(appToken.totalSupply(), initialSupply - 600 ether);
-
-        // VALIDATION: This supports token value (basic economic principle)
-        assertTrue(appToken.totalSupply() < initialSupply);
-    }
 
     function test_Design_SustainableEmissions() public {
         // Create new token for this test to control supply
@@ -571,27 +497,27 @@ contract DesignValidationTest is Test {
     // ────────────────────────────────────────────────────────────────────────────
 
     function test_Design_EventsEmitted() public {
-        // Configure item
+        // List content
         vm.prank(appCreator);
         vm.recordLogs();
-        access.setItem(1, 100 ether, false, true, 0, 0, 100, "ipfs://item");
+        contentStore.listContent("ipfs://item", 100 ether, 100, PaymentTokenType.APP);
 
         Vm.Log[] memory logs = vm.getRecordedLogs();
 
-        // VALIDATION: ItemConfigured event emitted
+        // VALIDATION: ContentListed event emitted
         assertTrue(logs.length > 0);
 
         // Purchase
         vm.startPrank(player);
-        appToken.approve(address(access), 100 ether);
+        appToken.approve(address(contentStore), 100 ether);
         vm.recordLogs();
-        access.purchase(1, 1, bytes32(0));
+        contentStore.purchase(0);
         vm.stopPrank();
 
         logs = vm.getRecordedLogs();
 
         // VALIDATION: Events emitted for indexing
-        // Should include: Purchased event, Transfer events, etc.
+        // Should include: ContentPurchased event, Transfer events, etc.
         assertTrue(logs.length >= 1);
     }
 }

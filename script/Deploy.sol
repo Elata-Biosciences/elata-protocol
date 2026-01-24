@@ -227,8 +227,19 @@ contract Deploy is Script {
         // ===== STEP 6: Deploy App Utilities =====
         console2.log("\n[6/8] Deploying App Utilities...");
 
-        // AppModuleFactory: Now only deploys AppAccess1155 (vault already created by AppFactory)
-        protocol.appModuleFactory = new AppModuleFactory(address(protocol.token), initialAdmin, treasury);
+        // AppModuleFactory: Deploys InAppContent721 + ContentStore for apps
+        // USDC address from env (optional, can be address(0) for networks without USDC)
+        address usdcAddress = vm.envOr("USDC_ADDRESS", address(0));
+        uint256 defaultProtocolFeeBps = 500; // 5% default fee for ContentStore
+
+        protocol.appModuleFactory = new AppModuleFactory(
+            address(protocol.token),
+            usdcAddress,
+            initialAdmin,
+            treasury,
+            address(protocol.appFeeRouter), // feeCollector
+            defaultProtocolFeeBps
+        );
         console2.log("   AppModuleFactory deployed at:", address(protocol.appModuleFactory));
 
         protocol.tournamentFactory = new TournamentFactory(initialAdmin, treasury);

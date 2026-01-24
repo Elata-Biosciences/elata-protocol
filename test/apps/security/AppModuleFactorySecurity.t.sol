@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {AppAccess1155} from "../../../src/apps/AppAccess1155.sol";
+import {InAppContent721} from "../../../src/apps/InAppContent721.sol";
+import {ContentStore} from "../../../src/apps/ContentStore.sol";
 import {AppModuleFactory} from "../../../src/apps/AppModuleFactory.sol";
 import {AppStakingVault} from "../../../src/apps/AppStakingVault.sol";
 import {AppToken} from "../../../src/apps/AppToken.sol";
@@ -21,16 +22,21 @@ contract AppModuleFactorySecurityTest is Test {
 
     address public factoryOwner = makeAddr("factoryOwner");
     address public treasury = makeAddr("treasury");
+    address public feeCollector = makeAddr("feeCollector");
     address public appCreator = makeAddr("appCreator");
     address public attacker = makeAddr("attacker");
     address public admin = makeAddr("admin");
 
     uint256 public constant MAX_SUPPLY = 1_000_000_000 ether;
+    uint256 public constant APP_ID = 1;
+    uint256 public constant DEFAULT_PROTOCOL_FEE_BPS = 500;
 
     function setUp() public {
         elta = new ELTA("ELTA", "ELTA", factoryOwner, factoryOwner, 1000000 ether, 77000000 ether);
 
-        factory = new AppModuleFactory(address(elta), factoryOwner, treasury);
+        factory = new AppModuleFactory(
+            address(elta), address(0), factoryOwner, treasury, feeCollector, DEFAULT_PROTOCOL_FEE_BPS
+        );
 
         appToken = new AppToken(
             "TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
@@ -48,11 +54,9 @@ contract AppModuleFactorySecurityTest is Test {
     // ────────────────────────────────────────────────────────────────────────────
 
     function test_Security_OnlyTokenOwnerCanDeploy() public {
-        AppStakingVault vault = new AppStakingVault("TestApp", "TEST", IERC20(address(appToken)), appCreator);
-
         vm.expectRevert(AppModuleFactory.NotTokenOwner.selector);
         vm.prank(attacker);
-        factory.deployModules(address(appToken), address(vault), "https://test/");
+        factory.deployModules(APP_ID, address(appToken), "Test", "TST", "https://test/");
     }
 
     function test_Security_OnlyFactoryOwnerCanSetTreasury() public {
@@ -67,42 +71,53 @@ contract AppModuleFactorySecurityTest is Test {
         factory.setCreateFee(1000 ether);
     }
 
+    function test_Security_OnlyFactoryOwnerCanSetFeeCollector() public {
+        vm.expectRevert();
+        vm.prank(attacker);
+        factory.setFeeCollector(attacker);
+    }
+
+    function test_Security_OnlyFactoryOwnerCanSetDefaultProtocolFeeBps() public {
+        vm.expectRevert();
+        vm.prank(attacker);
+        factory.setDefaultProtocolFeeBps(1000);
+    }
+
     // ────────────────────────────────────────────────────────────────────────────
     // DEPLOYMENT INTEGRITY TESTS
     // ────────────────────────────────────────────────────────────────────────────
 
     function test_Security_CannotDeployModulesTwice() public {
-        AppStakingVault vault = new AppStakingVault("TestApp", "TEST", IERC20(address(appToken)), appCreator);
-
         vm.prank(appCreator);
-        factory.deployModules(address(appToken), address(vault), "https://test/");
+        factory.deployModules(APP_ID, address(appToken), "Test", "TST", "https://test/");
 
         vm.expectRevert(AppModuleFactory.ModuleAlreadyExists.selector);
         vm.prank(appCreator);
-        factory.deployModules(address(appToken), address(vault), "https://test/");
+        factory.deployModules(APP_ID, address(appToken), "Test2", "TST2", "https://test2/");
     }
 
     function test_Security_DeployedModulesHaveCorrectOwner() public {
-        AppStakingVault vault = new AppStakingVault("TestApp", "TEST", IERC20(address(appToken)), appCreator);
-
         vm.prank(appCreator);
-        address access = factory.deployModules(address(appToken), address(vault), "https://test/");
+        (address content721, address contentStore) =
+            factory.deployModules(APP_ID, address(appToken), "Test", "TST", "https://test/");
 
-        // Both modules should be owned by app creator
-        assertEq(AppAccess1155(access).owner(), appCreator);
-        assertEq(AppStakingVault(vault).owner(), appCreator);
+        // Content721 should be owned by app creator
+        assertEq(InAppContent721(content721).owner(), appCreator);
+
+        // ContentStore should have roles granted to app creator
+        ContentStore store = ContentStore(contentStore);
+        assertTrue(store.hasRole(store.DEFAULT_ADMIN_ROLE(), appCreator));
+        assertTrue(store.hasRole(store.MODULE_ADMIN_ROLE(), appCreator));
+        assertTrue(store.hasRole(store.MODULE_OPERATOR_ROLE(), appCreator));
     }
 
-    function test_Security_DeployedModulesLinkedCorrectly() public {
-        AppStakingVault vault = new AppStakingVault("TestApp", "TEST", IERC20(address(appToken)), appCreator);
-
+    function test_Security_ContentStoreSetAsMinter() public {
         vm.prank(appCreator);
-        address access = factory.deployModules(address(appToken), address(vault), "https://test/");
+        (address content721, address contentStore) =
+            factory.deployModules(APP_ID, address(appToken), "Test", "TST", "https://test/");
 
-        // Verify cross-references
-        assertEq(address(AppAccess1155(access).APP()), address(appToken));
-        assertEq(address(AppAccess1155(access).STAKING()), address(vault));
-        assertEq(address(AppStakingVault(vault).APP()), address(appToken));
+        // ContentStore should be set as minter for InAppContent721
+        assertEq(InAppContent721(content721).minter(), contentStore);
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -115,8 +130,6 @@ contract AppModuleFactorySecurityTest is Test {
         vm.prank(factoryOwner);
         factory.setCreateFee(fee);
 
-        AppStakingVault vault = new AppStakingVault("TestApp", "TEST", IERC20(address(appToken)), appCreator);
-
         uint256 treasuryBefore = elta.balanceOf(treasury);
         uint256 creatorBefore = elta.balanceOf(appCreator);
 
@@ -124,50 +137,47 @@ contract AppModuleFactorySecurityTest is Test {
         elta.approve(address(factory), fee);
 
         vm.prank(appCreator);
-        factory.deployModules(address(appToken), address(vault), "https://test/");
+        factory.deployModules(APP_ID, address(appToken), "Test", "TST", "https://test/");
 
         assertEq(elta.balanceOf(treasury), treasuryBefore + fee);
         assertEq(elta.balanceOf(appCreator), creatorBefore - fee);
     }
 
     function test_Security_CannotDeployWithoutELTAApproval() public {
-        AppStakingVault vault = new AppStakingVault("TestApp", "TEST", IERC20(address(appToken)), appCreator);
-
         vm.prank(factoryOwner);
         factory.setCreateFee(50 ether);
 
         // Don't approve ELTA
         vm.expectRevert();
         vm.prank(appCreator);
-        factory.deployModules(address(appToken), address(vault), "https://test/");
+        factory.deployModules(APP_ID, address(appToken), "Test", "TST", "https://test/");
     }
 
     function test_Security_DeployWorksWithZeroFee() public {
         // Fee is 0 by default
         assertEq(factory.createFeeELTA(), 0);
 
-        AppStakingVault vault = new AppStakingVault("TestApp", "TEST", IERC20(address(appToken)), appCreator);
-
         // Should work without ELTA approval
         vm.prank(appCreator);
-        factory.deployModules(address(appToken), address(vault), "https://test/");
+        factory.deployModules(APP_ID, address(appToken), "Test", "TST", "https://test/");
     }
 
     function test_Security_DeployWorksWithELTADisabled() public {
         AppModuleFactory noEltaFactory = new AppModuleFactory(
             address(0), // No ELTA
+            address(0),
             factoryOwner,
-            treasury
+            treasury,
+            feeCollector,
+            DEFAULT_PROTOCOL_FEE_BPS
         );
-
-        AppStakingVault vault = new AppStakingVault("TestApp", "TEST", IERC20(address(appToken)), appCreator);
 
         vm.prank(factoryOwner);
         noEltaFactory.setCreateFee(100 ether); // Set fee but ELTA disabled
 
         // Should work (no ELTA transfer)
         vm.prank(appCreator);
-        noEltaFactory.deployModules(address(appToken), address(vault), "https://test/");
+        noEltaFactory.deployModules(APP_ID, address(appToken), "Test", "TST", "https://test/");
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -175,13 +185,12 @@ contract AppModuleFactorySecurityTest is Test {
     // ────────────────────────────────────────────────────────────────────────────
 
     function test_Security_RegistryMappingCorrect() public {
-        AppStakingVault vault = new AppStakingVault("TestApp", "TEST", IERC20(address(appToken)), appCreator);
-
         vm.prank(appCreator);
-        address access = factory.deployModules(address(appToken), address(vault), "https://test/");
+        (address content721, address contentStore) =
+            factory.deployModules(APP_ID, address(appToken), "Test", "TST", "https://test/");
 
-        address storedAccess = factory.access1155ByApp(address(appToken));
-        assertEq(storedAccess, access);
+        assertEq(factory.content721ByApp(address(appToken)), content721);
+        assertEq(factory.contentStoreByApp(address(appToken)), contentStore);
     }
 
     function test_Security_MultipleAppsIsolated() public {
@@ -192,20 +201,19 @@ contract AppModuleFactorySecurityTest is Test {
 
         // Deploy for both apps
         vm.startPrank(appCreator);
-        AppStakingVault vault1 = new AppStakingVault("TestApp", "TEST", IERC20(address(appToken)), appCreator);
-        AppStakingVault vault2 = new AppStakingVault("TestApp2", "TEST2", IERC20(address(appToken2)), appCreator);
-
-        address access1 = factory.deployModules(address(appToken), address(vault1), "https://app1/");
-        address access2 = factory.deployModules(address(appToken2), address(vault2), "https://app2/");
+        (address content721_1, address contentStore1) =
+            factory.deployModules(APP_ID, address(appToken), "App1", "APP1", "https://app1/");
+        (address content721_2, address contentStore2) =
+            factory.deployModules(2, address(appToken2), "App2", "APP2", "https://app2/");
         vm.stopPrank();
 
         // Verify they're different
-        assertTrue(access1 != access2);
-        assertTrue(vault1 != vault2);
+        assertTrue(content721_1 != content721_2);
+        assertTrue(contentStore1 != contentStore2);
 
-        // Verify correct app token links
-        assertEq(address(AppAccess1155(access1).APP()), address(appToken));
-        assertEq(address(AppAccess1155(access2).APP()), address(appToken2));
+        // Verify correct app ID
+        assertEq(InAppContent721(content721_1).appId(), APP_ID);
+        assertEq(InAppContent721(content721_2).appId(), 2);
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -224,13 +232,11 @@ contract AppModuleFactorySecurityTest is Test {
         vm.prank(factoryOwner);
         factory.setCreateFee(50 ether);
 
-        AppStakingVault vault = new AppStakingVault("TestApp", "TEST", IERC20(address(appToken)), appCreator);
-
         // First deployment
         vm.prank(appCreator);
         elta.approve(address(factory), 50 ether);
         vm.prank(appCreator);
-        factory.deployModules(address(appToken), address(vault), "https://test/");
+        factory.deployModules(APP_ID, address(appToken), "Test", "TST", "https://test/");
 
         assertEq(elta.balanceOf(treasury), 50 ether);
 
@@ -245,6 +251,21 @@ contract AppModuleFactorySecurityTest is Test {
     }
 
     // ────────────────────────────────────────────────────────────────────────────
+    // PROTOCOL FEE BOUNDS TESTS
+    // ────────────────────────────────────────────────────────────────────────────
+
+    function test_Security_CannotSetProtocolFeeTooHigh() public {
+        vm.expectRevert(AppModuleFactory.InvalidProtocolFeeBps.selector);
+        vm.prank(factoryOwner);
+        factory.setDefaultProtocolFeeBps(2000); // > 15%
+    }
+
+    function test_Security_ProtocolFeeBoundAtConstruction() public {
+        vm.expectRevert(AppModuleFactory.InvalidProtocolFeeBps.selector);
+        new AppModuleFactory(address(elta), address(0), factoryOwner, treasury, feeCollector, 2000);
+    }
+
+    // ────────────────────────────────────────────────────────────────────────────
     // FUZZ TESTS
     // ────────────────────────────────────────────────────────────────────────────
 
@@ -254,8 +275,6 @@ contract AppModuleFactorySecurityTest is Test {
         vm.prank(factoryOwner);
         factory.setCreateFee(feeAmount);
 
-        AppStakingVault vault = new AppStakingVault("TestApp", "TEST", IERC20(address(appToken)), appCreator);
-
         if (feeAmount > 0) {
             vm.prank(appCreator);
             elta.approve(address(factory), feeAmount);
@@ -264,9 +283,18 @@ contract AppModuleFactorySecurityTest is Test {
         uint256 treasuryBefore = elta.balanceOf(treasury);
 
         vm.prank(appCreator);
-        factory.deployModules(address(appToken), address(vault), "https://test/");
+        factory.deployModules(APP_ID, address(appToken), "Test", "TST", "https://test/");
 
         assertEq(elta.balanceOf(treasury), treasuryBefore + feeAmount);
+    }
+
+    function testFuzz_Security_ProtocolFeeWithinBounds(uint256 feeBps) public {
+        feeBps = bound(feeBps, 0, 1500);
+
+        vm.prank(factoryOwner);
+        factory.setDefaultProtocolFeeBps(feeBps);
+
+        assertEq(factory.defaultProtocolFeeBps(), feeBps);
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -274,39 +302,43 @@ contract AppModuleFactorySecurityTest is Test {
     // ────────────────────────────────────────────────────────────────────────────
 
     function test_Security_DeployedContractsAreValid() public {
-        AppStakingVault vault = new AppStakingVault("TestApp", "TEST", IERC20(address(appToken)), appCreator);
-
         vm.prank(appCreator);
-        address access = factory.deployModules(address(appToken), address(vault), "https://test/");
+        (address content721, address contentStore) =
+            factory.deployModules(APP_ID, address(appToken), "Test", "TST", "https://test/");
 
         // Verify contracts have code
-        uint256 accessCodeSize;
-        uint256 vaultCodeSize;
+        uint256 content721CodeSize;
+        uint256 contentStoreCodeSize;
 
         assembly {
-            accessCodeSize := extcodesize(access)
-            vaultCodeSize := extcodesize(vault)
+            content721CodeSize := extcodesize(content721)
+            contentStoreCodeSize := extcodesize(contentStore)
         }
 
-        assertTrue(accessCodeSize > 0);
-        assertTrue(vaultCodeSize > 0);
+        assertTrue(content721CodeSize > 0);
+        assertTrue(contentStoreCodeSize > 0);
 
         // Verify they're actual contracts (not EOAs)
-        assertTrue(access != appCreator);
-        assertTrue(address(vault) != appCreator);
-        assertTrue(access != address(0));
-        assertTrue(address(vault) != address(0));
+        assertTrue(content721 != appCreator);
+        assertTrue(contentStore != appCreator);
+        assertTrue(content721 != address(0));
+        assertTrue(contentStore != address(0));
     }
 
     function test_Security_CannotDeployForFakeToken() public {
         // Create fake token that doesn't implement owner()
         FakeToken fake = new FakeToken();
 
-        AppStakingVault vault = new AppStakingVault("Fake", "FAKE", IERC20(address(fake)), attacker);
-
         vm.expectRevert();
         vm.prank(attacker);
-        factory.deployModules(address(fake), address(vault), "https://test/");
+        factory.deployModules(APP_ID, address(fake), "Fake", "FAKE", "https://test/");
+    }
+
+    function test_Security_GetModulesReturnsZeroForUndeployed() public view {
+        (address content721, address contentStore) = factory.getModules(address(0x123));
+
+        assertEq(content721, address(0));
+        assertEq(contentStore, address(0));
     }
 }
 

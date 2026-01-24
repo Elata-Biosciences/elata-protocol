@@ -94,7 +94,7 @@ AppModuleFactory exceeds the 24KB limit and is skipped on Base Sepolia. Core fun
 - App launches work
 - Bonding curves work
 - Staking and rewards work
-- Module deployment (AppAccess1155, etc.) unavailable on testnet
+- Module deployment (InAppContent721, ContentStore, etc.) unavailable on testnet
 
 This resolves automatically on Base Mainnet, which doesn't enforce the limit.
 

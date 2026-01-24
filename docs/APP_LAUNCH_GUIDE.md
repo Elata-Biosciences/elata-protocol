@@ -76,10 +76,13 @@ The AppModuleFactory adds utility modules to your app. This deploys additional c
 
 ```solidity
 // Deploy modules
-(address access1155, address staking, address rewards) = 
+(address content721, address contentStore) = 
     appModuleFactory.deployModules(
-        token,                              // Your app token address
-        "https://api.myapp.com/metadata/"   // Base URI for NFT metadata
+        appId,                                // Your app ID
+        appToken,                             // Your app token address
+        "My Content",                         // Collection name
+        "CONTENT",                            // Collection symbol
+        "https://api.myapp.com/contract"      // Contract metadata URI
     );
 ```
 
@@ -87,108 +90,108 @@ The AppModuleFactory adds utility modules to your app. This deploys additional c
 
 | Contract | Purpose |
 |----------|---------|
-| AppAccess1155 | ERC1155 for in-app items and passes |
-| AppStakingVault | Additional staking vault (if needed) |
-| EpochRewards | Time-boxed reward distribution |
+| InAppContent721 | ERC-721 for digital content and collectibles |
+| ContentStore | Primary sales with time windows and feature gates |
+| AppStakingVault | Token staking (deployed by AppFactory) |
 
 You own all these contracts after deployment.
 
-## Step 3: Configure Items
+## Step 3: List Content
 
-The AppAccess1155 contract lets you create purchasable items. Users burn your token to buy items.
+The ContentStore contract lets you list purchasable content. Users pay with app tokens and receive an ERC-721 token.
 
-### Create an Item
+### List Content
 
 ```solidity
-AppAccess1155 access = AppAccess1155(access1155);
+ContentStore store = ContentStore(contentStore);
 
-access.setItem(
-    1,              // Item ID
-    50 ether,       // Price in app tokens (50 tokens)
-    true,           // Soulbound (non-transferable)
-    true,           // Active (can be purchased)
-    0,              // Start time (0 = no restriction)
-    0,              // End time (0 = no restriction)
-    10000,          // Max supply (0 = unlimited)
-    "ipfs://Qm..."  // Metadata URI
+uint256 contentId = store.listContent(
+    "ipfs://Qm...",     // Metadata URI
+    50 ether,           // Price in app tokens (50 tokens)
+    10000,              // Max supply (0 = unlimited)
+    PaymentTokenType.APP // Payment in app token
 );
 ```
 
-### Item Parameters
+### Content Parameters
 
 | Parameter | Description |
 |-----------|-------------|
-| `itemId` | Unique identifier for this item |
-| `price` | Cost in app tokens (burned on purchase) |
-| `soulbound` | If true, item can't be transferred |
-| `active` | If false, purchases are disabled |
-| `startTime` | Unix timestamp when sales start |
-| `endTime` | Unix timestamp when sales end |
-| `maxSupply` | Maximum items that can exist |
-| `uri` | Metadata URI for the item |
+| `uri` | Metadata URI for the content |
+| `price` | Cost in payment tokens |
+| `maxSupply` | Maximum items that can be minted (0 = unlimited) |
+| `paymentType` | APP, ELTA, or USDC |
+
+### List with Time Windows
+
+```solidity
+// Limited-time sale
+store.listContentWithTimeWindow(
+    "ipfs://limited",
+    100 ether,
+    1000,
+    PaymentTokenType.APP,
+    uint64(block.timestamp + 1 days),  // Start time
+    uint64(block.timestamp + 7 days)   // End time
+);
+```
 
 ### Create Multiple Tiers
 
 ```solidity
-// Basic pass - cheap, unlimited
-access.setItem(1, 10 ether, true, true, 0, 0, 0, "ipfs://basic");
+// Basic content - cheap, unlimited
+store.listContent("ipfs://basic", 10 ether, 0, PaymentTokenType.APP);
 
-// Premium pass - mid-tier
-access.setItem(2, 100 ether, true, true, 0, 0, 1000, "ipfs://premium");
+// Premium content - mid-tier
+store.listContent("ipfs://premium", 100 ether, 1000, PaymentTokenType.APP);
 
-// Legendary pass - expensive, rare
-access.setItem(3, 1000 ether, true, true, 0, 0, 100, "ipfs://legendary");
+// Legendary content - expensive, rare
+store.listContent("ipfs://legendary", 1000 ether, 100, PaymentTokenType.APP);
 ```
 
 ## Step 4: Configure Feature Gates
 
-Feature gates let you restrict app features based on staking or item ownership.
+Feature gates let you restrict app features based on staking or content ownership.
 
 ### Stake-Based Gate
 
 Require users to stake tokens to access a feature:
 
 ```solidity
-access.setFeatureGate(
+store.setFeatureGate(
     keccak256("premium_mode"),  // Feature identifier
-    FeatureGate({
-        minStake: 1000 ether,   // Require 1000 tokens staked
-        requiredItem: 0,         // No item required
-        requireBoth: false,
-        active: true
-    })
+    1000 ether,                 // minStake: Require 1000 tokens staked
+    0,                          // requiredContentId: No content required
+    false,                      // requireBoth: false
+    true                        // active: true
 );
 ```
 
-### Item-Based Gate
+### Content-Based Gate
 
-Require users to own an item:
+Require users to have purchased specific content:
 
 ```solidity
-access.setFeatureGate(
+store.setFeatureGate(
     keccak256("vip_room"),
-    FeatureGate({
-        minStake: 0,
-        requiredItem: 3,         // Require legendary pass (ID 3)
-        requireBoth: false,
-        active: true
-    })
+    0,                          // minStake: No stake required
+    2,                          // requiredContentId: Require content ID 2
+    false,                      // requireBoth: false
+    true                        // active: true
 );
 ```
 
 ### Combined Gate
 
-Require both staking and item ownership:
+Require both staking and content ownership:
 
 ```solidity
-access.setFeatureGate(
+store.setFeatureGate(
     keccak256("exclusive_tournament"),
-    FeatureGate({
-        minStake: 5000 ether,    // 5000 tokens staked
-        requiredItem: 2,          // AND premium pass
-        requireBoth: true,        // Both required
-        active: true
-    })
+    5000 ether,                 // minStake: 5000 tokens staked
+    1,                          // requiredContentId: AND content ID 1
+    true,                       // requireBoth: Both required
+    true                        // active: true
 );
 ```
 
@@ -309,28 +312,26 @@ uint256 appId = appFactory.createApp(
 AppFactory.App memory app = appFactory.apps(appId);
 
 // 2. Deploy modules
-(address access, , address rewards) = appModuleFactory.deployModules(
+(address content721, address contentStore) = appModuleFactory.deployModules(
+    app.appId,
     app.token,
-    "https://api.brainflow.app/items/"
+    "BrainFlow Content",
+    "BFCNT",
+    "ipfs://contract-metadata"
 );
 
-// 3. Configure items
-AppAccess1155(access).setItem(
-    1, 25 ether, true, true, 0, 0, 0, "ipfs://basic-meditation"
-);
-AppAccess1155(access).setItem(
-    2, 100 ether, true, true, 0, 0, 500, "ipfs://guided-meditation"
-);
+// 3. List content
+ContentStore store = ContentStore(contentStore);
+store.listContent("ipfs://basic-meditation", 25 ether, 0, PaymentTokenType.APP);
+store.listContent("ipfs://guided-meditation", 100 ether, 500, PaymentTokenType.APP);
 
 // 4. Set up feature gate
-AppAccess1155(access).setFeatureGate(
+store.setFeatureGate(
     keccak256("advanced_sessions"),
-    FeatureGate({
-        minStake: 500 ether,
-        requiredItem: 0,
-        requireBoth: false,
-        active: true
-    })
+    500 ether,  // minStake
+    0,          // requiredContentId
+    false,      // requireBoth
+    true        // active
 );
 
 // Ready for users!
@@ -381,10 +382,10 @@ await writeContract({
 
 ```typescript
 const { data: hasAccess } = useReadContract({
-  address: accessAddress,
-  abi: AppAccess1155ABI,
+  address: contentStoreAddress,
+  abi: ContentStoreABI,
   functionName: 'checkFeatureAccess',
-  args: [userAddress, featureId, userStake],
+  args: [userAddress, featureId, userStake, userContentBalance],
 });
 ```
 
@@ -447,7 +448,8 @@ During the first 6 hours, only users with 100+ XP can buy. This is the early acc
 | AppToken | [src/apps/AppToken.sol](../src/apps/AppToken.sol) |
 | AppBondingCurve | [src/apps/AppBondingCurve.sol](../src/apps/AppBondingCurve.sol) |
 | AppModuleFactory | [src/apps/AppModuleFactory.sol](../src/apps/AppModuleFactory.sol) |
-| AppAccess1155 | [src/apps/AppAccess1155.sol](../src/apps/AppAccess1155.sol) |
+| InAppContent721 | [src/apps/InAppContent721.sol](../src/apps/InAppContent721.sol) |
+| ContentStore | [src/apps/ContentStore.sol](../src/apps/ContentStore.sol) |
 | AppStakingVault | [src/apps/AppStakingVault.sol](../src/apps/AppStakingVault.sol) |
 | Tournament | [src/apps/Tournament.sol](../src/apps/Tournament.sol) |
 | TournamentFactory | [src/apps/TournamentFactory.sol](../src/apps/TournamentFactory.sol) |

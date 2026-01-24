@@ -185,7 +185,14 @@ contract DeployLocalFull is Script {
         // result.appFactoryViews = new AppFactoryViews(address(result.appFactory));
         console2.log("       AppFactory & AppFactoryViews deployment skipped (use script/Deploy.sol)");
 
-        result.appModuleFactory = new AppModuleFactory(address(result.token), result.deployer, result.treasury);
+        result.appModuleFactory = new AppModuleFactory(
+            address(result.token),
+            address(0), // USDC
+            result.deployer,
+            result.treasury,
+            address(0), // feeCollector
+            500 // defaultProtocolFeeBps
+        );
         console2.log("       AppModuleFactory deployed at:", address(result.appModuleFactory));
 
         result.tournamentFactory = new TournamentFactory(result.deployer, result.treasury);

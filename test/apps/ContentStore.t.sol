@@ -49,9 +49,19 @@ contract ContentStoreTest is Test {
             "ipfs://QmContract"
         );
 
-        // Deploy content store
+        // Deploy content store using InitConfig struct
         store = new ContentStore(
-            APP_ID, address(appToken), elta, usdc, treasury, address(content721), owner, feeCollector, PROTOCOL_FEE_BPS
+            ContentStore.InitConfig({
+                appId: APP_ID,
+                appToken: address(appToken),
+                elta: elta,
+                usdc: usdc,
+                treasury: treasury,
+                content721: address(content721),
+                admin: owner,
+                feeCollector: feeCollector,
+                protocolFeeBps: PROTOCOL_FEE_BPS
+            })
         );
 
         // Set store as minter
@@ -66,6 +76,27 @@ contract ContentStoreTest is Test {
 
         // Mock feeCollector to accept deposits
         vm.mockCall(feeCollector, abi.encodeWithSignature("depositAppToken(uint256,address,uint256)"), abi.encode());
+    }
+
+    // Helper function to create ContentStore InitConfig
+    function _createStoreConfig(
+        address _appToken,
+        address _content721,
+        address _admin,
+        address _feeCollector,
+        uint256 _protocolFeeBps
+    ) internal view returns (ContentStore.InitConfig memory) {
+        return ContentStore.InitConfig({
+            appId: APP_ID,
+            appToken: _appToken,
+            elta: elta,
+            usdc: usdc,
+            treasury: treasury,
+            content721: _content721,
+            admin: _admin,
+            feeCollector: _feeCollector,
+            protocolFeeBps: _protocolFeeBps
+        });
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -85,23 +116,17 @@ contract ContentStoreTest is Test {
 
     function test_RevertWhen_DeployWithZeroAppToken() public {
         vm.expectRevert(ContentStore.ZeroAddress.selector);
-        new ContentStore(
-            APP_ID, address(0), elta, usdc, treasury, address(content721), owner, feeCollector, PROTOCOL_FEE_BPS
-        );
+        new ContentStore(_createStoreConfig(address(0), address(content721), owner, feeCollector, PROTOCOL_FEE_BPS));
     }
 
     function test_RevertWhen_DeployWithZeroContent721() public {
         vm.expectRevert(ContentStore.ZeroAddress.selector);
-        new ContentStore(
-            APP_ID, address(appToken), elta, usdc, treasury, address(0), owner, feeCollector, PROTOCOL_FEE_BPS
-        );
+        new ContentStore(_createStoreConfig(address(appToken), address(0), owner, feeCollector, PROTOCOL_FEE_BPS));
     }
 
     function test_RevertWhen_DeployWithInvalidFeeBps() public {
         vm.expectRevert(ContentStore.InvalidFeeBps.selector);
-        new ContentStore(
-            APP_ID, address(appToken), elta, usdc, treasury, address(content721), owner, feeCollector, 1501
-        );
+        new ContentStore(_createStoreConfig(address(appToken), address(content721), owner, feeCollector, 1501));
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -120,22 +145,21 @@ contract ContentStoreTest is Test {
         assertEq(contentId, 0);
         assertEq(store.contentCount(), 1);
 
-        (string memory storedUri, uint256 price, uint256 storedMaxSupply, uint256 minted, bool active,) =
-            store.getContent(0);
+        ContentStore.Content memory content = store.getContent(0);
 
-        assertEq(storedUri, uri);
-        assertEq(price, CONTENT_PRICE);
-        assertEq(storedMaxSupply, maxSupply);
-        assertEq(minted, 0);
-        assertTrue(active);
+        assertEq(content.uri, uri);
+        assertEq(content.price, CONTENT_PRICE);
+        assertEq(content.maxSupply, maxSupply);
+        assertEq(content.minted, 0);
+        assertTrue(content.active);
     }
 
     function test_ListUnlimitedContent() public {
         vm.prank(owner);
         uint256 contentId = store.listContent("ipfs://QmUnlimited", CONTENT_PRICE, 0, PaymentTokenType.APP);
 
-        (,, uint256 maxSupply,,,) = store.getContent(contentId);
-        assertEq(maxSupply, 0);
+        ContentStore.Content memory content = store.getContent(contentId);
+        assertEq(content.maxSupply, 0);
     }
 
     function test_RevertWhen_ListWithZeroPrice() public {
@@ -163,8 +187,8 @@ contract ContentStoreTest is Test {
         emit ContentDeactivated(0);
         store.deactivateContent(0);
 
-        (,,,, bool active,) = store.getContent(0);
-        assertFalse(active);
+        ContentStore.Content memory content = store.getContent(0);
+        assertFalse(content.active);
     }
 
     function test_ReactivateContent() public {
@@ -179,8 +203,8 @@ contract ContentStoreTest is Test {
         emit ContentReactivated(0);
         store.reactivateContent(0);
 
-        (,,,, bool active,) = store.getContent(0);
-        assertTrue(active);
+        ContentStore.Content memory content = store.getContent(0);
+        assertTrue(content.active);
     }
 
     function test_RevertWhen_DeactivateNonexistent() public {
@@ -215,8 +239,8 @@ contract ContentStoreTest is Test {
         assertEq(content721.ownerOf(0), user1);
 
         // Verify minted count incremented
-        (,,, uint256 minted,,) = store.getContent(0);
-        assertEq(minted, 1);
+        ContentStore.Content memory content = store.getContent(0);
+        assertEq(content.minted, 1);
 
         // Verify creator revenue
         uint256 expectedCreatorRevenue = CONTENT_PRICE - expectedProtocolFee;
@@ -240,8 +264,8 @@ contract ContentStoreTest is Test {
         store.purchase(0);
         vm.stopPrank();
 
-        (,,, uint256 minted,,) = store.getContent(0);
-        assertEq(minted, 3);
+        ContentStore.Content memory content = store.getContent(0);
+        assertEq(content.minted, 3);
         assertEq(content721.ownerOf(0), user1);
         assertEq(content721.ownerOf(1), user1);
         assertEq(content721.ownerOf(2), user2);
@@ -285,7 +309,7 @@ contract ContentStoreTest is Test {
     function test_PurchaseWithNoFeeCollector() public {
         // Deploy store with no fee collector
         ContentStore noFeeStore = new ContentStore(
-            APP_ID, address(appToken), elta, usdc, treasury, address(content721), owner, address(0), PROTOCOL_FEE_BPS
+            _createStoreConfig(address(appToken), address(content721), owner, address(0), PROTOCOL_FEE_BPS)
         );
 
         // Update minter
@@ -425,9 +449,8 @@ contract ContentStoreTest is Test {
         feeBps = bound(feeBps, 0, 1500);
 
         // Deploy store with variable fee
-        ContentStore varStore = new ContentStore(
-            APP_ID, address(appToken), elta, usdc, treasury, address(content721), owner, feeCollector, feeBps
-        );
+        ContentStore varStore =
+            new ContentStore(_createStoreConfig(address(appToken), address(content721), owner, feeCollector, feeBps));
 
         vm.prank(owner);
         content721.setMinter(address(varStore));

@@ -23,6 +23,7 @@ contract InAppContent721Test is Test {
     event ContractURIUpdated(string oldURI, string newURI);
     event TokenMetadataUpdated(uint256 indexed tokenId, string uri);
     event DefaultRoyaltySet(address indexed receiver, uint96 feeNumerator);
+    event SoulboundSet(uint256 indexed tokenId, bool isSoulbound);
 
     function setUp() public {
         content = new InAppContent721(APP_ID, NAME, SYMBOL, owner, minter, CONTRACT_URI);
@@ -292,5 +293,166 @@ contract InAppContent721Test is Test {
 
         assertEq(receiver, owner);
         assertEq(amount, (salePrice * bps) / 10000);
+    }
+
+    // ────────────────────────────────────────────────────────────────────────────
+    // SOULBOUND TESTS
+    // ────────────────────────────────────────────────────────────────────────────
+
+    function test_MintSoulbound() public {
+        vm.prank(minter);
+        vm.expectEmit(true, true, true, true);
+        emit SoulboundSet(0, true);
+        uint256 tokenId = content.mintSoulbound(user1, TOKEN_URI_1);
+
+        assertEq(tokenId, 0);
+        assertEq(content.ownerOf(0), user1);
+        assertEq(content.tokenURI(0), TOKEN_URI_1);
+        assertTrue(content.soulbound(0));
+    }
+
+    function test_BatchMintSoulbound() public {
+        string[] memory uris = new string[](3);
+        uris[0] = "ipfs://QmA";
+        uris[1] = "ipfs://QmB";
+        uris[2] = "ipfs://QmC";
+
+        vm.prank(minter);
+        uint256[] memory tokenIds = content.batchMintSoulbound(user1, uris);
+
+        assertEq(tokenIds.length, 3);
+        for (uint256 i = 0; i < 3; i++) {
+            assertEq(content.ownerOf(tokenIds[i]), user1);
+            assertTrue(content.soulbound(tokenIds[i]));
+        }
+    }
+
+    function test_RevertWhen_TransferSoulboundToken() public {
+        vm.prank(minter);
+        uint256 tokenId = content.mintSoulbound(user1, TOKEN_URI_1);
+
+        vm.expectRevert(InAppContent721.SoulboundTransfer.selector);
+        vm.prank(user1);
+        content.transferFrom(user1, user2, tokenId);
+    }
+
+    function test_RevertWhen_SafeTransferSoulboundToken() public {
+        vm.prank(minter);
+        uint256 tokenId = content.mintSoulbound(user1, TOKEN_URI_1);
+
+        vm.expectRevert(InAppContent721.SoulboundTransfer.selector);
+        vm.prank(user1);
+        content.safeTransferFrom(user1, user2, tokenId);
+    }
+
+    function test_SetSoulbound() public {
+        vm.prank(minter);
+        uint256 tokenId = content.mint(user1, TOKEN_URI_1);
+
+        assertFalse(content.soulbound(tokenId));
+
+        vm.prank(owner);
+        vm.expectEmit(true, true, true, true);
+        emit SoulboundSet(tokenId, true);
+        content.setSoulbound(tokenId, true);
+
+        assertTrue(content.soulbound(tokenId));
+
+        // Now transfer should fail
+        vm.expectRevert(InAppContent721.SoulboundTransfer.selector);
+        vm.prank(user1);
+        content.transferFrom(user1, user2, tokenId);
+    }
+
+    function test_UnsetSoulbound() public {
+        vm.prank(minter);
+        uint256 tokenId = content.mintSoulbound(user1, TOKEN_URI_1);
+
+        assertTrue(content.soulbound(tokenId));
+
+        vm.prank(owner);
+        vm.expectEmit(true, true, true, true);
+        emit SoulboundSet(tokenId, false);
+        content.setSoulbound(tokenId, false);
+
+        assertFalse(content.soulbound(tokenId));
+
+        // Now transfer should succeed
+        vm.prank(user1);
+        content.transferFrom(user1, user2, tokenId);
+
+        assertEq(content.ownerOf(tokenId), user2);
+    }
+
+    function test_RevertWhen_SetSoulboundByNonOwner() public {
+        vm.prank(minter);
+        uint256 tokenId = content.mint(user1, TOKEN_URI_1);
+
+        vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", user1));
+        vm.prank(user1);
+        content.setSoulbound(tokenId, true);
+    }
+
+    function test_RevertWhen_SetSoulboundForNonexistentToken() public {
+        vm.expectRevert(InAppContent721.TokenDoesNotExist.selector);
+        vm.prank(owner);
+        content.setSoulbound(999, true);
+    }
+
+    function test_TransferNonSoulboundToken() public {
+        // Regular token should transfer normally
+        vm.prank(minter);
+        uint256 tokenId = content.mint(user1, TOKEN_URI_1);
+
+        assertFalse(content.soulbound(tokenId));
+
+        vm.prank(user1);
+        content.transferFrom(user1, user2, tokenId);
+
+        assertEq(content.ownerOf(tokenId), user2);
+    }
+
+    function test_RevertWhen_MintSoulboundByNonMinter() public {
+        vm.expectRevert(InAppContent721.NotMinter.selector);
+        vm.prank(user1);
+        content.mintSoulbound(user1, TOKEN_URI_1);
+    }
+
+    function test_RevertWhen_MintSoulboundToZeroAddress() public {
+        vm.expectRevert(InAppContent721.ZeroAddress.selector);
+        vm.prank(minter);
+        content.mintSoulbound(address(0), TOKEN_URI_1);
+    }
+
+    function test_RevertWhen_BatchMintSoulboundToZeroAddress() public {
+        string[] memory uris = new string[](1);
+        uris[0] = TOKEN_URI_1;
+
+        vm.expectRevert(InAppContent721.ZeroAddress.selector);
+        vm.prank(minter);
+        content.batchMintSoulbound(address(0), uris);
+    }
+
+    function test_MixedSoulboundAndRegularTokens() public {
+        // Mint regular token
+        vm.prank(minter);
+        uint256 regularToken = content.mint(user1, "ipfs://regular");
+
+        // Mint soulbound token
+        vm.prank(minter);
+        uint256 soulboundToken = content.mintSoulbound(user1, "ipfs://soulbound");
+
+        assertFalse(content.soulbound(regularToken));
+        assertTrue(content.soulbound(soulboundToken));
+
+        // Regular token can transfer
+        vm.prank(user1);
+        content.transferFrom(user1, user2, regularToken);
+        assertEq(content.ownerOf(regularToken), user2);
+
+        // Soulbound token cannot transfer
+        vm.expectRevert(InAppContent721.SoulboundTransfer.selector);
+        vm.prank(user1);
+        content.transferFrom(user1, user2, soulboundToken);
     }
 }

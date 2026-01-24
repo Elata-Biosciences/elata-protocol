@@ -31,6 +31,7 @@ contract InAppContent721 is ERC721, ERC721URIStorage, ERC2981, Ownable {
     error NotMinter();
     error TokenDoesNotExist();
     error InvalidRoyalty();
+    error SoulboundTransfer();
 
     // =========== Events ===========
     event MinterUpdated(address indexed oldMinter, address indexed newMinter);
@@ -38,6 +39,7 @@ contract InAppContent721 is ERC721, ERC721URIStorage, ERC2981, Ownable {
     event DefaultRoyaltySet(address indexed receiver, uint96 feeNumerator);
     event TokenRoyaltySet(uint256 indexed tokenId, address indexed receiver, uint96 feeNumerator);
     event TokenMetadataUpdated(uint256 indexed tokenId, string uri);
+    event SoulboundSet(uint256 indexed tokenId, bool isSoulbound);
 
     // =========== State ===========
 
@@ -55,6 +57,9 @@ contract InAppContent721 is ERC721, ERC721URIStorage, ERC2981, Ownable {
 
     /// @notice Maximum royalty (10% = 1000 bps)
     uint96 public constant MAX_ROYALTY_BPS = 1000;
+
+    /// @notice Tracks which tokens are soulbound (non-transferable)
+    mapping(uint256 => bool) public soulbound;
 
     // =========== Modifiers ===========
 
@@ -129,6 +134,53 @@ contract InAppContent721 is ERC721, ERC721URIStorage, ERC2981, Ownable {
         }
     }
 
+    /**
+     * @notice Mint a new soulbound (non-transferable) content item
+     * @param to Recipient address
+     * @param uri Token metadata URI
+     * @return tokenId The minted token ID
+     * @dev Only callable by minter (ContentStore). Token will be non-transferable.
+     */
+    function mintSoulbound(address to, string memory uri) external onlyMinter returns (uint256 tokenId) {
+        if (to == address(0)) revert ZeroAddress();
+
+        tokenId = _nextTokenId++;
+        _safeMint(to, tokenId);
+        _setTokenURI(tokenId, uri);
+        soulbound[tokenId] = true;
+
+        emit TokenMetadataUpdated(tokenId, uri);
+        emit SoulboundSet(tokenId, true);
+    }
+
+    /**
+     * @notice Batch mint multiple soulbound content items
+     * @param to Recipient address
+     * @param uris Array of metadata URIs
+     * @return tokenIds Array of minted token IDs
+     * @dev Only callable by minter (ContentStore). All tokens will be non-transferable.
+     */
+    function batchMintSoulbound(address to, string[] memory uris)
+        external
+        onlyMinter
+        returns (uint256[] memory tokenIds)
+    {
+        if (to == address(0)) revert ZeroAddress();
+
+        uint256 count = uris.length;
+        tokenIds = new uint256[](count);
+
+        for (uint256 i = 0; i < count; i++) {
+            uint256 tokenId = _nextTokenId++;
+            _safeMint(to, tokenId);
+            _setTokenURI(tokenId, uris[i]);
+            soulbound[tokenId] = true;
+            tokenIds[i] = tokenId;
+            emit TokenMetadataUpdated(tokenId, uris[i]);
+            emit SoulboundSet(tokenId, true);
+        }
+    }
+
     // =========== Admin Functions ===========
 
     /**
@@ -160,6 +212,18 @@ contract InAppContent721 is ERC721, ERC721URIStorage, ERC2981, Ownable {
         if (_ownerOf(tokenId) == address(0)) revert TokenDoesNotExist();
         _setTokenURI(tokenId, uri);
         emit TokenMetadataUpdated(tokenId, uri);
+    }
+
+    /**
+     * @notice Set or unset soulbound status for a token
+     * @param tokenId Token to configure
+     * @param _soulbound Whether the token should be non-transferable
+     * @dev Only callable by owner. Can be used to lock tokens post-mint or unlock if needed.
+     */
+    function setSoulbound(uint256 tokenId, bool _soulbound) external onlyOwner {
+        if (_ownerOf(tokenId) == address(0)) revert TokenDoesNotExist();
+        soulbound[tokenId] = _soulbound;
+        emit SoulboundSet(tokenId, _soulbound);
     }
 
     // =========== Royalty Functions ===========
@@ -214,6 +278,19 @@ contract InAppContent721 is ERC721, ERC721URIStorage, ERC2981, Ownable {
     }
 
     // =========== Overrides ===========
+
+    /**
+     * @dev Override _update to enforce soulbound restrictions
+     * Reverts if attempting to transfer a soulbound token (except for minting/burning)
+     */
+    function _update(address to, uint256 tokenId, address auth) internal virtual override returns (address) {
+        address from = _ownerOf(tokenId);
+        // Allow minting (from == 0) and burning (to == 0), block soulbound transfers
+        if (from != address(0) && to != address(0) && soulbound[tokenId]) {
+            revert SoulboundTransfer();
+        }
+        return super._update(to, tokenId, auth);
+    }
 
     function tokenURI(uint256 tokenId) public view override(ERC721, ERC721URIStorage) returns (string memory) {
         return super.tokenURI(tokenId);

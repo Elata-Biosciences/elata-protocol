@@ -212,8 +212,8 @@ After launching a token, developers can add utility modules:
 | Module | Purpose | Source |
 |--------|---------|--------|
 | AppStakingVault | Per-app token staking | [AppStakingVault.sol](../src/apps/AppStakingVault.sol) |
-| AppAccess1155 | NFT items and access passes | [AppAccess1155.sol](../src/apps/AppAccess1155.sol) |
-| EpochRewards | Time-boxed reward distribution | [src/apps/EpochRewards.sol](../src/apps/) |
+| InAppContent721 | ERC-721 digital content/collectibles | [InAppContent721.sol](../src/apps/InAppContent721.sol) |
+| ContentStore | Primary sales with time windows and feature gates | [ContentStore.sol](../src/apps/ContentStore.sol) |
 | Tournament | Competitive events with prizes | [Tournament.sol](../src/apps/Tournament.sol) |
 
 Modules are deployed via AppModuleFactory and configured by the app developer.
@@ -288,7 +288,8 @@ VeELTA
 AppToken
 ├── AppBondingCurve (handles trading)
 ├── AppStakingVault (handles staking)
-└── AppAccess1155 (handles item purchases)
+└── ContentStore (handles content purchases)
+    └── InAppContent721 (mints purchased content)
 ```
 
 ## Gas Costs

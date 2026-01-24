@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {AppAccess1155} from "../src/apps/AppAccess1155.sol";
+import {InAppContent721} from "../src/apps/InAppContent721.sol";
+import {ContentStore, PaymentTokenType} from "../src/apps/ContentStore.sol";
 import {AppModuleFactory} from "../src/apps/AppModuleFactory.sol";
 import {AppStakingVault} from "../src/apps/AppStakingVault.sol";
 import {AppToken} from "../src/apps/AppToken.sol";
@@ -22,14 +23,19 @@ import "forge-std/Script.sol";
 contract DeployAppModules is Script {
     // Environment variables (set these before running)
     address public eltaAddress;
+    address public usdcAddress;
     address public treasury;
+    address public feeCollector;
     address public appCreator;
     uint256 public createFeeELTA = 50 ether;
+    uint256 public defaultProtocolFeeBps = 500; // 5%
 
     function setUp() public {
         // Load from environment or use defaults
         eltaAddress = vm.envOr("ELTA_ADDRESS", address(0));
+        usdcAddress = vm.envOr("USDC_ADDRESS", address(0));
         treasury = vm.envOr("TREASURY_ADDRESS", msg.sender);
+        feeCollector = vm.envOr("FEE_COLLECTOR_ADDRESS", address(0));
         appCreator = vm.envOr("APP_CREATOR", msg.sender);
     }
 
@@ -39,12 +45,15 @@ contract DeployAppModules is Script {
 
         console.log("Deploying App Modules with deployer:", deployer);
         console.log("ELTA Address:", eltaAddress);
+        console.log("USDC Address:", usdcAddress);
         console.log("Treasury:", treasury);
+        console.log("Fee Collector:", feeCollector);
 
         vm.startBroadcast(deployerPrivateKey);
 
-        // 1. Deploy AppModuleFactory
-        AppModuleFactory factory = new AppModuleFactory(eltaAddress, deployer, treasury);
+        // 1. Deploy AppModuleFactory (deploys InAppContent721 + ContentStore)
+        AppModuleFactory factory =
+            new AppModuleFactory(eltaAddress, usdcAddress, deployer, treasury, feeCollector, defaultProtocolFeeBps);
         console.log("AppModuleFactory deployed at:", address(factory));
 
         // 2. Deploy TournamentFactory
@@ -65,6 +74,7 @@ contract DeployAppModules is Script {
         console.log("TournamentFactory:", address(tournamentFactory));
         console.log("Treasury:", factory.treasury());
         console.log("Create Fee:", factory.createFeeELTA());
+        console.log("Default Protocol Fee:", factory.defaultProtocolFeeBps(), "bps");
     }
 }
 
@@ -78,7 +88,8 @@ contract DeployFullExample is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerPrivateKey);
         address treasury = vm.envOr("TREASURY_ADDRESS", deployer);
-        address appCreator = deployer;
+        address feeCollector = vm.envOr("FEE_COLLECTOR_ADDRESS", address(0));
+        address usdcAddress = vm.envOr("USDC_ADDRESS", address(0));
 
         console.log("Deploying Full App Example");
         console.log("Deployer/App Creator:", deployer);
@@ -97,7 +108,8 @@ contract DeployFullExample is Script {
         console.log("ELTA deployed at:", address(elta));
 
         // 2. Deploy factories
-        AppModuleFactory factory = new AppModuleFactory(address(elta), deployer, treasury);
+        AppModuleFactory factory =
+            new AppModuleFactory(address(elta), usdcAddress, deployer, treasury, feeCollector, 500);
         console.log("AppModuleFactory deployed at:", address(factory));
 
         TournamentFactory tournamentFactory = new TournamentFactory(deployer, treasury);
@@ -128,34 +140,37 @@ contract DeployFullExample is Script {
 
         /* COMMENTED OUT - Needs AppToken migration
         // 4. Deploy modules via AppModuleFactory
-        // Note: AppStakingVault is deployed by AppFactory, pass vault address as parameter
-        address stakingVault = address(0); // Get from AppFactory.apps[appId].vault
-        address access1155 = factory.deployModules(address(appToken), stakingVault, "https://metadata.neuropong.game/");
-        console.log("AppAccess1155 deployed at:", access1155);
-
-        // 5. Configure a sample item (Season Pass)
-        AppAccess1155(access1155).setItem(
-            1, // ID
-            50 ether, // Price: 50 tokens
-            true, // Soulbound
-            true, // Active
-            0, // No start time
-            0, // No end time
-            10000, // Max 10,000 passes
-            "ipfs://QmSeasonPass1"
+        // AppModuleFactory now deploys InAppContent721 + ContentStore
+        uint256 appId = 1;
+        (address content721, address contentStore) = factory.deployModules(
+            appId,
+            address(appToken),
+            "NeuroPong Content",
+            "NPONG-CNT",
+            "ipfs://QmContractMetadata"
         );
-        console.log("Configured Season Pass (ID: 1, Price: 50 tokens)");
+        console.log("InAppContent721 deployed at:", content721);
+        console.log("ContentStore deployed at:", contentStore);
 
-        // 6. Set a feature gate (Premium Mode)
+        // 5. List sample content
+        ContentStore(contentStore).listContent(
+            "ipfs://QmSeasonPass",
+            50 ether, // Price: 50 tokens
+            10000, // Max 10,000
+            PaymentTokenType.APP
+        );
+        console.log("Listed Season Pass content (50 tokens, max 10,000)");
+
+        // 6. Set a feature gate
         bytes32 premiumFeature = keccak256("premium_mode");
-        AppAccess1155.FeatureGate memory gate = AppAccess1155.FeatureGate({
-            minStake: 500 ether, // Need 500 tokens staked
-            requiredItem: 1, // Need Season Pass
-            requireBoth: true, // Need both stake AND pass
-            active: true
-        });
-        AppAccess1155(access1155).setFeatureGate(premiumFeature, gate);
-        console.log("Set premium_mode feature gate (500 stake + pass)");
+        ContentStore(contentStore).setFeatureGate(
+            premiumFeature,
+            500 ether, // minStake: 500 tokens
+            0, // requiredContentId: none (will use content purchases)
+            false, // requireBoth: false (stake OR content)
+            true // active
+        );
+        console.log("Set premium_mode feature gate (500 stake)");
 
         // 7. Deploy a tournament via TournamentFactory
         address tournament = tournamentFactory.createTournament(
@@ -174,14 +189,14 @@ contract DeployFullExample is Script {
         console.log("AppModuleFactory:", address(factory));
         console.log("TournamentFactory:", address(tournamentFactory));
         console.log("AppToken:", address(appToken));
-        console.log("AppAccess1155:", access1155);
-        console.log("AppStakingVault:", stakingVault);
+        console.log("InAppContent721:", content721);
+        console.log("ContentStore:", contentStore);
         console.log("First Tournament:", tournament);
         console.log("\nCreator Treasury: 90M tokens remaining");
         console.log("\nNote: EpochRewards removed - use external airdrop services");
         console.log("\nNext steps:");
-        console.log("1. Users purchase Season Pass (50 tokens, burns on purchase)");
-        console.log("2. Users stake tokens to unlock premium_mode");
+        console.log("1. Users purchase content (mints ERC-721 tokens)");
+        console.log("2. Users stake tokens to unlock features via feature gates");
         console.log("3. Users enter tournament (5 token entry fee)");
         console.log("4. Creator finalizes tournament with winners Merkle root");
         console.log("5. Winners claim their rewards");

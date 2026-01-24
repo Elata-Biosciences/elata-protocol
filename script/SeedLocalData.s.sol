@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {AppAccess1155} from "../src/apps/AppAccess1155.sol";
+import {InAppContent721} from "../src/apps/InAppContent721.sol";
+import {ContentStore, PaymentTokenType} from "../src/apps/ContentStore.sol";
 import {AppFactory} from "../src/apps/AppFactory.sol";
 import {AppModuleFactory} from "../src/apps/AppModuleFactory.sol";
 import {AppStakingVault} from "../src/apps/AppStakingVault.sol";
@@ -23,7 +24,8 @@ contract SeedLocalData is Script {
     struct TestApp {
         uint256 appId;
         address token;
-        address access1155;
+        address content721;
+        address contentStore;
         address stakingVault;
         string name;
         string symbol;
@@ -221,81 +223,72 @@ contract SeedLocalData is Script {
 
         console2.log("       Created app:", name, "at", app.token);
 
-        // Deploy utility modules
+        // Deploy utility modules (InAppContent721 + ContentStore)
         elta.approve(address(moduleFactory), 0); // No fee for now
 
         // Note: vault is already deployed by AppFactory, get it from the app struct
         (,, address vaultAddr,,,,,,,,,,) = AppFactory(APP_FACTORY_ADDRESS).apps(app.appId);
-        address access1155 = moduleFactory.deployModules(
-            app.token, vaultAddr, string.concat("https://metadata.elata.bio/", symbol, "/")
+        (address content721, address contentStore) = moduleFactory.deployModules(
+            app.appId,
+            app.token,
+            string.concat(app.name, " Content"),
+            string.concat(symbol, "-CNT"),
+            string.concat("ipfs://", symbol, "/contract")
         );
-        app.access1155 = access1155;
+        app.content721 = content721;
+        app.contentStore = contentStore;
         app.stakingVault = vaultAddr;
 
-        console2.log("       Deployed module: AppAccess1155");
+        console2.log("       Deployed modules: InAppContent721 + ContentStore");
 
         return app;
     }
 
     function _configureAppEconomies(TestApp[] memory apps) internal {
-        // Configure each app with items, prices, etc.
+        // Configure each app with content listings
         for (uint256 i = 0; i < apps.length; i++) {
             _configureSingleApp(apps[i]);
         }
     }
 
     function _configureSingleApp(TestApp memory app) internal {
-        AppAccess1155 access = AppAccess1155(app.access1155);
+        ContentStore store = ContentStore(app.contentStore);
 
-        // Create tiered items for each app
+        // Create tiered content listings for each app
 
-        // Item 1: Basic Pass
-        access.setItem(
-            1,
+        // Content 1: Basic Pass
+        store.listContent(
+            string.concat("ipfs://", app.symbol, "/basic-pass"),
             10 ether, // price: 10 tokens
-            false, // not soulbound
-            true, // active
-            0, // no start time
-            0, // no end time
             10000, // max supply
-            string.concat("ipfs://", app.symbol, "/basic-pass")
+            PaymentTokenType.APP
         );
 
-        // Item 2: Premium Pass (soulbound)
-        access.setItem(
-            2,
+        // Content 2: Premium Pass
+        store.listContent(
+            string.concat("ipfs://", app.symbol, "/premium-pass"),
             50 ether, // price: 50 tokens
-            true, // soulbound
-            true, // active
-            0,
-            0,
             1000, // limited supply
-            string.concat("ipfs://", app.symbol, "/premium-pass")
+            PaymentTokenType.APP
         );
 
-        // Item 3: Legendary Pass (very rare, soulbound)
-        access.setItem(
-            3,
+        // Content 3: Legendary Pass (very rare)
+        store.listContent(
+            string.concat("ipfs://", app.symbol, "/legendary-pass"),
             200 ether, // price: 200 tokens
-            true, // soulbound
-            true, // active
-            0,
-            0,
             100, // very limited
-            string.concat("ipfs://", app.symbol, "/legendary-pass")
+            PaymentTokenType.APP
         );
 
-        console2.log("       Configured 3 items for", app.name);
+        console2.log("       Listed 3 content items for", app.name);
 
-        // Set up a feature gate (premium feature requires Item 2 OR 100 tokens staked)
-        access.setFeatureGate(
-            "premium_features",
-            AppAccess1155.FeatureGate({
-                minStake: 100 ether, // OR 100 tokens staked
-                requiredItem: 2, // OR premium pass
-                requireBoth: false, // Either one works
-                active: true
-            })
+        // Set up a feature gate (premium feature requires 100 tokens staked OR content ID 1)
+        store.setFeatureGate(
+            keccak256("premium_features"),
+            100 ether, // minStake: 100 tokens
+            1, // requiredContentId: content ID 1 (Basic Pass)
+            false, // requireBoth: false (either one works)
+            true // active
         );
 
         console2.log("       Configured feature gate for", app.name);

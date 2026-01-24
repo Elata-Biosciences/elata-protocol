@@ -71,15 +71,17 @@ contract ContentStoreSecurity is Test {
 
         // Deploy ContentStore
         store = new ContentStore(
-            0, // appId
-            address(appToken),
-            address(elta),
-            address(usdc),
-            treasury,
-            address(nft),
-            admin,
-            address(0), // feeCollector
-            500 // 5% protocol fee
+            ContentStore.InitConfig({
+                appId: 0,
+                appToken: address(appToken),
+                elta: address(elta),
+                usdc: address(usdc),
+                treasury: treasury,
+                content721: address(nft),
+                admin: admin,
+                feeCollector: address(0),
+                protocolFeeBps: 500 // 5% protocol fee
+            })
         );
 
         // Grant minter role to store

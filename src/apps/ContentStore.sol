@@ -60,9 +60,15 @@ contract ContentStore is AccessControl, ReentrancyGuard {
     error InvalidFeeBps();
     error InvalidBurnBps();
     error MaxSupplyReached();
+    error PurchaseTooEarly();
+    error PurchaseTooLate();
+    error InvalidTimeWindow();
 
     // =========== Events ===========
     event ContentListed(uint256 indexed contentId, string uri, uint256 price, uint256 maxSupply);
+    event ContentListedWithTimeWindow(
+        uint256 indexed contentId, string uri, uint256 price, uint256 maxSupply, uint64 startTime, uint64 endTime
+    );
     event ContentPurchased(
         uint256 indexed contentId, address indexed buyer, uint256 tokenId, uint256 price, uint256 protocolFee
     );
@@ -72,6 +78,10 @@ contract ContentStore is AccessControl, ReentrancyGuard {
     event FeeCollectorUpdated(address oldCollector, address newCollector);
     event RevenueWithdrawn(address indexed to, uint256 amount);
     event BurnBpsUpdated(uint256 oldBps, uint256 newBps);
+    event FeatureGateSet(
+        bytes32 indexed featureId, uint256 minStake, uint256 requiredContentId, bool requireBoth, bool active
+    );
+    event ContentTimeWindowUpdated(uint256 indexed contentId, uint64 startTime, uint64 endTime);
 
     // =========== Structs ===========
 
@@ -82,6 +92,28 @@ contract ContentStore is AccessControl, ReentrancyGuard {
         uint256 minted; // Count of purchases
         bool active; // Whether available for purchase
         PaymentTokenType paymentType; // Which token to accept
+        uint64 startTime; // 0 = always available
+        uint64 endTime; // 0 = no end time
+    }
+
+    struct FeatureGate {
+        uint256 minStake; // Minimum stake required (checked app-side)
+        uint256 requiredContentId; // Content ID required (0 = none)
+        bool requireBoth; // If true: stake AND content; else stake OR content
+        bool active; // Gate enabled
+    }
+
+    /// @notice Configuration struct for ContentStore initialization
+    struct InitConfig {
+        uint256 appId;
+        address appToken;
+        address elta;
+        address usdc;
+        address treasury;
+        address content721;
+        address admin;
+        address feeCollector;
+        uint256 protocolFeeBps;
     }
 
     // =========== State ===========
@@ -134,54 +166,39 @@ contract ContentStore is AccessControl, ReentrancyGuard {
     /// @notice Accumulated creator revenue per payment type
     mapping(PaymentTokenType => uint256) public creatorRevenue;
 
+    /// @notice Feature gates by feature ID
+    mapping(bytes32 => FeatureGate) public gates;
+
     // =========== Constructor ===========
 
     /**
      * @notice Create a new content store
-     * @param _appId App ID for fee routing
-     * @param _appToken App token for payments
-     * @param _elta ELTA token for payments
-     * @param _usdc USDC token for payments
-     * @param _treasury Protocol treasury for USDC fees
-     * @param _content721 InAppContent721 contract
-     * @param _admin Store admin (typically app creator)
-     * @param _feeCollector FeeCollector for protocol fees
-     * @param _protocolFeeBps Initial protocol fee in bps
+     * @param config Initialization configuration struct
      */
-    constructor(
-        uint256 _appId,
-        address _appToken,
-        address _elta,
-        address _usdc,
-        address _treasury,
-        address _content721,
-        address _admin,
-        address _feeCollector,
-        uint256 _protocolFeeBps
-    ) {
-        if (_appToken == address(0)) revert ZeroAddress();
-        if (_content721 == address(0)) revert ZeroAddress();
-        if (_protocolFeeBps > MAX_PROTOCOL_FEE_BPS) revert InvalidFeeBps();
+    constructor(InitConfig memory config) {
+        if (config.appToken == address(0)) revert ZeroAddress();
+        if (config.content721 == address(0)) revert ZeroAddress();
+        if (config.protocolFeeBps > MAX_PROTOCOL_FEE_BPS) revert InvalidFeeBps();
 
-        appId = _appId;
-        appToken = IERC20(_appToken);
-        elta = IERC20(_elta);
-        usdc = IERC20(_usdc);
-        treasury = _treasury;
-        content721 = IInAppContent721(_content721);
-        feeCollector = _feeCollector;
-        protocolFeeBps = _protocolFeeBps;
+        appId = config.appId;
+        appToken = IERC20(config.appToken);
+        elta = IERC20(config.elta);
+        usdc = IERC20(config.usdc);
+        treasury = config.treasury;
+        content721 = IInAppContent721(config.content721);
+        feeCollector = config.feeCollector;
+        protocolFeeBps = config.protocolFeeBps;
 
         // Grant roles to admin
-        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        _grantRole(MODULE_ADMIN_ROLE, _admin);
-        _grantRole(MODULE_OPERATOR_ROLE, _admin);
+        _grantRole(DEFAULT_ADMIN_ROLE, config.admin);
+        _grantRole(MODULE_ADMIN_ROLE, config.admin);
+        _grantRole(MODULE_OPERATOR_ROLE, config.admin);
     }
 
     // =========== Listing Functions ===========
 
     /**
-     * @notice List new content for sale
+     * @notice List new content for sale (always available)
      * @param uri Metadata URI
      * @param price Price in payment token
      * @param maxSupply Maximum purchases (0 = unlimited)
@@ -196,10 +213,54 @@ contract ContentStore is AccessControl, ReentrancyGuard {
         if (price == 0) revert ZeroPrice();
 
         contentId = nextContentId++;
-        contents[contentId] =
-            Content({uri: uri, price: price, maxSupply: maxSupply, minted: 0, active: true, paymentType: paymentType});
+        contents[contentId] = Content({
+            uri: uri,
+            price: price,
+            maxSupply: maxSupply,
+            minted: 0,
+            active: true,
+            paymentType: paymentType,
+            startTime: 0,
+            endTime: 0
+        });
 
         emit ContentListed(contentId, uri, price, maxSupply);
+    }
+
+    /**
+     * @notice List new content for sale with time window
+     * @param uri Metadata URI
+     * @param price Price in payment token
+     * @param maxSupply Maximum purchases (0 = unlimited)
+     * @param paymentType Which token type to accept (APP, ELTA, USDC)
+     * @param startTime Sale start time (0 = always available)
+     * @param endTime Sale end time (0 = no end)
+     * @return contentId The new content ID
+     */
+    function listContentWithTimeWindow(
+        string memory uri,
+        uint256 price,
+        uint256 maxSupply,
+        PaymentTokenType paymentType,
+        uint64 startTime,
+        uint64 endTime
+    ) external onlyRole(MODULE_OPERATOR_ROLE) returns (uint256 contentId) {
+        if (price == 0) revert ZeroPrice();
+        if (endTime != 0 && startTime >= endTime) revert InvalidTimeWindow();
+
+        contentId = nextContentId++;
+        contents[contentId] = Content({
+            uri: uri,
+            price: price,
+            maxSupply: maxSupply,
+            minted: 0,
+            active: true,
+            paymentType: paymentType,
+            startTime: startTime,
+            endTime: endTime
+        });
+
+        emit ContentListedWithTimeWindow(contentId, uri, price, maxSupply, startTime, endTime);
     }
 
     /**
@@ -237,6 +298,12 @@ contract ContentStore is AccessControl, ReentrancyGuard {
         if (!content.active) revert ContentNotActive();
         if (content.maxSupply > 0 && content.minted >= content.maxSupply) {
             revert MaxSupplyReached();
+        }
+        if (content.startTime != 0 && block.timestamp < content.startTime) {
+            revert PurchaseTooEarly();
+        }
+        if (content.endTime != 0 && block.timestamp > content.endTime) {
+            revert PurchaseTooLate();
         }
 
         uint256 price = content.price;
@@ -383,10 +450,90 @@ contract ContentStore is AccessControl, ReentrancyGuard {
         emit BurnBpsUpdated(oldBps, newBps);
     }
 
+    /**
+     * @notice Update time window for content listing
+     * @param contentId Content to update
+     * @param startTime New start time (0 = always available)
+     * @param endTime New end time (0 = no end)
+     */
+    function setContentTimeWindow(uint256 contentId, uint64 startTime, uint64 endTime)
+        external
+        onlyRole(MODULE_OPERATOR_ROLE)
+    {
+        if (contentId >= nextContentId) revert ContentDoesNotExist();
+        if (endTime != 0 && startTime >= endTime) revert InvalidTimeWindow();
+
+        contents[contentId].startTime = startTime;
+        contents[contentId].endTime = endTime;
+
+        emit ContentTimeWindowUpdated(contentId, startTime, endTime);
+    }
+
+    // =========== Feature Gate Functions ===========
+
+    /**
+     * @notice Set or update a feature gate
+     * @param featureId Unique identifier for the feature
+     * @param minStake Minimum stake required (0 = no stake requirement)
+     * @param requiredContentId Content ID required to have purchased (0 = no content requirement)
+     * @param requireBoth If true: need both stake AND content; if false: stake OR content
+     * @param active Whether the gate is active
+     */
+    function setFeatureGate(
+        bytes32 featureId,
+        uint256 minStake,
+        uint256 requiredContentId,
+        bool requireBoth,
+        bool active
+    ) external onlyRole(MODULE_OPERATOR_ROLE) {
+        gates[featureId] = FeatureGate({
+            minStake: minStake, requiredContentId: requiredContentId, requireBoth: requireBoth, active: active
+        });
+
+        emit FeatureGateSet(featureId, minStake, requiredContentId, requireBoth, active);
+    }
+
+    /**
+     * @notice Check if a user has access to a feature
+     * @param user User address to check
+     * @param featureId Feature identifier
+     * @param userStake User's current stake amount (pass from StakingVault)
+     * @param userContentBalance User's balance of the required content (pass from InAppContent721)
+     * @return hasAccess Whether user meets requirements
+     */
+    function checkFeatureAccess(address user, bytes32 featureId, uint256 userStake, uint256 userContentBalance)
+        external
+        view
+        returns (bool hasAccess)
+    {
+        FeatureGate memory gate = gates[featureId];
+
+        if (!gate.active) return false;
+
+        bool meetsStake = userStake >= gate.minStake;
+        bool hasContent = gate.requiredContentId > 0 && userContentBalance > 0;
+
+        // If no content required (requiredContentId == 0), only check stake
+        if (gate.requiredContentId == 0) return meetsStake;
+
+        // If content required, apply AND/OR logic
+        if (gate.requireBoth) return meetsStake && hasContent;
+        else return meetsStake || hasContent;
+    }
+
     // =========== View Functions ===========
 
     /**
      * @notice Get content details
+     * @param contentId Content ID
+     * @return content The content struct with all details
+     */
+    function getContent(uint256 contentId) external view returns (Content memory content) {
+        return contents[contentId];
+    }
+
+    /**
+     * @notice Get basic content details (backwards compatible)
      * @param contentId Content ID
      * @return uri Metadata URI
      * @return price Price in payment token
@@ -395,7 +542,7 @@ contract ContentStore is AccessControl, ReentrancyGuard {
      * @return active Whether available for purchase
      * @return paymentType Which token type is accepted
      */
-    function getContent(uint256 contentId)
+    function getContentBasic(uint256 contentId)
         external
         view
         returns (
@@ -415,7 +562,7 @@ contract ContentStore is AccessControl, ReentrancyGuard {
      * @notice Check if content can be purchased
      * @param contentId Content ID
      * @return canPurchase_ Whether purchase is possible
-     * @return reason Reason code (0=can buy, 1=doesn't exist, 2=not active, 3=sold out)
+     * @return reason Reason code (0=can buy, 1=doesn't exist, 2=not active, 3=sold out, 4=too early, 5=too late)
      */
     function canPurchase(uint256 contentId) external view returns (bool canPurchase_, uint8 reason) {
         if (contentId >= nextContentId) return (false, 1);
@@ -423,8 +570,27 @@ contract ContentStore is AccessControl, ReentrancyGuard {
         Content storage content = contents[contentId];
         if (!content.active) return (false, 2);
         if (content.maxSupply > 0 && content.minted >= content.maxSupply) return (false, 3);
+        if (content.startTime != 0 && block.timestamp < content.startTime) return (false, 4);
+        if (content.endTime != 0 && block.timestamp > content.endTime) return (false, 5);
 
         return (true, 0);
+    }
+
+    /**
+     * @notice Get feature gate details
+     * @param featureId Feature identifier
+     * @return minStake Minimum stake required
+     * @return requiredContentId Content ID required
+     * @return requireBoth Whether both conditions are required
+     * @return active Whether gate is active
+     */
+    function getFeatureGate(bytes32 featureId)
+        external
+        view
+        returns (uint256 minStake, uint256 requiredContentId, bool requireBoth, bool active)
+    {
+        FeatureGate memory gate = gates[featureId];
+        return (gate.minStake, gate.requiredContentId, gate.requireBoth, gate.active);
     }
 
     /**
