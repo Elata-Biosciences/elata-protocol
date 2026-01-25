@@ -7,13 +7,13 @@ import {ELTA} from "../../../src/token/ELTA.sol";
 import {AppToken} from "../../../src/apps/AppToken.sol";
 import {AppBondingCurve} from "../../../src/apps/AppBondingCurve.sol";
 import {IAppFeeRouter} from "../../../src/interfaces/IAppFeeRouter.sol";
-import {IElataXP} from "../../../src/interfaces/IElataXP.sol";
+import {IElataPoints} from "../../../src/interfaces/IElataPoints.sol";
 import {IUniswapV2Router02} from "../../../src/interfaces/IUniswapV2Router02.sol";
 import {IUniswapV2Factory} from "../../../src/interfaces/IUniswapV2Factory.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // Mock contracts for testing
-contract MockElataXP {
+contract MockElataPoints {
     mapping(address => uint256) public balances;
 
     function setBalance(address user, uint256 amount) external {
@@ -205,7 +205,7 @@ contract BondingCurveReentrancy is Test {
     AppToken public appToken;
     AppBondingCurve public curve;
     MockAppFactory public factory;
-    MockElataXP public xp;
+    MockElataPoints public xp;
     MockUniswapFactory public uniFactory;
     MockUniswapRouter public router;
     MockPair public pair;
@@ -227,7 +227,7 @@ contract BondingCurveReentrancy is Test {
         uniFactory = new MockUniswapFactory();
         uniFactory.setPair(address(pair));
         router = new MockUniswapRouter(address(uniFactory));
-        xp = new MockElataXP();
+        xp = new MockElataPoints();
         feeRouter = new MockAppFeeRouter();
         factory = new MockAppFactory();
 
@@ -252,7 +252,7 @@ contract BondingCurveReentrancy is Test {
             treasury, // lpBeneficiary
             treasury, // treasury
             IAppFeeRouter(address(feeRouter)),
-            IElataXP(address(xp)),
+            IElataPoints(address(xp)),
             governance,
             0, // activationDelay
             365 days, // maxDuration

@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IAppFeeRouter} from "../interfaces/IAppFeeRouter.sol";
 import {IAppRewardsDistributor} from "../interfaces/IAppRewardsDistributor.sol";
-import {IElataXP} from "../interfaces/IElataXP.sol";
+import {IElataPoints} from "../interfaces/IElataPoints.sol";
 import {IRewardsDistributor} from "../interfaces/IRewardsDistributor.sol";
 import {IUniswapV2Router02} from "../interfaces/IUniswapV2Router02.sol";
 import {AppBondingCurve, IAppFactory} from "./AppBondingCurve.sol";
@@ -63,7 +63,7 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
     IAppFeeRouter public immutable appFeeRouter;
     IAppRewardsDistributor public immutable appRewardsDistributor;
     IRewardsDistributor public immutable rewardsDistributor;
-    IElataXP public immutable elataXP;
+    IElataPoints public immutable elataPoints;
     address public immutable governance;
 
     // Launch parameters (immutable for size optimization)
@@ -144,7 +144,7 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
      * @param _appFeeRouter Fee router for trading fees
      * @param _appRewardsDistributor App rewards distributor
      * @param _rewardsDistributor Main rewards distributor
-     * @param _elataXP ElataXP token address
+     * @param _elataPoints ElataPoints token address
      * @param _governance Governance address
      * @param _admin Admin address for roles
      */
@@ -155,14 +155,14 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         IAppFeeRouter _appFeeRouter,
         IAppRewardsDistributor _appRewardsDistributor,
         IRewardsDistributor _rewardsDistributor,
-        IElataXP _elataXP,
+        IElataPoints _elataPoints,
         address _governance,
         address _admin
     ) {
         require(
             address(_elta) != address(0) && address(_router) != address(0) && _treasury != address(0)
                 && address(_appFeeRouter) != address(0) && address(_appRewardsDistributor) != address(0)
-                && address(_rewardsDistributor) != address(0) && address(_elataXP) != address(0)
+                && address(_rewardsDistributor) != address(0) && address(_elataPoints) != address(0)
                 && _governance != address(0) && _admin != address(0),
             "Zero address"
         );
@@ -173,7 +173,7 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         appFeeRouter = _appFeeRouter;
         appRewardsDistributor = _appRewardsDistributor;
         rewardsDistributor = _rewardsDistributor;
-        elataXP = _elataXP;
+        elataPoints = _elataPoints;
         governance = _governance;
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
@@ -282,7 +282,7 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
             msg.sender,
             treasury,
             appFeeRouter,
-            elataXP,
+            elataPoints,
             governance,
             _activationDelay,
             _maxDuration

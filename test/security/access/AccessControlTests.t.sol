@@ -11,7 +11,7 @@ import {FeeSwapper} from "../../../src/fees/FeeSwapper.sol";
 import {AppToken} from "../../../src/apps/AppToken.sol";
 import {AirdropDistributor} from "../../../src/modules/AirdropDistributor.sol";
 import {ReferralRegistry} from "../../../src/modules/ReferralRegistry.sol";
-import {ElataXP} from "../../../src/experience/ElataXP.sol";
+import {ElataPoints} from "../../../src/experience/ElataPoints.sol";
 import {AppVestingWallet} from "../../../src/vesting/AppVestingWallet.sol";
 import {LpLocker} from "../../../src/apps/LpLocker.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -49,7 +49,7 @@ contract AccessControlTests is Test {
     AppToken public appToken;
     AirdropDistributor public airdrop;
     ReferralRegistry public referral;
-    ElataXP public xp;
+    ElataPoints public xp;
     MockUSDC public usdc;
     MockLP public lpToken;
 
@@ -91,8 +91,8 @@ contract AccessControlTests is Test {
         // Deploy ReferralRegistry
         referral = new ReferralRegistry(admin, address(elta), 500);
 
-        // Deploy ElataXP
-        xp = new ElataXP(admin);
+        // Deploy ElataPoints
+        xp = new ElataPoints(admin);
 
         // Fund
         vm.prank(admin);
@@ -587,7 +587,7 @@ contract AccessControlTests is Test {
         vm.assume(recipient != address(0));
         amount = bound(amount, 1, 1_000_000 ether);
 
-        bytes32 operatorRole = xp.XP_OPERATOR_ROLE();
+        bytes32 operatorRole = xp.POINTS_OPERATOR_ROLE();
         vm.assume(!xp.hasRole(operatorRole, caller));
 
         vm.prank(caller);

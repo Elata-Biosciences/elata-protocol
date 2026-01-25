@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {ElataXP} from "../../src/experience/ElataXP.sol";
+import {ElataPoints} from "../../src/experience/ElataPoints.sol";
 import {ElataGovernor} from "../../src/governance/ElataGovernor.sol";
 import {ElataTimelock} from "../../src/governance/ElataTimelock.sol";
 import {RewardsDistributor} from "../../src/rewards/RewardsDistributor.sol";
@@ -19,7 +19,7 @@ import "forge-std/Test.sol";
 contract ProtocolTest is Test {
     ELTA public elta;
     VeELTA public staking;
-    ElataXP public xp;
+    ElataPoints public xp;
     RewardsDistributor public rewards;
     ElataGovernor public governor;
     ElataTimelock public timelock;
@@ -38,7 +38,7 @@ contract ProtocolTest is Test {
     function setUp() public {
         // Deploy complete protocol
         elta = new ELTA("ELTA", "ELTA", admin, treasury, INITIAL_MINT, TOTAL_SUPPLY);
-        xp = new ElataXP(admin);
+        xp = new ElataPoints(admin);
         staking = new VeELTA(elta, admin);
 
         // Deploy governance (timelock + governor using veELTA for voting)

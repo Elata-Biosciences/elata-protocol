@@ -137,7 +137,7 @@ if (amount < MIN_AMOUNT) revert Errors.AmountTooLow();
 src/
 ├── token/ELTA.sol              # Governance token
 ├── staking/VeELTA.sol          # Vote-escrowed staking
-├── experience/ElataXP.sol      # Reputation system
+├── experience/ElataPoints.sol      # Reputation system
 ├── governance/                 # Governor, timelock, funding
 ├── rewards/                    # Fee distribution
 ├── apps/                       # App token framework

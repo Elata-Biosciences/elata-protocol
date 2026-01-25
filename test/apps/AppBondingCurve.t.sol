@@ -4,13 +4,13 @@ pragma solidity ^0.8.24;
 import {AppBondingCurve} from "../../src/apps/AppBondingCurve.sol";
 import {AppToken} from "../../src/apps/AppToken.sol";
 import {IAppFeeRouter} from "../../src/interfaces/IAppFeeRouter.sol";
-import {IElataXP} from "../../src/interfaces/IElataXP.sol";
+import {IElataPoints} from "../../src/interfaces/IElataPoints.sol";
 import {IUniswapV2Router02} from "../../src/interfaces/IUniswapV2Router02.sol";
 import {ELTA} from "../../src/token/ELTA.sol";
 import "forge-std/Test.sol";
 
 // Mock XP token
-contract MockElataXP is IElataXP {
+contract MockElataPoints is IElataPoints {
     mapping(address => uint256) public balances;
 
     function balanceOf(address account) external view override returns (uint256) {
@@ -26,7 +26,7 @@ contract AppBondingCurveTest is Test {
     ELTA public elta;
     AppToken public appToken;
     AppBondingCurve public curve;
-    MockElataXP public mockXP;
+    MockElataPoints public mockXP;
 
     address public admin = makeAddr("admin");
     address public treasury = makeAddr("treasury");
@@ -46,7 +46,7 @@ contract AppBondingCurveTest is Test {
 
     function setUp() public {
         elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 77_000_000 ether);
-        mockXP = new MockElataXP();
+        mockXP = new MockElataPoints();
 
         appToken = new AppToken(
             "TestApp", "TEST", 18, TOKEN_SUPPLY, creator, factory, governance, mockAppRewards, mockRewards, treasury

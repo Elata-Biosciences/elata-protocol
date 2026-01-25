@@ -10,7 +10,7 @@ import {IUniswapV2Router02} from "../../src/interfaces/IUniswapV2Router02.sol";
 import {IAppFeeRouter} from "../../src/interfaces/IAppFeeRouter.sol";
 import {IAppRewardsDistributor} from "../../src/interfaces/IAppRewardsDistributor.sol";
 import {IRewardsDistributor} from "../../src/interfaces/IRewardsDistributor.sol";
-import {IElataXP} from "../../src/interfaces/IElataXP.sol";
+import {IElataPoints} from "../../src/interfaces/IElataPoints.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @notice Mock implementations
@@ -36,7 +36,7 @@ contract MockAppFeeRouter is IAppFeeRouter {
     }
 }
 
-contract MockXP is IElataXP {
+contract MockXP is IElataPoints {
     mapping(address => uint256) public balances;
 
     function balanceOf(address account) external view returns (uint256) {
@@ -105,7 +105,7 @@ contract AppFactorySecurity is Test {
             IAppFeeRouter(address(feeRouter)),
             IAppRewardsDistributor(address(appRewards)),
             IRewardsDistributor(address(rewards)),
-            IElataXP(address(xp)),
+            IElataPoints(address(xp)),
             governance,
             admin
         );

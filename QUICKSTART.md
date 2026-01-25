@@ -20,7 +20,7 @@ When it completes, your local blockchain is running with everything deployed.
 
 **Core Contracts**
 - ELTA Token (ERC20 governance token)
-- ElataXP (non-transferable reputation)
+- ElataPoints (non-transferable reputation)
 - VeELTA (vote-escrowed staking)
 - RewardsDistributor (fee distribution)
 - ElataGovernor and ElataTimelock (on-chain governance)

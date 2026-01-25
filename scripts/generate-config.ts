@@ -20,7 +20,7 @@ interface DeploymentConfig {
   deployer: string;
   contracts: {
     ELTA: string;
-    ElataXP: string;
+    ElataPoints: string;
     VeELTA: string;
     RewardsDistributor: string;
     ElataTimelock: string;
@@ -79,7 +79,7 @@ NEXT_PUBLIC_RPC_URL=http://127.0.0.1:8545
 
 # Contract Addresses - Core Protocol (LOCAL)
 NEXT_PUBLIC_ELTA_ADDRESS_LOCAL=${deployment.contracts.ELTA}
-NEXT_PUBLIC_ELATA_XP_ADDRESS_LOCAL=${deployment.contracts.ElataXP}
+NEXT_PUBLIC_ELATA_XP_ADDRESS_LOCAL=${deployment.contracts.ElataPoints}
 NEXT_PUBLIC_VE_ELTA_ADDRESS_LOCAL=${deployment.contracts.VeELTA}
 NEXT_PUBLIC_REWARDS_DISTRIBUTOR_ADDRESS_LOCAL=${deployment.contracts.RewardsDistributor}
 NEXT_PUBLIC_ELATA_TIMELOCK_ADDRESS_LOCAL=${deployment.contracts.ElataTimelock}

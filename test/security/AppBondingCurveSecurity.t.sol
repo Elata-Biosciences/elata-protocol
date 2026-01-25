@@ -8,7 +8,7 @@ import {AppToken} from "../../src/apps/AppToken.sol";
 import {AppBondingCurve} from "../../src/apps/AppBondingCurve.sol";
 import {IUniswapV2Router02} from "../../src/interfaces/IUniswapV2Router02.sol";
 import {IAppFeeRouter} from "../../src/interfaces/IAppFeeRouter.sol";
-import {IElataXP} from "../../src/interfaces/IElataXP.sol";
+import {IElataPoints} from "../../src/interfaces/IElataPoints.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @notice Mock Uniswap Router
@@ -35,8 +35,8 @@ contract MockAppFeeRouter is IAppFeeRouter {
     }
 }
 
-/// @notice Mock ElataXP
-contract MockElataXP is IElataXP {
+/// @notice Mock ElataPoints
+contract MockElataPoints is IElataPoints {
     mapping(address => uint256) public balances;
 
     function balanceOf(address account) external view returns (uint256) {
@@ -128,7 +128,7 @@ contract AppBondingCurveSecurity is Test {
 
     MockRouter public router;
     MockAppFeeRouter public appFeeRouter;
-    MockElataXP public elataXP;
+    MockElataPoints public elataPoints;
     MockAppFactory public appFactory;
 
     address public admin = makeAddr("admin");
@@ -152,7 +152,7 @@ contract AppBondingCurveSecurity is Test {
         // Deploy mocks
         router = new MockRouter();
         appFeeRouter = new MockAppFeeRouter();
-        elataXP = new MockElataXP();
+        elataPoints = new MockElataPoints();
         appFactory = new MockAppFactory();
 
         // Deploy AppToken
@@ -172,7 +172,7 @@ contract AppBondingCurveSecurity is Test {
             creator,
             treasury,
             IAppFeeRouter(address(appFeeRouter)),
-            IElataXP(address(elataXP)),
+            IElataPoints(address(elataPoints)),
             governance,
             1 hours,
             30 days,
@@ -196,9 +196,9 @@ contract AppBondingCurveSecurity is Test {
         vm.stopPrank();
 
         // Give users XP for early access
-        elataXP.setBalance(attacker, 1000 ether);
-        elataXP.setBalance(alice, 1000 ether);
-        elataXP.setBalance(bob, 1000 ether);
+        elataPoints.setBalance(attacker, 1000 ether);
+        elataPoints.setBalance(alice, 1000 ether);
+        elataPoints.setBalance(bob, 1000 ether);
 
         // Activate curve
         vm.warp(block.timestamp + 1 hours + 1);
@@ -217,7 +217,7 @@ contract AppBondingCurveSecurity is Test {
         // Fund attacker
         vm.prank(admin);
         elta.transfer(address(attackerContract), 10_000 ether);
-        elataXP.setBalance(address(attackerContract), 1000 ether);
+        elataPoints.setBalance(address(attackerContract), 1000 ether);
 
         uint256 attackerBalanceBefore = elta.balanceOf(address(attackerContract));
         uint256 curveReserveBefore = curve.reserveElta();
@@ -245,7 +245,7 @@ contract AppBondingCurveSecurity is Test {
         // Fund with simulated flash loan
         vm.prank(admin);
         elta.transfer(address(flashAttacker), 50_000 ether);
-        elataXP.setBalance(address(flashAttacker), 1000 ether);
+        elataPoints.setBalance(address(flashAttacker), 1000 ether);
 
         uint256 priceBefore = curve.reserveToken() > 0 ? (curve.reserveElta() * 1e18) / curve.reserveToken() : 0;
 
@@ -358,7 +358,7 @@ contract AppBondingCurveSecurity is Test {
             creator,
             treasury,
             IAppFeeRouter(address(appFeeRouter)),
-            IElataXP(address(elataXP)),
+            IElataPoints(address(elataPoints)),
             governance,
             1 hours,
             30 days,
@@ -541,7 +541,7 @@ contract AppBondingCurveSecurity is Test {
             creator,
             treasury,
             IAppFeeRouter(address(appFeeRouter)),
-            IElataXP(address(elataXP)),
+            IElataPoints(address(elataPoints)),
             governance,
             0, // No activation delay
             30 days,

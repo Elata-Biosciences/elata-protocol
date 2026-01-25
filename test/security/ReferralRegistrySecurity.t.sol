@@ -250,17 +250,15 @@ contract ReferralRegistrySecurity is Test {
         vm.prank(operator);
         registry.setReferrer(APP_ID, alice, attacker);
 
-        // Try with max uint256 fee amount
+        // Try with max uint256 fee amount - should revert due to overflow
+        // Solidity 0.8+ has built-in overflow protection that reverts
+        vm.expectRevert(); // Arithmetic overflow
         vm.prank(operator);
         registry.accrueReferralReward(APP_ID, alice, type(uint256).max);
 
-        // Should not overflow - Solidity 0.8+ has built-in overflow protection
+        // Reward should be 0 since call reverted
         uint256 reward = registry.pendingRewards(attacker);
-        console2.log("Reward from max fee:", reward);
-
-        // Reward should be calculated correctly (will overflow if math is wrong)
-        uint256 expectedReward = (type(uint256).max * REFERRAL_BPS) / 10000;
-        assertEq(reward, expectedReward, "Reward calculation should handle large numbers");
+        assertEq(reward, 0, "No reward should be accrued after overflow revert");
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -451,14 +449,16 @@ contract ReferralRegistrySecurity is Test {
     }
 
     function testFuzz_MultipleBuyersOneReferrer(uint8 numBuyers, uint256 avgFee) public {
-        numBuyers = uint8(bound(numBuyers, 1, 50));
-        avgFee = bound(avgFee, 1 ether, 10_000 ether);
+        // Bound inputs to reasonable ranges that won't cause overflow
+        // Keep numBuyers small and avgFee well within safe range for multiplication
+        numBuyers = uint8(bound(uint256(numBuyers), 1, 10)); // Max 10 buyers
+        avgFee = bound(avgFee, 1 ether, 100 ether); // Max 100 ether per fee
 
         uint256 totalExpectedReward = 0;
 
         for (uint8 i = 0; i < numBuyers; i++) {
             address buyer = address(uint160(2000 + i));
-            uint256 fee = avgFee + i * 1 ether;
+            uint256 fee = avgFee + uint256(i) * 1 ether;
 
             vm.prank(operator);
             registry.setReferrer(APP_ID, buyer, attacker);

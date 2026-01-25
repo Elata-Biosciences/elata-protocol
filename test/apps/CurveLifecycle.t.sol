@@ -9,14 +9,14 @@ import {ELTA} from "../../src/token/ELTA.sol";
 import {IUniswapV2Router02} from "../../src/interfaces/IUniswapV2Router02.sol";
 import {IUniswapV2Factory} from "../../src/interfaces/IUniswapV2Factory.sol";
 import {IAppFeeRouter} from "../../src/interfaces/IAppFeeRouter.sol";
-import {IElataXP} from "../../src/interfaces/IElataXP.sol";
+import {IElataPoints} from "../../src/interfaces/IElataPoints.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-/// @notice Mock ElataXP for testing
-contract MockElataXP is ERC20 {
+/// @notice Mock ElataPoints for testing
+contract MockElataPoints is ERC20 {
     mapping(address => uint256) private _xpBalances;
 
-    constructor() ERC20("ElataXP", "XP") {}
+    constructor() ERC20("ElataPoints", "XP") {}
 
     function setBalance(address account, uint256 amount) external {
         _xpBalances[account] = amount;
@@ -135,7 +135,7 @@ contract CurveLifecycleTest is Test {
     AppBondingCurve public curve;
     MockRouter public router;
     MockFactory public factory;
-    MockElataXP public xp;
+    MockElataPoints public xp;
     MockAppFeeRouter public feeRouter;
 
     address public admin = makeAddr("admin");
@@ -163,7 +163,7 @@ contract CurveLifecycleTest is Test {
         elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 77_000_000 ether);
         router = new MockRouter();
         factory = new MockFactory();
-        xp = new MockElataXP();
+        xp = new MockElataPoints();
         feeRouter = new MockAppFeeRouter();
 
         // Deploy app token
@@ -212,7 +212,7 @@ contract CurveLifecycleTest is Test {
             creator,
             treasury,
             IAppFeeRouter(address(feeRouter)),
-            IElataXP(address(xp)),
+            IElataPoints(address(xp)),
             governance,
             1 hours, // activationDelay
             30 days, // maxDuration

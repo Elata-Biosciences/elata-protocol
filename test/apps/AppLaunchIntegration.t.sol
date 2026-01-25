@@ -15,7 +15,7 @@ import {ELTA} from "../../src/token/ELTA.sol";
 import {
     MockAppFeeRouter,
     MockAppRewardsDistributor,
-    MockElataXP,
+    MockElataPoints,
     MockRewardsDistributor
 } from "../mocks/MockContracts.sol";
 import "forge-std/Test.sol";
@@ -53,7 +53,7 @@ contract AppLaunchIntegrationTest is Test {
         MockAppFeeRouter mockFeeRouter = new MockAppFeeRouter();
         MockAppRewardsDistributor mockAppRewards = new MockAppRewardsDistributor();
         MockRewardsDistributor mockRewards = new MockRewardsDistributor();
-        MockElataXP mockXP = new MockElataXP();
+        MockElataPoints mockXP = new MockElataPoints();
 
         factory = new AppFactory(
             elta,

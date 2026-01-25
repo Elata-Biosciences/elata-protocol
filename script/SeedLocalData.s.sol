@@ -7,7 +7,7 @@ import {AppFactory} from "../src/apps/AppFactory.sol";
 import {AppModuleFactory} from "../src/apps/AppModuleFactory.sol";
 import {AppStakingVault} from "../src/apps/AppStakingVault.sol";
 import {AppToken} from "../src/apps/AppToken.sol";
-import {ElataXP} from "../src/experience/ElataXP.sol";
+import {ElataPoints} from "../src/experience/ElataPoints.sol";
 import {VeELTA} from "../src/staking/VeELTA.sol";
 import {ELTA} from "../src/token/ELTA.sol";
 import {Script, console2} from "forge-std/Script.sol";
@@ -83,7 +83,7 @@ contract SeedLocalData is Script {
 
         // Read required addresses
         ELTA_ADDRESS = stdJson.readAddress(json, ".contracts.ELTA");
-        XP_ADDRESS = stdJson.readAddress(json, ".contracts.ElataXP");
+        XP_ADDRESS = stdJson.readAddress(json, ".contracts.ElataPoints");
         STAKING_ADDRESS = stdJson.readAddress(json, ".contracts.VeELTA");
         APP_FACTORY_ADDRESS = stdJson.readAddress(json, ".contracts.AppFactory");
         APP_MODULE_FACTORY_ADDRESS = stdJson.readAddress(json, ".contracts.AppModuleFactory");
@@ -100,7 +100,7 @@ contract SeedLocalData is Script {
     }
 
     function _awardTestXP() internal {
-        ElataXP xp = ElataXP(XP_ADDRESS);
+        ElataPoints xp = ElataPoints(XP_ADDRESS);
 
         console2.log("       XP contract at:", address(xp));
         console2.log("       Sender:", msg.sender);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {ElataXP} from "../experience/ElataXP.sol";
+import {ElataPoints} from "../experience/ElataPoints.sol";
 import {RewardsDistributor} from "../rewards/RewardsDistributor.sol";
 import {VeELTA} from "../staking/VeELTA.sol";
 import {ELTA} from "../token/ELTA.sol";
@@ -15,7 +15,7 @@ import {ELTA} from "../token/ELTA.sol";
 contract ProtocolStats {
     ELTA public immutable elta;
     VeELTA public immutable staking;
-    ElataXP public immutable xp;
+    ElataPoints public immutable xp;
     RewardsDistributor public immutable rewards;
 
     struct UserSummary {
@@ -49,7 +49,7 @@ contract ProtocolStats {
         uint256 totalRewardsDistributed;
     }
 
-    constructor(ELTA _elta, VeELTA _staking, ElataXP _xp, RewardsDistributor _rewards) {
+    constructor(ELTA _elta, VeELTA _staking, ElataPoints _xp, RewardsDistributor _rewards) {
         elta = _elta;
         staking = _staking;
         xp = _xp;

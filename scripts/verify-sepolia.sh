@@ -34,14 +34,14 @@ echo ""
 # Extract addresses using grep and sed (portable approach)
 ELTA_ADDRESS=$(grep '"ELTA"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
 VE_ELTA_ADDRESS=$(grep '"VeELTA"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
-ELATA_XP_ADDRESS=$(grep '"ElataXP"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
+ELATA_XP_ADDRESS=$(grep '"ElataPoints"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
 APP_FACTORY_ADDRESS=$(grep '"AppFactory"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
 REWARDS_DIST_ADDRESS=$(grep '"RewardsDistributor"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
 
 echo "Contract Addresses:"
 echo "  ELTA: $ELTA_ADDRESS"
 echo "  VeELTA: $VE_ELTA_ADDRESS"
-echo "  ElataXP: $ELATA_XP_ADDRESS"
+echo "  ElataPoints: $ELATA_XP_ADDRESS"
 echo "  AppFactory: $APP_FACTORY_ADDRESS"
 echo "  RewardsDistributor: $REWARDS_DIST_ADDRESS"
 echo ""
@@ -84,7 +84,7 @@ check_contract_exists() {
 # Check all contracts exist
 check_contract_exists "$ELTA_ADDRESS" "ELTA"
 check_contract_exists "$VE_ELTA_ADDRESS" "VeELTA"
-check_contract_exists "$ELATA_XP_ADDRESS" "ElataXP"
+check_contract_exists "$ELATA_XP_ADDRESS" "ElataPoints"
 check_contract_exists "$APP_FACTORY_ADDRESS" "AppFactory"
 check_contract_exists "$REWARDS_DIST_ADDRESS" "RewardsDistributor"
 
@@ -130,7 +130,7 @@ if [ -n "$MULTISIG" ]; then
         echo -e "${RED}FAILED${NC}"
     fi
     
-    echo -n "Checking multisig admin role on ElataXP... "
+    echo -n "Checking multisig admin role on ElataPoints... "
     HAS_ROLE=$(cast call "$ELATA_XP_ADDRESS" "hasRole(bytes32,address)(bool)" "$DEFAULT_ADMIN_ROLE" "$MULTISIG" --rpc-url "$BASE_SEPOLIA_RPC_URL")
     if [ "$HAS_ROLE" = "true" ]; then
         echo -e "${GREEN}OK${NC}"

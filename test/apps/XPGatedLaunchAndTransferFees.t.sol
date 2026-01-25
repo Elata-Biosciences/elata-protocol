@@ -5,11 +5,11 @@ import {AppBondingCurve} from "../../src/apps/AppBondingCurve.sol";
 import {AppFactory} from "../../src/apps/AppFactory.sol";
 import {AppStakingVault} from "../../src/apps/AppStakingVault.sol";
 import {AppToken} from "../../src/apps/AppToken.sol";
-import {ElataXP} from "../../src/experience/ElataXP.sol";
+import {ElataPoints} from "../../src/experience/ElataPoints.sol";
 import {AppFeeRouter} from "../../src/fees/AppFeeRouter.sol";
 import {IAppFeeRouter} from "../../src/interfaces/IAppFeeRouter.sol";
 import {IAppRewardsDistributor} from "../../src/interfaces/IAppRewardsDistributor.sol";
-import {IElataXP} from "../../src/interfaces/IElataXP.sol";
+import {IElataPoints} from "../../src/interfaces/IElataPoints.sol";
 import {IRewardsDistributor} from "../../src/interfaces/IRewardsDistributor.sol";
 import {IUniswapV2Router02} from "../../src/interfaces/IUniswapV2Router02.sol";
 import {IVeEltaVotes} from "../../src/interfaces/IVeEltaVotes.sol";
@@ -17,7 +17,7 @@ import {AppRewardsDistributor} from "../../src/rewards/AppRewardsDistributor.sol
 import {RewardsDistributor} from "../../src/rewards/RewardsDistributor.sol";
 import {VeELTA} from "../../src/staking/VeELTA.sol";
 import {ELTA} from "../../src/token/ELTA.sol";
-import {MockElataXP} from "../mocks/MockContracts.sol";
+import {MockElataPoints} from "../mocks/MockContracts.sol";
 import "forge-std/Test.sol";
 
 /**
@@ -30,7 +30,7 @@ import "forge-std/Test.sol";
  */
 contract XPGatedLaunchAndTransferFeesTest is Test {
     ELTA public elta;
-    ElataXP public xp;
+    ElataPoints public xp;
     VeELTA public veELTA;
     RewardsDistributor public rewardsDistributor;
     AppRewardsDistributor public appRewardsDistributor;
@@ -61,7 +61,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
         // Deploy core contracts
         elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 77_000_000 ether);
 
-        xp = new ElataXP(admin);
+        xp = new ElataPoints(admin);
 
         // Deploy VeELTA
         veELTA = new VeELTA(elta, governance);
@@ -92,7 +92,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
             IAppFeeRouter(address(appFeeRouter)),
             IAppRewardsDistributor(address(appRewardsDistributor)),
             IRewardsDistributor(address(rewardsDistributor)),
-            IElataXP(address(xp)),
+            IElataPoints(address(xp)),
             governance,
             admin
         );

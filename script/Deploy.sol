@@ -4,13 +4,13 @@ pragma solidity ^0.8.24;
 import {AppFactory} from "../src/apps/AppFactory.sol";
 import {AppModuleFactory} from "../src/apps/AppModuleFactory.sol";
 import {TournamentFactory} from "../src/apps/TournamentFactory.sol";
-import {ElataXP} from "../src/experience/ElataXP.sol";
+import {ElataPoints} from "../src/experience/ElataPoints.sol";
 import {AppFeeRouter} from "../src/fees/AppFeeRouter.sol";
 import {ElataGovernor} from "../src/governance/ElataGovernor.sol";
 import {ElataTimelock} from "../src/governance/ElataTimelock.sol";
 import {IAppFeeRouter} from "../src/interfaces/IAppFeeRouter.sol";
 import {IAppRewardsDistributor} from "../src/interfaces/IAppRewardsDistributor.sol";
-import {IElataXP} from "../src/interfaces/IElataXP.sol";
+import {IElataPoints} from "../src/interfaces/IElataPoints.sol";
 import {IRewardsDistributor} from "../src/interfaces/IRewardsDistributor.sol";
 import {IUniswapV2Router02} from "../src/interfaces/IUniswapV2Router02.sol";
 import {IVeEltaVotes} from "../src/interfaces/IVeEltaVotes.sol";
@@ -83,7 +83,7 @@ contract Deploy is Script {
 
     struct ProtocolContracts {
         ELTA token;
-        ElataXP xp;
+        ElataPoints xp;
         VeELTA staking;
         AppRewardsDistributor appRewardsDistributor;
         RewardsDistributor rewards;
@@ -135,8 +135,8 @@ contract Deploy is Script {
         protocol.token = new ELTA("ELTA", "ELTA", initialAdmin, treasury, INITIAL_MINT, MAX_SUPPLY);
         console2.log("   ELTA deployed at:", address(protocol.token));
 
-        protocol.xp = new ElataXP(initialAdmin);
-        console2.log("   ElataXP deployed at:", address(protocol.xp));
+        protocol.xp = new ElataPoints(initialAdmin);
+        console2.log("   ElataPoints deployed at:", address(protocol.xp));
 
         // ===== STEP 2: Deploy VeELTA (ERC20Votes) =====
         console2.log("\n[2/9] Deploying VeELTA (ERC20Votes)...");
@@ -215,7 +215,7 @@ contract Deploy is Script {
                 IAppFeeRouter(address(protocol.appFeeRouter)),
                 IAppRewardsDistributor(address(protocol.appRewardsDistributor)),
                 IRewardsDistributor(address(protocol.rewards)),
-                IElataXP(address(protocol.xp)),
+                IElataPoints(address(protocol.xp)),
                 initialAdmin,
                 initialAdmin
             );
@@ -308,13 +308,13 @@ contract Deploy is Script {
         protocol.timelock.grantRole(protocol.timelock.EXECUTOR_ROLE(), address(protocol.governor));
 
         // XP: For local development, grant operator role to deployer for seeding
-        if (block.chainid == 31337) protocol.xp.grantRole(protocol.xp.XP_OPERATOR_ROLE(), msg.sender);
+        if (block.chainid == 31337) protocol.xp.grantRole(protocol.xp.POINTS_OPERATOR_ROLE(), msg.sender);
 
         // XP: Grant initial operators from env (XP_OPERATOR_1 .. XP_OPERATOR_10)
         for (uint256 i = 1; i <= 10; i++) {
             string memory key = string.concat("XP_OPERATOR_", vm.toString(i));
             address op = vm.envOr(key, address(0));
-            if (op != address(0)) protocol.xp.grantRole(protocol.xp.XP_OPERATOR_ROLE(), op);
+            if (op != address(0)) protocol.xp.grantRole(protocol.xp.POINTS_OPERATOR_ROLE(), op);
         }
 
         // Rewards: Grant DISTRIBUTOR_ROLE to AppFeeRouter
@@ -338,7 +338,7 @@ contract Deploy is Script {
         protocol.token.grantRole(DEFAULT_ADMIN_ROLE, to);
         protocol.token.revokeRole(DEFAULT_ADMIN_ROLE, from);
 
-        // Transfer ElataXP admin
+        // Transfer ElataPoints admin
         protocol.xp.grantRole(DEFAULT_ADMIN_ROLE, to);
         protocol.xp.revokeRole(DEFAULT_ADMIN_ROLE, from);
 
@@ -393,7 +393,7 @@ contract Deploy is Script {
             '    "ELTA": "',
             vm.toString(address(protocol.token)),
             '",\n',
-            '    "ElataXP": "',
+            '    "ElataPoints": "',
             vm.toString(address(protocol.xp)),
             '",\n',
             '    "VeELTA": "',
@@ -468,7 +468,7 @@ contract Deploy is Script {
     function _logDeployment(ProtocolContracts memory protocol) internal view {
         console2.log("\n=== DEPLOYMENT COMPLETE ===");
         console2.log("ELTA Token:              ", address(protocol.token));
-        console2.log("ElataXP:                 ", address(protocol.xp));
+        console2.log("ElataPoints:                 ", address(protocol.xp));
         console2.log("VeELTA Staking:          ", address(protocol.staking));
         console2.log("AppRewardsDistributor:   ", address(protocol.appRewardsDistributor));
         console2.log("RewardsDistributor:      ", address(protocol.rewards));

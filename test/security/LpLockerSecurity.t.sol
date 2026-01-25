@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {console2} from "forge-std/console2.sol";
 import {LpLocker} from "../../src/apps/LpLocker.sol";
-import {IUniswapV2Pair} from "../../src/interfaces/IUniswapV2Pair.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 /// @notice Mock LP Token
@@ -96,7 +95,7 @@ contract LpLockerSecurity is Test {
         // Mint and lock LP tokens
         lpToken.mint(address(this), LOCK_AMOUNT);
         lpToken.transfer(address(locker), LOCK_AMOUNT);
-        locker.lockLp(0); // Just emit event, tokens already transferred
+        locker.lockLp(LOCK_AMOUNT); // Emit event, tokens already in locker
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -276,9 +275,9 @@ contract LpLockerSecurity is Test {
         lpToken.mint(address(this), LOCK_AMOUNT);
         lpToken.transfer(address(locker), LOCK_AMOUNT);
 
-        // lockLp just emits event, doesn't prevent re-locking
-        // But the claimed flag prevents double claim
-        locker.lockLp(0);
+        // After tokens are in the locker, lockLp can be called but
+        // the claimed flag prevents double claim
+        locker.lockLp(LOCK_AMOUNT);
 
         // New tokens are stuck because claimed is true
         assertEq(lpToken.balanceOf(address(locker)), LOCK_AMOUNT);

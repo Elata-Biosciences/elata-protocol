@@ -126,9 +126,10 @@ contract ContentModuleSecurity is Test {
         vm.prank(admin);
         content721.setMinter(address(contentStore));
 
-        // Grant operator role
+        // Grant operator role - get role first to avoid consuming prank
+        bytes32 operatorRole = contentStore.MODULE_OPERATOR_ROLE();
         vm.prank(admin);
-        contentStore.grantRole(contentStore.MODULE_OPERATOR_ROLE(), operator);
+        contentStore.grantRole(operatorRole, operator);
 
         // Fund users
         appToken.mint(attacker, 1_000_000 ether);
@@ -501,32 +502,39 @@ contract ContentModuleSecurity is Test {
         assertEq(content.minted, 1);
     }
 
-    function testFuzz_SupplyCap(uint256 maxSupply, uint256 purchaseCount) public {
-        maxSupply = bound(maxSupply, 1, 100);
-        purchaseCount = bound(purchaseCount, 1, maxSupply + 10);
+    function testFuzz_SupplyCap(uint256 maxSupply, uint256 extraAttempts) public {
+        maxSupply = bound(maxSupply, 1, 50);
+        extraAttempts = bound(extraAttempts, 1, 10); // Extra purchase attempts beyond maxSupply
 
         vm.prank(operator);
         uint256 contentId = contentStore.listContent("ipfs://fuzz", 100 ether, maxSupply, PaymentTokenType.APP);
 
         uint256 successfulPurchases = 0;
 
-        for (uint256 i = 0; i < purchaseCount; i++) {
+        // First, fill up the supply
+        for (uint256 i = 0; i < maxSupply; i++) {
             address buyer = address(uint160(3000 + i));
             appToken.mint(buyer, 100 ether);
 
             vm.startPrank(buyer);
             appToken.approve(address(contentStore), 100 ether);
-
-            if (i < maxSupply) {
-                contentStore.purchase(contentId);
-                successfulPurchases++;
-            } else {
-                vm.expectRevert(ContentStore.MaxSupplyReached.selector);
-                contentStore.purchase(contentId);
-            }
+            contentStore.purchase(contentId);
+            successfulPurchases++;
             vm.stopPrank();
         }
 
-        assertEq(successfulPurchases, maxSupply);
+        // Then, attempt additional purchases that should fail
+        for (uint256 i = 0; i < extraAttempts; i++) {
+            address buyer = address(uint160(4000 + i));
+            appToken.mint(buyer, 100 ether);
+
+            vm.startPrank(buyer);
+            appToken.approve(address(contentStore), 100 ether);
+            vm.expectRevert(ContentStore.MaxSupplyReached.selector);
+            contentStore.purchase(contentId);
+            vm.stopPrank();
+        }
+
+        assertEq(successfulPurchases, maxSupply, "Successful purchases should equal max supply");
     }
 }

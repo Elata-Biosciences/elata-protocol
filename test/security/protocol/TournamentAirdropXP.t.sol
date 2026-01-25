@@ -5,18 +5,18 @@ import {Test} from "forge-std/Test.sol";
 import {ELTA} from "../../../src/token/ELTA.sol";
 import {Tournament, EntryTokenType} from "../../../src/apps/Tournament.sol";
 import {AirdropDistributor} from "../../../src/modules/AirdropDistributor.sol";
-import {ElataXP} from "../../../src/experience/ElataXP.sol";
+import {ElataPoints} from "../../../src/experience/ElataPoints.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title TournamentAirdropXP
- * @notice Security tests for Tournament, AirdropDistributor, and ElataXP
+ * @notice Security tests for Tournament, AirdropDistributor, and ElataPoints
  */
 contract TournamentAirdropXP is Test {
     ELTA public elta;
     Tournament public tournament;
     AirdropDistributor public airdrop;
-    ElataXP public xp;
+    ElataPoints public xp;
 
     address public admin = makeAddr("admin");
     address public treasury = makeAddr("treasury");
@@ -50,8 +50,8 @@ contract TournamentAirdropXP is Test {
         // Deploy AirdropDistributor
         airdrop = new AirdropDistributor(admin, admin);
 
-        // Deploy ElataXP
-        xp = new ElataXP(admin);
+        // Deploy ElataPoints
+        xp = new ElataPoints(admin);
 
         // Fund users
         vm.startPrank(admin);

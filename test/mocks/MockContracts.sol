@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IAppFeeRouter} from "../../src/interfaces/IAppFeeRouter.sol";
 import {IAppRewardsDistributor} from "../../src/interfaces/IAppRewardsDistributor.sol";
-import {IElataXP} from "../../src/interfaces/IElataXP.sol";
+import {IElataPoints} from "../../src/interfaces/IElataPoints.sol";
 import {IRewardsDistributor} from "../../src/interfaces/IRewardsDistributor.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -60,10 +60,10 @@ contract MockAppRewardsDistributor is IAppRewardsDistributor {
 }
 
 /**
- * @title MockElataXP
- * @notice Mock ElataXP contract for testing
+ * @title MockElataPoints
+ * @notice Mock ElataPoints contract for testing
  */
-contract MockElataXP is IElataXP {
+contract MockElataPoints is IElataPoints {
     mapping(address => uint256) public balances;
 
     function balanceOf(address account) external view override returns (uint256) {

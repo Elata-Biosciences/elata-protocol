@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {IAppFeeRouter} from "../../interfaces/IAppFeeRouter.sol";
-import {IElataXP} from "../../interfaces/IElataXP.sol";
+import {IElataPoints} from "../../interfaces/IElataPoints.sol";
 import {IUniswapV2Router02} from "../../interfaces/IUniswapV2Router02.sol";
 import {AppCurveDeployer} from "./AppCurveDeployer.sol";
 import {AppTokenDeployer} from "./AppTokenDeployer.sol";
@@ -59,7 +59,7 @@ library AppDeploymentLib {
         address creator,
         address treasury,
         IAppFeeRouter appFeeRouter,
-        IElataXP elataXP,
+        IElataPoints elataPoints,
         address governance,
         uint256 activationDelay,
         uint256 maxDuration
@@ -75,7 +75,7 @@ library AppDeploymentLib {
             creator,
             treasury,
             appFeeRouter,
-            elataXP,
+            elataPoints,
             governance,
             activationDelay,
             maxDuration

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {ElataXP} from "../../src/experience/ElataXP.sol";
+import {ElataPoints} from "../../src/experience/ElataPoints.sol";
 import {VeELTA} from "../../src/staking/VeELTA.sol";
 import {ELTA} from "../../src/token/ELTA.sol";
 import {Errors} from "../../src/utils/Errors.sol";
@@ -15,7 +15,7 @@ import "forge-std/Test.sol";
 contract CoreSecurityVerificationTest is Test {
     ELTA public elta;
     VeELTA public staking;
-    ElataXP public xp;
+    ElataPoints public xp;
 
     address public admin = makeAddr("admin");
     address public treasury = makeAddr("treasury");
@@ -24,7 +24,7 @@ contract CoreSecurityVerificationTest is Test {
 
     function setUp() public {
         elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 77_000_000 ether);
-        xp = new ElataXP(admin);
+        xp = new ElataPoints(admin);
         staking = new VeELTA(elta, admin);
     }
 

@@ -118,6 +118,16 @@ contract AppStakingVault is ERC20, ERC20Permit, ERC20Votes, Ownable, ReentrancyG
     }
 
     /**
+     * @notice Get user's staked balance (alias for stakedOf)
+     * @dev Matches Protocol Changes document naming convention
+     * @param user User address
+     * @return Staked balance
+     */
+    function stakedBalanceOf(address user) external view returns (uint256) {
+        return balanceOf(user);
+    }
+
+    /**
      * @notice Get total staked amount
      * @dev Convenience function, equivalent to totalSupply()
      * @return Total staked

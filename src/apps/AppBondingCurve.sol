@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {IAppFeeRouter} from "../interfaces/IAppFeeRouter.sol";
-import {IElataXP} from "../interfaces/IElataXP.sol";
+import {IElataPoints} from "../interfaces/IElataPoints.sol";
 import {IUniswapV2Factory} from "../interfaces/IUniswapV2Factory.sol";
 import {IUniswapV2Pair} from "../interfaces/IUniswapV2Pair.sol";
 import {IUniswapV2Router02} from "../interfaces/IUniswapV2Router02.sol";
@@ -105,7 +105,7 @@ contract AppBondingCurve is ReentrancyGuard {
     IAppFeeRouter public immutable appFeeRouter; // Fee router for protocol revenues
 
     // XP gating configuration
-    IElataXP public immutable elataXP;
+    IElataPoints public immutable elataPoints;
     uint256 public immutable launchTimestamp;
     uint256 public xpMinForEarlyBuy = 100e18; // governance-configurable (default 100 XP)
     uint256 public earlyBuyDuration = 6 hours; // governance-configurable (default 6 hours)
@@ -199,7 +199,7 @@ contract AppBondingCurve is ReentrancyGuard {
      * @param _lpBeneficiary Address to receive LP tokens after lock
      * @param _treasury Protocol treasury address
      * @param _appFeeRouter App fee router for revenue forwarding
-     * @param _elataXP ElataXP token address for early access gating
+     * @param _elataPoints ElataPoints token address for early access gating
      * @param _governance Governance address for XP gate configuration
      * @param _activationDelay Delay before curve becomes active
      * @param _maxDuration Maximum duration before forced graduation
@@ -216,7 +216,7 @@ contract AppBondingCurve is ReentrancyGuard {
         address _lpBeneficiary,
         address _treasury,
         IAppFeeRouter _appFeeRouter,
-        IElataXP _elataXP,
+        IElataPoints _elataPoints,
         address _governance,
         uint256 _activationDelay,
         uint256 _maxDuration,
@@ -229,7 +229,7 @@ contract AppBondingCurve is ReentrancyGuard {
         require(_targetRaisedElta > 0, "Zero target");
         require(_lpBeneficiary != address(0), "Zero beneficiary");
         require(_treasury != address(0), "Zero treasury");
-        require(address(_elataXP) != address(0), "Zero XP");
+        require(address(_elataPoints) != address(0), "Zero Points");
         require(_governance != address(0), "Zero governance");
         require(_creator != address(0), "Zero creator");
         // appFeeRouter can be address(0) to disable fee forwarding
@@ -245,7 +245,7 @@ contract AppBondingCurve is ReentrancyGuard {
         lpBeneficiary = _lpBeneficiary;
         treasury = _treasury;
         appFeeRouter = _appFeeRouter;
-        elataXP = _elataXP;
+        elataPoints = _elataPoints;
         governance = _governance;
         launchTimestamp = block.timestamp;
         creator = _creator;
@@ -349,7 +349,7 @@ contract AppBondingCurve is ReentrancyGuard {
 
         // XP gating for early launch window
         if (block.timestamp < launchTimestamp + earlyBuyDuration) {
-            if (elataXP.balanceOf(msg.sender) < xpMinForEarlyBuy) revert InsufficientXP();
+            if (elataPoints.balanceOf(msg.sender) < xpMinForEarlyBuy) revert InsufficientXP();
         }
 
         // Calculate maximum ELTA we can accept before hitting target
@@ -526,7 +526,7 @@ contract AppBondingCurve is ReentrancyGuard {
     function canUserBuy(address user) external view returns (bool canBuy) {
         if (graduated) return false;
         if (block.timestamp >= launchTimestamp + earlyBuyDuration) return true;
-        return elataXP.balanceOf(user) >= xpMinForEarlyBuy;
+        return elataPoints.balanceOf(user) >= xpMinForEarlyBuy;
     }
 
     /**

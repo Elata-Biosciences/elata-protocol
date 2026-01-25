@@ -1,7 +1,7 @@
 # Elata XP System
 
 ## Overview
-ElataXP is a non-transferable ERC20Votes token used for governance weight and rewards. XP can be issued via:
+ElataPoints is a non-transferable ERC20Votes token used for governance weight and rewards. XP can be issued via:
 - Direct award by operator (`award`)
 - Off-chain signature (`updateBySig`)
 - Merkle-based per-epoch claims (`claimXP`)

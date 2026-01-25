@@ -30,7 +30,7 @@ graph TB
     subgraph "Core Tokens"
         ELTA[ELTA]
         VeELTA[VeELTA]
-        XP[ElataXP]
+        XP[ElataPoints]
     end
     
     AppFactory --> AppToken
@@ -92,7 +92,7 @@ The veELTA balance is used for both governance voting and reward distribution sn
 
 Source: [src/staking/VeELTA.sol](../src/staking/VeELTA.sol)
 
-### ElataXP Reputation
+### ElataPoints Reputation
 
 XP tracks user participation and contribution. Unlike ELTA, XP cannot be transferred or traded. It's earned through protocol activity and used to weight votes in funding decisions.
 
@@ -108,7 +108,7 @@ XP is permanent by default. Once earned, it stays unless explicitly revoked by a
 
 XP represents *participation* (voice in funding decisions), while ELTA represents *ownership* (economic stake and yield). Keeping them separate prevents users from simply buying reputation. You have to earn XP through actual contribution.
 
-Source: [src/experience/ElataXP.sol](../src/experience/ElataXP.sol)
+Source: [src/experience/ElataPoints.sol](../src/experience/ElataPoints.sol)
 
 See also: [xp-system.md](./xp-system.md) for Merkle distribution details.
 
@@ -280,7 +280,7 @@ ELTA
 ├── ElataGovernor (uses ELTA for voting)
 └── AppFactory (accepts ELTA for app creation)
 
-ElataXP (used for app access gating and reputation)
+ElataPoints (used for app access gating and reputation)
 
 VeELTA
 └── RewardsDistributor (uses veELTA for reward claims)

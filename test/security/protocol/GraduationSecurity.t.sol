@@ -11,7 +11,7 @@ import {IUniswapV2Router02} from "../../../src/interfaces/IUniswapV2Router02.sol
 import {IUniswapV2Factory} from "../../../src/interfaces/IUniswapV2Factory.sol";
 import {IUniswapV2Pair} from "../../../src/interfaces/IUniswapV2Pair.sol";
 import {IAppFeeRouter} from "../../../src/interfaces/IAppFeeRouter.sol";
-import {IElataXP} from "../../../src/interfaces/IElataXP.sol";
+import {IElataPoints} from "../../../src/interfaces/IElataPoints.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
@@ -113,8 +113,8 @@ contract MockAppFeeRouter is IAppFeeRouter {
     }
 }
 
-/// @notice Mock ElataXP
-contract MockElataXP is IElataXP {
+/// @notice Mock ElataPoints
+contract MockElataPoints is IElataPoints {
     mapping(address => uint256) public balances;
 
     function balanceOf(address account) external view returns (uint256) {
@@ -179,7 +179,7 @@ contract GraduationSecurity is Test {
     MockUniswapFactory public uniFactory;
     MockUniswapRouter public uniRouter;
     MockAppFeeRouter public appFeeRouter;
-    MockElataXP public elataXP;
+    MockElataPoints public elataPoints;
     MockAppFactory public appFactory;
 
     address public admin = makeAddr("admin");
@@ -206,7 +206,7 @@ contract GraduationSecurity is Test {
 
         // Deploy other mocks
         appFeeRouter = new MockAppFeeRouter();
-        elataXP = new MockElataXP();
+        elataPoints = new MockElataPoints();
         appFactory = new MockAppFactory();
 
         // Deploy AppToken
@@ -226,7 +226,7 @@ contract GraduationSecurity is Test {
             creator, // lpBeneficiary
             treasury,
             IAppFeeRouter(address(appFeeRouter)),
-            IElataXP(address(elataXP)),
+            IElataPoints(address(elataPoints)),
             governance,
             1 hours, // activationDelay
             30 days, // maxDuration
@@ -250,8 +250,8 @@ contract GraduationSecurity is Test {
         vm.stopPrank();
 
         // Give users XP
-        elataXP.setBalance(attacker, 1000 ether);
-        elataXP.setBalance(alice, 1000 ether);
+        elataPoints.setBalance(attacker, 1000 ether);
+        elataPoints.setBalance(alice, 1000 ether);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

@@ -275,7 +275,7 @@ The economic design includes several security measures:
 |----------|--------|
 | ELTA | [src/token/ELTA.sol](../src/token/ELTA.sol) |
 | VeELTA | [src/staking/VeELTA.sol](../src/staking/VeELTA.sol) |
-| ElataXP | [src/experience/ElataXP.sol](../src/experience/ElataXP.sol) |
+| ElataPoints | [src/experience/ElataPoints.sol](../src/experience/ElataPoints.sol) |
 | RewardsDistributor | [src/rewards/RewardsDistributor.sol](../src/rewards/RewardsDistributor.sol) |
 | AppFactory | [src/apps/AppFactory.sol](../src/apps/AppFactory.sol) |
 | AppBondingCurve | [src/apps/AppBondingCurve.sol](../src/apps/AppBondingCurve.sol) |

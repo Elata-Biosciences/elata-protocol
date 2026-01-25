@@ -13,7 +13,7 @@ import {ELTA} from "../../src/token/ELTA.sol";
 import {
     MockAppFeeRouter,
     MockAppRewardsDistributor,
-    MockElataXP,
+    MockElataPoints,
     MockRewardsDistributor
 } from "../mocks/MockContracts.sol";
 import "forge-std/Test.sol";
@@ -45,7 +45,7 @@ contract AppLaunchSecurityTest is Test {
         MockAppFeeRouter mockFeeRouter = new MockAppFeeRouter();
         MockAppRewardsDistributor mockAppRewards = new MockAppRewardsDistributor();
         MockRewardsDistributor mockRewards = new MockRewardsDistributor();
-        MockElataXP mockXP = new MockElataXP();
+        MockElataPoints mockXP = new MockElataPoints();
 
         factory = new AppFactory(
             elta,
@@ -117,7 +117,7 @@ contract AppLaunchSecurityTest is Test {
         uint256 totalCost = factory.creationFee() + factory.seedElta();
 
         // Give users XP to pass XP gating
-        MockElataXP mockXP = MockElataXP(address(factory.elataXP()));
+        MockElataPoints mockXP = MockElataPoints(address(factory.elataPoints()));
         mockXP.setBalance(creator, 1000 ether);
         mockXP.setBalance(user1, 1000 ether);
 
@@ -174,7 +174,7 @@ contract AppLaunchSecurityTest is Test {
         uint256 totalCost = factory.creationFee() + factory.seedElta();
 
         // Give users XP to pass XP gating
-        MockElataXP mockXP = MockElataXP(address(factory.elataXP()));
+        MockElataPoints mockXP = MockElataPoints(address(factory.elataPoints()));
         mockXP.setBalance(creator, 1000 ether);
         mockXP.setBalance(user1, 1000 ether);
 
@@ -266,7 +266,7 @@ contract AppLaunchSecurityTest is Test {
         uint256 totalCost = factory.creationFee() + factory.seedElta();
 
         // Give users XP to pass XP gating
-        MockElataXP mockXP = MockElataXP(address(factory.elataXP()));
+        MockElataPoints mockXP = MockElataPoints(address(factory.elataPoints()));
         mockXP.setBalance(creator, 1000 ether);
         mockXP.setBalance(user1, 1000 ether);
 
@@ -307,7 +307,7 @@ contract AppLaunchSecurityTest is Test {
         MockAppFeeRouter mockFee = new MockAppFeeRouter();
         MockAppRewardsDistributor mockRewards = new MockAppRewardsDistributor();
 
-        MockElataXP mockXP = new MockElataXP();
+        MockElataPoints mockXP = new MockElataPoints();
         MockRewardsDistributor mockRewards2 = new MockRewardsDistributor();
 
         vm.expectRevert("Zero address");
@@ -346,7 +346,7 @@ contract AppLaunchSecurityTest is Test {
         uint256 totalCost = factory.creationFee() + factory.seedElta();
 
         // Give users XP to pass XP gating
-        MockElataXP mockXP = MockElataXP(address(factory.elataXP()));
+        MockElataPoints mockXP = MockElataPoints(address(factory.elataPoints()));
         mockXP.setBalance(creator, 1000 ether);
         mockXP.setBalance(user1, 1000 ether);
 

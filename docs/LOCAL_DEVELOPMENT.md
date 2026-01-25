@@ -168,7 +168,7 @@ elata-appstore/
   "chainId": 31337,
   "contracts": {
     "ELTA": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
-    "ElataXP": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+    "ElataPoints": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
     "VeELTA": "0x...",
     ...
   }

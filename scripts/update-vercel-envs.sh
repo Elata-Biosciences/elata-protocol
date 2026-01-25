@@ -23,7 +23,7 @@ echo ""
 # Extract addresses
 ELTA_ADDRESS=$(grep '"ELTA"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
 VE_ELTA_ADDRESS=$(grep '"VeELTA"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
-ELATA_XP_ADDRESS=$(grep '"ElataXP"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
+ELATA_XP_ADDRESS=$(grep '"ElataPoints"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
 APP_FACTORY_ADDRESS=$(grep '"AppFactory"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
 APP_MODULE_FACTORY_ADDRESS=$(grep '"AppModuleFactory"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
 REWARDS_DIST_ADDRESS=$(grep '"RewardsDistributor"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')

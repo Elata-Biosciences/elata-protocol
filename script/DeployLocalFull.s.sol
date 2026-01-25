@@ -5,7 +5,7 @@ import {AppFactory} from "../src/apps/AppFactory.sol";
 import {AppFactoryViews} from "../src/apps/AppFactoryViews.sol";
 import {AppModuleFactory} from "../src/apps/AppModuleFactory.sol";
 import {TournamentFactory} from "../src/apps/TournamentFactory.sol";
-import {ElataXP} from "../src/experience/ElataXP.sol";
+import {ElataPoints} from "../src/experience/ElataPoints.sol";
 import {ElataGovernor} from "../src/governance/ElataGovernor.sol";
 import {ElataTimelock} from "../src/governance/ElataTimelock.sol";
 import {IUniswapV2Router02} from "../src/interfaces/IUniswapV2Router02.sol";
@@ -94,7 +94,7 @@ contract DeployLocalFull is Script {
     struct DeploymentResult {
         // Core Protocol
         ELTA token;
-        ElataXP xp;
+        ElataPoints xp;
         VeELTA staking;
         RewardsDistributor rewards;
         TimelockController timelock;
@@ -143,9 +143,9 @@ contract DeployLocalFull is Script {
         console2.log("       ELTA Token deployed at:", address(result.token));
 
         // ===== STEP 2: Deploy XP System =====
-        console2.log("[2/10] Deploying ElataXP...");
-        result.xp = new ElataXP(result.deployer);
-        console2.log("       ElataXP deployed at:", address(result.xp));
+        console2.log("[2/10] Deploying ElataPoints...");
+        result.xp = new ElataPoints(result.deployer);
+        console2.log("       ElataPoints deployed at:", address(result.xp));
 
         // ===== STEP 3: Deploy Staking System =====
         console2.log("[3/10] Deploying VeELTA Staking...");
@@ -179,7 +179,7 @@ contract DeployLocalFull is Script {
         // ===== STEP 7: Deploy App Launch Framework =====
         console2.log("[7/9] Deploying App Factories...");
         // NOTE: AppFactory deployment commented out - use script/Deploy.sol
-        // AppFactory now requires AppFeeRouter, AppRewardsDistributor, RewardsDistributor, ElataXP,
+        // AppFactory now requires AppFeeRouter, AppRewardsDistributor, RewardsDistributor, ElataPoints,
         // and Governance
         // result.appFactory = new AppFactory(...);
         // result.appFactoryViews = new AppFactoryViews(address(result.appFactory));
@@ -264,7 +264,7 @@ contract DeployLocalFull is Script {
         console2.log("CORE PROTOCOL CONTRACTS:");
         console2.log("------------------------");
         console2.log("ELTA Token:              ", address(result.token));
-        console2.log("ElataXP:                 ", address(result.xp));
+        console2.log("ElataPoints:                 ", address(result.xp));
         console2.log("VeELTA Staking:          ", address(result.staking));
         console2.log("Rewards Distributor:     ", address(result.rewards));
         console2.log("Timelock Controller:     ", address(result.timelock));
@@ -314,7 +314,7 @@ contract DeployLocalFull is Script {
             '    "ELTA": "',
             vm.toString(address(result.token)),
             '",\n',
-            '    "ElataXP": "',
+            '    "ElataPoints": "',
             vm.toString(address(result.xp)),
             '",\n',
             '    "VeELTA": "',

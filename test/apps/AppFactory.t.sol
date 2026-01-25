@@ -7,7 +7,7 @@ import {AppFactoryViews} from "../../src/apps/AppFactoryViews.sol";
 import {AppToken} from "../../src/apps/AppToken.sol";
 import {IAppFeeRouter} from "../../src/interfaces/IAppFeeRouter.sol";
 import {IAppRewardsDistributor} from "../../src/interfaces/IAppRewardsDistributor.sol";
-import {IElataXP} from "../../src/interfaces/IElataXP.sol";
+import {IElataPoints} from "../../src/interfaces/IElataPoints.sol";
 import {IRewardsDistributor} from "../../src/interfaces/IRewardsDistributor.sol";
 import {IUniswapV2Router02} from "../../src/interfaces/IUniswapV2Router02.sol";
 import {ELTA} from "../../src/token/ELTA.sol";
@@ -15,8 +15,8 @@ import {MockAppFeeRouter, MockAppRewardsDistributor} from "../mocks/MockContract
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "forge-std/Test.sol";
 
-// Mock ElataXP
-contract MockElataXP is IElataXP {
+// Mock ElataPoints
+contract MockElataPoints is IElataPoints {
     mapping(address => uint256) public balances;
 
     function balanceOf(address account) external view override returns (uint256) {
@@ -51,7 +51,7 @@ contract AppFactoryTest is Test {
     MockAppFeeRouter public mockFeeRouter;
     MockAppRewardsDistributor public mockAppRewards;
     MockRewardsDistributor public mockRewards;
-    MockElataXP public mockXP;
+    MockElataPoints public mockXP;
 
     function setUp() public {
         elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 77_000_000 ether);
@@ -60,7 +60,7 @@ contract AppFactoryTest is Test {
         mockFeeRouter = new MockAppFeeRouter();
         mockAppRewards = new MockAppRewardsDistributor();
         mockRewards = new MockRewardsDistributor();
-        mockXP = new MockElataXP();
+        mockXP = new MockElataPoints();
 
         // For testing, we'll use a mock router address
         // In production, this would be the actual Uniswap router

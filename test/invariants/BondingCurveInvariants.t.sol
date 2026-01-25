@@ -9,7 +9,7 @@ import {AppBondingCurve} from "../../src/apps/AppBondingCurve.sol";
 import {BondingCurveHandler} from "./handlers/BondingCurveHandler.sol";
 import {IUniswapV2Router02} from "../../src/interfaces/IUniswapV2Router02.sol";
 import {IAppFeeRouter} from "../../src/interfaces/IAppFeeRouter.sol";
-import {IElataXP} from "../../src/interfaces/IElataXP.sol";
+import {IElataPoints} from "../../src/interfaces/IElataPoints.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @notice Mock Uniswap Router for testing
@@ -36,8 +36,8 @@ contract MockAppFeeRouter is IAppFeeRouter {
     }
 }
 
-/// @notice Mock ElataXP for testing
-contract MockElataXP is IElataXP {
+/// @notice Mock ElataPoints for testing
+contract MockElataPoints is IElataPoints {
     mapping(address => uint256) public balances;
 
     function balanceOf(address account) external view returns (uint256) {
@@ -67,7 +67,7 @@ contract BondingCurveInvariants is Test {
 
     MockRouter public router;
     MockAppFeeRouter public appFeeRouter;
-    MockElataXP public elataXP;
+    MockElataPoints public elataPoints;
     MockAppFactory public appFactory;
 
     address public admin = makeAddr("admin");
@@ -88,7 +88,7 @@ contract BondingCurveInvariants is Test {
         // Deploy mocks
         router = new MockRouter();
         appFeeRouter = new MockAppFeeRouter();
-        elataXP = new MockElataXP();
+        elataPoints = new MockElataPoints();
         appFactory = new MockAppFactory();
 
         // Deploy AppToken
@@ -108,7 +108,7 @@ contract BondingCurveInvariants is Test {
             creator, // lpBeneficiary
             treasury,
             IAppFeeRouter(address(appFeeRouter)),
-            IElataXP(address(elataXP)),
+            IElataPoints(address(elataPoints)),
             governance,
             1 hours, // activationDelay
             30 days, // maxDuration
@@ -137,7 +137,7 @@ contract BondingCurveInvariants is Test {
             elta.transfer(actor, 100_000 ether);
 
             // Give actors XP so they can buy during early access
-            elataXP.setBalance(actor, 1000 ether);
+            elataPoints.setBalance(actor, 1000 ether);
         }
 
         // Set up handler as target
