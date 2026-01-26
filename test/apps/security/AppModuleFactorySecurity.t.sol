@@ -340,6 +340,43 @@ contract AppModuleFactorySecurityTest is Test {
         assertEq(content721, address(0));
         assertEq(contentStore, address(0));
     }
+
+    // ────────────────────────────────────────────────────────────────────────────
+    // OWNERSHIP TRANSFER VERIFICATION
+    // ────────────────────────────────────────────────────────────────────────────
+
+    function test_Security_OwnershipTransferSequence() public {
+        // Verify that factory temporarily owns Content721 during deployment
+        // and then transfers ownership to app creator
+
+        vm.prank(appCreator);
+        (address content721, address contentStore) =
+            factory.deployModules(APP_ID, address(appToken), "Test", "TST", "https://test/");
+
+        // Final ownership should be with app creator
+        assertEq(InAppContent721(content721).owner(), appCreator, "Content721 owner should be app creator");
+
+        // Minter should be set correctly
+        assertEq(InAppContent721(content721).minter(), contentStore, "Minter should be ContentStore");
+
+        // App creator should be able to update minter
+        address newMinter = makeAddr("newMinter");
+        vm.prank(appCreator);
+        InAppContent721(content721).setMinter(newMinter);
+        assertEq(InAppContent721(content721).minter(), newMinter, "App creator should be able to change minter");
+    }
+
+    function test_Security_FactoryNotOwnerAfterDeploy() public {
+        vm.prank(appCreator);
+        (address content721,) = factory.deployModules(APP_ID, address(appToken), "Test", "TST", "https://test/");
+
+        // Factory should NOT be the owner
+        assertTrue(InAppContent721(content721).owner() != address(factory), "Factory should not retain ownership");
+
+        // Factory should NOT be able to call setMinter
+        vm.expectRevert();
+        factory.deployModules(APP_ID, address(appToken), "Test2", "TST2", "https://test2/"); // This tests ModuleAlreadyExists
+    }
 }
 
 // Fake token without owner() function

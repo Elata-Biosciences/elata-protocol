@@ -159,21 +159,12 @@ contract TreasurySettlementSecurity is Test {
         // Set up FeeManager
         vm.startPrank(admin);
         feeManager.setDepositor(address(feeCollector), true);
-        feeManager.setDepositor(address(this), true); // Allow test contract to deposit directly
         feeManager.setSwapRouter(address(swapRouter));
         vm.stopPrank();
 
         // Fund attacker with ELTA
         vm.prank(admin);
         elta.transfer(attacker, 100_000 ether);
-    }
-
-    /// @dev Helper to deposit ELTA to FeeManager for an app (bypasses FeeCollector which has a bug)
-    function _depositEltaToFeeManager(uint256 appId, uint256 amount) internal {
-        vm.prank(admin);
-        elta.transfer(address(this), amount);
-        elta.approve(address(feeManager), amount);
-        feeManager.depositEltaForApp(appId, amount);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -398,9 +389,16 @@ contract TreasurySettlementSecurity is Test {
     }
 
     function test_Security_SettlementAccounting() public {
-        // Deposit known amount - use helper since FeeCollector.sweepElta doesn't call depositEltaForApp
+        // Deposit known amount via proper FeeCollector flow
         uint256 depositAmount = 10_000 ether;
-        _depositEltaToFeeManager(APP_ID, depositAmount);
+
+        vm.startPrank(attacker);
+        elta.approve(address(feeCollector), depositAmount);
+        feeCollector.depositElta(APP_ID, depositAmount);
+        vm.stopPrank();
+
+        // Sweep to FeeManager (now properly calls depositEltaForApp)
+        feeCollector.sweepElta(APP_ID);
 
         // Record balances before
         uint256 appRewardsBefore = elta.balanceOf(appRewardsDistributor);
@@ -457,8 +455,14 @@ contract TreasurySettlementSecurity is Test {
         depositAmount = bound(depositAmount, 1 ether, 50_000 ether);
         console2.log("Bound result", depositAmount);
 
-        // Use helper since FeeCollector.sweepElta doesn't call depositEltaForApp
-        _depositEltaToFeeManager(APP_ID, depositAmount);
+        // Use proper FeeCollector flow
+        vm.startPrank(attacker);
+        elta.approve(address(feeCollector), depositAmount);
+        feeCollector.depositElta(APP_ID, depositAmount);
+        vm.stopPrank();
+
+        // Sweep to FeeManager (now properly calls depositEltaForApp)
+        feeCollector.sweepElta(APP_ID);
 
         // Get splits
         (uint256 appStakers, uint256 veElta, uint256 creator, uint256 treasury,) = feeManager.feeSplits();

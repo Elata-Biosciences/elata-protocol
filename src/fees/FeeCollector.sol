@@ -5,6 +5,11 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+/// @notice Interface for FeeManager deposit function
+interface IFeeManager {
+    function depositEltaForApp(uint256 appId, uint256 amount) external;
+}
+
 /**
  * @title FeeCollector
  * @author Elata Biosciences
@@ -104,7 +109,8 @@ contract FeeCollector is ReentrancyGuard {
 
     /**
      * @notice Sweep pending ELTA fees for an app to FeeManager
-     * @dev Permissionless - anyone can call
+     * @dev Permissionless - anyone can call. Approves and calls depositEltaForApp
+     *      so FeeManager can track pending amounts per app.
      * @param appId The app ID to sweep
      */
     function sweepElta(uint256 appId) external nonReentrant {
@@ -112,7 +118,11 @@ contract FeeCollector is ReentrancyGuard {
         if (amount == 0) revert NothingToSweep();
 
         pendingEltaFees[appId] = 0;
-        ELTA.safeTransfer(feeManager, amount);
+
+        // Approve FeeManager to pull tokens and call depositEltaForApp
+        // This ensures FeeManager.pendingEltaToDistribute is updated correctly
+        ELTA.approve(feeManager, amount);
+        IFeeManager(feeManager).depositEltaForApp(appId, amount);
 
         emit EltaSwept(appId, amount, feeManager);
     }

@@ -169,7 +169,6 @@ contract CrossModuleEconomicAttacks is Test {
         // Connect components
         vm.startPrank(admin);
         feeManager.setDepositor(address(feeCollector), true);
-        feeManager.setDepositor(address(this), true); // Allow test contract to deposit directly
         referralRegistry.setAuthorizedCaller(address(this), true); // For testing
         vm.stopPrank();
 
@@ -325,12 +324,16 @@ contract CrossModuleEconomicAttacks is Test {
     }
 
     function test_Security_EpochSettlementManipulation() public {
-        // Deposit fees directly to FeeManager (FeeCollector.sweepElta doesn't call depositEltaForApp)
+        // Deposit fees via proper FeeCollector flow
         uint256 depositAmount = 10_000 ether;
-        vm.prank(admin);
-        elta.transfer(address(this), depositAmount);
-        elta.approve(address(feeManager), depositAmount);
-        feeManager.depositEltaForApp(APP_ID, depositAmount);
+
+        vm.startPrank(attacker);
+        elta.approve(address(feeCollector), depositAmount);
+        feeCollector.depositElta(APP_ID, depositAmount);
+        vm.stopPrank();
+
+        // Sweep to FeeManager (now properly calls depositEltaForApp)
+        feeCollector.sweepElta(APP_ID);
 
         // Warp past epoch
         vm.warp(block.timestamp + 1 days + 1);

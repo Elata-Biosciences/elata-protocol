@@ -133,7 +133,8 @@ contract AppModuleFactory is Ownable {
 
     /**
      * @notice Deploy InAppContent721 and ContentStore for an app token
-     * @dev Only callable by the AppToken owner
+     * @dev Only callable by the AppToken owner. Factory temporarily owns InAppContent721
+     *      to set minter, then transfers ownership to the app creator.
      * @param appId App ID for fee routing
      * @param appToken AppToken address (must implement owner())
      * @param name Collection name for InAppContent721
@@ -158,14 +159,17 @@ contract AppModuleFactory is Ownable {
         // Collect ELTA fee if set
         _collectFee();
 
-        // Deploy InAppContent721 (minter set to address(0) temporarily)
+        // Deploy InAppContent721 with factory as temporary owner (so we can call setMinter)
         content721 = _deployContent721(appId, name, symbol, contractURI);
 
-        // Deploy ContentStore
+        // Deploy ContentStore with app creator as admin
         contentStore = _deployContentStore(appId, appToken, content721);
 
-        // Set ContentStore as the minter for InAppContent721
+        // Set ContentStore as the minter for InAppContent721 (factory is owner, so this works)
         InAppContent721(content721).setMinter(contentStore);
+
+        // Transfer ownership of InAppContent721 to the app creator
+        InAppContent721(content721).transferOwnership(msg.sender);
 
         // Register modules
         content721ByApp[appToken] = content721;
@@ -185,6 +189,7 @@ contract AppModuleFactory is Ownable {
 
     /**
      * @dev Internal function to deploy InAppContent721
+     * @dev Deploys with factory as owner so setMinter can be called, ownership transferred later
      */
     function _deployContent721(
         uint256 appId,
@@ -192,7 +197,8 @@ contract AppModuleFactory is Ownable {
         string calldata symbol,
         string calldata contractURI
     ) internal returns (address) {
-        return address(new InAppContent721(appId, name, symbol, msg.sender, address(0), contractURI));
+        // Deploy with factory as owner so we can call setMinter before transferring ownership
+        return address(new InAppContent721(appId, name, symbol, address(this), address(0), contractURI));
     }
 
     /**
