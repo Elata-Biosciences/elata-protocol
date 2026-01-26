@@ -8,6 +8,7 @@ import {AppStakingVault} from "../../src/apps/AppStakingVault.sol";
 import {AppToken} from "../../src/apps/AppToken.sol";
 import {Tournament, EntryTokenType} from "../../src/apps/Tournament.sol";
 import {ELTA} from "../../src/token/ELTA.sol";
+import {FeeCollector} from "../../src/fees/FeeCollector.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "forge-std/Test.sol";
 
@@ -23,10 +24,12 @@ contract DesignValidationTest is Test {
     InAppContent721 public content721;
     ContentStore public contentStore;
     AppStakingVault public vault;
+    FeeCollector public feeCollector;
 
     address public factoryOwner = makeAddr("factoryOwner");
     address public treasury = makeAddr("treasury");
-    address public feeCollector = makeAddr("feeCollector");
+    address public feeManager = makeAddr("feeManager");
+    address public feeSwapper = makeAddr("feeSwapper");
     address public appCreator = makeAddr("appCreator");
     address public player = makeAddr("player");
     address public admin = makeAddr("admin");
@@ -37,7 +40,10 @@ contract DesignValidationTest is Test {
     function setUp() public {
         elta = new ELTA("ELTA", "ELTA", factoryOwner, factoryOwner, 10000000 ether, 77000000 ether);
 
-        factory = new AppModuleFactory(address(elta), address(0), factoryOwner, treasury, feeCollector, 500);
+        // Deploy FeeCollector
+        feeCollector = new FeeCollector(address(elta), admin, feeManager, feeSwapper);
+
+        factory = new AppModuleFactory(address(elta), address(0), factoryOwner, treasury, address(feeCollector), 500);
 
         appToken = new AppToken(
             "TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)

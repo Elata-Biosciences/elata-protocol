@@ -7,6 +7,7 @@ import {AppModuleFactory} from "../../src/apps/AppModuleFactory.sol";
 import {AppStakingVault} from "../../src/apps/AppStakingVault.sol";
 import {AppToken} from "../../src/apps/AppToken.sol";
 import {ELTA} from "../../src/token/ELTA.sol";
+import {FeeCollector} from "../../src/fees/FeeCollector.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "forge-std/Test.sol";
 
@@ -55,10 +56,12 @@ contract AppModuleFactoryTest is Test {
     MockUSDC public usdc;
     AppToken public appToken;
     AppStakingVault public defaultVault;
+    FeeCollector public feeCollector;
 
     address public factoryOwner = makeAddr("factoryOwner");
     address public treasury = makeAddr("treasury");
-    address public feeCollector = makeAddr("feeCollector");
+    address public feeManager = makeAddr("feeManager");
+    address public feeSwapper = makeAddr("feeSwapper");
     address public appCreator = makeAddr("appCreator");
     address public user1 = makeAddr("user1");
     address public admin = makeAddr("admin");
@@ -81,9 +84,12 @@ contract AppModuleFactoryTest is Test {
         // Deploy mock USDC
         usdc = new MockUSDC();
 
+        // Deploy FeeCollector
+        feeCollector = new FeeCollector(address(elta), admin, feeManager, feeSwapper);
+
         // Deploy factory
         factory = new AppModuleFactory(
-            address(elta), address(usdc), factoryOwner, treasury, feeCollector, DEFAULT_PROTOCOL_FEE_BPS
+            address(elta), address(usdc), factoryOwner, treasury, address(feeCollector), DEFAULT_PROTOCOL_FEE_BPS
         );
 
         // Deploy app token
@@ -108,14 +114,14 @@ contract AppModuleFactoryTest is Test {
         assertEq(factory.USDC(), address(usdc));
         assertEq(factory.owner(), factoryOwner);
         assertEq(factory.treasury(), treasury);
-        assertEq(factory.feeCollector(), feeCollector);
+        assertEq(factory.feeCollector(), address(feeCollector));
         assertEq(factory.defaultProtocolFeeBps(), DEFAULT_PROTOCOL_FEE_BPS);
         assertEq(factory.createFeeELTA(), 0);
     }
 
     function test_DeploymentWithZeroELTA() public {
         AppModuleFactory noFeeFactory = new AppModuleFactory(
-            address(0), address(usdc), factoryOwner, treasury, feeCollector, DEFAULT_PROTOCOL_FEE_BPS
+            address(0), address(usdc), factoryOwner, treasury, address(feeCollector), DEFAULT_PROTOCOL_FEE_BPS
         );
 
         assertEq(noFeeFactory.ELTA(), address(0));
@@ -123,7 +129,7 @@ contract AppModuleFactoryTest is Test {
 
     function test_RevertWhen_DeploymentWithInvalidProtocolFee() public {
         vm.expectRevert(AppModuleFactory.InvalidProtocolFeeBps.selector);
-        new AppModuleFactory(address(elta), address(usdc), factoryOwner, treasury, feeCollector, 2000); // > 15%
+        new AppModuleFactory(address(elta), address(usdc), factoryOwner, treasury, address(feeCollector), 2000); // > 15%
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -387,7 +393,7 @@ contract AppModuleFactoryTest is Test {
     function test_DeployModulesWithFactoryELTADisabled() public {
         // Factory with ELTA disabled
         AppModuleFactory noEltaFactory = new AppModuleFactory(
-            address(0), address(usdc), factoryOwner, treasury, feeCollector, DEFAULT_PROTOCOL_FEE_BPS
+            address(0), address(usdc), factoryOwner, treasury, address(feeCollector), DEFAULT_PROTOCOL_FEE_BPS
         );
 
         vm.prank(factoryOwner);

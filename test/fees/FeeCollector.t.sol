@@ -17,6 +17,22 @@ contract MockAppToken is ERC20 {
     }
 }
 
+/// @notice Mock FeeManager for testing sweepElta
+/// @dev Implements depositEltaForApp to receive ELTA from FeeCollector
+contract MockFeeManager {
+    ERC20 public elta;
+    mapping(uint256 => uint256) public pendingEltaToDistribute;
+
+    constructor(address _elta) {
+        elta = ERC20(_elta);
+    }
+
+    function depositEltaForApp(uint256 appId, uint256 amount) external {
+        elta.transferFrom(msg.sender, address(this), amount);
+        pendingEltaToDistribute[appId] += amount;
+    }
+}
+
 /**
  * @title FeeCollector Unit Tests
  * @notice TDD tests for FeeCollector - the single sink for protocol fee assets
@@ -27,10 +43,10 @@ contract FeeCollectorTest is Test {
     ELTA public elta;
     MockAppToken public appToken1;
     MockAppToken public appToken2;
+    MockFeeManager public mockFeeManager;
 
     address public admin = makeAddr("admin");
     address public treasury = makeAddr("treasury");
-    address public feeManager = makeAddr("feeManager");
     address public feeSwapper = makeAddr("feeSwapper");
     address public appFactory = makeAddr("appFactory");
     address public user = makeAddr("user");
@@ -52,8 +68,11 @@ contract FeeCollectorTest is Test {
         appToken1 = new MockAppToken();
         appToken2 = new MockAppToken();
 
+        // Deploy MockFeeManager
+        mockFeeManager = new MockFeeManager(address(elta));
+
         // Deploy FeeCollector
-        collector = new FeeCollector(address(elta), admin, feeManager, feeSwapper);
+        collector = new FeeCollector(address(elta), admin, address(mockFeeManager), feeSwapper);
 
         // Distribute tokens for testing
         vm.prank(treasury);
@@ -67,18 +86,18 @@ contract FeeCollectorTest is Test {
     function test_Deployment() public view {
         assertEq(address(collector.ELTA()), address(elta));
         assertEq(collector.admin(), admin);
-        assertEq(collector.feeManager(), feeManager);
+        assertEq(collector.feeManager(), address(mockFeeManager));
         assertEq(collector.feeSwapper(), feeSwapper);
     }
 
     function test_RevertWhen_DeployWithZeroELTA() public {
         vm.expectRevert(FeeCollector.ZeroAddress.selector);
-        new FeeCollector(address(0), admin, feeManager, feeSwapper);
+        new FeeCollector(address(0), admin, address(mockFeeManager), feeSwapper);
     }
 
     function test_RevertWhen_DeployWithZeroAdmin() public {
         vm.expectRevert(FeeCollector.ZeroAddress.selector);
-        new FeeCollector(address(elta), address(0), feeManager, feeSwapper);
+        new FeeCollector(address(elta), address(0), address(mockFeeManager), feeSwapper);
     }
 
     // =========== ELTA Deposit Tests ===========
@@ -191,11 +210,12 @@ contract FeeCollectorTest is Test {
 
         // Sweep - permissionless
         vm.expectEmit(true, true, true, true);
-        emit EltaSwept(APP_ID_1, amount, feeManager);
+        emit EltaSwept(APP_ID_1, amount, address(mockFeeManager));
         collector.sweepElta(APP_ID_1);
 
         assertEq(collector.pendingEltaFees(APP_ID_1), 0);
-        assertEq(elta.balanceOf(feeManager), amount);
+        assertEq(elta.balanceOf(address(mockFeeManager)), amount);
+        assertEq(mockFeeManager.pendingEltaToDistribute(APP_ID_1), amount);
     }
 
     function test_SweepEltaIsPermissionless() public {
@@ -212,7 +232,7 @@ contract FeeCollectorTest is Test {
         vm.prank(randomCaller);
         collector.sweepElta(APP_ID_1);
 
-        assertEq(elta.balanceOf(feeManager), amount);
+        assertEq(elta.balanceOf(address(mockFeeManager)), amount);
     }
 
     function test_RevertWhen_SweepEltaWithNothingPending() public {
@@ -269,7 +289,7 @@ contract FeeCollectorTest is Test {
 
         vm.prank(admin);
         vm.expectEmit(true, true, true, true);
-        emit FeeManagerUpdated(feeManager, newFeeManager);
+        emit FeeManagerUpdated(address(mockFeeManager), newFeeManager);
         collector.setFeeManager(newFeeManager);
 
         assertEq(collector.feeManager(), newFeeManager);
@@ -335,7 +355,7 @@ contract FeeCollectorTest is Test {
         collector.sweepElta(APP_ID_1);
 
         assertEq(collector.pendingEltaFees(APP_ID_1), 0);
-        assertEq(elta.balanceOf(feeManager), amount);
+        assertEq(elta.balanceOf(address(mockFeeManager)), amount);
     }
 
     function testFuzz_DepositAppToken(uint256 amount) public {
