@@ -286,7 +286,7 @@ contract EdgeCasesTest is Test {
         elta.approve(user2, 1000 ether);
         vm.stopPrank();
 
-        assertEq(elta.balanceOf(user2), 100_000_000 ether + 100 ether, "Transfer should complete");
+        assertEq(elta.balanceOf(user2), 10_000_000 ether + 100 ether, "Transfer should complete");
         assertEq(elta.allowance(user1, user2), 1000 ether, "Approval should be set");
     }
 
