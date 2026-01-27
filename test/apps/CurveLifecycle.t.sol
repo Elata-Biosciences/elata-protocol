@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {AppBondingCurve} from "../../src/apps/AppBondingCurve.sol";
 import {AppToken} from "../../src/apps/AppToken.sol";
 // import {LpLocker} from "../../src/apps/LpLocker.sol";
-import {ELTA} from "../../src/token/ELTA.sol";
+import {ELTA} from "elta/ELTA.sol";
 import {IUniswapV2Router02} from "../../src/interfaces/IUniswapV2Router02.sol";
 import {IUniswapV2Factory} from "../../src/interfaces/IUniswapV2Factory.sol";
 import {IAppFeeRouter} from "../../src/interfaces/IAppFeeRouter.sol";

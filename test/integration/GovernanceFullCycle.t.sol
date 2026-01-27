@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {ElataGovernor} from "../../src/governance/ElataGovernor.sol";
 import {ElataTimelock} from "../../src/governance/ElataTimelock.sol";
 import {VeELTA} from "../../src/staking/VeELTA.sol";
-import {ELTA} from "../../src/token/ELTA.sol";
+import {ELTA} from "elta/ELTA.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 import "forge-std/Test.sol";

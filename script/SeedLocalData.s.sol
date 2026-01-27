@@ -9,7 +9,7 @@ import {AppStakingVault} from "../src/apps/AppStakingVault.sol";
 import {AppToken} from "../src/apps/AppToken.sol";
 import {ElataPoints} from "../src/experience/ElataPoints.sol";
 import {VeELTA} from "../src/staking/VeELTA.sol";
-import {ELTA} from "../src/token/ELTA.sol";
+import {ELTA} from "elta/ELTA.sol";
 import {Script, console2} from "forge-std/Script.sol";
 import {stdJson} from "forge-std/StdJson.sol";
 

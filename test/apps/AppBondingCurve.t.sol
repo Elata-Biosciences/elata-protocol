@@ -6,7 +6,7 @@ import {AppToken} from "../../src/apps/AppToken.sol";
 import {IAppFeeRouter} from "../../src/interfaces/IAppFeeRouter.sol";
 import {IElataPoints} from "../../src/interfaces/IElataPoints.sol";
 import {IUniswapV2Router02} from "../../src/interfaces/IUniswapV2Router02.sol";
-import {ELTA} from "../../src/token/ELTA.sol";
+import {ELTA} from "elta/ELTA.sol";
 import "forge-std/Test.sol";
 
 // Mock XP token

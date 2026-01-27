@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
-import {ELTA} from "../../../src/token/ELTA.sol";
+import {ELTA} from "elta/ELTA.sol";
 import {VeELTA} from "../../../src/staking/VeELTA.sol";
 import {CommonBase} from "forge-std/Base.sol";
 import {StdCheats} from "forge-std/StdCheats.sol";

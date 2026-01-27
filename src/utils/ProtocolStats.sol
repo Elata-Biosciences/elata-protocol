@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {ElataPoints} from "../experience/ElataPoints.sol";
 import {RewardsDistributor} from "../rewards/RewardsDistributor.sol";
 import {VeELTA} from "../staking/VeELTA.sol";
-import {ELTA} from "../token/ELTA.sol";
+import {ELTA} from "elta/ELTA.sol";
 
 /**
  * @title ProtocolStats

@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
 import {console2} from "forge-std/console2.sol";
-import {ELTA} from "../../../src/token/ELTA.sol";
+import {ELTA} from "elta/ELTA.sol";
 import {FeeCollector} from "../../../src/fees/FeeCollector.sol";
 import {FeeManager} from "../../../src/fees/FeeManager.sol";
 import {TreasuryUSDCVault} from "../../../src/fees/TreasuryUSDCVault.sol";

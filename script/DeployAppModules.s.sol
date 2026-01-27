@@ -8,7 +8,7 @@ import {AppStakingVault} from "../src/apps/AppStakingVault.sol";
 import {AppToken} from "../src/apps/AppToken.sol";
 import {Tournament} from "../src/apps/Tournament.sol";
 import {TournamentFactory} from "../src/apps/TournamentFactory.sol";
-import {ELTA} from "../src/token/ELTA.sol";
+import {ELTA} from "elta/ELTA.sol";
 import "forge-std/Script.sol";
 
 /**

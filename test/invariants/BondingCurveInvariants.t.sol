@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
 import {console2} from "forge-std/console2.sol";
-import {ELTA} from "../../src/token/ELTA.sol";
+import {ELTA} from "elta/ELTA.sol";
 import {AppToken} from "../../src/apps/AppToken.sol";
 import {AppBondingCurve} from "../../src/apps/AppBondingCurve.sol";
 import {BondingCurveHandler} from "./handlers/BondingCurveHandler.sol";

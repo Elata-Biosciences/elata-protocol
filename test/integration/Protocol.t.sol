@@ -6,7 +6,7 @@ import {ElataGovernor} from "../../src/governance/ElataGovernor.sol";
 import {ElataTimelock} from "../../src/governance/ElataTimelock.sol";
 import {RewardsDistributor} from "../../src/rewards/RewardsDistributor.sol";
 import {VeELTA} from "../../src/staking/VeELTA.sol";
-import {ELTA} from "../../src/token/ELTA.sol";
+import {ELTA} from "elta/ELTA.sol";
 import {Errors} from "../../src/utils/Errors.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import "forge-std/Test.sol";

@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {CommonBase} from "forge-std/Base.sol";
 import {StdCheats} from "forge-std/StdCheats.sol";
 import {StdUtils} from "forge-std/StdUtils.sol";
-import {ELTA} from "../../../src/token/ELTA.sol";
+import {ELTA} from "elta/ELTA.sol";
 import {FeeCollector} from "../../../src/fees/FeeCollector.sol";
 import {FeeManager} from "../../../src/fees/FeeManager.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";

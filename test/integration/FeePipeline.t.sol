@@ -12,7 +12,7 @@ import {AppRewardsDistributor} from "../../src/rewards/AppRewardsDistributor.sol
 import {RewardsDistributor} from "../../src/rewards/RewardsDistributor.sol";
 import {ReferralRegistry} from "../../src/modules/ReferralRegistry.sol";
 import {VeELTA} from "../../src/staking/VeELTA.sol";
-import {ELTA} from "../../src/token/ELTA.sol";
+import {ELTA} from "elta/ELTA.sol";
 import "forge-std/Test.sol";
 
 /// @notice Simple mock USDC for testing

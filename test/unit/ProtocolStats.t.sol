@@ -8,7 +8,7 @@ import {ElataPoints} from "../../src/experience/ElataPoints.sol";
 import {ProtocolStats} from "../../src/utils/ProtocolStats.sol";
 import {RewardsDistributor} from "../../src/rewards/RewardsDistributor.sol";
 import {VeELTA} from "../../src/staking/VeELTA.sol";
-import {ELTA} from "../../src/token/ELTA.sol";
+import {ELTA} from "elta/ELTA.sol";
 import "forge-std/Test.sol";
 
 /**

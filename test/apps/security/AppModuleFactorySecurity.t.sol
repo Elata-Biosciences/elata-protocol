@@ -6,7 +6,7 @@ import {ContentStore} from "../../../src/apps/ContentStore.sol";
 import {AppModuleFactory} from "../../../src/apps/AppModuleFactory.sol";
 import {AppStakingVault} from "../../../src/apps/AppStakingVault.sol";
 import {AppToken} from "../../../src/apps/AppToken.sol";
-import {ELTA} from "../../../src/token/ELTA.sol";
+import {ELTA} from "elta/ELTA.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "forge-std/Test.sol";
 
