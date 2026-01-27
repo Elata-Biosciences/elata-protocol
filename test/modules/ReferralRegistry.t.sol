@@ -52,7 +52,8 @@ contract ReferralRegistryTest is Test {
         vm.prank(admin);
         registry.setAuthorizedCaller(operator, true);
 
-        // Fund registry for rewards
+        // Fund registry for rewards (mint first, then transfer)
+        elta.mint(address(this), 1_000_000 ether);
         elta.transfer(address(registry), 1_000_000 ether);
     }
 

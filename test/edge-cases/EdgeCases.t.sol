@@ -37,12 +37,12 @@ contract EdgeCasesTest is Test {
 
         vm.stopPrank();
 
-        // Fund test users
+        // Fund test users (treasury has 77M total, give each user 10M)
         vm.prank(treasury);
-        elta.transfer(user1, 100_000_000 ether);
+        elta.transfer(user1, 10_000_000 ether);
 
         vm.prank(treasury);
-        elta.transfer(user2, 100_000_000 ether);
+        elta.transfer(user2, 10_000_000 ether);
 
         // Approve staking
         vm.prank(user1);

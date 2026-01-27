@@ -123,6 +123,9 @@ contract ReferralRegistrySecurity is Test {
         vm.prank(admin);
         registry.setAuthorizedCaller(operator, true);
 
+        // Mint tokens first, then transfer
+        elta.mint(address(this), 13_000_000 ether);
+
         // Fund registry for rewards
         elta.transfer(address(registry), 10_000_000 ether);
 

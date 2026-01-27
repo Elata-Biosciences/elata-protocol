@@ -177,12 +177,14 @@ contract ProtocolTest is Test {
     function test_AccessControl() public {
         // Verify proper access control across all contracts
 
-        // Token access control
+        // ELTA is a simple ERC20 - no special roles, anyone with tokens can transfer
+        // So we test that someone WITHOUT tokens cannot transfer
+        address noTokenUser = makeAddr("noTokenUser");
         vm.expectRevert();
-        vm.prank(alice);
+        vm.prank(noTokenUser);
         elta.transfer(alice, 1000 ether);
 
-        // XP access control
+        // XP access control - only admin/operator can award
         vm.expectRevert();
         vm.prank(alice);
         xp.award(alice, 1000 ether);

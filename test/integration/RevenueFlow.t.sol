@@ -235,6 +235,9 @@ contract RevenueFlowTest is Test {
         vm.prank(appStaker);
         appVault.stake(5000 ether);
 
+        // IMPORTANT: Roll forward to create checkpoint history for getPastVotes
+        vm.roll(block.number + 1);
+
         // Generate multiple trading fees
         uint256[] memory fees = new uint256[](5);
         uint256 totalFees;

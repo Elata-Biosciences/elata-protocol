@@ -126,10 +126,10 @@ contract CoreSecurityVerificationTest is Test {
     }
 
     function test_Critical_AdminFunctionsWork() public {
-        // Verify admin can perform authorized operations
+        // Verify authorized operations work correctly
 
-        // Admin can mint ELTA
-        vm.prank(admin);
+        // Treasury (who holds all ELTA) can transfer tokens
+        vm.prank(treasury);
         elta.transfer(user1, 1000 ether);
         assertEq(elta.balanceOf(user1), 1000 ether);
 
