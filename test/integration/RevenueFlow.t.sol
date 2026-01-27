@@ -47,7 +47,7 @@ contract RevenueFlowTest is Test {
 
     function setUp() public {
         // Deploy ELTA
-        elta = new ELTA("ELTA", "ELTA", governance, governance, 10_000_000 ether, 0);
+        elta = new ELTA(governance);
 
         // Deploy veELTA
         veElta = new VeELTA(elta, governance);

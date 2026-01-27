@@ -87,7 +87,7 @@ contract FeePipelineTest is Test {
         vm.startPrank(admin);
 
         // Deploy ELTA
-        elta = new ELTA("ELTA", "ELTA", admin, admin, INITIAL_ELTA_SUPPLY, 0);
+        elta = new ELTA(admin);
 
         // Deploy USDC mock
         usdc = new MockUSDC();

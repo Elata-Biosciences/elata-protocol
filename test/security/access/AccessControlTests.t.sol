@@ -64,7 +64,7 @@ contract AccessControlTests is Test {
     function setUp() public {
         // Deploy ELTA
         vm.prank(admin);
-        elta = new ELTA("ELTA", "ELTA", admin, admin, ELTA_MAX_SUPPLY, ELTA_MAX_SUPPLY);
+        elta = new ELTA(admin);
 
         usdc = new MockUSDC();
         lpToken = new MockLP();
@@ -100,46 +100,12 @@ contract AccessControlTests is Test {
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // ELTA TOKEN ACCESS CONTROL
+    // ELTA TOKEN - No Access Control (trustless design)
     // ═══════════════════════════════════════════════════════════════════════════
 
-    function test_Access_ELTA_OnlyMinterCanMint() public {
-        vm.prank(attacker);
-        vm.expectRevert();
-        elta.mint(attacker, 1000 ether);
-    }
-
-    function test_Access_ELTA_AdminCanGrantMinterRole() public {
-        bytes32 minterRole = elta.MINTER_ROLE();
-
-        // Attacker cannot grant minter role
-        vm.prank(attacker);
-        vm.expectRevert();
-        elta.grantRole(minterRole, attacker);
-
-        // Admin can grant minter role
-        vm.prank(admin);
-        elta.grantRole(minterRole, user);
-
-        // Now user has minter role
-        assertTrue(elta.hasRole(minterRole, user), "User should have minter role");
-    }
-
-    function test_Access_ELTA_AdminCanRevokeMinterRole() public {
-        bytes32 minterRole = elta.MINTER_ROLE();
-
-        // Grant minter role
-        vm.prank(admin);
-        elta.grantRole(minterRole, user);
-        assertTrue(elta.hasRole(minterRole, user), "User should have minter role");
-
-        // Revoke minter role
-        vm.prank(admin);
-        elta.revokeRole(minterRole, user);
-
-        // User no longer has minter role
-        assertFalse(elta.hasRole(minterRole, user), "User should not have minter role");
-    }
+    // NOTE: ELTA is now a fixed-supply trustless token with no roles.
+    // All 77M tokens are minted to treasury at deployment.
+    // Tests for minting/roles have been removed.
 
     // ═══════════════════════════════════════════════════════════════════════════
     // VeELTA ACCESS CONTROL
@@ -563,15 +529,14 @@ contract AccessControlTests is Test {
     // FUZZ TESTS
     // ═══════════════════════════════════════════════════════════════════════════
 
-    function testFuzz_Access_RandomCannotMintELTA(address caller) public {
-        vm.assume(caller != admin && caller != address(0));
+    function testFuzz_Access_OnlyHoldersCanTransferELTA(address caller) public {
+        // Skip admin who has tokens
+        vm.assume(caller != admin && caller != user && caller != address(0));
 
-        bytes32 minterRole = elta.MINTER_ROLE();
-        vm.assume(!elta.hasRole(minterRole, caller));
-
+        // Random address with no ELTA cannot transfer
         vm.prank(caller);
         vm.expectRevert();
-        elta.mint(caller, 1000 ether);
+        elta.transfer(user, 1000 ether);
     }
 
     function testFuzz_Access_RandomCannotSetProtocolConfig(address caller) public {

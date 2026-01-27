@@ -133,7 +133,7 @@ contract FrontRunningAttacks is Test {
 
         // Deploy ELTA
         vm.prank(admin);
-        elta = new ELTA("ELTA", "ELTA", admin, admin, ELTA_MAX_SUPPLY, ELTA_MAX_SUPPLY);
+        elta = new ELTA(admin);
 
         // Deploy AppToken
         appToken = new AppToken(

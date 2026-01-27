@@ -30,7 +30,7 @@ contract ElataGovernorTest is Test {
 
     function setUp() public {
         // Deploy ELTA token
-        elta = new ELTA("ELTA", "ELTA", admin, treasury, INITIAL_MINT, TOTAL_SUPPLY);
+        elta = new ELTA(treasury);
 
         // Deploy veELTA staking
         veELTA = new VeELTA(elta, admin);

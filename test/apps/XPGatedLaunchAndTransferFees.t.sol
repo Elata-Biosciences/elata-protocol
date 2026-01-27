@@ -59,7 +59,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
     function setUp() public {
         // Deploy core contracts
-        elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 77_000_000 ether);
+        elta = new ELTA(treasury);
 
         xp = new ElataPoints(admin);
 

@@ -32,7 +32,7 @@ contract AppModuleFactorySecurityTest is Test {
     uint256 public constant DEFAULT_PROTOCOL_FEE_BPS = 500;
 
     function setUp() public {
-        elta = new ELTA("ELTA", "ELTA", factoryOwner, factoryOwner, 1000000 ether, 77000000 ether);
+        elta = new ELTA(factoryOwner);
 
         factory = new AppModuleFactory(
             address(elta), address(0), factoryOwner, treasury, feeCollector, DEFAULT_PROTOCOL_FEE_BPS
@@ -44,8 +44,8 @@ contract AppModuleFactorySecurityTest is Test {
 
         // Mint ELTA to users
         vm.startPrank(factoryOwner);
-        elta.mint(appCreator, 10000 ether);
-        elta.mint(attacker, 10000 ether);
+        elta.transfer(appCreator, 10000 ether);
+        elta.transfer(attacker, 10000 ether);
         vm.stopPrank();
     }
 

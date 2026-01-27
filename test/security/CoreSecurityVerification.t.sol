@@ -23,7 +23,7 @@ contract CoreSecurityVerificationTest is Test {
     address public user1 = makeAddr("user1");
 
     function setUp() public {
-        elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 77_000_000 ether);
+        elta = new ELTA(treasury);
         xp = new ElataPoints(admin);
         staking = new VeELTA(elta, admin);
     }
@@ -32,7 +32,7 @@ contract CoreSecurityVerificationTest is Test {
         // Verify attacker cannot mint ELTA
         vm.expectRevert();
         vm.prank(attacker);
-        elta.mint(attacker, 1_000_000 ether);
+        elta.transfer(attacker, 1_000_000 ether);
 
         // Verify balance is still zero
         assertEq(elta.balanceOf(attacker), 0);
@@ -46,24 +46,13 @@ contract CoreSecurityVerificationTest is Test {
         assertEq(xp.balanceOf(attacker), 0);
     }
 
-    function test_Critical_SupplyCapEnforcement() public {
+    function test_Critical_SupplyCapEnforcement() public view {
         uint256 maxSupply = elta.MAX_SUPPLY();
         uint256 currentSupply = elta.totalSupply();
-        uint256 remainingMintable = maxSupply - currentSupply;
 
-        // Admin mints up to cap - should work
-        vm.prank(admin);
-        elta.mint(user1, remainingMintable);
-
-        assertEq(elta.totalSupply(), maxSupply);
-
-        // Try to mint beyond cap - should fail
-        vm.expectRevert(Errors.CapExceeded.selector);
-        vm.prank(admin);
-        elta.mint(user1, 1);
-
-        // Total supply should remain at cap
-        assertEq(elta.totalSupply(), maxSupply);
+        // All 77M tokens are minted at deployment
+        assertEq(currentSupply, maxSupply, "All supply should be minted at deployment");
+        assertEq(maxSupply, 77_000_000 ether, "Max supply should be 77M");
     }
 
     function test_Critical_NonTransferableXP() public {
@@ -141,7 +130,7 @@ contract CoreSecurityVerificationTest is Test {
 
         // Admin can mint ELTA
         vm.prank(admin);
-        elta.mint(user1, 1000 ether);
+        elta.transfer(user1, 1000 ether);
         assertEq(elta.balanceOf(user1), 1000 ether);
 
         // Admin can award XP

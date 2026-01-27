@@ -35,7 +35,7 @@ contract ProtocolStatsTest is Test {
         vm.startPrank(admin);
 
         // Deploy ELTA
-        elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 0);
+        elta = new ELTA(treasury);
 
         // Deploy veELTA
         veElta = new VeELTA(elta, admin);
@@ -92,7 +92,7 @@ contract ProtocolStatsTest is Test {
 
         // User has ELTA but no staking positions
         assertEq(summary.eltaBalance, 100_000 ether);
-        assertEq(summary.eltaVotingPower, 0); // No self-delegation by default
+        assertEq(summary.veEltaVotingPower, 0); // No staking position, no voting power
         assertEq(summary.xpBalance, 0);
         assertEq(summary.stakingPositions, 0);
         assertEq(summary.totalStaked, 0);

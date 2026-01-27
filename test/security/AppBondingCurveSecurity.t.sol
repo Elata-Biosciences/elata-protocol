@@ -147,7 +147,7 @@ contract AppBondingCurveSecurity is Test {
     function setUp() public {
         // Deploy ELTA
         vm.prank(admin);
-        elta = new ELTA("ELTA", "ELTA", admin, admin, ELTA_MAX_SUPPLY, ELTA_MAX_SUPPLY);
+        elta = new ELTA(admin);
 
         // Deploy mocks
         router = new MockRouter();

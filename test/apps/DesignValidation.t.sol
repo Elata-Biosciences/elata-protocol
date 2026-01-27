@@ -38,7 +38,7 @@ contract DesignValidationTest is Test {
     uint256 public constant APP_ID = 1;
 
     function setUp() public {
-        elta = new ELTA("ELTA", "ELTA", factoryOwner, factoryOwner, 10000000 ether, 77000000 ether);
+        elta = new ELTA(factoryOwner);
 
         // Deploy FeeCollector
         feeCollector = new FeeCollector(address(elta), admin, feeManager, feeSwapper);
@@ -120,7 +120,7 @@ contract DesignValidationTest is Test {
         factory.setCreateFee(100 ether);
 
         vm.prank(factoryOwner);
-        elta.mint(appCreator, 1000 ether);
+        elta.transfer(appCreator, 1000 ether);
 
         uint256 treasuryBefore = elta.balanceOf(treasury);
 

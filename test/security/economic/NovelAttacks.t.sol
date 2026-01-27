@@ -30,7 +30,7 @@ contract NovelAttacks is Test {
 
     function setUp() public {
         vm.prank(admin);
-        elta = new ELTA("ELTA", "ELTA", admin, admin, ELTA_MAX_SUPPLY, ELTA_MAX_SUPPLY);
+        elta = new ELTA(admin);
 
         veElta = new VeELTA(IERC20(address(elta)), admin);
 

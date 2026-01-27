@@ -167,7 +167,6 @@ contract TournamentFactory is Ownable {
         );
 
         // Register tournament
-        uint256 tournamentId = tournaments.length;
         tournaments.push(
             TournamentInfo({
                 tournament: tournamentAddr,

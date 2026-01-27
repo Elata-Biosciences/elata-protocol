@@ -39,7 +39,7 @@ contract RewardsDistributorTest is Test {
         vm.startPrank(admin);
 
         // Deploy ELTA
-        elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 0);
+        elta = new ELTA(treasury);
 
         // Deploy veELTA
         veElta = new VeELTA(elta, admin);

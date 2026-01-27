@@ -40,7 +40,7 @@ contract AppFeeRouterTest is Test {
 
     function setUp() public {
         // Deploy ELTA
-        elta = new ELTA("ELTA", "ELTA", governance, governance, 1_000_000 ether, 0);
+        elta = new ELTA(governance);
 
         // Deploy mock rewards distributor
         rewardsDistributor = new MockRewardsDistributor(elta);

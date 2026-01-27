@@ -37,7 +37,7 @@ contract ProtocolTest is Test {
 
     function setUp() public {
         // Deploy complete protocol
-        elta = new ELTA("ELTA", "ELTA", admin, treasury, INITIAL_MINT, TOTAL_SUPPLY);
+        elta = new ELTA(treasury);
         xp = new ElataPoints(admin);
         staking = new VeELTA(elta, admin);
 
@@ -60,16 +60,8 @@ contract ProtocolTest is Test {
         elta.transfer(charlie, 1_500_000 ether);
         vm.stopPrank();
 
-        // Setup ELTA delegation for ELTA token voting (not used in governor anymore)
-        // Governor now uses veELTA voting power instead
-        vm.prank(alice);
-        elta.delegate(alice);
-
-        vm.prank(bob);
-        elta.delegate(bob);
-
-        vm.prank(charlie);
-        elta.delegate(charlie);
+        // NOTE: ELTA no longer has ERC20Votes - voting power comes from veELTA
+        // Users must stake ELTA in veELTA to participate in governance
     }
 
     function test_CompleteProtocolWorkflow() public {
@@ -179,7 +171,7 @@ contract ProtocolTest is Test {
         // 3. Verify all systems are working
         assertGt(staking.balanceOf(alice), 0);
         assertGt(xp.balanceOf(alice), 0);
-        assertGt(elta.getVotes(alice), 0); // Governance voting power
+        assertGt(staking.getVotes(alice), 0); // Governance voting power comes from veELTA
     }
 
     function test_AccessControl() public {
@@ -188,7 +180,7 @@ contract ProtocolTest is Test {
         // Token access control
         vm.expectRevert();
         vm.prank(alice);
-        elta.mint(alice, 1000 ether);
+        elta.transfer(alice, 1000 ether);
 
         // XP access control
         vm.expectRevert();

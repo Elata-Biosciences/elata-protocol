@@ -18,6 +18,7 @@ import {AppRewardsDistributor} from "../src/rewards/AppRewardsDistributor.sol";
 import {RewardsDistributor} from "../src/rewards/RewardsDistributor.sol";
 import {VeELTA} from "../src/staking/VeELTA.sol";
 import {ELTA} from "../src/token/ELTA.sol";
+import {NetworkConfig} from "./config/NetworkConfig.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -37,10 +38,11 @@ import "forge-std/Script.sol";
  * 6. Utilities (AppModuleFactory, TournamentFactory)
  * 7. Permissions & Configuration
  *
- * Environment Variables Required:
- * - ADMIN_MSIG: Governance multisig address
- * - INITIAL_TREASURY: Treasury address
- * - UNISWAP_V2_ROUTER: Uniswap router address (network-specific)
+ * Environment Variables:
+ * - ADMIN_MSIG: Governance multisig address (optional, defaults to deployer)
+ * - INITIAL_TREASURY: Treasury address (optional, defaults to ADMIN_MSIG)
+ *
+ * Network addresses (Uniswap, USDC, WETH) are configured in NetworkConfig.sol
  */
 // Minimal local mocks (used when deploying to Anvil without a router)
 contract MockUniswapV2Router {
@@ -69,10 +71,6 @@ contract Deploy is Script {
     // Defaults to broadcaster if not provided
     address public ADMIN_MSIG = vm.envOr("ADMIN_MSIG", address(0));
     address public INITIAL_TREASURY = vm.envOr("INITIAL_TREASURY", address(0));
-
-    // Token configuration
-    uint256 public constant INITIAL_MINT = 10_000_000 ether; // 10M ELTA initial
-    uint256 public constant MAX_SUPPLY = 77_000_000 ether; // 77M ELTA total cap
 
     // Governance configuration
     uint256 public constant TIMELOCK_DELAY = 48 hours;
@@ -132,7 +130,7 @@ contract Deploy is Script {
 
         // ===== STEP 1: Deploy Core Tokens =====
         console2.log("[1/9] Deploying Core Tokens...");
-        protocol.token = new ELTA("ELTA", "ELTA", initialAdmin, treasury, INITIAL_MINT, MAX_SUPPLY);
+        protocol.token = new ELTA(treasury);
         console2.log("   ELTA deployed at:", address(protocol.token));
 
         protocol.xp = new ElataPoints(initialAdmin);
@@ -183,13 +181,12 @@ contract Deploy is Script {
         // ===== STEP 5: Deploy App Launch Framework =====
         console2.log("\n[5/8] Deploying App Launch Framework...");
 
-        address routerAddress = vm.envOr("UNISWAP_V2_ROUTER", address(0));
+        // Get network-specific configuration
+        NetworkConfig.Config memory networkConfig = NetworkConfig.get();
+        address routerAddress = networkConfig.uniswapV2Router;
 
-        // Auto-provision a mock router if none provided
-        // Deploy mock for: Anvil (31337) and Base Sepolia (84532)
-        bool isTestnet = block.chainid == 31337 || block.chainid == 84532;
-
-        if (isTestnet && routerAddress == address(0)) {
+        // Deploy mocks only for local development (Anvil)
+        if (networkConfig.deployMocks) {
             MockUniswapV2Factory mockFactory = new MockUniswapV2Factory();
             MockUniswapV2Router mockRouter = new MockUniswapV2Router(address(mockFactory));
             routerAddress = address(mockRouter);
@@ -198,12 +195,11 @@ contract Deploy is Script {
             console2.log("   Deployed MockUniswapV2Factory:", address(mockFactory));
             console2.log("   Deployed MockUniswapV2Router:", routerAddress);
         } else {
+            // Use real network addresses
             protocol.uniswapV2Router = routerAddress;
-        }
-
-        // For mainnet deployments, require explicit router
-        if (!isTestnet && routerAddress == address(0)) {
-            revert("UNISWAP_V2_ROUTER not set for this network - mainnet requires explicit router");
+            protocol.uniswapV2Factory = networkConfig.uniswapV2Factory;
+            console2.log("   Using UniswapV2Router:", routerAddress);
+            console2.log("   Using UniswapV2Factory:", networkConfig.uniswapV2Factory);
         }
 
         if (routerAddress != address(0)) {
@@ -228,9 +224,12 @@ contract Deploy is Script {
         console2.log("\n[6/8] Deploying App Utilities...");
 
         // AppModuleFactory: Deploys InAppContent721 + ContentStore for apps
-        // USDC address from env (optional, can be address(0) for networks without USDC)
-        address usdcAddress = vm.envOr("USDC_ADDRESS", address(0));
+        // USDC address from NetworkConfig (address(0) for local dev)
+        address usdcAddress = networkConfig.usdc;
         uint256 defaultProtocolFeeBps = 500; // 5% default fee for ContentStore
+        if (usdcAddress != address(0)) {
+            console2.log("   Using USDC:", usdcAddress);
+        }
 
         protocol.appModuleFactory = new AppModuleFactory(
             address(protocol.token),
@@ -334,9 +333,7 @@ contract Deploy is Script {
     function _transferAdminToMultisig(ProtocolContracts memory protocol, address from, address to) internal {
         bytes32 DEFAULT_ADMIN_ROLE = 0x00;
 
-        // Transfer ELTA admin
-        protocol.token.grantRole(DEFAULT_ADMIN_ROLE, to);
-        protocol.token.revokeRole(DEFAULT_ADMIN_ROLE, from);
+        // ELTA has no admin roles (trustless design)
 
         // Transfer ElataPoints admin
         protocol.xp.grantRole(DEFAULT_ADMIN_ROLE, to);
@@ -446,26 +443,16 @@ contract Deploy is Script {
     }
 
     /**
-     * @dev Gets network name from chain ID
+     * @dev Gets network name from chain ID (delegated to NetworkConfig)
      */
     function _getNetworkName() internal view returns (string memory) {
-        uint256 chainId = block.chainid;
-
-        if (chainId == 1) return "mainnet";
-        if (chainId == 5) return "goerli";
-        if (chainId == 11155111) return "sepolia";
-        if (chainId == 8453) return "base";
-        if (chainId == 84531) return "base-goerli";
-        if (chainId == 84532) return "base-sepolia";
-        if (chainId == 31337) return "localhost";
-
-        return "unknown";
+        return NetworkConfig.getNetworkName();
     }
 
     /**
      * @dev Logs all deployment addresses for verification
      */
-    function _logDeployment(ProtocolContracts memory protocol) internal view {
+    function _logDeployment(ProtocolContracts memory protocol) internal pure {
         console2.log("\n=== DEPLOYMENT COMPLETE ===");
         console2.log("ELTA Token:              ", address(protocol.token));
         console2.log("ElataPoints:                 ", address(protocol.xp));

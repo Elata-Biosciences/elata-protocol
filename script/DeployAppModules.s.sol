@@ -97,14 +97,7 @@ contract DeployFullExample is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // 1. Deploy or use existing ELTA
-        ELTA elta = new ELTA(
-            "ELTA",
-            "ELTA",
-            deployer,
-            deployer,
-            10_000_000 ether, // Initial mint
-            77_000_000 ether // Max supply
-        );
+        ELTA elta = new ELTA(deployer); // All 77M minted to deployer
         console.log("ELTA deployed at:", address(elta));
 
         // 2. Deploy factories

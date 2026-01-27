@@ -64,7 +64,7 @@ contract FeeCollectorTest is Test {
 
     function setUp() public {
         // Deploy tokens
-        elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 77_000_000 ether);
+        elta = new ELTA(treasury);
         appToken1 = new MockAppToken();
         appToken2 = new MockAppToken();
 

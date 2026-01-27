@@ -79,7 +79,7 @@ contract AppModuleFactoryTest is Test {
 
     function setUp() public {
         // Deploy ELTA
-        elta = new ELTA("ELTA", "ELTA", factoryOwner, factoryOwner, 1000000 ether, 77000000 ether);
+        elta = new ELTA(factoryOwner);
 
         // Deploy mock USDC
         usdc = new MockUSDC();
@@ -100,9 +100,9 @@ contract AppModuleFactoryTest is Test {
         // Deploy default vault (simulating what AppFactory does)
         defaultVault = new AppStakingVault("TestApp", "TEST", IERC20(address(appToken)), appCreator);
 
-        // Mint ELTA to app creator for fees
+        // Transfer ELTA to app creator for fees
         vm.prank(factoryOwner);
-        elta.mint(appCreator, 1000 ether);
+        elta.transfer(appCreator, 1000 ether);
     }
 
     // ────────────────────────────────────────────────────────────────────────────

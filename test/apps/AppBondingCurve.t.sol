@@ -45,7 +45,7 @@ contract AppBondingCurveTest is Test {
     uint256 public constant TOKEN_SUPPLY = 1_000_000_000 ether;
 
     function setUp() public {
-        elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 77_000_000 ether);
+        elta = new ELTA(treasury);
         mockXP = new MockElataPoints();
 
         appToken = new AppToken(

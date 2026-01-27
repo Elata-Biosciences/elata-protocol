@@ -160,7 +160,7 @@ contract CurveLifecycleTest is Test {
 
     function setUp() public {
         // Deploy core contracts
-        elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 77_000_000 ether);
+        elta = new ELTA(treasury);
         router = new MockRouter();
         factory = new MockFactory();
         xp = new MockElataPoints();

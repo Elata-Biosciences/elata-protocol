@@ -20,7 +20,7 @@ contract ProtocolStats {
 
     struct UserSummary {
         uint256 eltaBalance;
-        uint256 eltaVotingPower;
+        uint256 veEltaVotingPower; // Voting power from veELTA (locked ELTA)
         uint256 xpBalance;
         uint256 stakingPositions;
         uint256 totalStaked;
@@ -64,7 +64,7 @@ contract ProtocolStats {
     function getUserSummary(address user) external view returns (UserSummary memory) {
         return UserSummary({
             eltaBalance: elta.balanceOf(user),
-            eltaVotingPower: elta.getVotes(user),
+            veEltaVotingPower: staking.getVotes(user), // Voting power comes from veELTA, not ELTA
             xpBalance: xp.balanceOf(user),
             stakingPositions: staking.balanceOf(user),
             totalStaked: _getTotalStaked(user),
@@ -142,9 +142,51 @@ contract ProtocolStats {
         return balances;
     }
 
+    /**
+     * @notice Batch query for multiple user veELTA voting power
+     * @param users Array of user addresses
+     * @return Array of veELTA voting power
+     */
+    function getBatchVotingPower(address[] calldata users) external view returns (uint256[] memory) {
+        uint256[] memory power = new uint256[](users.length);
+        for (uint256 i = 0; i < users.length; i++) {
+            power[i] = staking.getVotes(users[i]);
+        }
+        return power;
+    }
+
+    /**
+     * @notice Get epoch information for claiming rewards
+     * @return currentEpoch Current epoch index
+     * @return totalEpochs Total number of epochs
+     * @return latestRewardAmount Amount in latest epoch
+     */
+    function getEpochInfo()
+        external
+        view
+        returns (uint256 currentEpoch, uint256 totalEpochs, uint256 latestRewardAmount)
+    {
+        totalEpochs = rewards.getEpochCount();
+        if (totalEpochs > 0) {
+            currentEpoch = totalEpochs - 1;
+            (, latestRewardAmount) = rewards.getEpoch(currentEpoch);
+        }
+    }
+
+    /**
+     * @notice Check if a user has any pending rewards to claim
+     * @param user User address
+     * @return hasPending Whether user has unclaimed rewards
+     * @return estimatedAmount Estimated pending amount
+     */
+    function getUserRewardStatus(address user) external view returns (bool hasPending, uint256 estimatedAmount) {
+        estimatedAmount = rewards.estimatePendingVeRewards(user);
+        hasPending = estimatedAmount > 0;
+    }
+
     // Internal helper functions
 
-    function _getPositionSummary(uint256 tokenId) internal view returns (PositionSummary memory) {
+    function _getPositionSummary(uint256 tokenId) internal pure returns (PositionSummary memory) {
         // Not used (kept for interface compatibility, always returns empty)
         return PositionSummary({
             tokenId: tokenId,
@@ -171,7 +213,7 @@ contract ProtocolStats {
         return elta.balanceOf(address(staking));
     }
 
-    function _calculateAverageLockDuration() internal view returns (uint256) {
+    function _calculateAverageLockDuration() internal pure returns (uint256) {
         // Placeholder - would require tracking lock durations
         return 52 weeks; // Default assumption
     }

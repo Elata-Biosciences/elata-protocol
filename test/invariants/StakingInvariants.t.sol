@@ -25,7 +25,7 @@ contract StakingInvariants is Test {
     function setUp() public {
         // Deploy ELTA
         vm.prank(admin);
-        elta = new ELTA("ELTA", "ELTA", admin, admin, ELTA_MAX_SUPPLY, ELTA_MAX_SUPPLY);
+        elta = new ELTA(admin);
 
         // Deploy VeELTA
         veElta = new VeELTA(IERC20(address(elta)), admin);

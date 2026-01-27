@@ -5,6 +5,7 @@ import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {ERC721URIStorage} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {IERC4906} from "@openzeppelin/contracts/interfaces/IERC4906.sol";
 
 /**
  * @title InAppContent721
@@ -14,13 +15,15 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
  *
  * Per Protocol Changes document:
  * - ERC-721 with metadata (ERC721URIStorage)
+ * - ERC-4906 for metadata update signaling
  * - Optional ERC-2981 royalties for secondary markets
  * - Primary sales handled separately by ContentStore
  * - Focus on stable URIs, metadata correctness, events
  *
  * Key Features:
  * - Admin-controlled minting via ContentStore
- * - Metadata URI per token
+ * - Metadata URI per token (supports IPFS, Arweave, HTTP, data URIs, etc.)
+ * - ERC-4906 events for marketplace/indexer metadata refresh
  * - Optional royalty configuration
  * - Contract-level metadata for OpenSea
  * - Transfer events for marketplace indexing
@@ -207,11 +210,49 @@ contract InAppContent721 is ERC721, ERC721URIStorage, ERC2981, Ownable {
      * @notice Update token metadata URI
      * @param tokenId Token to update
      * @param uri New metadata URI
+     * @dev Emits ERC-4906 MetadataUpdate for marketplace/indexer refresh
      */
     function setTokenURI(uint256 tokenId, string memory uri) external onlyOwner {
         if (_ownerOf(tokenId) == address(0)) revert TokenDoesNotExist();
         _setTokenURI(tokenId, uri);
         emit TokenMetadataUpdated(tokenId, uri);
+        emit IERC4906.MetadataUpdate(tokenId);
+    }
+
+    /**
+     * @notice Batch update token metadata URIs
+     * @param tokenIds Array of token IDs to update
+     * @param uris Array of new metadata URIs
+     * @dev Emits ERC-4906 BatchMetadataUpdate for efficient indexer refresh
+     */
+    function batchSetTokenURI(uint256[] calldata tokenIds, string[] calldata uris) external onlyOwner {
+        require(tokenIds.length == uris.length, "Length mismatch");
+        require(tokenIds.length > 0, "Empty array");
+
+        uint256 minId = type(uint256).max;
+        uint256 maxId = 0;
+
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            uint256 tokenId = tokenIds[i];
+            if (_ownerOf(tokenId) == address(0)) revert TokenDoesNotExist();
+            _setTokenURI(tokenId, uris[i]);
+            emit TokenMetadataUpdated(tokenId, uris[i]);
+
+            if (tokenId < minId) minId = tokenId;
+            if (tokenId > maxId) maxId = tokenId;
+        }
+
+        emit IERC4906.BatchMetadataUpdate(minId, maxId);
+    }
+
+    /**
+     * @notice Signal metadata refresh for a range of tokens
+     * @param fromTokenId Start of token ID range
+     * @param toTokenId End of token ID range (inclusive)
+     * @dev Useful for off-chain metadata updates (e.g., IPFS re-pin with same CID)
+     */
+    function emitBatchMetadataUpdate(uint256 fromTokenId, uint256 toTokenId) external onlyOwner {
+        emit IERC4906.BatchMetadataUpdate(fromTokenId, toTokenId);
     }
 
     /**
@@ -302,6 +343,7 @@ contract InAppContent721 is ERC721, ERC721URIStorage, ERC2981, Ownable {
         override(ERC721, ERC721URIStorage, ERC2981)
         returns (bool)
     {
-        return super.supportsInterface(interfaceId);
+        // ERC-4906 interface ID for metadata update extension
+        return interfaceId == bytes4(0x49064906) || super.supportsInterface(interfaceId);
     }
 }

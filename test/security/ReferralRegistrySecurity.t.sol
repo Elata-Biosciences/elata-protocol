@@ -124,12 +124,12 @@ contract ReferralRegistrySecurity is Test {
         registry.setAuthorizedCaller(operator, true);
 
         // Fund registry for rewards
-        elta.mint(address(registry), 10_000_000 ether);
+        elta.transfer(address(registry), 10_000_000 ether);
 
         // Fund test users
-        elta.mint(attacker, 1_000_000 ether);
-        elta.mint(alice, 1_000_000 ether);
-        elta.mint(bob, 1_000_000 ether);
+        elta.transfer(attacker, 1_000_000 ether);
+        elta.transfer(alice, 1_000_000 ether);
+        elta.transfer(bob, 1_000_000 ether);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

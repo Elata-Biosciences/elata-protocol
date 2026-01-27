@@ -86,8 +86,6 @@ contract MockUniswapV2Factory {
 
 contract DeployLocalFull is Script {
     // Configuration
-    uint256 public constant INITIAL_MINT = 10_000_000 ether; // 10M ELTA
-    uint256 public constant MAX_SUPPLY = 77_000_000 ether; // 77M ELTA total cap
     uint256 public constant TIMELOCK_DELAY = 1 hours; // Shorter for local testing
     uint256 public constant TEST_ACCOUNT_ELTA = 100_000 ether; // 100K ELTA per test account
 
@@ -132,14 +130,7 @@ contract DeployLocalFull is Script {
 
         // ===== STEP 1: Deploy Core Token =====
         console2.log("[1/10] Deploying ELTA Token...");
-        result.token = new ELTA(
-            "Elata Token",
-            "ELTA",
-            result.deployer, // admin
-            result.treasury, // treasury
-            INITIAL_MINT,
-            MAX_SUPPLY
-        );
+        result.token = new ELTA(result.treasury);
         console2.log("       ELTA Token deployed at:", address(result.token));
 
         // ===== STEP 2: Deploy XP System =====
@@ -248,9 +239,9 @@ contract DeployLocalFull is Script {
         accounts[3] = 0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65; // Account #4
         accounts[4] = 0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc; // Account #5
 
-        // Mint ELTA to each test account
+        // Transfer ELTA from treasury to each test account
         for (uint256 i = 0; i < accounts.length; i++) {
-            token.mint(accounts[i], TEST_ACCOUNT_ELTA);
+            token.transfer(accounts[i], TEST_ACCOUNT_ELTA);
         }
 
         return accounts;

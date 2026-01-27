@@ -52,7 +52,7 @@ contract FeePipelineSecurity is Test {
     function setUp() public {
         // Deploy tokens
         vm.prank(admin);
-        elta = new ELTA("ELTA", "ELTA", admin, admin, ELTA_MAX_SUPPLY, ELTA_MAX_SUPPLY);
+        elta = new ELTA(admin);
         usdc = new MockUSDC();
         appToken = new MockAppToken();
 

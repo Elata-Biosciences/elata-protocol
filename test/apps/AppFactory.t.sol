@@ -54,7 +54,7 @@ contract AppFactoryTest is Test {
     MockElataPoints public mockXP;
 
     function setUp() public {
-        elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 77_000_000 ether);
+        elta = new ELTA(treasury);
 
         // Deploy mocks
         mockFeeRouter = new MockAppFeeRouter();

@@ -495,13 +495,19 @@ contract ContentStore is AccessControl, ReentrancyGuard {
 
     /**
      * @notice Check if a user has access to a feature
-     * @param user User address to check
      * @param featureId Feature identifier
      * @param userStake User's current stake amount (pass from StakingVault)
      * @param userContentBalance User's balance of the required content (pass from InAppContent721)
      * @return hasAccess Whether user meets requirements
+     * @dev First parameter (user address) reserved for future on-chain lookups
      */
-    function checkFeatureAccess(address user, bytes32 featureId, uint256 userStake, uint256 userContentBalance)
+    function checkFeatureAccess(
+        address,
+        /* user */
+        bytes32 featureId,
+        uint256 userStake,
+        uint256 userContentBalance
+    )
         external
         view
         returns (bool hasAccess)

@@ -217,19 +217,18 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
      * @param name App token name
      * @param symbol App token symbol
      * @param supply Total token supply (0 = use default)
-     * @param description App description
-     * @param imageURI App image URI
-     * @param website App website
      * @param operators Array of operator addresses to grant granular roles
      * @return appId ID of created app
+     * @dev description, imageURI, website params are reserved for future use.
+     *      Set via AppToken.updateMetadata() after creation.
      */
     function createApp(
         string calldata name,
         string calldata symbol,
         uint256 supply,
-        string calldata description,
-        string calldata imageURI,
-        string calldata website,
+        string calldata, // description - set via AppToken.updateMetadata() after creation
+        string calldata, // imageURI - set via AppToken.updateMetadata() after creation
+        string calldata, // website - set via AppToken.updateMetadata() after creation
         address[] calldata operators
     ) external nonReentrant returns (uint256 appId) {
         if (paused) revert Paused();

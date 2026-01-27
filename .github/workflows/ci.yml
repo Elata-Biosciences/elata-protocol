@@ -78,4 +78,31 @@ jobs:
           flags: foundry
           token: ${{ secrets.CODECOV_TOKEN }}
         continue-on-error: true
-        if: success() || failure()
+
+  snapshot:
+    name: Gas Snapshot
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.4.2
+
+      - name: Generate gas snapshot
+        run: forge snapshot
+
+      - name: Compare gas snapshot (PR only)
+        if: github.event_name == 'pull_request'
+        run: forge snapshot --check
+        continue-on-error: true
+
+      - name: Upload snapshot artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gas-snapshot
+          path: .gas-snapshot
+          retention-days: 30

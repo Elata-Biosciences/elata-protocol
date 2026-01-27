@@ -135,7 +135,7 @@ contract ContentModuleSecurity is Test {
         appToken.mint(attacker, 1_000_000 ether);
         appToken.mint(alice, 1_000_000 ether);
         appToken.mint(bob, 1_000_000 ether);
-        elta.mint(attacker, 1_000_000 ether);
+        elta.transfer(attacker, 1_000_000 ether);
         usdc.mint(attacker, 1_000_000e6);
     }
 

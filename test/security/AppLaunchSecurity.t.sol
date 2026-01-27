@@ -37,7 +37,7 @@ contract AppLaunchSecurityTest is Test {
     address public mockRouter = makeAddr("mockRouter");
 
     function setUp() public {
-        elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 77_000_000 ether);
+        elta = new ELTA(treasury);
 
         vm.mockCall(mockRouter, abi.encodeWithSignature("factory()"), abi.encode(makeAddr("mockFactory")));
 

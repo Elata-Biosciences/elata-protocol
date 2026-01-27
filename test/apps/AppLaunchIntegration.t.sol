@@ -44,7 +44,7 @@ contract AppLaunchIntegrationTest is Test {
     address public mockPair = makeAddr("mockPair");
 
     function setUp() public {
-        elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 77_000_000 ether);
+        elta = new ELTA(treasury);
 
         // Setup mock Uniswap
         _setupMockUniswap();

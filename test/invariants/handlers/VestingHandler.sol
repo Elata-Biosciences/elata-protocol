@@ -58,7 +58,6 @@ contract VestingHandler is CommonBase, StdCheats, StdUtils {
      * @notice Trigger token release
      */
     function release() external {
-        uint256 releasableBefore = vestingWallet.releasable();
         uint256 beneficiaryBalanceBefore = token.balanceOf(beneficiary);
 
         vestingWallet.release();
