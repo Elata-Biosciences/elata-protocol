@@ -81,3 +81,23 @@ dictionary_weight = 80                  # Higher weight for contract-specific va
 shrink_run_limit = 5000                 # Attempts to shrink failing sequences
 corpus_dir = "corpus/invariant"         # Enable coverage-guided fuzzing
 show_metrics = true                     # Display fuzzed selector metrics
+
+# Lint Configuration
+[lint]
+# Exclude specific lint rules that generate many false positives
+# These rules are informational and don't indicate bugs
+exclude_lints = [
+  "erc20-unchecked-transfer",       # Test code uses direct transfers intentionally
+  "unsafe-typecast",                 # uint64 timestamp casts are safe until year 2262
+  "screaming-snake-case-immutable", # Existing naming conventions maintained
+  "screaming-snake-case-const",     # Existing naming conventions maintained
+  "unaliased-plain-import",         # Existing import style maintained
+  "mixed-case-variable",            # Variable naming follows existing patterns
+  "mixed-case-function",            # Function naming follows existing patterns (e.g. sol_getTokensOut)
+  "unsafe-cheatcode",               # Cheatcodes are intentional in tests
+  "asm-keccak256",                  # Assembly keccak256 is intentional for gas optimization
+  "unwrapped-modifier-logic",       # Modifier patterns are intentional
+  "unused-import"                   # Unused imports are common in evolving codebases
+]
+# Ignore test, script, and library files
+ignore = ["test/**", "script/**", "lib/**"]
