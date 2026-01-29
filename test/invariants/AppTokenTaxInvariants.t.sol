@@ -202,4 +202,29 @@ contract AppTokenTaxInvariants is Test {
         console2.log("  Current fee bps:", appToken.transferFeeBps());
         console2.log("  Fee collector balance:", appToken.balanceOf(feeCollector));
     }
+
+    // =========== Post-Campaign Analysis ===========
+
+    /// @notice Called after each invariant run to verify tax accounting
+    function afterInvariant() public view {
+        console2.log("\n=== AppToken Tax Post-Campaign ===");
+
+        uint256 totalTransfers = handler.ghost_walletToWalletTransfers() + handler.ghost_walletToLpTransfers()
+            + handler.ghost_lpToWalletTransfers() + handler.ghost_exemptTransfers();
+
+        console2.log("Total transfers:", totalTransfers);
+        console2.log("Total tax collected:", handler.ghost_totalTaxCollected());
+        console2.log("Fee collector balance:", appToken.balanceOf(feeCollector));
+
+        // Verify supply conservation
+        uint256 currentSupply = appToken.totalSupply();
+        console2.log("Current supply:", currentSupply);
+        console2.log("Initial supply:", INITIAL_SUPPLY);
+
+        // Supply should only decrease (burns) or stay same
+        assertLe(currentSupply, INITIAL_SUPPLY, "Supply increased unexpectedly");
+
+        // Verify fee bps is within bounds
+        assertLe(appToken.transferFeeBps(), appToken.MAX_TRANSFER_FEE_BPS(), "Fee exceeds max");
+    }
 }

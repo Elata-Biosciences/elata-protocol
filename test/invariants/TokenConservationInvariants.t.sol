@@ -318,4 +318,33 @@ contract TokenConservationInvariants is Test {
         console2.log("  App token supply:", appToken.totalSupply());
         console2.log("  ELTA in veELTA contract:", elta.balanceOf(address(veElta)));
     }
+
+    // =========== Post-Campaign Analysis ===========
+
+    /// @notice Called after each invariant run to verify system can be unwound
+    function afterInvariant() public {
+        console2.log("\n=== Token Conservation Post-Campaign ===");
+
+        // Try to unlock all actors (warp time forward)
+        vm.warp(block.timestamp + 800 days);
+
+        uint256 totalUnlocked = 0;
+        for (uint256 i = 0; i < handler.getActorCount(); i++) {
+            address actor = handler.getActor(i);
+            (uint128 principal, uint64 unlockTime) = veElta.locks(actor);
+
+            if (principal > 0 && block.timestamp >= unlockTime) {
+                vm.prank(actor);
+                try veElta.unlock() {
+                    totalUnlocked += principal;
+                } catch {}
+            }
+        }
+
+        console2.log("Unlocked after campaign:", totalUnlocked);
+
+        // Verify ELTA conservation
+        uint256 finalSupply = elta.totalSupply();
+        assertEq(finalSupply, initialEltaSupply, "ELTA supply changed during campaign");
+    }
 }

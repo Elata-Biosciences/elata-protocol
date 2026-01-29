@@ -128,4 +128,26 @@ contract TokenInvariants is Test {
         console2.log("  ELTA supply:", elta.totalSupply());
         console2.log("  AppToken supply:", appToken.totalSupply());
     }
+
+    // =========== Post-Campaign Analysis ===========
+
+    /// @notice Called after each invariant run to verify token conservation
+    function afterInvariant() public view {
+        console2.log("\n=== Token Post-Campaign ===");
+        console2.log("Total transfers:", handler.ghost_totalTransferred());
+        console2.log("Total burned:", handler.ghost_totalBurned());
+
+        // Verify ELTA conservation
+        uint256 totalEltaTracked = elta.balanceOf(admin) + elta.balanceOf(address(handler));
+        for (uint256 i = 0; i < handler.getActorCount(); i++) {
+            totalEltaTracked += elta.balanceOf(handler.getActor(i));
+        }
+
+        console2.log("ELTA supply:", elta.totalSupply());
+        console2.log("ELTA tracked:", totalEltaTracked);
+
+        // Supply should never exceed cap
+        assertLe(elta.totalSupply(), ELTA_MAX_SUPPLY, "ELTA supply exceeded cap");
+        assertLe(appToken.totalSupply(), APP_TOKEN_MAX_SUPPLY, "AppToken supply exceeded cap");
+    }
 }

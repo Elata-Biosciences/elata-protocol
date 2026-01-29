@@ -207,4 +207,36 @@ contract GovernanceInvariants is Test {
         console2.log("  veELTA total supply:", veElta.totalSupply());
         console2.log("  Proposals created:", handler.getProposalCount());
     }
+
+    // =========== Post-Campaign Analysis ===========
+
+    /// @notice Called after each invariant run to verify governance integrity
+    function afterInvariant() public {
+        console2.log("\n=== Governance Post-Campaign ===");
+        console2.log("Proposals created:", handler.getProposalCount());
+        console2.log("veELTA total supply:", veElta.totalSupply());
+
+        // Verify all locks can be withdrawn
+        vm.warp(block.timestamp + 800 days);
+
+        uint256 totalUnlocked = 0;
+        for (uint256 i = 0; i < handler.getActorCount(); i++) {
+            address actor = handler.getActor(i);
+            (uint128 principal, uint64 unlockTime) = veElta.locks(actor);
+
+            if (principal > 0 && block.timestamp >= unlockTime) {
+                vm.prank(actor);
+                try veElta.unlock() {
+                    totalUnlocked += principal;
+                } catch {}
+            }
+        }
+
+        console2.log("Unlocked after campaign:", totalUnlocked);
+
+        // Verify voting power conservation
+        uint256 totalPrincipal = handler.getTotalPrincipalLocked();
+        uint256 contractBalance = elta.balanceOf(address(veElta));
+        assertEq(totalPrincipal, contractBalance, "Principal != contract balance");
+    }
 }

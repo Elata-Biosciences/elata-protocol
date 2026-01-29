@@ -149,4 +149,40 @@ contract StakingInvariants is Test {
         console2.log("  Actual principal locked:", handler.getTotalPrincipalLocked());
         console2.log("  veELTA total supply:", veElta.totalSupply());
     }
+
+    // =========== Post-Campaign Analysis ===========
+
+    /// @notice Called after each invariant run to verify all stakes can be withdrawn
+    function afterInvariant() public {
+        console2.log("\n=== Staking Post-Campaign ===");
+        console2.log("Lock count:", handler.ghost_lockCount());
+        console2.log("Unlock count:", handler.ghost_unlockCount());
+
+        // Warp time forward to unlock all positions
+        vm.warp(block.timestamp + 800 days);
+
+        uint256 totalUnlocked = 0;
+        uint256 failedUnlocks = 0;
+
+        for (uint256 i = 0; i < handler.getActorCount(); i++) {
+            address actor = handler.getActor(i);
+            (uint128 principal, uint64 unlockTime) = veElta.locks(actor);
+
+            if (principal > 0 && block.timestamp >= unlockTime) {
+                uint256 balanceBefore = elta.balanceOf(actor);
+                vm.prank(actor);
+                try veElta.unlock() {
+                    totalUnlocked += elta.balanceOf(actor) - balanceBefore;
+                } catch {
+                    failedUnlocks++;
+                }
+            }
+        }
+
+        console2.log("Successfully unlocked:", totalUnlocked);
+        console2.log("Failed unlocks:", failedUnlocks);
+
+        // All positions should be closeable
+        assertEq(failedUnlocks, 0, "Some positions could not be closed");
+    }
 }

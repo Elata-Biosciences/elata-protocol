@@ -183,4 +183,36 @@ contract VestingInvariants is Test {
         console2.log("  Is before cliff:", handler.isBeforeCliff());
         console2.log("  Is after full vesting:", handler.isAfterFullVesting());
     }
+
+    // =========== Post-Campaign Analysis ===========
+
+    /// @notice Called after each invariant run to verify all tokens can be claimed
+    function afterInvariant() public {
+        console2.log("\n=== Vesting Post-Campaign ===");
+
+        // Warp to after full vesting
+        vm.warp(startTime + CLIFF_DURATION + VESTING_DURATION + 1);
+
+        // Release all remaining tokens
+        address currentBeneficiary = vestingWallet.beneficiary();
+        uint256 releasableBefore = vestingWallet.releasable();
+
+        if (releasableBefore > 0) {
+            vm.prank(currentBeneficiary);
+            vestingWallet.release();
+        }
+
+        // Verify everything is released
+        uint256 released = vestingWallet.released();
+        uint256 walletBalance = vestingWallet.totalTokenBalance();
+
+        console2.log("Total released:", released);
+        console2.log("Wallet balance:", walletBalance);
+
+        // All tokens should be released or accounted for
+        assertEq(released + walletBalance, VESTING_AMOUNT, "Token conservation violated");
+
+        // After full vesting, everything should be released
+        assertEq(vestingWallet.releasable(), 0, "Tokens still releasable after claim");
+    }
 }

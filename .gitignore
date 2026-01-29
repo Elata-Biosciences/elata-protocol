@@ -42,6 +42,13 @@ lcov.info
 broadcast/
 gas_snapshots/
 
+# Fuzzing corpus (keep directory structure, ignore binary corpus files)
+corpus/fuzz/*
+corpus/invariant/*
+!corpus/fuzz/.gitkeep
+!corpus/invariant/.gitkeep
+!corpus/README.md
+
 # Simulation
 sim/results/
 sim/generated/*.ts

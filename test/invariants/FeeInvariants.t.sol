@@ -160,4 +160,28 @@ contract FeeInvariants is Test {
         console2.log("  Collector balance:", elta.balanceOf(address(feeCollector)));
         console2.log("  Manager balance:", elta.balanceOf(address(feeManager)));
     }
+
+    // =========== Post-Campaign Analysis ===========
+
+    /// @notice Called after each invariant run to verify fee pipeline integrity
+    function afterInvariant() public {
+        console2.log("\n=== Fee Pipeline Post-Campaign ===");
+        console2.log("Total deposited:", handler.ghost_totalDeposited());
+        console2.log("Total swept:", handler.ghost_totalSwept());
+
+        // Verify all pending fees can be swept
+        uint256 pendingFees = handler.getTotalPendingFees();
+        uint256 collectorBalance = elta.balanceOf(address(feeCollector));
+
+        console2.log("Pending fees:", pendingFees);
+        console2.log("Collector balance:", collectorBalance);
+
+        // Balance should be >= pending (might have untracked deposits)
+        assertGe(collectorBalance, pendingFees, "Collector underfunded");
+
+        // Verify fee splits sum correctly
+        (uint256 appStakers, uint256 veElta_, uint256 creator_, uint256 treasury_, uint256 referral) =
+            feeManager.feeSplits();
+        assertEq(appStakers + veElta_ + creator_ + treasury_ + referral, 10000, "Fee splits don't sum to 100%");
+    }
 }

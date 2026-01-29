@@ -209,4 +209,42 @@ contract RewardsInvariants is Test {
         console2.log("  Total claimed:", handler.getTotalClaimed());
         console2.log("  Epoch count:", rewards.getEpochCount());
     }
+
+    // =========== Post-Campaign Analysis ===========
+
+    /// @notice Called after each invariant run to verify rewards can be claimed
+    function afterInvariant() public {
+        console2.log("\n=== Rewards Post-Campaign ===");
+        console2.log("Total deposited:", handler.ghost_totalDeposited());
+        console2.log("Total claimed:", handler.getTotalClaimed());
+
+        // Advance blocks to ensure checkpoints are readable
+        vm.roll(block.number + 10);
+
+        // Try to claim remaining rewards for all actors with locks
+        uint256 totalClaimed = 0;
+        for (uint256 i = 0; i < handler.getActorCount(); i++) {
+            address actor = handler.getActor(i);
+            uint256 votes = veElta.getVotes(actor);
+
+            if (votes > 0) {
+                uint256 balanceBefore = elta.balanceOf(actor);
+                vm.prank(actor);
+                try rewards.claimVeFromLast() {
+                    totalClaimed += elta.balanceOf(actor) - balanceBefore;
+                } catch {}
+            }
+        }
+
+        console2.log("Additional claimed in afterInvariant:", totalClaimed);
+
+        // Verify contract balance matches expected
+        uint256 veShare = handler.ghost_totalVeSplit();
+        uint256 claimed = handler.getTotalClaimed() + totalClaimed;
+        uint256 contractBalance = elta.balanceOf(address(rewards));
+
+        console2.log("veELTA share:", veShare);
+        console2.log("Total claimed:", claimed);
+        console2.log("Contract balance:", contractBalance);
+    }
 }

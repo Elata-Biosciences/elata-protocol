@@ -9,6 +9,8 @@ evm_version = "paris"
 via_ir = true
 bytecode_hash = "ipfs"
 fs_permissions = [{ access = "read", path = "deployments" }, { access = "write", path = "deployments" }]
+ffi = true  # Enable FFI for differential testing
+extra_output = ["storageLayout"]  # Enable storage-aware fuzzing
 # Note: Some contracts (AppModuleFactory, AppDeploymentLib) exceed EIP-170 24KB limit
 # This is acceptable for L2 deployment (Base, Arbitrum, Optimism) and testnets
 
@@ -60,3 +62,22 @@ mainnet = { key = "${ETHERSCAN_API_KEY}" }
 sepolia = { key = "${ETHERSCAN_API_KEY}" }
 base = { key = "${BASESCAN_API_KEY}" }
 base_sepolia = { key = "${BASESCAN_API_KEY}" }
+
+# Advanced Fuzz Testing Configuration
+[fuzz]
+runs = 1000                         # Increase from default 256 for more coverage
+seed = "0x3e8"                      # Reproducible results (1000 in hex)
+dictionary_weight = 60              # Higher weight for interesting boundary values
+include_storage = true              # Include storage values in dictionary
+failure_persist_dir = "cache/fuzz"  # Persist failures for replay
+corpus_dir = "corpus/fuzz"          # Enable coverage-guided fuzzing
+
+# Advanced Invariant Testing Configuration
+[invariant]
+runs = 500                              # Number of test runs
+depth = 100                             # Calls per run
+fail_on_revert = false                  # Allow reverts (bounded handlers handle this)
+dictionary_weight = 80                  # Higher weight for contract-specific values
+shrink_run_limit = 5000                 # Attempts to shrink failing sequences
+corpus_dir = "corpus/invariant"         # Enable coverage-guided fuzzing
+show_metrics = true                     # Display fuzzed selector metrics

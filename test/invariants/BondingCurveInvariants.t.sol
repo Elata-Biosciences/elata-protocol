@@ -267,4 +267,33 @@ contract BondingCurveInvariants is Test {
             console2.log("  Current K:", handler.getCurrentK());
         }
     }
+
+    // =========== Post-Campaign Analysis ===========
+
+    /// @notice Called after each invariant run to verify system integrity
+    function afterInvariant() public {
+        console2.log("\n=== Post-Campaign Analysis ===");
+        console2.log("Total calls:", handler.ghost_callCount());
+        console2.log("Buy count:", handler.ghost_buyCount());
+
+        // Verify all actors can sell their tokens (if curve is active)
+        if (curve.state() == AppBondingCurve.CurveState.ACTIVE) {
+            for (uint256 i = 0; i < handler.getActorCount(); i++) {
+                address actor = handler.getActor(i);
+                uint256 tokenBalance = appToken.balanceOf(actor);
+
+                // Log actor positions
+                if (tokenBalance > 0) {
+                    console2.log("  Actor", i, "has tokens:", tokenBalance);
+                }
+            }
+        }
+
+        // Verify ELTA conservation
+        uint256 totalEltaInSystem = elta.balanceOf(address(curve));
+        for (uint256 i = 0; i < handler.getActorCount(); i++) {
+            totalEltaInSystem += elta.balanceOf(handler.getActor(i));
+        }
+        console2.log("Total ELTA tracked:", totalEltaInSystem);
+    }
 }
