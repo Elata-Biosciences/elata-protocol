@@ -250,10 +250,8 @@ contract FeeManager is ReentrancyGuard {
                     USDC.approve(treasuryVault, usdcOut);
                     ITreasuryUSDCVault(treasuryVault).deposit(appId, usdcOut, getCurrentEpochId());
                     emit TreasurySwapExecuted(treasuryShare, usdcOut);
-                } else {
-                    // Swap failed - fallback to sending ELTA directly to avoid loss
-                    ELTA.safeTransfer(treasuryVault, treasuryShare);
                 }
+                // Note: If swap returns 0 USDC, the ELTA went to LP pool - cannot recover
             } else {
                 // Fallback: send ELTA directly
                 ELTA.safeTransfer(treasuryVault, treasuryShare);

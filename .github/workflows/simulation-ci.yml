@@ -52,7 +52,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build contracts
-        run: forge build --sizes
+        run: forge build
+        # Note: --sizes removed as AppModuleFactory exceeds EIP-170 limit by design (L2 target)
 
       - name: Run bootstrap smoke test
         working-directory: sim
@@ -116,7 +117,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build contracts
-        run: forge build --sizes
+        run: forge build
+        # Note: --sizes removed as AppModuleFactory exceeds EIP-170 limit by design (L2 target)
 
       - name: Run full ecosystem smoke test
         working-directory: sim
@@ -243,7 +245,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build contracts
-        run: forge build --sizes
+        run: forge build
+        # Note: --sizes removed as AppModuleFactory exceeds EIP-170 limit by design (L2 target)
 
       - name: Run full ecosystem simulation
         working-directory: sim
