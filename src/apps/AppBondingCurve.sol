@@ -389,7 +389,7 @@ contract AppBondingCurve is ReentrancyGuard {
         reserveToken -= tokensOut;
 
         // Transfer tokens to buyer
-        TOKEN.transfer(msg.sender, tokensOut);
+        IERC20(address(TOKEN)).safeTransfer(msg.sender, tokensOut);
 
         // Calculate new price for event
         uint256 newPrice = reserveToken > 0 ? (reserveElta * 1e18) / reserveToken : 0;
@@ -478,7 +478,7 @@ contract AppBondingCurve is ReentrancyGuard {
         locker = address(lpLocker);
 
         // Transfer LP tokens to locker
-        IUniswapV2Pair(pair).transfer(address(lpLocker), liquidity);
+        IERC20(pair).safeTransfer(address(lpLocker), liquidity);
         lpLocker.lockLp(liquidity);
 
         emit AppGraduated(appId, address(TOKEN), pair, locker, lpUnlockAt, reserveElta, reserveToken);
@@ -608,7 +608,7 @@ contract AppBondingCurve is ReentrancyGuard {
             ELTA.safeTransfer(creator, eltaToRefund);
         }
         if (tokensToRefund > 0) {
-            TOKEN.transfer(creator, tokensToRefund);
+            IERC20(address(TOKEN)).safeTransfer(creator, tokensToRefund);
         }
 
         emit StateChanged(appId, oldState, CurveState.CANCELLED);

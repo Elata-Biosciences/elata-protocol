@@ -83,21 +83,24 @@ corpus_dir = "corpus/invariant"         # Enable coverage-guided fuzzing
 show_metrics = true                     # Display fuzzed selector metrics
 
 # Lint Configuration
+# NOTE: Production code (src/) should NOT have suppressions - fix issues properly!
+# These suppressions ONLY apply to test/script files where lint issues are acceptable
 [lint]
-# Exclude specific lint rules that generate many false positives
-# These rules are informational and don't indicate bugs
 exclude_lints = [
-  "erc20-unchecked-transfer",       # Test code uses direct transfers intentionally
-  "unsafe-typecast",                 # uint64 timestamp casts are safe until year 2262
+  # Test-specific suppressions (test code runs in controlled environments)
+  "erc20-unchecked-transfer",       # Test transfers don't need SafeERC20
+  "unsafe-typecast",                 # Test casts are bounded by test setup
+  "unsafe-cheatcode",               # Cheatcodes are intentional in tests
+  
+  # Style/naming suppressions (informational, not bugs)
   "screaming-snake-case-immutable", # Existing naming conventions maintained
   "screaming-snake-case-const",     # Existing naming conventions maintained
   "unaliased-plain-import",         # Existing import style maintained
   "mixed-case-variable",            # Variable naming follows existing patterns
-  "mixed-case-function",            # Function naming follows existing patterns (e.g. sol_getTokensOut)
-  "unsafe-cheatcode",               # Cheatcodes are intentional in tests
-  "asm-keccak256",                  # Assembly keccak256 is intentional for gas optimization
+  "mixed-case-function",            # Function naming (e.g. sol_getTokensOut for differential tests)
   "unwrapped-modifier-logic",       # Modifier patterns are intentional
-  "unused-import"                   # Unused imports are common in evolving codebases
+  "asm-keccak256",                  # Assembly keccak256 for gas optimization
+  "unused-import"                   # Common in evolving test files
 ]
-# Ignore test, script, and library files
+# Only suppress in test/script/lib - production code must be clean
 ignore = ["test/**", "script/**", "lib/**"]

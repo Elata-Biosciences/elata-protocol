@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
@@ -40,6 +41,8 @@ enum EntryTokenType {
  * 4. Winners claim rewards with proofs
  */
 contract Tournament is AccessControl, ReentrancyGuard {
+    using SafeERC20 for IERC20;
+
     /// @notice Module admin role - can manage settings and withdraw
     bytes32 public constant MODULE_ADMIN_ROLE = keccak256("MODULE_ADMIN_ROLE");
 
@@ -227,7 +230,7 @@ contract Tournament is AccessControl, ReentrancyGuard {
         if (endTime != 0 && block.timestamp > endTime) revert TournamentEnded();
 
         entered[msg.sender] = true;
-        entryToken.transferFrom(msg.sender, address(this), entryFee);
+        entryToken.safeTransferFrom(msg.sender, address(this), entryFee);
         pool += entryFee;
 
         emit Entered(msg.sender, entryFee);
@@ -253,7 +256,7 @@ contract Tournament is AccessControl, ReentrancyGuard {
 
         // Burn tokens (all token types support burn sink)
         if (burnAmt > 0) {
-            entryToken.transfer(burnSink, burnAmt);
+            entryToken.safeTransfer(burnSink, burnAmt);
         }
 
         winnersRoot = winnersRoot_;
@@ -276,11 +279,11 @@ contract Tournament is AccessControl, ReentrancyGuard {
                 IFeeCollector(feeCollector).depositAppToken(appId, address(entryToken), amount);
             } else {
                 // USDC goes directly to treasury
-                entryToken.transfer(protocolTreasury, amount);
+                entryToken.safeTransfer(protocolTreasury, amount);
             }
         } else {
             // Fallback: send directly to treasury
-            entryToken.transfer(protocolTreasury, amount);
+            entryToken.safeTransfer(protocolTreasury, amount);
         }
     }
 
@@ -297,7 +300,7 @@ contract Tournament is AccessControl, ReentrancyGuard {
         if (!MerkleProof.verify(proof, winnersRoot, leaf)) revert InvalidProof();
 
         claimed[msg.sender] = true;
-        entryToken.transfer(msg.sender, amount);
+        entryToken.safeTransfer(msg.sender, amount);
 
         emit Claimed(msg.sender, amount);
     }
