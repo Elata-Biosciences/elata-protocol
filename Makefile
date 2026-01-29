@@ -1,7 +1,7 @@
 # Makefile for Elata Protocol
 # Provides convenient commands for development
 
-.PHONY: help install build test test-v clean fmt fmt-check coverage gas-report setup-hooks security-check
+.PHONY: help install build test test-v clean fmt fmt-check coverage gas-report setup-hooks security-check local
 
 help: ## Show this help message
 	@echo "Elata Protocol - Development Commands"
@@ -65,7 +65,11 @@ security-check: ## Run security checks
 	@echo "🔒 Running security checks..."
 	@bash scripts/security-check.sh
 
-deploy-local: ## Deploy to local Anvil
+local: ## Start Anvil and deploy all contracts (full local environment)
+	@echo "🚀 Starting local development environment..."
+	bash scripts/dev-local.sh
+
+deploy-local: ## Deploy to local Anvil (legacy - use 'make local' instead)
 	@echo "🚀 Deploying to local Anvil..."
 	bash scripts/dev-setup.sh
 

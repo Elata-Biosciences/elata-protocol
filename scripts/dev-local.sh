@@ -99,15 +99,20 @@ FOUNDRY_PROFILE=local forge script script/Deploy.sol:Deploy \
     --code-size-limit 2147483647
 echo -e "${GREEN}✓ All contracts deployed${NC}"
 
-echo -e "${YELLOW}[5/7] Seeding test data...${NC}"
-FOUNDRY_PROFILE=local forge script script/SeedLocalData.s.sol:SeedLocalData \
-    --rpc-url http://127.0.0.1:8545 \
-    --broadcast \
-    --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
-    --ffi \
-    --skip-simulation \
-    --code-size-limit 2147483647
-echo -e "${GREEN}✓ Test data seeded${NC}"
+# [5/7] Seeding test data - OPTIONAL (set SEED_DATA=true to enable)
+if [ "${SEED_DATA:-false}" = "true" ]; then
+    echo -e "${YELLOW}[5/7] Seeding test data...${NC}"
+    FOUNDRY_PROFILE=local forge script script/SeedLocalData.s.sol:SeedLocalData \
+        --rpc-url http://127.0.0.1:8545 \
+        --broadcast \
+        --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+        --ffi \
+        --skip-simulation \
+        --code-size-limit 2147483647
+    echo -e "${GREEN}✓ Test data seeded${NC}"
+else
+    echo -e "${YELLOW}[5/7] Skipping seed data (set SEED_DATA=true to enable)${NC}"
+fi
 
 echo -e "${YELLOW}[6/7] Generating appstore configuration...${NC}"
 if [ -f "$PROJECT_ROOT/scripts/generate-config.ts" ]; then

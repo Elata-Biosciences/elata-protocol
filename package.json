@@ -55,7 +55,13 @@
     "xp:publish": "npx tsx scripts/xp/xp-publish-root.ts --rpc $RPC --key $OPERATOR_PK --contract $XP_ADDR --json ../elata-appstore/public/xp-distribution.json",
     "xp:grant-ops": "npx tsx scripts/xp/xp-grant-operators.ts --rpc $RPC --key $ADMIN_PK --contract $XP_ADDR --ops $OPS",
     "faucet": "node scripts/faucet.js",
-    "faucet:eth": "node scripts/faucet-eth.js"
+    "faucet:eth": "node scripts/faucet-eth.js",
+
+    "sim:smoke": "npx tsx sim/tests/smoke.ts",
+    "sim:smoke:usdc": "npx tsx sim/tests/smoke-usdc-revenue.ts",
+    "sim:full": "npx tsx sim/scenarios/full-ecosystem.ts",
+    "sim:report": "npx tsx sim/scripts/generate-vc-report.ts",
+    "sim:all": "npm run sim:full && npm run sim:report"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

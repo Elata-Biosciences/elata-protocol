@@ -34,6 +34,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
  * - Emergency pause capability
  */
 import {IAppRewardsDistributor} from "../interfaces/IAppRewardsDistributor.sol";
+import {IFeeManager} from "../interfaces/IFeeManager.sol";
 import {IVeEltaVotes} from "../interfaces/IVeEltaVotes.sol";
 
 contract RewardsDistributor is ReentrancyGuard, AccessControl {
@@ -51,6 +52,9 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
     IAppRewardsDistributor public immutable appRewardsDistributor;
 
     address public treasury;
+
+    /// @notice FeeManager for USDC conversion of treasury fees
+    address public feeManager;
 
     /// @notice Split configuration in basis points (must sum to 10,000)
     uint256 public constant BIPS_APP = 7000; // 70%
@@ -88,6 +92,7 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
         address indexed user, address indexed token, uint256 fromEpoch, uint256 toEpoch, uint256 amount
     );
     event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury);
+    event FeeManagerUpdated(address indexed oldFeeManager, address indexed newFeeManager);
     event EmergencyPause(bool paused);
 
     /**
@@ -156,8 +161,15 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
         veEpochs.push(Epoch({blockNumber: block.number, amount: veAmount}));
         emit VeEpochCreated(veEpochs.length - 1, block.number, veAmount);
 
-        // 3) Transfer to treasury (15%)
-        ELTA.safeTransfer(treasury, treasuryAmount);
+        // 3) Transfer to treasury (15%) - route through FeeManager for USDC conversion
+        if (feeManager != address(0)) {
+            // Route through FeeManager for USDC conversion
+            ELTA.approve(feeManager, treasuryAmount);
+            IFeeManager(feeManager).depositEltaForApp(0, treasuryAmount); // appId 0 = protocol fees
+        } else {
+            // Fallback: direct transfer to treasury
+            ELTA.safeTransfer(treasury, treasuryAmount);
+        }
 
         emit RevenueSplit(block.number, amount, appAmount, veAmount, treasuryAmount);
     }
@@ -286,6 +298,15 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
 
         emit TreasuryUpdated(treasury, newTreasury);
         treasury = newTreasury;
+    }
+
+    /**
+     * @notice Update fee manager address for USDC conversion
+     * @param newFeeManager New fee manager address (can be zero to disable)
+     */
+    function setFeeManager(address newFeeManager) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        emit FeeManagerUpdated(feeManager, newFeeManager);
+        feeManager = newFeeManager;
     }
 
     /**

@@ -42,6 +42,12 @@ lcov.info
 broadcast/
 gas_snapshots/
 
+# Simulation
+sim/results/
+sim/generated/*.ts
+sim/dist/
+sim/node_modules/
+
 # Local development
 .local/
 anvil.log
