@@ -11,8 +11,6 @@ bytecode_hash = "ipfs"
 fs_permissions = [{ access = "read", path = "deployments" }, { access = "write", path = "deployments" }]
 ffi = true  # Enable FFI for differential testing
 extra_output = ["storageLayout"]  # Enable storage-aware fuzzing
-# Note: Some contracts (AppModuleFactory, AppDeploymentLib) exceed EIP-170 24KB limit
-# This is acceptable for L2 deployment (Base, Arbitrum, Optimism) and testnets
 
 [profile.local]
 src = "src"
@@ -25,8 +23,6 @@ evm_version = "paris"
 via_ir = true
 bytecode_hash = "ipfs"
 fs_permissions = [{ access = "read-write", path = "./" }]
-# Note: AppFactory is ~26KB (over EIP-170 limit) but Anvil deploys it anyway
-# This is fine for local dev - optimize before mainnet deployment
 
 [profile.ci]
 src = "src"

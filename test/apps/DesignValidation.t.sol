@@ -3,7 +3,8 @@ pragma solidity ^0.8.24;
 
 import {InAppContent721} from "../../src/apps/InAppContent721.sol";
 import {ContentStore, PaymentTokenType} from "../../src/apps/ContentStore.sol";
-import {AppModuleFactory} from "../../src/apps/AppModuleFactory.sol";
+import {InAppContent721Factory} from "../../src/apps/InAppContent721Factory.sol";
+import {ContentStoreFactory} from "../../src/apps/ContentStoreFactory.sol";
 import {AppStakingVault} from "../../src/apps/AppStakingVault.sol";
 import {AppToken} from "../../src/apps/AppToken.sol";
 import {Tournament, EntryTokenType} from "../../src/apps/Tournament.sol";
@@ -18,7 +19,8 @@ import "forge-std/Test.sol";
  * @dev Ensures tokenomics work as intended and design is sound
  */
 contract DesignValidationTest is Test {
-    AppModuleFactory public factory;
+    InAppContent721Factory public content721Factory;
+    ContentStoreFactory public contentStoreFactory;
     ELTA public elta;
     AppToken public appToken;
     InAppContent721 public content721;
@@ -43,7 +45,10 @@ contract DesignValidationTest is Test {
         // Deploy FeeCollector
         feeCollector = new FeeCollector(address(elta), admin, feeManager, feeSwapper);
 
-        factory = new AppModuleFactory(address(elta), address(0), factoryOwner, treasury, address(feeCollector), 500);
+        // Deploy factories
+        content721Factory = new InAppContent721Factory(address(elta), factoryOwner, treasury);
+        contentStoreFactory =
+            new ContentStoreFactory(address(elta), address(0), factoryOwner, treasury, address(feeCollector), 500);
 
         appToken = new AppToken(
             "TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
@@ -52,9 +57,12 @@ contract DesignValidationTest is Test {
         // Deploy vault (simulating AppFactory)
         vault = new AppStakingVault("TestApp", "TEST", IERC20(address(appToken)), appCreator);
 
-        vm.prank(appCreator);
-        (address content721Addr, address contentStoreAddr) =
-            factory.deployModules(APP_ID, address(appToken), "TestApp Content", "TCNT", "ipfs://contract");
+        // Deploy content modules via factories
+        vm.startPrank(appCreator);
+        address content721Addr =
+            content721Factory.deployContent721(APP_ID, address(appToken), "TestApp Content", "TCNT", "ipfs://contract");
+        address contentStoreAddr = contentStoreFactory.deployContentStore(APP_ID, address(appToken), content721Addr);
+        vm.stopPrank();
 
         content721 = InAppContent721(content721Addr);
         contentStore = ContentStore(contentStoreAddr);
@@ -117,7 +125,7 @@ contract DesignValidationTest is Test {
 
     function test_Design_ELTAFeesFlowToTreasury() public {
         vm.prank(factoryOwner);
-        factory.setCreateFee(100 ether);
+        content721Factory.setCreateFee(100 ether);
 
         vm.prank(factoryOwner);
         elta.transfer(appCreator, 1000 ether);
@@ -130,10 +138,10 @@ contract DesignValidationTest is Test {
         );
 
         vm.prank(appCreator);
-        elta.approve(address(factory), 100 ether);
+        elta.approve(address(content721Factory), 100 ether);
 
         vm.prank(appCreator);
-        factory.deployModules(2, address(app2), "App2 Content", "APP2", "ipfs://app2");
+        content721Factory.deployContent721(2, address(app2), "App2 Content", "APP2", "ipfs://app2");
 
         // VALIDATION: ELTA went to treasury
         assertEq(elta.balanceOf(treasury), treasuryBefore + 100 ether);
@@ -319,9 +327,10 @@ contract DesignValidationTest is Test {
         // Deploy vault for app2 (simulating AppFactory)
         AppStakingVault vault2 = new AppStakingVault("App2", "APP2", IERC20(address(app2)), appCreator);
 
-        vm.prank(appCreator);
-        (address content721_2, address contentStore2) =
-            factory.deployModules(2, address(app2), "App2 Content", "APP2", "ipfs://app2");
+        vm.startPrank(appCreator);
+        address content721_2 = content721Factory.deployContent721(2, address(app2), "App2 Content", "APP2", "ipfs://app2");
+        address contentStore2 = contentStoreFactory.deployContentStore(2, address(app2), content721_2);
+        vm.stopPrank();
 
         // VALIDATION: Different addresses
         assertTrue(address(content721) != content721_2);
@@ -457,9 +466,9 @@ contract DesignValidationTest is Test {
             address(1)
         );
 
-        vm.expectRevert(AppModuleFactory.NotTokenOwner.selector);
+        vm.expectRevert(InAppContent721Factory.NotTokenOwner.selector);
         vm.prank(appCreator);
-        factory.deployModules(99, address(unauthorizedApp), "Unauth", "UNAUTH", "ipfs://unauth");
+        content721Factory.deployContent721(99, address(unauthorizedApp), "Unauth", "UNAUTH", "ipfs://unauth");
     }
 
     // ────────────────────────────────────────────────────────────────────────────

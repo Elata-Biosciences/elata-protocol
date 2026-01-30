@@ -4,7 +4,8 @@ pragma solidity ^0.8.24;
 import {InAppContent721} from "../src/apps/InAppContent721.sol";
 import {ContentStore, PaymentTokenType} from "../src/apps/ContentStore.sol";
 import {AppFactory} from "../src/apps/AppFactory.sol";
-import {AppModuleFactory} from "../src/apps/AppModuleFactory.sol";
+import {InAppContent721Factory} from "../src/apps/InAppContent721Factory.sol";
+import {ContentStoreFactory} from "../src/apps/ContentStoreFactory.sol";
 import {AppStakingVault} from "../src/apps/AppStakingVault.sol";
 import {AppToken} from "../src/apps/AppToken.sol";
 import {ElataPoints} from "../src/experience/ElataPoints.sol";
@@ -36,7 +37,8 @@ contract SeedLocalData is Script {
     address XP_ADDRESS;
     address STAKING_ADDRESS;
     address APP_FACTORY_ADDRESS;
-    address APP_MODULE_FACTORY_ADDRESS;
+    address CONTENT721_FACTORY_ADDRESS;
+    address CONTENTSTORE_FACTORY_ADDRESS;
 
     function run() external {
         // Use Anvil account #0
@@ -86,12 +88,14 @@ contract SeedLocalData is Script {
         XP_ADDRESS = stdJson.readAddress(json, ".contracts.ElataPoints");
         STAKING_ADDRESS = stdJson.readAddress(json, ".contracts.VeELTA");
         APP_FACTORY_ADDRESS = stdJson.readAddress(json, ".contracts.AppFactory");
-        APP_MODULE_FACTORY_ADDRESS = stdJson.readAddress(json, ".contracts.AppModuleFactory");
+        CONTENT721_FACTORY_ADDRESS = stdJson.readAddress(json, ".contracts.InAppContent721Factory");
+        CONTENTSTORE_FACTORY_ADDRESS = stdJson.readAddress(json, ".contracts.ContentStoreFactory");
 
         require(ELTA_ADDRESS != address(0), "ELTA address missing");
         require(XP_ADDRESS != address(0), "XP address missing");
         require(STAKING_ADDRESS != address(0), "VeELTA address missing");
-        require(APP_MODULE_FACTORY_ADDRESS != address(0), "AppModuleFactory address missing");
+        require(CONTENT721_FACTORY_ADDRESS != address(0), "InAppContent721Factory address missing");
+        require(CONTENTSTORE_FACTORY_ADDRESS != address(0), "ContentStoreFactory address missing");
 
         // AppFactory is required for creating apps; allow zero to skip app creation
         if (APP_FACTORY_ADDRESS == address(0)) {
@@ -150,7 +154,8 @@ contract SeedLocalData is Script {
             return new TestApp[](0);
         }
         AppFactory factory = AppFactory(APP_FACTORY_ADDRESS);
-        AppModuleFactory moduleFactory = AppModuleFactory(APP_MODULE_FACTORY_ADDRESS);
+        InAppContent721Factory content721Factory = InAppContent721Factory(CONTENT721_FACTORY_ADDRESS);
+        ContentStoreFactory contentStoreFactory = ContentStoreFactory(CONTENTSTORE_FACTORY_ADDRESS);
 
         TestApp[] memory apps = new TestApp[](3);
 
@@ -158,7 +163,8 @@ contract SeedLocalData is Script {
         apps[0] = _createSingleApp(
             elta,
             factory,
-            moduleFactory,
+            content721Factory,
+            contentStoreFactory,
             "NeuroPong Token",
             "NPONG",
             "EEG-controlled Pong game with competitive multiplayer",
@@ -169,7 +175,8 @@ contract SeedLocalData is Script {
         apps[1] = _createSingleApp(
             elta,
             factory,
-            moduleFactory,
+            content721Factory,
+            contentStoreFactory,
             "MindfulBreath Token",
             "BREATH",
             "Meditation and breathing exercises with EEG feedback",
@@ -180,7 +187,8 @@ contract SeedLocalData is Script {
         apps[2] = _createSingleApp(
             elta,
             factory,
-            moduleFactory,
+            content721Factory,
+            contentStoreFactory,
             "FocusTrainer Token",
             "FOCUS",
             "Attention training with real-time neurofeedback",
@@ -193,7 +201,8 @@ contract SeedLocalData is Script {
     function _createSingleApp(
         ELTA elta,
         AppFactory factory,
-        AppModuleFactory moduleFactory,
+        InAppContent721Factory content721Factory,
+        ContentStoreFactory contentStoreFactory,
         string memory name,
         string memory symbol,
         string memory description,
@@ -223,18 +232,22 @@ contract SeedLocalData is Script {
 
         console2.log("       Created app:", name, "at", app.token);
 
-        // Deploy utility modules (InAppContent721 + ContentStore)
-        elta.approve(address(moduleFactory), 0); // No fee for now
-
         // Note: vault is already deployed by AppFactory, get it from the app struct
         (,, address vaultAddr,,,,,,,,,,) = AppFactory(APP_FACTORY_ADDRESS).apps(app.appId);
-        (address content721, address contentStore) = moduleFactory.deployModules(
+
+        // Deploy utility modules via separate factories
+        // Step 1: Deploy NFT collection
+        address content721 = content721Factory.deployContent721(
             app.appId,
             app.token,
             string.concat(app.name, " Content"),
             string.concat(symbol, "-CNT"),
             string.concat("ipfs://", symbol, "/contract")
         );
+        
+        // Step 2: Deploy content store (links to NFT and sets minter)
+        address contentStore = contentStoreFactory.deployContentStore(app.appId, app.token, content721);
+
         app.content721 = content721;
         app.contentStore = contentStore;
         app.stakingVault = vaultAddr;

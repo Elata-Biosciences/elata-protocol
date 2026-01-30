@@ -2,7 +2,8 @@
 pragma solidity ^0.8.24;
 
 import {AppFactory} from "../src/apps/AppFactory.sol";
-import {AppModuleFactory} from "../src/apps/AppModuleFactory.sol";
+import {InAppContent721Factory} from "../src/apps/InAppContent721Factory.sol";
+import {ContentStoreFactory} from "../src/apps/ContentStoreFactory.sol";
 import {TournamentFactory} from "../src/apps/TournamentFactory.sol";
 import {ElataPoints} from "../src/experience/ElataPoints.sol";
 import {AppFeeRouter} from "../src/fees/AppFeeRouter.sol";
@@ -73,7 +74,8 @@ contract Deploy is Script {
         TimelockController timelock;
         ElataGovernor governor;
         AppFactory appFactory;
-        AppModuleFactory appModuleFactory;
+        InAppContent721Factory content721Factory;
+        ContentStoreFactory contentStoreFactory;
         TournamentFactory tournamentFactory;
         // Fee Pipeline (only deployed if USDC and Uniswap exist)
         FeeCollector feeCollector;
@@ -95,7 +97,8 @@ contract Deploy is Script {
         address governor,
         address timelock,
         address appFactory,
-        address appModuleFactory,
+        address content721Factory,
+        address contentStoreFactory,
         address tournamentFactory
     );
 
@@ -209,7 +212,6 @@ contract Deploy is Script {
         // ===== STEP 6: Deploy App Utilities =====
         console2.log("\n[6/9] Deploying App Utilities...");
 
-        // AppModuleFactory: Deploys InAppContent721 + ContentStore for apps
         // USDC address from NetworkConfig (address(0) for local dev)
         address usdcAddress = networkConfig.usdc;
         uint256 defaultProtocolFeeBps = 500; // 5% default fee for ContentStore
@@ -217,7 +219,12 @@ contract Deploy is Script {
             console2.log("   Using USDC:", usdcAddress);
         }
 
-        protocol.appModuleFactory = new AppModuleFactory(
+        // InAppContent721Factory: Deploys NFT collections for apps
+        protocol.content721Factory = new InAppContent721Factory(address(protocol.token), initialAdmin, treasury);
+        console2.log("   InAppContent721Factory deployed at:", address(protocol.content721Factory));
+
+        // ContentStoreFactory: Deploys sales contracts for apps
+        protocol.contentStoreFactory = new ContentStoreFactory(
             address(protocol.token),
             usdcAddress,
             initialAdmin,
@@ -225,7 +232,7 @@ contract Deploy is Script {
             address(protocol.appFeeRouter), // feeCollector
             defaultProtocolFeeBps
         );
-        console2.log("   AppModuleFactory deployed at:", address(protocol.appModuleFactory));
+        console2.log("   ContentStoreFactory deployed at:", address(protocol.contentStoreFactory));
 
         protocol.tournamentFactory = new TournamentFactory(initialAdmin, treasury);
         console2.log("   TournamentFactory deployed at:", address(protocol.tournamentFactory));
@@ -302,7 +309,8 @@ contract Deploy is Script {
             address(protocol.governor),
             address(protocol.timelock),
             address(protocol.appFactory),
-            address(protocol.appModuleFactory),
+            address(protocol.content721Factory),
+            address(protocol.contentStoreFactory),
             address(protocol.tournamentFactory)
         );
 
@@ -401,9 +409,14 @@ contract Deploy is Script {
             protocol.appFactory.revokeRole(DEFAULT_ADMIN_ROLE, from);
         }
 
-        // Transfer AppModuleFactory ownership (uses Ownable, not AccessControl)
-        if (address(protocol.appModuleFactory) != address(0)) {
-            protocol.appModuleFactory.transferOwnership(to);
+        // Transfer InAppContent721Factory ownership (uses Ownable, not AccessControl)
+        if (address(protocol.content721Factory) != address(0)) {
+            protocol.content721Factory.transferOwnership(to);
+        }
+
+        // Transfer ContentStoreFactory ownership (uses Ownable, not AccessControl)
+        if (address(protocol.contentStoreFactory) != address(0)) {
+            protocol.contentStoreFactory.transferOwnership(to);
         }
 
         // Transfer TournamentFactory ownership (uses Ownable, not AccessControl)
@@ -451,8 +464,11 @@ contract Deploy is Script {
             '    "AppFactory": "',
             vm.toString(address(protocol.appFactory)),
             '",\n',
-            '    "AppModuleFactory": "',
-            vm.toString(address(protocol.appModuleFactory)),
+            '    "InAppContent721Factory": "',
+            vm.toString(address(protocol.content721Factory)),
+            '",\n',
+            '    "ContentStoreFactory": "',
+            vm.toString(address(protocol.contentStoreFactory)),
             '",\n',
             '    "TournamentFactory": "',
             vm.toString(address(protocol.tournamentFactory)),
@@ -525,7 +541,8 @@ contract Deploy is Script {
         console2.log("  AppFeeRouter:            ", address(protocol.appFeeRouter));
         console2.log("\nApp Framework:");
         console2.log("  AppFactory:              ", address(protocol.appFactory));
-        console2.log("  AppModuleFactory:        ", address(protocol.appModuleFactory));
+        console2.log("  InAppContent721Factory:  ", address(protocol.content721Factory));
+        console2.log("  ContentStoreFactory:     ", address(protocol.contentStoreFactory));
         console2.log("  TournamentFactory:       ", address(protocol.tournamentFactory));
         console2.log("\nFee Pipeline:");
         console2.log("  FeeCollector:            ", address(protocol.feeCollector));

@@ -576,12 +576,9 @@ export class EltaPack implements Pack {
     const eltaAddr =
       this.deployedAddresses.get('ELTA') ?? this.deployedAddresses.get('MockELTA') ?? zeroAddress;
     const veEltaAddr = this.deployedAddresses.get('VeELTA') ?? zeroAddress;
-    // Note: AppFactory creates apps via bonding curve, AppModuleFactory is for content modules
+    // Note: AppFactory creates apps via bonding curve, separate factories for content modules
     // We prioritize AppFactory for app creation
-    const appFactoryAddr =
-      this.deployedAddresses.get('AppFactory') ??
-      this.deployedAddresses.get('AppModuleFactory') ??
-      zeroAddress;
+    const appFactoryAddr = this.deployedAddresses.get('AppFactory') ?? zeroAddress;
     const feeRouterAddr =
       this.deployedAddresses.get('AppFeeRouter') ??
       this.deployedAddresses.get('FeeRouter') ??
@@ -1972,7 +1969,7 @@ export class EltaPack implements Pack {
     wallet: AgentWallet,
     action: { name: string; symbol: string; metadataUri: string | undefined }
   ): Promise<ActionResult> {
-    // Use AppFactory (not AppModuleFactory which is for content modules)
+    // Use AppFactory for app creation (InAppContent721Factory/ContentStoreFactory for content modules)
     const factoryAddress = this.deployedAddresses.get('AppFactory');
     const eltaAddress = this.deployedAddresses.get('ELTA');
 

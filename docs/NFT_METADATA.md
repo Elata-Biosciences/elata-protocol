@@ -4,7 +4,7 @@ This document outlines the NFT metadata standards used by Elata Protocol's `InAp
 
 ## Overview
 
-Elata Protocol uses ERC-721 NFTs for in-app content delivery. Each app can deploy its own NFT collection via the `AppModuleFactory`.
+Elata Protocol uses ERC-721 NFTs for in-app content delivery. Each app can deploy its own NFT collection via the `InAppContent721Factory` and sales contract via the `ContentStoreFactory`.
 
 ## Metadata Standard
 
@@ -230,7 +230,7 @@ async function getTokenMetadata(tokenId: number): Promise<Metadata> {
 ### Contract Upgrade Path
 
 If metadata format changes are needed:
-1. Deploy new `InAppContent721` via `AppModuleFactory`
+1. Deploy new `InAppContent721` via `InAppContent721Factory`
 2. Migrate holders via airdrop to new collection
 3. Decommission old contract (mark read-only)
 
@@ -238,7 +238,8 @@ If metadata format changes are needed:
 
 - `InAppContent721.sol` - NFT minting and URI management
 - `ContentStore.sol` - Content listing and purchase logic
-- `AppModuleFactory.sol` - Module deployment
+- `InAppContent721Factory.sol` - NFT collection deployment
+- `ContentStoreFactory.sol` - Sales contract deployment
 
 ## References
 

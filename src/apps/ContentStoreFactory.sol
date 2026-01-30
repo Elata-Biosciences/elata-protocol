@@ -1,35 +1,34 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {InAppContent721} from "./InAppContent721.sol";
 import {ContentStore} from "./ContentStore.sol";
+import {InAppContent721} from "./InAppContent721.sol";
 import {IOwnable} from "./Interfaces.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
- * @title AppModuleFactory
+ * @title ContentStoreFactory
  * @author Elata Protocol
- * @notice Factory for deploying InAppContent721 and ContentStore for apps
+ * @notice Factory for deploying ContentStore sales contracts for apps
  * @dev Restricted to app token owners only, optional ELTA creation fee
  *
  * Key Features:
- * - Deploys InAppContent721 (ERC-721) for digital content/collectibles
  * - Deploys ContentStore for primary sales with time windows and feature gates
+ * - Links to existing InAppContent721 for minting
  * - Restricted: only AppToken owner can deploy
  * - Optional ELTA fee to align protocol value
  * - Registry for discovery
  * - Non-upgradeable, simple
  *
  * Usage:
- * 1. App creator launches app via AppFactory (gets AppToken + AppStakingVault automatically)
- * 2. App creator calls deployModules() to add InAppContent721 + ContentStore (pays ELTA fee if set)
- * 3. Configure content listings, time windows, and feature gates
- *
- * Note: AppStakingVault is already deployed by AppFactory during app creation.
+ * 1. App creator deploys InAppContent721 via InAppContent721Factory
+ * 2. App creator calls deployContentStore() to add sales functionality
+ * 3. ContentStore is automatically set as minter for the InAppContent721
+ * 4. Configure content listings, time windows, and feature gates
  */
-contract AppModuleFactory is Ownable {
+contract ContentStoreFactory is Ownable {
     using SafeERC20 for IERC20;
 
     /// @notice ELTA token address (address(0) to disable fees)
@@ -47,27 +46,29 @@ contract AppModuleFactory is Ownable {
     /// @notice Default protocol fee for ContentStore (in bps, e.g., 500 = 5%)
     uint256 public defaultProtocolFeeBps;
 
-    /// @notice Deployed InAppContent721 by app token address
-    mapping(address => address) public content721ByApp;
+    /// @notice ELTA fee for deploying content stores
+    uint256 public createFeeELTA;
 
     /// @notice Deployed ContentStore by app token address
     mapping(address => address) public contentStoreByApp;
 
-    /// @notice ELTA fee for deploying modules
-    uint256 public createFeeELTA;
+    /// @notice Maximum protocol fee (15%)
+    uint256 public constant MAX_PROTOCOL_FEE_BPS = 1500;
 
-    event ModulesDeployed(address indexed appToken, address content721, address contentStore);
+    // =========== Events ===========
+
+    event ContentStoreDeployed(address indexed appToken, address indexed contentStore, address indexed content721);
     event TreasurySet(address treasury);
     event FeeCollectorSet(address feeCollector);
     event FeeSet(uint256 fee);
     event DefaultProtocolFeeBpsSet(uint256 bps);
 
-    error NotTokenOwner();
-    error ModuleAlreadyExists();
-    error InvalidProtocolFeeBps();
+    // =========== Errors ===========
 
-    /// @notice Maximum protocol fee (15%)
-    uint256 public constant MAX_PROTOCOL_FEE_BPS = 1500;
+    error NotTokenOwner();
+    error AlreadyDeployed();
+    error InvalidProtocolFeeBps();
+    error NotContent721Owner();
 
     /**
      * @notice Initialize factory
@@ -93,6 +94,8 @@ contract AppModuleFactory is Ownable {
         feeCollector = feeCollector_;
         defaultProtocolFeeBps = defaultProtocolFeeBps_;
     }
+
+    // =========== Admin Functions ===========
 
     /**
      * @notice Set protocol treasury address
@@ -131,80 +134,36 @@ contract AppModuleFactory is Ownable {
         emit DefaultProtocolFeeBpsSet(bps);
     }
 
+    // =========== Deployment Function ===========
+
     /**
-     * @notice Deploy InAppContent721 and ContentStore for an app token
-     * @dev Only callable by the AppToken owner. Factory temporarily owns InAppContent721
-     *      to set minter, then transfers ownership to the app creator.
+     * @notice Deploy ContentStore for an app token
+     * @dev Only callable by the AppToken owner. Caller must also own the InAppContent721.
+     *      ContentStore is automatically set as the minter for InAppContent721.
      * @param appId App ID for fee routing
      * @param appToken AppToken address (must implement owner())
-     * @param name Collection name for InAppContent721
-     * @param symbol Collection symbol for InAppContent721
-     * @param contractURI Contract-level metadata URI for InAppContent721
-     * @return content721 Address of deployed InAppContent721
+     * @param content721 InAppContent721 address to link (caller must be owner)
      * @return contentStore Address of deployed ContentStore
      */
-    function deployModules(
-        uint256 appId,
-        address appToken,
-        string calldata name,
-        string calldata symbol,
-        string calldata contractURI
-    ) external returns (address content721, address contentStore) {
+    function deployContentStore(uint256 appId, address appToken, address content721)
+        external
+        returns (address contentStore)
+    {
         // Verify caller is token owner
         if (IOwnable(appToken).owner() != msg.sender) revert NotTokenOwner();
 
+        // Verify caller owns the content721
+        if (content721 != address(0) && IOwnable(content721).owner() != msg.sender) {
+            revert NotContent721Owner();
+        }
+
         // Prevent duplicate deployments
-        if (content721ByApp[appToken] != address(0)) revert ModuleAlreadyExists();
+        if (contentStoreByApp[appToken] != address(0)) revert AlreadyDeployed();
 
         // Collect ELTA fee if set
         _collectFee();
 
-        // Deploy InAppContent721 with factory as temporary owner (so we can call setMinter)
-        content721 = _deployContent721(appId, name, symbol, contractURI);
-
         // Deploy ContentStore with app creator as admin
-        contentStore = _deployContentStore(appId, appToken, content721);
-
-        // Set ContentStore as the minter for InAppContent721 (factory is owner, so this works)
-        InAppContent721(content721).setMinter(contentStore);
-
-        // Transfer ownership of InAppContent721 to the app creator
-        InAppContent721(content721).transferOwnership(msg.sender);
-
-        // Register modules
-        content721ByApp[appToken] = content721;
-        contentStoreByApp[appToken] = contentStore;
-
-        emit ModulesDeployed(appToken, content721, contentStore);
-    }
-
-    /**
-     * @dev Internal function to collect ELTA fee
-     */
-    function _collectFee() internal {
-        if (createFeeELTA > 0 && ELTA != address(0)) {
-            IERC20(ELTA).safeTransferFrom(msg.sender, treasury, createFeeELTA);
-        }
-    }
-
-    /**
-     * @dev Internal function to deploy InAppContent721
-     * @dev Deploys with factory as owner so setMinter can be called, ownership transferred later
-     */
-    function _deployContent721(
-        uint256 appId,
-        string calldata name,
-        string calldata symbol,
-        string calldata contractURI
-    ) internal returns (address) {
-        // Deploy with factory as owner so we can call setMinter before transferring ownership
-        return address(new InAppContent721(appId, name, symbol, address(this), address(0), contractURI));
-    }
-
-    /**
-     * @dev Internal function to deploy ContentStore
-     */
-    function _deployContentStore(uint256 appId, address appToken, address content721) internal returns (address) {
         ContentStore.InitConfig memory config = ContentStore.InitConfig({
             appId: appId,
             appToken: appToken,
@@ -216,16 +175,39 @@ contract AppModuleFactory is Ownable {
             feeCollector: feeCollector,
             protocolFeeBps: defaultProtocolFeeBps
         });
-        return address(new ContentStore(config));
+
+        contentStore = address(new ContentStore(config));
+
+        // If content721 is provided, set ContentStore as minter
+        if (content721 != address(0)) {
+            InAppContent721(content721).setMinter(contentStore);
+        }
+
+        // Register deployment
+        contentStoreByApp[appToken] = contentStore;
+
+        emit ContentStoreDeployed(appToken, contentStore, content721);
     }
 
+    // =========== Internal Functions ===========
+
     /**
-     * @notice Get deployed modules for an app
+     * @dev Internal function to collect ELTA fee
+     */
+    function _collectFee() internal {
+        if (createFeeELTA > 0 && ELTA != address(0)) {
+            IERC20(ELTA).safeTransferFrom(msg.sender, treasury, createFeeELTA);
+        }
+    }
+
+    // =========== View Functions ===========
+
+    /**
+     * @notice Get deployed content store for an app
      * @param appToken App token address
-     * @return content721 InAppContent721 address (address(0) if not deployed)
      * @return contentStore ContentStore address (address(0) if not deployed)
      */
-    function getModules(address appToken) external view returns (address content721, address contentStore) {
-        return (content721ByApp[appToken], contentStoreByApp[appToken]);
+    function getContentStore(address appToken) external view returns (address contentStore) {
+        return contentStoreByApp[appToken];
     }
 }

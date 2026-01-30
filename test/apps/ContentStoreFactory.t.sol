@@ -3,11 +3,11 @@ pragma solidity ^0.8.24;
 
 import {InAppContent721} from "../../src/apps/InAppContent721.sol";
 import {ContentStore, PaymentTokenType} from "../../src/apps/ContentStore.sol";
-import {AppModuleFactory} from "../../src/apps/AppModuleFactory.sol";
-import {AppStakingVault} from "../../src/apps/AppStakingVault.sol";
+import {ContentStoreFactory} from "../../src/apps/ContentStoreFactory.sol";
+import {InAppContent721Factory} from "../../src/apps/InAppContent721Factory.sol";
 import {AppToken} from "../../src/apps/AppToken.sol";
-import {ELTA} from "elta/ELTA.sol";
 import {FeeCollector} from "../../src/fees/FeeCollector.sol";
+import {ELTA} from "elta/ELTA.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "forge-std/Test.sol";
 
@@ -50,13 +50,14 @@ contract MockUSDC is IERC20 {
     }
 }
 
-contract AppModuleFactoryTest is Test {
-    AppModuleFactory public factory;
+contract ContentStoreFactoryTest is Test {
+    ContentStoreFactory public factory;
+    InAppContent721Factory public content721Factory;
     ELTA public elta;
     MockUSDC public usdc;
     AppToken public appToken;
-    AppStakingVault public defaultVault;
     FeeCollector public feeCollector;
+    InAppContent721 public content721;
 
     address public factoryOwner = makeAddr("factoryOwner");
     address public treasury = makeAddr("treasury");
@@ -71,7 +72,7 @@ contract AppModuleFactoryTest is Test {
     uint256 public constant APP_ID = 1;
     uint256 public constant DEFAULT_PROTOCOL_FEE_BPS = 500; // 5%
 
-    event ModulesDeployed(address indexed appToken, address content721, address contentStore);
+    event ContentStoreDeployed(address indexed appToken, address indexed contentStore, address indexed content721);
     event TreasurySet(address treasury);
     event FeeCollectorSet(address feeCollector);
     event FeeSet(uint256 fee);
@@ -87,8 +88,9 @@ contract AppModuleFactoryTest is Test {
         // Deploy FeeCollector
         feeCollector = new FeeCollector(address(elta), admin, feeManager, feeSwapper);
 
-        // Deploy factory
-        factory = new AppModuleFactory(
+        // Deploy factories
+        content721Factory = new InAppContent721Factory(address(elta), factoryOwner, treasury);
+        factory = new ContentStoreFactory(
             address(elta), address(usdc), factoryOwner, treasury, address(feeCollector), DEFAULT_PROTOCOL_FEE_BPS
         );
 
@@ -97,8 +99,11 @@ contract AppModuleFactoryTest is Test {
             "TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
         );
 
-        // Deploy default vault (simulating what AppFactory does)
-        defaultVault = new AppStakingVault("TestApp", "TEST", IERC20(address(appToken)), appCreator);
+        // Deploy content721 for the app
+        vm.prank(appCreator);
+        address content721Addr =
+            content721Factory.deployContent721(APP_ID, address(appToken), "Test Content", "TCNT", "ipfs://contract");
+        content721 = InAppContent721(content721Addr);
 
         // Transfer ELTA to app creator for fees
         vm.prank(factoryOwner);
@@ -120,53 +125,68 @@ contract AppModuleFactoryTest is Test {
     }
 
     function test_DeploymentWithZeroELTA() public {
-        AppModuleFactory noFeeFactory = new AppModuleFactory(
+        ContentStoreFactory noFeeFactory = new ContentStoreFactory(
             address(0), address(usdc), factoryOwner, treasury, address(feeCollector), DEFAULT_PROTOCOL_FEE_BPS
         );
-
         assertEq(noFeeFactory.ELTA(), address(0));
     }
 
     function test_RevertWhen_DeploymentWithInvalidProtocolFee() public {
-        vm.expectRevert(AppModuleFactory.InvalidProtocolFeeBps.selector);
-        new AppModuleFactory(address(elta), address(usdc), factoryOwner, treasury, address(feeCollector), 2000); // > 15%
+        vm.expectRevert(ContentStoreFactory.InvalidProtocolFeeBps.selector);
+        new ContentStoreFactory(
+            address(elta), address(usdc), factoryOwner, treasury, address(feeCollector), 2000 // > 15%
+        );
     }
 
     // ────────────────────────────────────────────────────────────────────────────
-    // MODULE DEPLOYMENT TESTS
+    // CONTENTSTORE DEPLOYMENT TESTS
     // ────────────────────────────────────────────────────────────────────────────
 
-    function test_DeployModules() public {
-        vm.expectEmit(true, false, false, false);
-        emit ModulesDeployed(address(appToken), address(0), address(0));
+    function test_DeployContentStore() public {
+        vm.expectEmit(true, false, true, false);
+        emit ContentStoreDeployed(address(appToken), address(0), address(content721));
 
         vm.prank(appCreator);
-        (address content721, address contentStore) =
-            factory.deployModules(APP_ID, address(appToken), "Test Content", "TCNT", "ipfs://contract");
+        address contentStore = factory.deployContentStore(APP_ID, address(appToken), address(content721));
 
-        // Verify addresses are non-zero
-        assertTrue(content721 != address(0));
+        // Verify address is non-zero
         assertTrue(contentStore != address(0));
 
         // Verify registry
-        assertEq(factory.content721ByApp(address(appToken)), content721);
         assertEq(factory.contentStoreByApp(address(appToken)), contentStore);
-
-        // Verify InAppContent721 ownership and minter
-        assertEq(InAppContent721(content721).owner(), appCreator);
-        assertEq(InAppContent721(content721).minter(), contentStore);
-        assertEq(InAppContent721(content721).appId(), APP_ID);
-        assertEq(InAppContent721(content721).name(), "Test Content");
-        assertEq(InAppContent721(content721).symbol(), "TCNT");
 
         // Verify ContentStore configuration
         ContentStore store = ContentStore(contentStore);
         assertTrue(store.hasRole(store.DEFAULT_ADMIN_ROLE(), appCreator));
         assertTrue(store.hasRole(store.MODULE_ADMIN_ROLE(), appCreator));
         assertTrue(store.hasRole(store.MODULE_OPERATOR_ROLE(), appCreator));
+
+        // Verify minter was set on content721
+        assertEq(content721.minter(), contentStore);
     }
 
-    function test_DeployModulesWithELTAFee() public {
+    function test_DeployContentStoreWithoutContent721() public {
+        // Create a new app token that has no content721
+        AppToken appToken2 = new AppToken(
+            "TestApp2", "TEST2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
+        );
+
+        vm.prank(appCreator);
+        address contentStore = factory.deployContentStore(APP_ID, address(appToken2), address(0));
+
+        // Verify address is non-zero
+        assertTrue(contentStore != address(0));
+
+        // Verify registry
+        assertEq(factory.contentStoreByApp(address(appToken2)), contentStore);
+    }
+
+    function test_DeployContentStoreWithELTAFee() public {
+        // Create a new app token
+        AppToken appToken2 = new AppToken(
+            "TestApp2", "TEST2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
+        );
+
         // Set fee
         vm.prank(factoryOwner);
         factory.setCreateFee(CREATE_FEE);
@@ -179,36 +199,51 @@ contract AppModuleFactoryTest is Test {
         uint256 creatorBalanceBefore = elta.balanceOf(appCreator);
 
         vm.prank(appCreator);
-        factory.deployModules(APP_ID, address(appToken), "Test Content", "TCNT", "ipfs://contract");
+        factory.deployContentStore(APP_ID, address(appToken2), address(0));
 
         // Verify fee was transferred
         assertEq(elta.balanceOf(treasury), treasuryBalanceBefore + CREATE_FEE);
         assertEq(elta.balanceOf(appCreator), creatorBalanceBefore - CREATE_FEE);
     }
 
-    function test_RevertWhen_DeployModulesNotTokenOwner() public {
-        vm.expectRevert(AppModuleFactory.NotTokenOwner.selector);
+    function test_RevertWhen_DeployContentStoreNotTokenOwner() public {
+        vm.expectRevert(ContentStoreFactory.NotTokenOwner.selector);
         vm.prank(user1);
-        factory.deployModules(APP_ID, address(appToken), "Test Content", "TCNT", "ipfs://contract");
+        factory.deployContentStore(APP_ID, address(appToken), address(content721));
     }
 
-    function test_RevertWhen_DeployModulesTwice() public {
-        vm.prank(appCreator);
-        factory.deployModules(APP_ID, address(appToken), "Test Content", "TCNT", "ipfs://contract");
+    function test_RevertWhen_DeployContentStoreNotContent721Owner() public {
+        // Create a new content721 owned by someone else
+        InAppContent721 otherContent721 =
+            new InAppContent721(APP_ID, "Other", "OTHER", user1, address(0), "ipfs://other");
 
-        vm.expectRevert(AppModuleFactory.ModuleAlreadyExists.selector);
+        vm.expectRevert(ContentStoreFactory.NotContent721Owner.selector);
         vm.prank(appCreator);
-        factory.deployModules(APP_ID, address(appToken), "Test Content 2", "TCNT2", "ipfs://contract2");
+        factory.deployContentStore(APP_ID, address(appToken), address(otherContent721));
     }
 
-    function test_RevertWhen_DeployModulesWithoutELTAApproval() public {
+    function test_RevertWhen_DeployContentStoreTwice() public {
+        vm.prank(appCreator);
+        factory.deployContentStore(APP_ID, address(appToken), address(content721));
+
+        vm.expectRevert(ContentStoreFactory.AlreadyDeployed.selector);
+        vm.prank(appCreator);
+        factory.deployContentStore(APP_ID, address(appToken), address(content721));
+    }
+
+    function test_RevertWhen_DeployContentStoreWithoutELTAApproval() public {
+        // Create a new app token
+        AppToken appToken2 = new AppToken(
+            "TestApp2", "TEST2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
+        );
+
         vm.prank(factoryOwner);
         factory.setCreateFee(CREATE_FEE);
 
         // Don't approve ELTA
         vm.expectRevert();
         vm.prank(appCreator);
-        factory.deployModules(APP_ID, address(appToken), "Test Content", "TCNT", "ipfs://contract");
+        factory.deployContentStore(APP_ID, address(appToken2), address(0));
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -276,69 +311,54 @@ contract AppModuleFactoryTest is Test {
     }
 
     function test_RevertWhen_SetDefaultProtocolFeeBpsTooHigh() public {
-        vm.expectRevert(AppModuleFactory.InvalidProtocolFeeBps.selector);
+        vm.expectRevert(ContentStoreFactory.InvalidProtocolFeeBps.selector);
         vm.prank(factoryOwner);
         factory.setDefaultProtocolFeeBps(2000); // > 15%
     }
 
     // ────────────────────────────────────────────────────────────────────────────
-    // GET MODULES TESTS
+    // VIEW FUNCTION TESTS
     // ────────────────────────────────────────────────────────────────────────────
 
-    function test_GetModules() public {
+    function test_GetContentStore() public {
         vm.prank(appCreator);
-        (address content721, address contentStore) =
-            factory.deployModules(APP_ID, address(appToken), "Test Content", "TCNT", "ipfs://contract");
+        address contentStore = factory.deployContentStore(APP_ID, address(appToken), address(content721));
 
-        (address retrievedContent721, address retrievedContentStore) = factory.getModules(address(appToken));
-
-        assertEq(retrievedContent721, content721);
-        assertEq(retrievedContentStore, contentStore);
+        assertEq(factory.getContentStore(address(appToken)), contentStore);
     }
 
-    function test_GetModulesNonExistent() public view {
-        (address content721, address contentStore) = factory.getModules(address(0x123));
-
-        assertEq(content721, address(0));
-        assertEq(contentStore, address(0));
+    function test_GetContentStoreNonExistent() public view {
+        assertEq(factory.getContentStore(address(0x123)), address(0));
     }
 
     // ────────────────────────────────────────────────────────────────────────────
     // INTEGRATION TESTS
     // ────────────────────────────────────────────────────────────────────────────
 
-    function test_MultipleAppsDeployModules() public {
-        // Create second app token
+    function test_FullWorkflow_DeployBothModules() public {
+        // Create a new app token
         AppToken appToken2 = new AppToken(
             "TestApp2", "TEST2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
         );
 
-        // Deploy modules for first app
+        // Step 1: Deploy content721 via InAppContent721Factory
         vm.prank(appCreator);
-        (address content721_1, address contentStore1) =
-            factory.deployModules(APP_ID, address(appToken), "App1 Content", "APP1", "ipfs://app1");
+        address newContent721 =
+            content721Factory.deployContent721(2, address(appToken2), "App2 Content", "APP2", "ipfs://app2");
 
-        // Deploy modules for second app
+        // Step 2: Deploy content store via ContentStoreFactory
         vm.prank(appCreator);
-        (address content721_2, address contentStore2) =
-            factory.deployModules(2, address(appToken2), "App2 Content", "APP2", "ipfs://app2");
+        address contentStore = factory.deployContentStore(2, address(appToken2), newContent721);
 
-        // Verify both are registered correctly
-        assertEq(factory.content721ByApp(address(appToken)), content721_1);
-        assertEq(factory.contentStoreByApp(address(appToken)), contentStore1);
-        assertEq(factory.content721ByApp(address(appToken2)), content721_2);
-        assertEq(factory.contentStoreByApp(address(appToken2)), contentStore2);
-
-        // Verify they're different
-        assertTrue(content721_1 != content721_2);
-        assertTrue(contentStore1 != contentStore2);
+        // Verify everything is set up correctly
+        assertEq(InAppContent721(newContent721).minter(), contentStore);
+        assertEq(content721Factory.content721ByApp(address(appToken2)), newContent721);
+        assertEq(factory.contentStoreByApp(address(appToken2)), contentStore);
     }
 
-    function test_DeployModulesAndListContent() public {
-        // Deploy modules
+    function test_DeployContentStoreAndListContent() public {
         vm.prank(appCreator);
-        (, address contentStore) =
-            factory.deployModules(APP_ID, address(appToken), "Test Content", "TCNT", "ipfs://contract");
+        address contentStore = factory.deployContentStore(APP_ID, address(appToken), address(content721));
 
         // List content
         vm.prank(appCreator);
@@ -352,11 +372,9 @@ contract AppModuleFactoryTest is Test {
         assertTrue(content.active);
     }
 
-    function test_DeployModulesAndMintViaPurchase() public {
-        // Deploy modules
+    function test_DeployContentStoreAndMintViaPurchase() public {
         vm.prank(appCreator);
-        (address content721, address contentStore) =
-            factory.deployModules(APP_ID, address(appToken), "Test Content", "TCNT", "ipfs://contract");
+        address contentStore = factory.deployContentStore(APP_ID, address(appToken), address(content721));
 
         // List content
         vm.prank(appCreator);
@@ -374,25 +392,42 @@ contract AppModuleFactoryTest is Test {
         vm.stopPrank();
 
         // Verify token was minted
-        assertEq(InAppContent721(content721).ownerOf(tokenId), user1);
+        assertEq(content721.ownerOf(tokenId), user1);
     }
 
-    // ────────────────────────────────────────────────────────────────────────────
-    // EDGE CASES
-    // ────────────────────────────────────────────────────────────────────────────
+    function test_MultipleAppsDeployContentStores() public {
+        // Create second app token
+        AppToken appToken2 = new AppToken(
+            "TestApp2", "TEST2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
+        );
 
-    function test_DeployModulesWithZeroFee() public {
+        // Deploy content stores for both apps
+        vm.prank(appCreator);
+        address contentStore1 = factory.deployContentStore(APP_ID, address(appToken), address(content721));
+
+        vm.prank(appCreator);
+        address contentStore2 = factory.deployContentStore(2, address(appToken2), address(0));
+
+        // Verify both are registered correctly
+        assertEq(factory.contentStoreByApp(address(appToken)), contentStore1);
+        assertEq(factory.contentStoreByApp(address(appToken2)), contentStore2);
+
+        // Verify they're different
+        assertTrue(contentStore1 != contentStore2);
+    }
+
+    function test_DeployContentStoreWithZeroFee() public {
         // Fee is already 0 by default
         assertEq(factory.createFeeELTA(), 0);
 
         // Should work without approval
         vm.prank(appCreator);
-        factory.deployModules(APP_ID, address(appToken), "Test Content", "TCNT", "ipfs://contract");
+        factory.deployContentStore(APP_ID, address(appToken), address(content721));
     }
 
-    function test_DeployModulesWithFactoryELTADisabled() public {
+    function test_DeployContentStoreWithFactoryELTADisabled() public {
         // Factory with ELTA disabled
-        AppModuleFactory noEltaFactory = new AppModuleFactory(
+        ContentStoreFactory noEltaFactory = new ContentStoreFactory(
             address(0), address(usdc), factoryOwner, treasury, address(feeCollector), DEFAULT_PROTOCOL_FEE_BPS
         );
 
@@ -401,6 +436,6 @@ contract AppModuleFactoryTest is Test {
 
         // Should work without ELTA transfer
         vm.prank(appCreator);
-        noEltaFactory.deployModules(APP_ID, address(appToken), "Test Content", "TCNT", "ipfs://contract");
+        noEltaFactory.deployContentStore(APP_ID, address(appToken), address(content721));
     }
 }

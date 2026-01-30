@@ -3,7 +3,8 @@ pragma solidity ^0.8.24;
 
 import {InAppContent721} from "../src/apps/InAppContent721.sol";
 import {ContentStore, PaymentTokenType} from "../src/apps/ContentStore.sol";
-import {AppModuleFactory} from "../src/apps/AppModuleFactory.sol";
+import {InAppContent721Factory} from "../src/apps/InAppContent721Factory.sol";
+import {ContentStoreFactory} from "../src/apps/ContentStoreFactory.sol";
 import {AppStakingVault} from "../src/apps/AppStakingVault.sol";
 import {AppToken} from "../src/apps/AppToken.sol";
 import {Tournament} from "../src/apps/Tournament.sol";
@@ -51,18 +52,23 @@ contract DeployAppModules is Script {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        // 1. Deploy AppModuleFactory (deploys InAppContent721 + ContentStore)
-        AppModuleFactory factory =
-            new AppModuleFactory(eltaAddress, usdcAddress, deployer, treasury, feeCollector, defaultProtocolFeeBps);
-        console.log("AppModuleFactory deployed at:", address(factory));
+        // 1. Deploy InAppContent721Factory (deploys NFT collections)
+        InAppContent721Factory content721Factory = new InAppContent721Factory(eltaAddress, deployer, treasury);
+        console.log("InAppContent721Factory deployed at:", address(content721Factory));
 
-        // 2. Deploy TournamentFactory
+        // 2. Deploy ContentStoreFactory (deploys sales contracts)
+        ContentStoreFactory contentStoreFactory =
+            new ContentStoreFactory(eltaAddress, usdcAddress, deployer, treasury, feeCollector, defaultProtocolFeeBps);
+        console.log("ContentStoreFactory deployed at:", address(contentStoreFactory));
+
+        // 3. Deploy TournamentFactory
         TournamentFactory tournamentFactory = new TournamentFactory(deployer, treasury);
         console.log("TournamentFactory deployed at:", address(tournamentFactory));
 
-        // 3. Set creation fee (optional)
+        // 4. Set creation fees (optional)
         if (createFeeELTA > 0 && eltaAddress != address(0)) {
-            factory.setCreateFee(createFeeELTA);
+            content721Factory.setCreateFee(createFeeELTA);
+            contentStoreFactory.setCreateFee(createFeeELTA);
             console.log("Set createFeeELTA to:", createFeeELTA);
         }
 
@@ -70,11 +76,13 @@ contract DeployAppModules is Script {
 
         // Log deployment info
         console.log("\n=== Deployment Complete ===");
-        console.log("AppModuleFactory:", address(factory));
+        console.log("InAppContent721Factory:", address(content721Factory));
+        console.log("ContentStoreFactory:", address(contentStoreFactory));
         console.log("TournamentFactory:", address(tournamentFactory));
-        console.log("Treasury:", factory.treasury());
-        console.log("Create Fee:", factory.createFeeELTA());
-        console.log("Default Protocol Fee:", factory.defaultProtocolFeeBps(), "bps");
+        console.log("Treasury:", content721Factory.treasury());
+        console.log("Content721 Create Fee:", content721Factory.createFeeELTA());
+        console.log("ContentStore Create Fee:", contentStoreFactory.createFeeELTA());
+        console.log("Default Protocol Fee:", contentStoreFactory.defaultProtocolFeeBps(), "bps");
     }
 }
 
@@ -101,9 +109,12 @@ contract DeployFullExample is Script {
         console.log("ELTA deployed at:", address(elta));
 
         // 2. Deploy factories
-        AppModuleFactory factory =
-            new AppModuleFactory(address(elta), usdcAddress, deployer, treasury, feeCollector, 500);
-        console.log("AppModuleFactory deployed at:", address(factory));
+        InAppContent721Factory content721Factory = new InAppContent721Factory(address(elta), deployer, treasury);
+        console.log("InAppContent721Factory deployed at:", address(content721Factory));
+
+        ContentStoreFactory contentStoreFactory =
+            new ContentStoreFactory(address(elta), usdcAddress, deployer, treasury, feeCollector, 500);
+        console.log("ContentStoreFactory deployed at:", address(contentStoreFactory));
 
         TournamentFactory tournamentFactory = new TournamentFactory(deployer, treasury);
         console.log("TournamentFactory deployed at:", address(tournamentFactory));
@@ -124,7 +135,8 @@ contract DeployFullExample is Script {
 
         console.log("\n=== Deployment Summary ===");
         console.log("ELTA:", address(elta));
-        console.log("AppModuleFactory:", address(factory));
+        console.log("InAppContent721Factory:", address(content721Factory));
+        console.log("ContentStoreFactory:", address(contentStoreFactory));
         console.log("TournamentFactory:", address(tournamentFactory));
         console.log("\nNote: App deployment disabled - see MIGRATION_GUIDE.md for updates needed");
 
@@ -132,10 +144,11 @@ contract DeployFullExample is Script {
         return;
 
         /* COMMENTED OUT - Needs AppToken migration
-        // 4. Deploy modules via AppModuleFactory
-        // AppModuleFactory now deploys InAppContent721 + ContentStore
+        // 4. Deploy modules via factories
         uint256 appId = 1;
-        (address content721, address contentStore) = factory.deployModules(
+        
+        // Step 1: Deploy NFT collection
+        address content721 = content721Factory.deployContent721(
             appId,
             address(appToken),
             "NeuroPong Content",
@@ -143,6 +156,13 @@ contract DeployFullExample is Script {
             "ipfs://QmContractMetadata"
         );
         console.log("InAppContent721 deployed at:", content721);
+        
+        // Step 2: Deploy content store (links to NFT and sets minter)
+        address contentStore = contentStoreFactory.deployContentStore(
+            appId,
+            address(appToken),
+            content721
+        );
         console.log("ContentStore deployed at:", contentStore);
 
         // 5. List sample content
@@ -179,7 +199,8 @@ contract DeployFullExample is Script {
         // Summary
         console.log("\n=== Deployment Summary ===");
         console.log("ELTA:", address(elta));
-        console.log("AppModuleFactory:", address(factory));
+        console.log("InAppContent721Factory:", address(content721Factory));
+        console.log("ContentStoreFactory:", address(contentStoreFactory));
         console.log("TournamentFactory:", address(tournamentFactory));
         console.log("AppToken:", address(appToken));
         console.log("InAppContent721:", content721);

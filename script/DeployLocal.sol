@@ -24,7 +24,8 @@ import {ElataPoints} from "../src/experience/ElataPoints.sol";
 import {ElataGovernor} from "../src/governance/ElataGovernor.sol";
 import {ElataTimelock} from "../src/governance/ElataTimelock.sol";
 import {AppFactory} from "../src/apps/AppFactory.sol";
-import {AppModuleFactory} from "../src/apps/AppModuleFactory.sol";
+import {InAppContent721Factory} from "../src/apps/InAppContent721Factory.sol";
+import {ContentStoreFactory} from "../src/apps/ContentStoreFactory.sol";
 import {TournamentFactory} from "../src/apps/TournamentFactory.sol";
 
 // Rewards
@@ -71,7 +72,8 @@ contract DeployLocal is Script {
         ElataGovernor governor;
         TimelockController timelock;
         AppFactory appFactory;
-        AppModuleFactory appModuleFactory;
+        InAppContent721Factory content721Factory;
+        ContentStoreFactory contentStoreFactory;
         TournamentFactory tournamentFactory;
         // Rewards
         RewardsDistributor rewardsDistributor;
@@ -175,8 +177,12 @@ contract DeployLocal is Script {
         );
         console2.log("   AppFactory:", address(contracts.appFactory));
 
-        // AppModuleFactory
-        contracts.appModuleFactory = new AppModuleFactory(
+        // InAppContent721Factory
+        contracts.content721Factory = new InAppContent721Factory(address(contracts.elta), deployer, treasury);
+        console2.log("   InAppContent721Factory:", address(contracts.content721Factory));
+
+        // ContentStoreFactory
+        contracts.contentStoreFactory = new ContentStoreFactory(
             address(contracts.elta),
             address(contracts.usdc),
             deployer,
@@ -184,7 +190,7 @@ contract DeployLocal is Script {
             address(contracts.appFeeRouter),
             500 // 5% default protocol fee
         );
-        console2.log("   AppModuleFactory:", address(contracts.appModuleFactory));
+        console2.log("   ContentStoreFactory:", address(contracts.contentStoreFactory));
 
         // TournamentFactory
         contracts.tournamentFactory = new TournamentFactory(deployer, treasury);
@@ -342,8 +348,11 @@ contract DeployLocal is Script {
             '    "AppFactory": "',
             vm.toString(address(contracts.appFactory)),
             '",\n',
-            '    "AppModuleFactory": "',
-            vm.toString(address(contracts.appModuleFactory)),
+            '    "InAppContent721Factory": "',
+            vm.toString(address(contracts.content721Factory)),
+            '",\n',
+            '    "ContentStoreFactory": "',
+            vm.toString(address(contracts.contentStoreFactory)),
             '",\n',
             '    "TournamentFactory": "',
             vm.toString(address(contracts.tournamentFactory)),

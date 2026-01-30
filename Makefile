@@ -83,7 +83,6 @@ restart-local: ## Restart local Anvil
 
 ci: fmt-check build test ## Run CI checks locally
 	@echo "✅ All CI checks passed!"
-	@echo "ℹ️  Note: Some contracts (AppModuleFactory) exceed EIP-170 limit but are acceptable for L2 deployment"
 
 pre-push: fmt-check build test gas-report ## Run all pre-push checks
 	@echo "✅ Ready to push!"
