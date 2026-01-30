@@ -30,12 +30,14 @@ out = "out"
 libs = ["lib"]
 solc_version = "0.8.24"
 optimizer = true
-optimizer_runs = 100
+optimizer_runs = 50
 evm_version = "paris"
 via_ir = true
-bytecode_hash = "ipfs"
+bytecode_hash = "none"
 ffi = true
-# CI profile: reduced optimizer_runs to minimize memory usage with via_ir
+cbor_metadata = false
+sparse_mode = true
+# CI profile: minimal settings to reduce memory with via_ir
 
 [profile.ci.fmt]
 # Ignore external/vendor and build artifacts from CI formatting scope

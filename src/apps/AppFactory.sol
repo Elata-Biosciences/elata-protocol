@@ -112,6 +112,15 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
     mapping(uint256 => App) public apps;
     mapping(address => uint256) public tokenToAppId;
 
+    /// @dev Internal struct to reduce stack depth during app creation
+    struct DeploymentAddresses {
+        address token;
+        address vault;
+        address curve;
+        address vestingWallet;
+        address ecosystemVault;
+    }
+
     // Events
     event AppCreated(
         uint256 indexed appId,
@@ -246,22 +255,37 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         uint256 tokenSupply = supply == 0 ? defaultSupply : supply;
         require(tokenSupply > 0, "Invalid supply");
 
-        // Collect creation fees
+        // Collect fees and deploy core contracts
+        _collectCreationFees();
+        DeploymentAddresses memory addrs = _deployContracts(name, symbol, tokenSupply);
+
+        // Configure and finalize app
+        _configureApp(addrs, tokenSupply, operators);
+
+        // Register and emit
+        appId = _registerApp(addrs, tokenSupply);
+    }
+
+    /// @dev Collect creation fees from caller
+    function _collectCreationFees() internal {
         require(ELTA.transferFrom(msg.sender, address(this), creationFee + seedElta), "Transfer failed");
 
-        // Route creation fee through fee pipeline (appId=0 for protocol-level fees)
         if (creationFee > 0) {
             if (feeCollector != address(0)) {
                 ELTA.approve(feeCollector, creationFee);
                 IFeeCollector(feeCollector).depositElta(0, creationFee);
             } else {
-                // Fallback: direct to treasury
                 require(ELTA.transfer(treasury, creationFee), "Transfer failed");
             }
         }
+    }
 
-        // Deploy contracts via library (reduces AppFactory size)
-        address tokenAddr = AppDeploymentLib.deployToken(
+    /// @dev Deploy all contracts for new app
+    function _deployContracts(string calldata name, string calldata symbol, uint256 tokenSupply)
+        internal
+        returns (DeploymentAddresses memory addrs)
+    {
+        addrs.token = AppDeploymentLib.deployToken(
             name,
             symbol,
             defaultDecimals,
@@ -273,20 +297,20 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
             address(rewardsDistributor),
             treasury
         );
-        address vaultAddr = AppDeploymentLib.deployVault(name, symbol, tokenAddr, address(this));
+        addrs.vault = AppDeploymentLib.deployVault(name, symbol, addrs.token, address(this));
 
-        // Read activation delay and max duration from ProtocolConfig (with fallbacks)
+        // Read protocol config with fallbacks
         uint256 _activationDelay =
             protocolConfig != address(0) ? IProtocolConfig(protocolConfig).activationDelay() : 1 hours;
         uint256 _maxDuration =
             protocolConfig != address(0) ? IProtocolConfig(protocolConfig).maxCurveDuration() : 30 days;
 
-        address curveAddr = AppDeploymentLib.deployCurve(
+        addrs.curve = AppDeploymentLib.deployCurve(
             AppBondingCurve.InitParams({
                 appId: appCount,
                 factory: address(this),
                 elta: ELTA,
-                token: AppToken(tokenAddr),
+                token: AppToken(addrs.token),
                 router: router,
                 targetRaisedElta: targetRaisedElta,
                 lpLockDuration: lpLockDuration,
@@ -303,46 +327,51 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
             })
         );
 
-        // Configure token & curve with 50/25/25 split
-        uint256 curveShare = tokenSupply / 2; // 50% to bonding curve
-        uint256 teamShare = tokenSupply / 4; // 25% to team vesting
-        uint256 ecosystemShare = tokenSupply - curveShare - teamShare; // 25% to ecosystem
-
-        AppToken token = AppToken(tokenAddr);
-
-        // Set vault address on token (for fee exemptions)
-        token.setVault(vaultAddr);
-
-        // Mark bonding curve as exempt from transfer fees
-        token.setTransferFeeExempt(curveAddr, true);
-
-        // Deploy vesting wallet for team allocation
-        AppVestingWallet vestingWallet = new AppVestingWallet(
-            appCount,
-            tokenAddr,
-            msg.sender, // beneficiary = creator (team multisig)
-            uint64(block.timestamp), // start = now
-            DEFAULT_VESTING_CLIFF,
-            DEFAULT_VESTING_DURATION,
-            msg.sender // admin = creator
+        // Deploy vesting and ecosystem vaults
+        addrs.vestingWallet = address(
+            new AppVestingWallet(
+                appCount, addrs.token, msg.sender, uint64(block.timestamp), DEFAULT_VESTING_CLIFF, DEFAULT_VESTING_DURATION, msg.sender
+            )
         );
-        address vestingWalletAddr = address(vestingWallet);
+        addrs.ecosystemVault = address(new AppEcosystemVault(appCount, addrs.token, msg.sender));
+    }
 
-        // Deploy ecosystem vault
-        AppEcosystemVault ecosystemVault = new AppEcosystemVault(appCount, tokenAddr, msg.sender);
-        address ecosystemVaultAddr = address(ecosystemVault);
+    /// @dev Configure token, mint allocations, and set up roles
+    function _configureApp(DeploymentAddresses memory addrs, uint256 tokenSupply, address[] calldata operators)
+        internal
+    {
+        uint256 curveShare = tokenSupply / 2;
+        uint256 teamShare = tokenSupply / 4;
+        uint256 ecosystemShare = tokenSupply - curveShare - teamShare;
 
-        // Mark vesting and ecosystem vaults as exempt from transfer fees
-        token.setTransferFeeExempt(vestingWalletAddr, true);
-        token.setTransferFeeExempt(ecosystemVaultAddr, true);
+        AppToken token = AppToken(addrs.token);
 
-        // Mint tokens according to 50/25/25 split
-        token.mint(curveAddr, curveShare);
-        token.mint(vestingWalletAddr, teamShare);
-        token.mint(ecosystemVaultAddr, ecosystemShare);
+        // Configure token
+        token.setVault(addrs.vault);
+        token.setTransferFeeExempt(addrs.curve, true);
+        token.setTransferFeeExempt(addrs.vestingWallet, true);
+        token.setTransferFeeExempt(addrs.ecosystemVault, true);
+
+        // Mint tokens
+        token.mint(addrs.curve, curveShare);
+        token.mint(addrs.vestingWallet, teamShare);
+        token.mint(addrs.ecosystemVault, ecosystemShare);
         token.revokeMinter(address(this));
 
-        // Grant granular roles to operators
+        // Grant roles
+        _grantOperatorRoles(token, operators);
+        token.grantRole(token.DEFAULT_ADMIN_ROLE(), msg.sender);
+        token.revokeRole(token.DEFAULT_ADMIN_ROLE(), address(this));
+
+        // Initialize curve and transfer ownership
+        require(ELTA.transfer(addrs.curve, seedElta), "Transfer failed");
+        AppBondingCurve(addrs.curve).initializeCurve(seedElta, curveShare);
+        AppStakingVault(addrs.vault).transferOwnership(msg.sender);
+        appRewardsDistributor.registerApp(addrs.vault, addrs.token);
+    }
+
+    /// @dev Grant operator roles to addresses
+    function _grantOperatorRoles(AppToken token, address[] calldata operators) internal {
         for (uint256 i = 0; i < operators.length; i++) {
             if (operators[i] != address(0)) {
                 token.grantRole(token.APP_OPERATOR_ROLE(), operators[i]);
@@ -350,30 +379,18 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
                 token.grantRole(token.FEE_EXEMPT_MANAGER_ROLE(), operators[i]);
             }
         }
+    }
 
-        // Transfer admin role to creator
-        token.grantRole(token.DEFAULT_ADMIN_ROLE(), msg.sender);
-        token.revokeRole(token.DEFAULT_ADMIN_ROLE(), address(this));
-
-        require(ELTA.transfer(curveAddr, seedElta), "Transfer failed");
-        AppBondingCurve(curveAddr).initializeCurve(seedElta, curveShare);
-
-        // Transfer vault ownership to creator
-        AppStakingVault vault = AppStakingVault(vaultAddr);
-        vault.transferOwnership(msg.sender);
-
-        // Register vault in rewards distributor with token mapping
-        appRewardsDistributor.registerApp(vaultAddr, tokenAddr);
-
-        // Register app
+    /// @dev Register app and emit event
+    function _registerApp(DeploymentAddresses memory addrs, uint256 tokenSupply) internal returns (uint256 appId) {
         appId = appCount++;
         apps[appId] = App({
             creator: msg.sender,
-            token: tokenAddr,
-            vault: vaultAddr,
-            curve: curveAddr,
-            vestingWallet: vestingWalletAddr,
-            ecosystemVault: ecosystemVaultAddr,
+            token: addrs.token,
+            vault: addrs.vault,
+            curve: addrs.curve,
+            vestingWallet: addrs.vestingWallet,
+            ecosystemVault: addrs.ecosystemVault,
             pair: address(0),
             locker: address(0),
             createdAt: uint64(block.timestamp),
@@ -383,21 +400,15 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
             finalSupply: 0
         });
 
-        tokenToAppId[tokenAddr] = appId;
+        tokenToAppId[addrs.token] = appId;
 
         emit AppCreated(
-            appId, msg.sender, tokenAddr, vaultAddr, curveAddr, vestingWalletAddr, ecosystemVaultAddr, curveShare
+            appId, msg.sender, addrs.token, addrs.vault, addrs.curve, addrs.vestingWallet, addrs.ecosystemVault, tokenSupply / 2
         );
 
-        // Register creator with FeeManager for fee share
         if (feeManager != address(0)) {
             IFeeManager(feeManager).setAppCreator(appId, msg.sender);
         }
-
-        // NOTE: Metadata must be set by creator in separate transaction
-        // token.updateMetadata() requires msg.sender == appCreator
-        // Creator can call AppToken(tokenAddr).updateMetadata(description, imageURI, website) after
-        // launch
     }
 
     /**
