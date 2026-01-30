@@ -62,6 +62,8 @@ contract DesignValidationTest is Test {
         address content721Addr =
             content721Factory.deployContent721(APP_ID, address(appToken), "TestApp Content", "TCNT", "ipfs://contract");
         address contentStoreAddr = contentStoreFactory.deployContentStore(APP_ID, address(appToken), content721Addr);
+        // Manually set minter on content721 (factory no longer does this automatically)
+        InAppContent721(content721Addr).setMinter(contentStoreAddr);
         vm.stopPrank();
 
         content721 = InAppContent721(content721Addr);

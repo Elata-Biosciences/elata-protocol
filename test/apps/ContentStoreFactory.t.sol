@@ -154,6 +154,10 @@ contract ContentStoreFactoryTest is Test {
         vm.prank(appCreator);
         address contentStore = factory.deployContentStore(APP_ID, address(appToken), address(content721));
 
+        // Manually set minter (factory no longer does this automatically)
+        vm.prank(appCreator);
+        content721.setMinter(contentStore);
+
         // Verify address is non-zero
         assertTrue(contentStore != address(0));
 
@@ -170,14 +174,23 @@ contract ContentStoreFactoryTest is Test {
         assertEq(content721.minter(), contentStore);
     }
 
-    function test_DeployContentStoreWithoutContent721() public {
-        // Create a new app token that has no content721
+    function test_DeployContentStoreForNewApp() public {
+        // Create a new app token
         AppToken appToken2 = new AppToken(
             "TestApp2", "TEST2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
         );
 
+        // Deploy content721 for the new app (ContentStore requires content721)
         vm.prank(appCreator);
-        address contentStore = factory.deployContentStore(APP_ID, address(appToken2), address(0));
+        address content721Addr2 =
+            content721Factory.deployContent721(2, address(appToken2), "Test Content 2", "TCNT2", "ipfs://contract2");
+
+        vm.prank(appCreator);
+        address contentStore = factory.deployContentStore(2, address(appToken2), content721Addr2);
+
+        // Manually set minter
+        vm.prank(appCreator);
+        InAppContent721(content721Addr2).setMinter(contentStore);
 
         // Verify address is non-zero
         assertTrue(contentStore != address(0));
@@ -192,6 +205,11 @@ contract ContentStoreFactoryTest is Test {
             "TestApp2", "TEST2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
         );
 
+        // Deploy content721 for the new app (ContentStore requires content721)
+        vm.prank(appCreator);
+        address content721Addr2 =
+            content721Factory.deployContent721(2, address(appToken2), "Test Content 2", "TCNT2", "ipfs://contract2");
+
         // Set fee
         vm.prank(factoryOwner);
         factory.setCreateFee(CREATE_FEE);
@@ -204,7 +222,7 @@ contract ContentStoreFactoryTest is Test {
         uint256 creatorBalanceBefore = elta.balanceOf(appCreator);
 
         vm.prank(appCreator);
-        factory.deployContentStore(APP_ID, address(appToken2), address(0));
+        factory.deployContentStore(2, address(appToken2), content721Addr2);
 
         // Verify fee was transferred
         assertEq(elta.balanceOf(treasury), treasuryBalanceBefore + CREATE_FEE);
@@ -229,7 +247,11 @@ contract ContentStoreFactoryTest is Test {
 
     function test_RevertWhen_DeployContentStoreTwice() public {
         vm.prank(appCreator);
-        factory.deployContentStore(APP_ID, address(appToken), address(content721));
+        address contentStore = factory.deployContentStore(APP_ID, address(appToken), address(content721));
+
+        // Manually set minter
+        vm.prank(appCreator);
+        content721.setMinter(contentStore);
 
         vm.expectRevert(ContentStoreFactory.AlreadyDeployed.selector);
         vm.prank(appCreator);
@@ -242,13 +264,18 @@ contract ContentStoreFactoryTest is Test {
             "TestApp2", "TEST2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
         );
 
+        // Deploy content721 for the new app (ContentStore requires content721)
+        vm.prank(appCreator);
+        address content721Addr2 =
+            content721Factory.deployContent721(2, address(appToken2), "Test Content 2", "TCNT2", "ipfs://contract2");
+
         vm.prank(factoryOwner);
         factory.setCreateFee(CREATE_FEE);
 
         // Don't approve ELTA
         vm.expectRevert();
         vm.prank(appCreator);
-        factory.deployContentStore(APP_ID, address(appToken2), address(0));
+        factory.deployContentStore(2, address(appToken2), content721Addr2);
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -329,6 +356,10 @@ contract ContentStoreFactoryTest is Test {
         vm.prank(appCreator);
         address contentStore = factory.deployContentStore(APP_ID, address(appToken), address(content721));
 
+        // Manually set minter
+        vm.prank(appCreator);
+        content721.setMinter(contentStore);
+
         assertEq(factory.getContentStore(address(appToken)), contentStore);
     }
 
@@ -355,6 +386,10 @@ contract ContentStoreFactoryTest is Test {
         vm.prank(appCreator);
         address contentStore = factory.deployContentStore(2, address(appToken2), newContent721);
 
+        // Step 3: Manually set minter on content721 (required step after factory deployment)
+        vm.prank(appCreator);
+        InAppContent721(newContent721).setMinter(contentStore);
+
         // Verify everything is set up correctly
         assertEq(InAppContent721(newContent721).minter(), contentStore);
         assertEq(content721Factory.content721ByApp(address(appToken2)), newContent721);
@@ -364,6 +399,10 @@ contract ContentStoreFactoryTest is Test {
     function test_DeployContentStoreAndListContent() public {
         vm.prank(appCreator);
         address contentStore = factory.deployContentStore(APP_ID, address(appToken), address(content721));
+
+        // Manually set minter
+        vm.prank(appCreator);
+        content721.setMinter(contentStore);
 
         // List content
         vm.prank(appCreator);
@@ -380,6 +419,10 @@ contract ContentStoreFactoryTest is Test {
     function test_DeployContentStoreAndMintViaPurchase() public {
         vm.prank(appCreator);
         address contentStore = factory.deployContentStore(APP_ID, address(appToken), address(content721));
+
+        // Manually set minter (required for content721 to accept mints from ContentStore)
+        vm.prank(appCreator);
+        content721.setMinter(contentStore);
 
         // List content
         vm.prank(appCreator);
@@ -406,12 +449,25 @@ contract ContentStoreFactoryTest is Test {
             "TestApp2", "TEST2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
         );
 
+        // Deploy content721 for second app (ContentStore requires content721)
+        vm.prank(appCreator);
+        address content721Addr2 =
+            content721Factory.deployContent721(2, address(appToken2), "Test Content 2", "TCNT2", "ipfs://contract2");
+
         // Deploy content stores for both apps
         vm.prank(appCreator);
         address contentStore1 = factory.deployContentStore(APP_ID, address(appToken), address(content721));
 
+        // Manually set minter for first app
         vm.prank(appCreator);
-        address contentStore2 = factory.deployContentStore(2, address(appToken2), address(0));
+        content721.setMinter(contentStore1);
+
+        vm.prank(appCreator);
+        address contentStore2 = factory.deployContentStore(2, address(appToken2), content721Addr2);
+
+        // Manually set minter for second app
+        vm.prank(appCreator);
+        InAppContent721(content721Addr2).setMinter(contentStore2);
 
         // Verify both are registered correctly
         assertEq(factory.contentStoreByApp(address(appToken)), contentStore1);
@@ -427,7 +483,11 @@ contract ContentStoreFactoryTest is Test {
 
         // Should work without approval
         vm.prank(appCreator);
-        factory.deployContentStore(APP_ID, address(appToken), address(content721));
+        address contentStore = factory.deployContentStore(APP_ID, address(appToken), address(content721));
+
+        // Manually set minter
+        vm.prank(appCreator);
+        content721.setMinter(contentStore);
     }
 
     function test_DeployContentStoreWithFactoryELTADisabled() public {
@@ -441,6 +501,10 @@ contract ContentStoreFactoryTest is Test {
 
         // Should work without ELTA transfer
         vm.prank(appCreator);
-        noEltaFactory.deployContentStore(APP_ID, address(appToken), address(content721));
+        address contentStore = noEltaFactory.deployContentStore(APP_ID, address(appToken), address(content721));
+
+        // Manually set minter
+        vm.prank(appCreator);
+        content721.setMinter(contentStore);
     }
 }

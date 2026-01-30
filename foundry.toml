@@ -30,11 +30,12 @@ out = "out"
 libs = ["lib"]
 solc_version = "0.8.24"
 optimizer = true
-optimizer_runs = 500
+optimizer_runs = 200
 evm_version = "paris"
-via_ir = true
+via_ir = false
 bytecode_hash = "ipfs"
-# CI profile: optimize for gas efficiency and size constraints
+ffi = true
+# CI profile: disable via_ir to prevent OOM on GitHub Actions (7GB RAM limit)
 
 [profile.ci.fmt]
 # Ignore external/vendor and build artifacts from CI formatting scope

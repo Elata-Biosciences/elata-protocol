@@ -178,10 +178,8 @@ contract ContentStoreFactory is Ownable {
 
         contentStore = address(new ContentStore(config));
 
-        // If content721 is provided, set ContentStore as minter
-        if (content721 != address(0)) {
-            InAppContent721(content721).setMinter(contentStore);
-        }
+        // Note: Caller must manually call content721.setMinter(contentStore) after deployment
+        // The factory cannot do this as it's not the owner of the content721 contract
 
         // Register deployment
         contentStoreByApp[appToken] = contentStore;
