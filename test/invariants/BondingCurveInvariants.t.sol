@@ -112,7 +112,9 @@ contract BondingCurveInvariants is Test {
             governance,
             1 hours, // activationDelay
             30 days, // maxDuration
-            creator // _creator
+            creator, // _creator
+            address(0), // feeCollector
+            address(0) // referralRegistry
         );
 
         // Seed the curve with ELTA and tokens

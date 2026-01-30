@@ -328,7 +328,8 @@ contract DesignValidationTest is Test {
         AppStakingVault vault2 = new AppStakingVault("App2", "APP2", IERC20(address(app2)), appCreator);
 
         vm.startPrank(appCreator);
-        address content721_2 = content721Factory.deployContent721(2, address(app2), "App2 Content", "APP2", "ipfs://app2");
+        address content721_2 =
+            content721Factory.deployContent721(2, address(app2), "App2 Content", "APP2", "ipfs://app2");
         address contentStore2 = contentStoreFactory.deployContentStore(2, address(app2), content721_2);
         vm.stopPrank();
 

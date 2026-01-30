@@ -156,7 +156,9 @@ contract FrontRunningAttacks is Test {
             governance,
             0,
             365 days,
-            creator
+            creator,
+            address(0), // feeCollector
+            address(0) // referralRegistry
         );
 
         // Initialize curve
@@ -330,7 +332,9 @@ contract FrontRunningAttacks is Test {
             governance,
             1 hours, // 1 hour activation delay
             365 days,
-            creator
+            creator,
+            address(0), // feeCollector
+            address(0) // referralRegistry
         );
 
         // Initialize
@@ -401,7 +405,9 @@ contract FrontRunningAttacks is Test {
             governance,
             1 hours, // activation delay
             365 days,
-            creator
+            creator,
+            address(0), // feeCollector
+            address(0) // referralRegistry
         );
 
         // Initialize
@@ -581,13 +587,15 @@ contract FrontRunningAttacks is Test {
         vm.stopPrank();
     }
 
-    function testFuzz_FrontRun_PriceMonotonic(uint256[] calldata buyAmounts) public {
-        vm.assume(buyAmounts.length > 0 && buyAmounts.length <= 10);
+    function testFuzz_FrontRun_PriceMonotonic(uint256 numBuys, uint256 seed) public {
+        // Use bound on scalar to avoid vm.assume rejection issues with arrays
+        numBuys = bound(numBuys, 1, 10);
 
         uint256 lastPrice = curve.getCurrentPrice();
 
-        for (uint256 i = 0; i < buyAmounts.length; i++) {
-            uint256 amount = bound(buyAmounts[i], 1 ether, 200 ether);
+        for (uint256 i = 0; i < numBuys; i++) {
+            // Generate pseudo-random amounts from seed
+            uint256 amount = bound(uint256(keccak256(abi.encodePacked(seed, i))), 1 ether, 200 ether);
 
             // Check if we'd graduate
             if (curve.reserveElta() + amount >= TARGET_RAISED) break;

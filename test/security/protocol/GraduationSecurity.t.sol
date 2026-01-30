@@ -230,7 +230,9 @@ contract GraduationSecurity is Test {
             governance,
             1 hours, // activationDelay
             30 days, // maxDuration
-            creator
+            creator,
+            address(0), // feeCollector
+            address(0) // referralRegistry
         );
 
         // Seed curve with tokens

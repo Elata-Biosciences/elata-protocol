@@ -5,11 +5,15 @@ import {AppFactory} from "../src/apps/AppFactory.sol";
 import {InAppContent721Factory} from "../src/apps/InAppContent721Factory.sol";
 import {ContentStoreFactory} from "../src/apps/ContentStoreFactory.sol";
 import {TournamentFactory} from "../src/apps/TournamentFactory.sol";
+import {ProtocolConfig} from "../src/core/ProtocolConfig.sol";
 import {ElataPoints} from "../src/experience/ElataPoints.sol";
 import {AppFeeRouter} from "../src/fees/AppFeeRouter.sol";
 import {FeeCollector} from "../src/fees/FeeCollector.sol";
 import {FeeManager} from "../src/fees/FeeManager.sol";
+import {FeeSwapper} from "../src/fees/FeeSwapper.sol";
 import {TreasuryUSDCVault} from "../src/fees/TreasuryUSDCVault.sol";
+import {ReferralRegistry} from "../src/modules/ReferralRegistry.sol";
+import {AirdropDistributor} from "../src/modules/AirdropDistributor.sol";
 import {ElataGovernor} from "../src/governance/ElataGovernor.sol";
 import {ElataTimelock} from "../src/governance/ElataTimelock.sol";
 import {IAppFeeRouter} from "../src/interfaces/IAppFeeRouter.sol";
@@ -81,6 +85,11 @@ contract Deploy is Script {
         FeeCollector feeCollector;
         FeeManager feeManager;
         TreasuryUSDCVault treasuryVault;
+        FeeSwapper feeSwapper;
+        // Additional Modules
+        ProtocolConfig protocolConfig;
+        ReferralRegistry referralRegistry;
+        AirdropDistributor airdropDistributor;
         // External addresses (from NetworkConfig)
         address uniswapV2Factory;
         address uniswapV2Router;
@@ -264,18 +273,39 @@ contract Deploy is Script {
             // Set swap router on FeeManager
             protocol.feeManager.setSwapRouter(routerAddress);
 
-            // FeeCollector
+            // FeeSwapper
+            protocol.feeSwapper = new FeeSwapper(
+                address(protocol.token), initialAdmin, address(protocol.timelock), address(protocol.feeManager)
+            );
+            console2.log("   FeeSwapper deployed at:", address(protocol.feeSwapper));
+
+            // FeeCollector (now with FeeSwapper)
             protocol.feeCollector = new FeeCollector(
-                address(protocol.token),
-                initialAdmin,
-                address(protocol.feeManager),
-                address(0) // No FeeSwapper
+                address(protocol.token), initialAdmin, address(protocol.feeManager), address(protocol.feeSwapper)
             );
             console2.log("   FeeCollector deployed at:", address(protocol.feeCollector));
+
+            // Authorize Uniswap router in FeeSwapper
+            protocol.feeSwapper.setRouterAllowed(routerAddress, true);
         } else {
             console2.log("\n[7/9] Fee Pipeline skipped (requires USDC and Uniswap)");
             console2.log("   For local development, use DeployLocal.sol");
         }
+
+        // ===== STEP 7.5: Deploy Additional Modules =====
+        console2.log("\n[7.5/9] Deploying Additional Modules...");
+
+        // ProtocolConfig
+        protocol.protocolConfig = new ProtocolConfig(initialAdmin, address(protocol.timelock));
+        console2.log("   ProtocolConfig deployed at:", address(protocol.protocolConfig));
+
+        // ReferralRegistry (500 bps = 5% referral fee)
+        protocol.referralRegistry = new ReferralRegistry(initialAdmin, address(protocol.token), 500);
+        console2.log("   ReferralRegistry deployed at:", address(protocol.referralRegistry));
+
+        // AirdropDistributor
+        protocol.airdropDistributor = new AirdropDistributor(initialAdmin, initialAdmin);
+        console2.log("   AirdropDistributor deployed at:", address(protocol.airdropDistributor));
 
         // ===== STEP 8: Configure Permissions =====
         console2.log("\n[8/9] Configuring Permissions...");
@@ -370,6 +400,29 @@ contract Deploy is Script {
             // Make FeeCollector an authorized depositor on FeeManager
             if (address(protocol.feeCollector) != address(0)) {
                 protocol.feeManager.setDepositor(address(protocol.feeCollector), true);
+            }
+
+            // Wire ReferralRegistry to FeeManager
+            if (address(protocol.referralRegistry) != address(0)) {
+                protocol.feeManager.setReferralRegistry(address(protocol.referralRegistry));
+            }
+        }
+
+        // ===== Wire AppFactory with additional modules =====
+        if (address(protocol.appFactory) != address(0)) {
+            // Wire ProtocolConfig
+            if (address(protocol.protocolConfig) != address(0)) {
+                protocol.appFactory.setProtocolConfig(address(protocol.protocolConfig));
+            }
+
+            // Wire FeeCollector
+            if (address(protocol.feeCollector) != address(0)) {
+                protocol.appFactory.setFeeCollector(address(protocol.feeCollector));
+            }
+
+            // Wire ReferralRegistry
+            if (address(protocol.referralRegistry) != address(0)) {
+                protocol.appFactory.setReferralRegistry(address(protocol.referralRegistry));
             }
         }
     }
@@ -488,8 +541,20 @@ contract Deploy is Script {
             '    "FeeManager": "',
             vm.toString(address(protocol.feeManager)),
             '",\n',
+            '    "FeeSwapper": "',
+            vm.toString(address(protocol.feeSwapper)),
+            '",\n',
             '    "TreasuryUSDCVault": "',
             vm.toString(address(protocol.treasuryVault)),
+            '",\n',
+            '    "ProtocolConfig": "',
+            vm.toString(address(protocol.protocolConfig)),
+            '",\n',
+            '    "ReferralRegistry": "',
+            vm.toString(address(protocol.referralRegistry)),
+            '",\n',
+            '    "AirdropDistributor": "',
+            vm.toString(address(protocol.airdropDistributor)),
             '",\n',
             '    "USDC": "',
             vm.toString(protocol.usdc),
@@ -547,7 +612,12 @@ contract Deploy is Script {
         console2.log("\nFee Pipeline:");
         console2.log("  FeeCollector:            ", address(protocol.feeCollector));
         console2.log("  FeeManager:              ", address(protocol.feeManager));
+        console2.log("  FeeSwapper:              ", address(protocol.feeSwapper));
         console2.log("  TreasuryUSDCVault:       ", address(protocol.treasuryVault));
+        console2.log("\nAdditional Modules:");
+        console2.log("  ProtocolConfig:          ", address(protocol.protocolConfig));
+        console2.log("  ReferralRegistry:        ", address(protocol.referralRegistry));
+        console2.log("  AirdropDistributor:      ", address(protocol.airdropDistributor));
         console2.log("================================");
 
         // Next steps

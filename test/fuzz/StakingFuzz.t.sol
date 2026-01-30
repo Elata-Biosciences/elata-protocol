@@ -180,16 +180,18 @@ contract StakingFuzz is Test {
         vm.stopPrank();
     }
 
-    function testFuzz_AppVault_MultipleStakes(uint256[] calldata amounts) public {
-        vm.assume(amounts.length > 0 && amounts.length <= 5);
+    function testFuzz_AppVault_MultipleStakes(uint256 numStakes, uint256 seed) public {
+        // Use bound on scalar to avoid vm.assume rejection issues with arrays
+        numStakes = bound(numStakes, 1, 5);
 
         uint256 totalStaked = 0;
 
         vm.startPrank(user1);
         appToken.approve(address(vault), 5_000_000 ether);
 
-        for (uint256 i = 0; i < amounts.length; i++) {
-            uint256 amt = bound(amounts[i], 1 ether, 500_000 ether);
+        for (uint256 i = 0; i < numStakes; i++) {
+            // Generate pseudo-random amounts from seed
+            uint256 amt = bound(uint256(keccak256(abi.encodePacked(seed, i))), 1 ether, 500_000 ether);
             if (totalStaked + amt > 4_000_000 ether) break;
 
             vault.stake(amt);

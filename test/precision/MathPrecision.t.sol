@@ -368,8 +368,11 @@ contract MathPrecision is Test, PrecisionFixtures {
             totalClaimed += userShare;
         }
 
-        // Total claimed should equal total rewards (equal stakes = no rounding)
-        assertEq(totalClaimed, totalRewards, "With equal stakes, should claim exactly total");
+        // Due to integer division, rounding loss can be up to (numUsers - 1) wei
+        // Example: 1000 / 3 = 333, 333 * 3 = 999 (loss of 1 wei)
+        uint256 maxRoundingLoss = numUsers - 1;
+        assertLe(totalRewards - totalClaimed, maxRoundingLoss, "Rounding loss should be bounded");
+        assertGe(totalClaimed, totalRewards - maxRoundingLoss, "Total claimed should be close to total");
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

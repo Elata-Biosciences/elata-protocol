@@ -165,7 +165,9 @@ contract MEVProtection is Test, PrecisionFixtures {
             governance,
             1 days, // activation delay
             30 days, // max duration
-            creator
+            creator,
+            address(0), // feeCollector
+            address(0) // referralRegistry
         );
 
         // Fund participants

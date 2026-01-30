@@ -158,6 +158,9 @@ contract StakingInvariants is Test {
         console2.log("Lock count:", handler.ghost_lockCount());
         console2.log("Unlock count:", handler.ghost_unlockCount());
 
+        // Clear any ongoing prank before our operations
+        vm.stopPrank();
+
         // Warp time forward to unlock all positions
         vm.warp(block.timestamp + 800 days);
 
@@ -170,12 +173,14 @@ contract StakingInvariants is Test {
 
             if (principal > 0 && block.timestamp >= unlockTime) {
                 uint256 balanceBefore = elta.balanceOf(actor);
-                vm.prank(actor);
+                // Use startPrank/stopPrank instead of prank to avoid conflicts
+                vm.startPrank(actor);
                 try veElta.unlock() {
                     totalUnlocked += elta.balanceOf(actor) - balanceBefore;
                 } catch {
                     failedUnlocks++;
                 }
+                vm.stopPrank();
             }
         }
 

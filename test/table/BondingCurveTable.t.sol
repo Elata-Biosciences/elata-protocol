@@ -33,11 +33,11 @@ contract BondingCurveTable is Test {
             eltaIn: 100e18,
             reserveElta: 1000e18,
             reserveToken: 10_000_000e18,
-            // k = 1000 * 10M = 10B
-            // newReserveElta = 1100
-            // newReserveToken = 10B / 1100 = 9,090,909.09...
-            // tokensOut = 10M - 9,090,909.09 = 909,090.909...
-            expectedTokensOut: 909090909090909090909090
+            // k = 1000 * 10M = 10B (in 1e36)
+            // newReserveElta = 1100e18
+            // newReserveToken = k / newReserveElta = 9090909090909090909090909 (rounded down)
+            // tokensOut = 10_000_000e18 - 9090909090909090909090909 = 909090909090909090909091
+            expectedTokensOut: 909090909090909090909091
         });
 
         // Case 2: Small buy - 1% of reserve
@@ -46,11 +46,11 @@ contract BondingCurveTable is Test {
             eltaIn: 10e18,
             reserveElta: 1000e18,
             reserveToken: 10_000_000e18,
-            // k = 10B
-            // newReserveElta = 1010
-            // newReserveToken = 10B / 1010 = 9,900,990.09...
-            // tokensOut = 99,009.9...
-            expectedTokensOut: 99009900990099009900990
+            // k = 10_000_000e36 (1000e18 * 10_000_000e18)
+            // newReserveElta = 1010e18
+            // newReserveToken = k / newReserveElta = 9900990099009900990099009 (rounded down)
+            // tokensOut = 10_000_000e18 - 9900990099009900990099009 = 99009900990099009900991
+            expectedTokensOut: 99009900990099009900991
         });
 
         // Case 3: Large buy - 50% of reserve
@@ -59,10 +59,11 @@ contract BondingCurveTable is Test {
             eltaIn: 500e18,
             reserveElta: 1000e18,
             reserveToken: 10_000_000e18,
-            // newReserveElta = 1500
-            // newReserveToken = 10B / 1500 = 6,666,666.66...
-            // tokensOut = 3,333,333.33...
-            expectedTokensOut: 3333333333333333333333333
+            // k = 10_000_000e36
+            // newReserveElta = 1500e18
+            // newReserveToken = k / newReserveElta = 6666666666666666666666666 (rounded down)
+            // tokensOut = 10_000_000e18 - 6666666666666666666666666 = 3333333333333333333333334
+            expectedTokensOut: 3333333333333333333333334
         });
 
         // Case 4: Very small buy - 1 token
@@ -71,8 +72,11 @@ contract BondingCurveTable is Test {
             eltaIn: 1e18,
             reserveElta: 1000e18,
             reserveToken: 10_000_000e18,
-            // tokensOut ≈ 9,990
-            expectedTokensOut: 9990009990009990009990
+            // k = 10_000_000e36
+            // newReserveElta = 1001e18
+            // newReserveToken = k / newReserveElta = 9990009990009990009990009 (rounded down)
+            // tokensOut = 10_000_000e18 - 9990009990009990009990009 = 9990009990009990009991
+            expectedTokensOut: 9990009990009990009991
         });
 
         // Case 5: Equal reserves
@@ -81,11 +85,11 @@ contract BondingCurveTable is Test {
             eltaIn: 100e18,
             reserveElta: 1000e18,
             reserveToken: 1000e18,
-            // k = 1M
-            // newReserveElta = 1100
-            // newReserveToken = 1M / 1100 = 909.09
-            // tokensOut = 90.9
-            expectedTokensOut: 90909090909090909090
+            // k = 1000e18 * 1000e18 = 1e42
+            // newReserveElta = 1100e18
+            // newReserveToken = k / newReserveElta = 909090909090909090909 (rounded down)
+            // tokensOut = 1000e18 - 909090909090909090909 = 90909090909090909091
+            expectedTokensOut: 90909090909090909091
         });
 
         // Case 6: High ELTA reserve
@@ -94,11 +98,11 @@ contract BondingCurveTable is Test {
             eltaIn: 1000e18,
             reserveElta: 10_000e18,
             reserveToken: 1_000_000e18,
-            // k = 10B
-            // newReserveElta = 11000
-            // newReserveToken = 10B / 11000 = 909,090.9
-            // tokensOut = 90,909
-            expectedTokensOut: 90909090909090909090909
+            // k = 10_000e18 * 1_000_000e18 = 1e46
+            // newReserveElta = 11_000e18
+            // newReserveToken = k / newReserveElta = 909090909090909090909090 (rounded down)
+            // tokensOut = 1_000_000e18 - 909090909090909090909090 = 90909090909090909090910
+            expectedTokensOut: 90909090909090909090910
         });
 
         // Case 7: Zero ELTA in
@@ -147,11 +151,11 @@ contract BondingCurveTable is Test {
             eltaIn: 1_000_000e18,
             reserveElta: 10_000_000e18,
             reserveToken: 100_000_000e18,
-            // k = 1e33
-            // newReserveElta = 11M
-            // newReserveToken = 1e33 / 11e24 = 90,909,090.9
-            // tokensOut = 9,090,909
-            expectedTokensOut: 9090909090909090909090909
+            // k = 10_000_000e18 * 100_000_000e18 = 1e51
+            // newReserveElta = 11_000_000e18
+            // newReserveToken = k / newReserveElta = 90909090909090909090909090 (rounded down)
+            // tokensOut = 100_000_000e18 - 90909090909090909090909090 = 9090909090909090909090910
+            expectedTokensOut: 9090909090909090909090910
         });
 
         return cases;
@@ -300,10 +304,11 @@ contract BondingCurveTable is Test {
             tokensDesired: 5_000_000e18,
             reserveElta: 1000e18,
             reserveToken: 10_000_000e18,
-            // newReserveToken = 5M
-            // newReserveElta = 10B / 5M = 2000
-            // eltaIn = 1000 + 1 = 1001
-            expectedEltaIn: 1001e18
+            // k = 10_000_000e36 (1000e18 * 10_000_000e18)
+            // newReserveToken = 5_000_000e18
+            // newReserveElta = k / newReserveToken = 2000e18
+            // eltaIn = newReserveElta - reserveElta + 1 = 2000e18 - 1000e18 + 1 = 1000e18 + 1
+            expectedEltaIn: 1000000000000000000001
         });
 
         // Case 4: Zero tokens desired

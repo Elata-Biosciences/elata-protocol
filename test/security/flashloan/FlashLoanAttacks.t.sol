@@ -303,7 +303,9 @@ contract FlashLoanAttacks is Test {
             governance,
             0,
             365 days,
-            creator
+            creator,
+            address(0), // feeCollector
+            address(0) // referralRegistry
         );
 
         // Initialize curve

@@ -70,7 +70,9 @@ contract AppBondingCurveTest is Test {
             governance,
             0, // activationDelay - immediate activation for tests
             30 days, // maxDuration
-            creator // creator
+            creator, // creator
+            address(0), // feeCollector
+            address(0) // referralRegistry
         );
 
         // Setup: mint tokens to curve and initialize

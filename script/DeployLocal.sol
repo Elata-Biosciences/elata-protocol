@@ -36,7 +36,13 @@ import {AppFeeRouter} from "../src/fees/AppFeeRouter.sol";
 // Fee Pipeline
 import {FeeCollector} from "../src/fees/FeeCollector.sol";
 import {FeeManager} from "../src/fees/FeeManager.sol";
+import {FeeSwapper} from "../src/fees/FeeSwapper.sol";
 import {TreasuryUSDCVault} from "../src/fees/TreasuryUSDCVault.sol";
+
+// Additional Modules
+import {ProtocolConfig} from "../src/core/ProtocolConfig.sol";
+import {ReferralRegistry} from "../src/modules/ReferralRegistry.sol";
+import {AirdropDistributor} from "../src/modules/AirdropDistributor.sol";
 
 // Mocks
 import {MockUSDC} from "./mocks/MockUSDC.sol";
@@ -82,7 +88,12 @@ contract DeployLocal is Script {
         // Fee Pipeline
         FeeCollector feeCollector;
         FeeManager feeManager;
+        FeeSwapper feeSwapper;
         TreasuryUSDCVault treasuryVault;
+        // Additional Modules
+        ProtocolConfig protocolConfig;
+        ReferralRegistry referralRegistry;
+        AirdropDistributor airdropDistributor;
         // External Mocks
         MockUSDC usdc;
         MockWETH weth;
@@ -227,14 +238,38 @@ contract DeployLocal is Script {
         // Set swap router on FeeManager
         contracts.feeManager.setSwapRouter(address(contracts.uniswapRouter));
 
-        // FeeCollector
-        contracts.feeCollector = new FeeCollector(
+        // FeeSwapper (use deployer as governance for local so we can configure immediately)
+        contracts.feeSwapper = new FeeSwapper(
             address(contracts.elta),
             deployer,
-            address(contracts.feeManager),
-            address(0) // No FeeSwapper for now
+            deployer, // Use deployer as governance for local testing
+            address(contracts.feeManager)
+        );
+        console2.log("   FeeSwapper:", address(contracts.feeSwapper));
+
+        // FeeCollector (now with FeeSwapper)
+        contracts.feeCollector = new FeeCollector(
+            address(contracts.elta), deployer, address(contracts.feeManager), address(contracts.feeSwapper)
         );
         console2.log("   FeeCollector:", address(contracts.feeCollector));
+
+        // Authorize Uniswap router in FeeSwapper
+        contracts.feeSwapper.setRouterAllowed(address(contracts.uniswapRouter), true);
+
+        // ===== PHASE 7.5: Deploy Additional Modules =====
+        console2.log("\n[7.5/8] Deploying Additional Modules...");
+
+        // ProtocolConfig
+        contracts.protocolConfig = new ProtocolConfig(deployer, address(contracts.timelock));
+        console2.log("   ProtocolConfig:", address(contracts.protocolConfig));
+
+        // ReferralRegistry (500 bps = 5% referral fee)
+        contracts.referralRegistry = new ReferralRegistry(deployer, address(contracts.elta), 500);
+        console2.log("   ReferralRegistry:", address(contracts.referralRegistry));
+
+        // AirdropDistributor
+        contracts.airdropDistributor = new AirdropDistributor(deployer, deployer);
+        console2.log("   AirdropDistributor:", address(contracts.airdropDistributor));
 
         // ===== PHASE 8: Setup Liquidity & Permissions =====
         console2.log("\n[8/8] Setting up Liquidity & Permissions...");
@@ -315,6 +350,19 @@ contract DeployLocal is Script {
 
         // Make FeeCollector an authorized depositor on FeeManager
         contracts.feeManager.setDepositor(address(contracts.feeCollector), true);
+
+        // Wire ReferralRegistry to FeeManager
+        contracts.feeManager.setReferralRegistry(address(contracts.referralRegistry));
+
+        // ===== Wire AppFactory with additional modules =====
+        // Wire ProtocolConfig
+        contracts.appFactory.setProtocolConfig(address(contracts.protocolConfig));
+
+        // Wire FeeCollector
+        contracts.appFactory.setFeeCollector(address(contracts.feeCollector));
+
+        // Wire ReferralRegistry
+        contracts.appFactory.setReferralRegistry(address(contracts.referralRegistry));
     }
 
     function _saveDeploymentAddresses(LocalContracts memory contracts, address deployer) internal {
@@ -370,8 +418,21 @@ contract DeployLocal is Script {
             '    "FeeManager": "',
             vm.toString(address(contracts.feeManager)),
             '",\n',
+            '    "FeeSwapper": "',
+            vm.toString(address(contracts.feeSwapper)),
+            '",\n',
             '    "TreasuryUSDCVault": "',
             vm.toString(address(contracts.treasuryVault)),
+            '",\n',
+            // Additional Modules
+            '    "ProtocolConfig": "',
+            vm.toString(address(contracts.protocolConfig)),
+            '",\n',
+            '    "ReferralRegistry": "',
+            vm.toString(address(contracts.referralRegistry)),
+            '",\n',
+            '    "AirdropDistributor": "',
+            vm.toString(address(contracts.airdropDistributor)),
             '",\n',
             // External
             '    "MockUSDC": "',

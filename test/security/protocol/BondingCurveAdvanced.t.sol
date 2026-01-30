@@ -171,7 +171,9 @@ contract BondingCurveAdvanced is Test {
             governance,
             0, // activationDelay
             365 days,
-            creator
+            creator,
+            address(0), // feeCollector
+            address(0) // referralRegistry
         );
 
         // Set XP gate and sniper duration if specified
@@ -365,7 +367,9 @@ contract BondingCurveAdvanced is Test {
             governance,
             1 hours, // 1 hour activation delay
             365 days,
-            creator
+            creator,
+            address(0), // feeCollector
+            address(0) // referralRegistry
         );
 
         // Initialize
@@ -407,7 +411,9 @@ contract BondingCurveAdvanced is Test {
             governance,
             1 hours, // 1 hour activation delay
             365 days,
-            creator
+            creator,
+            address(0), // feeCollector
+            address(0) // referralRegistry
         );
 
         // Initialize
@@ -449,7 +455,9 @@ contract BondingCurveAdvanced is Test {
             governance,
             1 hours,
             365 days,
-            creator
+            creator,
+            address(0), // feeCollector
+            address(0) // referralRegistry
         );
 
         // Initialize
@@ -649,15 +657,17 @@ contract BondingCurveAdvanced is Test {
         vm.stopPrank();
     }
 
-    function testFuzz_BondingCurve_PriceMonotonicIncrease(uint256[] calldata buyAmounts) public {
-        vm.assume(buyAmounts.length > 0 && buyAmounts.length <= 10);
+    function testFuzz_BondingCurve_PriceMonotonicIncrease(uint256 numBuys, uint256 seed) public {
+        // Use bound on scalar to avoid vm.assume rejection issues with arrays
+        numBuys = bound(numBuys, 1, 10);
 
         curve = _deployCurve(0, 0, 0);
 
         uint256 lastPrice = curve.getCurrentPrice();
 
-        for (uint256 i = 0; i < buyAmounts.length; i++) {
-            uint256 amount = bound(buyAmounts[i], 1 ether, 500 ether);
+        for (uint256 i = 0; i < numBuys; i++) {
+            // Generate pseudo-random amounts from seed
+            uint256 amount = bound(uint256(keccak256(abi.encodePacked(seed, i))), 1 ether, 500 ether);
 
             // Stop if would graduate
             if (curve.reserveElta() + amount >= TARGET_RAISED) break;

@@ -256,7 +256,9 @@ contract BondingCurveReentrancy is Test {
             governance,
             0, // activationDelay
             365 days, // maxDuration
-            creator
+            creator,
+            address(0), // feeCollector
+            address(0) // referralRegistry
         );
 
         // Initialize curve

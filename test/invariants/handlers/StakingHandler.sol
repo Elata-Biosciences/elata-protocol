@@ -38,6 +38,9 @@ contract StakingHandler is CommonBase, StdCheats, StdUtils {
 
     modifier useActor(uint256 actorIndexSeed) {
         currentActor = actors[bound(actorIndexSeed, 0, actors.length - 1)];
+        // Clear any existing prank from the invariant runner before starting our own
+        // Note: stopPrank is safe to call even if no prank is active (becomes no-op)
+        vm.stopPrank();
         vm.startPrank(currentActor);
         _;
         vm.stopPrank();

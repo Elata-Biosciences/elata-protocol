@@ -299,15 +299,17 @@ contract FeePipelineAdvanced is Test {
         assertEq(feeCollector.pendingEltaFees(1), amount, "Pending should match deposit");
     }
 
-    function testFuzz_FeeCollector_MultipleDeposits(uint256[] calldata amounts) public {
-        vm.assume(amounts.length > 0 && amounts.length <= 10);
+    function testFuzz_FeeCollector_MultipleDeposits(uint256 numDeposits, uint256 seed) public {
+        // Use bound on scalar to avoid vm.assume rejection issues with arrays
+        numDeposits = bound(numDeposits, 1, 10);
 
         uint256 total = 0;
         vm.startPrank(user);
         elta.approve(address(feeCollector), type(uint256).max);
 
-        for (uint256 i = 0; i < amounts.length; i++) {
-            uint256 amount = bound(amounts[i], 1 ether, 10_000 ether);
+        for (uint256 i = 0; i < numDeposits; i++) {
+            // Generate pseudo-random amounts from seed
+            uint256 amount = bound(uint256(keccak256(abi.encodePacked(seed, i))), 1 ether, 10_000 ether);
             feeCollector.depositElta(1, amount);
             total += amount;
         }

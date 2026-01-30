@@ -85,6 +85,9 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
     /// @notice ProtocolConfig for reading protocol parameters
     address public protocolConfig;
 
+    /// @notice ReferralRegistry for referral tracking
+    address public referralRegistry;
+
     struct App {
         address creator;
         address token;
@@ -213,6 +216,14 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
     }
 
     /**
+     * @notice Set ReferralRegistry for referral tracking
+     * @param _referralRegistry ReferralRegistry address
+     */
+    function setReferralRegistry(address _referralRegistry) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        referralRegistry = _referralRegistry;
+    }
+
+    /**
      * @notice Create new app with auto-staked creator share
      * @param name App token name
      * @param symbol App token symbol
@@ -284,7 +295,9 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
             elataPoints,
             governance,
             _activationDelay,
-            _maxDuration
+            _maxDuration,
+            feeCollector,
+            referralRegistry
         );
 
         // Configure token & curve with 50/25/25 split

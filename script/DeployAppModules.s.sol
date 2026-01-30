@@ -146,7 +146,7 @@ contract DeployFullExample is Script {
         /* COMMENTED OUT - Needs AppToken migration
         // 4. Deploy modules via factories
         uint256 appId = 1;
-        
+
         // Step 1: Deploy NFT collection
         address content721 = content721Factory.deployContent721(
             appId,
@@ -156,7 +156,7 @@ contract DeployFullExample is Script {
             "ipfs://QmContractMetadata"
         );
         console.log("InAppContent721 deployed at:", content721);
-        
+
         // Step 2: Deploy content store (links to NFT and sets minter)
         address contentStore = contentStoreFactory.deployContentStore(
             appId,

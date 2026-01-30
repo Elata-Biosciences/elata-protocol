@@ -134,7 +134,12 @@ contract ContentStoreFactoryTest is Test {
     function test_RevertWhen_DeploymentWithInvalidProtocolFee() public {
         vm.expectRevert(ContentStoreFactory.InvalidProtocolFeeBps.selector);
         new ContentStoreFactory(
-            address(elta), address(usdc), factoryOwner, treasury, address(feeCollector), 2000 // > 15%
+            address(elta),
+            address(usdc),
+            factoryOwner,
+            treasury,
+            address(feeCollector),
+            2000 // > 15%
         );
     }
 

@@ -28,7 +28,9 @@ library AppCurveDeployer {
         IElataPoints elataPoints,
         address governance,
         uint256 activationDelay,
-        uint256 maxDuration
+        uint256 maxDuration,
+        address feeCollector,
+        address referralRegistry
     ) external returns (address) {
         return address(
             new AppBondingCurve(
@@ -46,7 +48,9 @@ library AppCurveDeployer {
                 governance,
                 activationDelay,
                 maxDuration,
-                creator
+                creator,
+                feeCollector,
+                referralRegistry
             )
         );
     }

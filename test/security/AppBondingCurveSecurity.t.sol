@@ -176,7 +176,9 @@ contract AppBondingCurveSecurity is Test {
             governance,
             1 hours,
             30 days,
-            creator
+            creator,
+            address(0), // feeCollector
+            address(0) // referralRegistry
         );
 
         // Seed curve with tokens
@@ -362,7 +364,9 @@ contract AppBondingCurveSecurity is Test {
             governance,
             1 hours,
             30 days,
-            creator
+            creator,
+            address(0), // feeCollector
+            address(0) // referralRegistry
         );
 
         vm.prank(admin);
@@ -545,7 +549,9 @@ contract AppBondingCurveSecurity is Test {
             governance,
             0, // No activation delay
             30 days,
-            creator
+            creator,
+            address(0), // feeCollector
+            address(0) // referralRegistry
         );
 
         vm.prank(admin);

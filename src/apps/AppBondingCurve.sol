@@ -204,6 +204,8 @@ contract AppBondingCurve is ReentrancyGuard {
      * @param _activationDelay Delay before curve becomes active
      * @param _maxDuration Maximum duration before forced graduation
      * @param _creator Creator address who can cancel
+     * @param _feeCollector FeeCollector address for fee routing
+     * @param _referralRegistry ReferralRegistry address for referral tracking
      */
     constructor(
         uint256 _appId,
@@ -220,7 +222,9 @@ contract AppBondingCurve is ReentrancyGuard {
         address _governance,
         uint256 _activationDelay,
         uint256 _maxDuration,
-        address _creator
+        address _creator,
+        address _feeCollector,
+        address _referralRegistry
     ) {
         require(_factory != address(0), "Zero factory");
         require(address(_elta) != address(0), "Zero ELTA");
@@ -249,6 +253,8 @@ contract AppBondingCurve is ReentrancyGuard {
         governance = _governance;
         launchTimestamp = block.timestamp;
         creator = _creator;
+        feeCollector = _feeCollector;
+        referralRegistry = _referralRegistry;
 
         // Set lifecycle timestamps
         state = CurveState.PENDING;
@@ -635,9 +641,10 @@ contract AppBondingCurve is ReentrancyGuard {
     /**
      * @notice Set the FeeCollector address
      * @param _feeCollector New FeeCollector address
+     * @dev Callable by governance or factory
      */
     function setFeeCollector(address _feeCollector) external {
-        if (msg.sender != governance) revert OnlyGovernance();
+        if (msg.sender != governance && msg.sender != appFactory) revert OnlyGovernance();
 
         address oldCollector = feeCollector;
         feeCollector = _feeCollector;
@@ -648,10 +655,10 @@ contract AppBondingCurve is ReentrancyGuard {
     /**
      * @notice Set ReferralRegistry for referral tracking
      * @param _referralRegistry New referral registry address
-     * @dev Only callable by governance
+     * @dev Callable by governance or factory
      */
     function setReferralRegistry(address _referralRegistry) external {
-        if (msg.sender != governance) revert OnlyGovernance();
+        if (msg.sender != governance && msg.sender != appFactory) revert OnlyGovernance();
 
         address oldRegistry = referralRegistry;
         referralRegistry = _referralRegistry;

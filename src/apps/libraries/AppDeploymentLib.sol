@@ -62,7 +62,9 @@ library AppDeploymentLib {
         IElataPoints elataPoints,
         address governance,
         uint256 activationDelay,
-        uint256 maxDuration
+        uint256 maxDuration,
+        address feeCollector,
+        address referralRegistry
     ) external returns (address) {
         return AppCurveDeployer.deployCurve(
             appId,
@@ -78,7 +80,9 @@ library AppDeploymentLib {
             elataPoints,
             governance,
             activationDelay,
-            maxDuration
+            maxDuration,
+            feeCollector,
+            referralRegistry
         );
     }
 }

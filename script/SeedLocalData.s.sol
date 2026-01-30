@@ -244,7 +244,7 @@ contract SeedLocalData is Script {
             string.concat(symbol, "-CNT"),
             string.concat("ipfs://", symbol, "/contract")
         );
-        
+
         // Step 2: Deploy content store (links to NFT and sets minter)
         address contentStore = contentStoreFactory.deployContentStore(app.appId, app.token, content721);
 
