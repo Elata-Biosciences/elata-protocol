@@ -123,23 +123,25 @@ contract ReferralFlowTest is Test {
 
         // Deploy BondingCurve with ReferralRegistry wired
         curve = new AppBondingCurve(
-            APP_ID,
-            address(appFactory),
-            IERC20(address(elta)),
-            appToken,
-            IUniswapV2Router02(address(router)),
-            TARGET_RAISED,
-            365 days * 2,
-            creator,
-            treasury,
-            IAppFeeRouter(address(feeRouter)),
-            IElataPoints(address(xp)),
-            governance,
-            0, // No activation delay
-            365 days,
-            creator,
-            address(0), // No fee collector
-            address(referralRegistry) // ReferralRegistry wired
+            AppBondingCurve.InitParams({
+                appId: APP_ID,
+                factory: address(appFactory),
+                elta: IERC20(address(elta)),
+                token: appToken,
+                router: IUniswapV2Router02(address(router)),
+                targetRaisedElta: TARGET_RAISED,
+                lpLockDuration: 365 days * 2,
+                lpBeneficiary: creator,
+                treasury: treasury,
+                appFeeRouter: IAppFeeRouter(address(feeRouter)),
+                elataPoints: IElataPoints(address(xp)),
+                governance: governance,
+                activationDelay: 0,
+                maxDuration: 365 days,
+                creator: creator,
+                feeCollector: address(0),
+                referralRegistry: address(referralRegistry)
+            })
         );
 
         // Authorize the curve to set referrals

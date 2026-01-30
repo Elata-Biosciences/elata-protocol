@@ -98,23 +98,25 @@ contract BondingCurveInvariants is Test {
 
         // Deploy bonding curve
         curve = new AppBondingCurve(
-            0, // appId
-            address(appFactory),
-            IERC20(address(elta)),
-            appToken,
-            IUniswapV2Router02(address(router)),
-            TARGET_RAISED,
-            365 days * 2, // lpLockDuration
-            creator, // lpBeneficiary
-            treasury,
-            IAppFeeRouter(address(appFeeRouter)),
-            IElataPoints(address(elataPoints)),
-            governance,
-            1 hours, // activationDelay
-            30 days, // maxDuration
-            creator, // _creator
-            address(0), // feeCollector
-            address(0) // referralRegistry
+            AppBondingCurve.InitParams({
+                appId: 0,
+                factory: address(appFactory),
+                elta: IERC20(address(elta)),
+                token: appToken,
+                router: IUniswapV2Router02(address(router)),
+                targetRaisedElta: TARGET_RAISED,
+                lpLockDuration: 365 days * 2,
+                lpBeneficiary: creator,
+                treasury: treasury,
+                appFeeRouter: IAppFeeRouter(address(appFeeRouter)),
+                elataPoints: IElataPoints(address(elataPoints)),
+                governance: governance,
+                activationDelay: 1 hours,
+                maxDuration: 30 days,
+                creator: creator,
+                feeCollector: address(0),
+                referralRegistry: address(0)
+            })
         );
 
         // Seed the curve with ELTA and tokens

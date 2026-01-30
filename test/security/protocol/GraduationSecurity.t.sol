@@ -216,23 +216,25 @@ contract GraduationSecurity is Test {
 
         // Deploy bonding curve
         curve = new AppBondingCurve(
-            0, // appId
-            address(appFactory),
-            IERC20(address(elta)),
-            appToken,
-            IUniswapV2Router02(address(uniRouter)),
-            TARGET_RAISED,
-            LP_LOCK_DURATION,
-            creator, // lpBeneficiary
-            treasury,
-            IAppFeeRouter(address(appFeeRouter)),
-            IElataPoints(address(elataPoints)),
-            governance,
-            1 hours, // activationDelay
-            30 days, // maxDuration
-            creator,
-            address(0), // feeCollector
-            address(0) // referralRegistry
+            AppBondingCurve.InitParams({
+                appId: 0,
+                factory: address(appFactory),
+                elta: IERC20(address(elta)),
+                token: appToken,
+                router: IUniswapV2Router02(address(uniRouter)),
+                targetRaisedElta: TARGET_RAISED,
+                lpLockDuration: LP_LOCK_DURATION,
+                lpBeneficiary: creator,
+                treasury: treasury,
+                appFeeRouter: IAppFeeRouter(address(appFeeRouter)),
+                elataPoints: IElataPoints(address(elataPoints)),
+                governance: governance,
+                activationDelay: 1 hours,
+                maxDuration: 30 days,
+                creator: creator,
+                feeCollector: address(0),
+                referralRegistry: address(0)
+            })
         );
 
         // Seed curve with tokens

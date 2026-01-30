@@ -152,23 +152,25 @@ contract BondingCurveBoundary is Test, PrecisionFixtures {
 
         // Deploy bonding curve
         curve = new AppBondingCurve(
-            APP_ID,
-            address(factory),
-            IERC20(address(elta)),
-            appToken,
-            IUniswapV2Router02(address(router)),
-            TARGET_RAISED,
-            365 days, // LP lock duration
-            creator, // LP beneficiary
-            treasury,
-            IAppFeeRouter(address(feeRouter)),
-            IElataPoints(address(xp)),
-            governance,
-            1 days, // activation delay
-            30 days, // max duration
-            creator,
-            address(0), // feeCollector
-            address(0) // referralRegistry
+            AppBondingCurve.InitParams({
+                appId: APP_ID,
+                factory: address(factory),
+                elta: IERC20(address(elta)),
+                token: appToken,
+                router: IUniswapV2Router02(address(router)),
+                targetRaisedElta: TARGET_RAISED,
+                lpLockDuration: 365 days,
+                lpBeneficiary: creator,
+                treasury: treasury,
+                appFeeRouter: IAppFeeRouter(address(feeRouter)),
+                elataPoints: IElataPoints(address(xp)),
+                governance: governance,
+                activationDelay: 1 days,
+                maxDuration: 30 days,
+                creator: creator,
+                feeCollector: address(0),
+                referralRegistry: address(0)
+            })
         );
 
         // Fund participants

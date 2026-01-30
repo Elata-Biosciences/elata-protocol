@@ -162,23 +162,25 @@ contract AppBondingCurveSecurity is Test {
 
         // Deploy bonding curve
         curve = new AppBondingCurve(
-            0,
-            address(appFactory),
-            IERC20(address(elta)),
-            appToken,
-            IUniswapV2Router02(address(router)),
-            TARGET_RAISED,
-            365 days * 2,
-            creator,
-            treasury,
-            IAppFeeRouter(address(appFeeRouter)),
-            IElataPoints(address(elataPoints)),
-            governance,
-            1 hours,
-            30 days,
-            creator,
-            address(0), // feeCollector
-            address(0) // referralRegistry
+            AppBondingCurve.InitParams({
+                appId: 0,
+                factory: address(appFactory),
+                elta: IERC20(address(elta)),
+                token: appToken,
+                router: IUniswapV2Router02(address(router)),
+                targetRaisedElta: TARGET_RAISED,
+                lpLockDuration: 365 days * 2,
+                lpBeneficiary: creator,
+                treasury: treasury,
+                appFeeRouter: IAppFeeRouter(address(appFeeRouter)),
+                elataPoints: IElataPoints(address(elataPoints)),
+                governance: governance,
+                activationDelay: 1 hours,
+                maxDuration: 30 days,
+                creator: creator,
+                feeCollector: address(0),
+                referralRegistry: address(0)
+            })
         );
 
         // Seed curve with tokens
@@ -350,23 +352,25 @@ contract AppBondingCurveSecurity is Test {
 
         // Try to buy when curve is pending (before activation)
         AppBondingCurve newCurve = new AppBondingCurve(
-            1,
-            address(appFactory),
-            IERC20(address(elta)),
-            appToken,
-            IUniswapV2Router02(address(router)),
-            TARGET_RAISED,
-            365 days * 2,
-            creator,
-            treasury,
-            IAppFeeRouter(address(appFeeRouter)),
-            IElataPoints(address(elataPoints)),
-            governance,
-            1 hours,
-            30 days,
-            creator,
-            address(0), // feeCollector
-            address(0) // referralRegistry
+            AppBondingCurve.InitParams({
+                appId: 1,
+                factory: address(appFactory),
+                elta: IERC20(address(elta)),
+                token: appToken,
+                router: IUniswapV2Router02(address(router)),
+                targetRaisedElta: TARGET_RAISED,
+                lpLockDuration: 365 days * 2,
+                lpBeneficiary: creator,
+                treasury: treasury,
+                appFeeRouter: IAppFeeRouter(address(appFeeRouter)),
+                elataPoints: IElataPoints(address(elataPoints)),
+                governance: governance,
+                activationDelay: 1 hours,
+                maxDuration: 30 days,
+                creator: creator,
+                feeCollector: address(0),
+                referralRegistry: address(0)
+            })
         );
 
         vm.prank(admin);
@@ -535,23 +539,25 @@ contract AppBondingCurveSecurity is Test {
     function test_Security_CannotBuyWithoutXPDuringEarlyAccess() public {
         // Deploy fresh curve at current time
         AppBondingCurve newCurve = new AppBondingCurve(
-            2,
-            address(appFactory),
-            IERC20(address(elta)),
-            appToken,
-            IUniswapV2Router02(address(router)),
-            TARGET_RAISED,
-            365 days * 2,
-            creator,
-            treasury,
-            IAppFeeRouter(address(appFeeRouter)),
-            IElataPoints(address(elataPoints)),
-            governance,
-            0, // No activation delay
-            30 days,
-            creator,
-            address(0), // feeCollector
-            address(0) // referralRegistry
+            AppBondingCurve.InitParams({
+                appId: 2,
+                factory: address(appFactory),
+                elta: IERC20(address(elta)),
+                token: appToken,
+                router: IUniswapV2Router02(address(router)),
+                targetRaisedElta: TARGET_RAISED,
+                lpLockDuration: 365 days * 2,
+                lpBeneficiary: creator,
+                treasury: treasury,
+                appFeeRouter: IAppFeeRouter(address(appFeeRouter)),
+                elataPoints: IElataPoints(address(elataPoints)),
+                governance: governance,
+                activationDelay: 0,
+                maxDuration: 30 days,
+                creator: creator,
+                feeCollector: address(0),
+                referralRegistry: address(0)
+            })
         );
 
         vm.prank(admin);

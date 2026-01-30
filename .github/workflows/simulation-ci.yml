@@ -46,6 +46,17 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly
+          cache: true
+
+      - name: Cache Foundry build
+        uses: actions/cache@v4
+        with:
+          path: |
+            cache/
+            out/
+          key: foundry-smoke-${{ hashFiles('foundry.toml', 'src/**/*.sol', 'lib/**') }}
+          restore-keys: |
+            foundry-smoke-
 
       - name: Install simulation dependencies
         working-directory: sim
@@ -110,6 +121,18 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly
+          cache: true
+
+      - name: Cache Foundry build
+        uses: actions/cache@v4
+        with:
+          path: |
+            cache/
+            out/
+          key: foundry-integration-${{ hashFiles('foundry.toml', 'src/**/*.sol', 'lib/**') }}
+          restore-keys: |
+            foundry-integration-
+            foundry-smoke-
 
       - name: Install simulation dependencies
         working-directory: sim

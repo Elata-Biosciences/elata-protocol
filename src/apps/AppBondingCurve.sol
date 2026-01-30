@@ -167,6 +167,27 @@ contract AppBondingCurve is ReentrancyGuard {
     error OnlyCreator();
     error SniperFeeTooHigh();
 
+    /// @notice Constructor parameters bundled to avoid stack too deep
+    struct InitParams {
+        uint256 appId;
+        address factory;
+        IERC20 elta;
+        AppToken token;
+        IUniswapV2Router02 router;
+        uint256 targetRaisedElta;
+        uint256 lpLockDuration;
+        address lpBeneficiary;
+        address treasury;
+        IAppFeeRouter appFeeRouter;
+        IElataPoints elataPoints;
+        address governance;
+        uint256 activationDelay;
+        uint256 maxDuration;
+        address creator;
+        address feeCollector;
+        address referralRegistry;
+    }
+
     modifier onlyFactory() {
         if (msg.sender != appFactory) revert OnlyFactory();
         _;
@@ -189,77 +210,43 @@ contract AppBondingCurve is ReentrancyGuard {
 
     /**
      * @notice Initialize bonding curve contract
-     * @param _appId Unique app identifier
-     * @param _factory Factory contract address
-     * @param _elta ELTA token address
-     * @param _token App token address
-     * @param _router Uniswap V2 router address
-     * @param _targetRaisedElta Target ELTA to raise before graduation
-     * @param _lpLockDuration Duration to lock LP tokens
-     * @param _lpBeneficiary Address to receive LP tokens after lock
-     * @param _treasury Protocol treasury address
-     * @param _appFeeRouter App fee router for revenue forwarding
-     * @param _elataPoints ElataPoints token address for early access gating
-     * @param _governance Governance address for XP gate configuration
-     * @param _activationDelay Delay before curve becomes active
-     * @param _maxDuration Maximum duration before forced graduation
-     * @param _creator Creator address who can cancel
-     * @param _feeCollector FeeCollector address for fee routing
-     * @param _referralRegistry ReferralRegistry address for referral tracking
+     * @param params InitParams struct containing all constructor parameters
      */
-    constructor(
-        uint256 _appId,
-        address _factory,
-        IERC20 _elta,
-        AppToken _token,
-        IUniswapV2Router02 _router,
-        uint256 _targetRaisedElta,
-        uint256 _lpLockDuration,
-        address _lpBeneficiary,
-        address _treasury,
-        IAppFeeRouter _appFeeRouter,
-        IElataPoints _elataPoints,
-        address _governance,
-        uint256 _activationDelay,
-        uint256 _maxDuration,
-        address _creator,
-        address _feeCollector,
-        address _referralRegistry
-    ) {
-        require(_factory != address(0), "Zero factory");
-        require(address(_elta) != address(0), "Zero ELTA");
-        require(address(_token) != address(0), "Zero token");
-        require(address(_router) != address(0), "Zero router");
-        require(_targetRaisedElta > 0, "Zero target");
-        require(_lpBeneficiary != address(0), "Zero beneficiary");
-        require(_treasury != address(0), "Zero treasury");
-        require(address(_elataPoints) != address(0), "Zero Points");
-        require(_governance != address(0), "Zero governance");
-        require(_creator != address(0), "Zero creator");
+    constructor(InitParams memory params) {
+        require(params.factory != address(0), "Zero factory");
+        require(address(params.elta) != address(0), "Zero ELTA");
+        require(address(params.token) != address(0), "Zero token");
+        require(address(params.router) != address(0), "Zero router");
+        require(params.targetRaisedElta > 0, "Zero target");
+        require(params.lpBeneficiary != address(0), "Zero beneficiary");
+        require(params.treasury != address(0), "Zero treasury");
+        require(address(params.elataPoints) != address(0), "Zero Points");
+        require(params.governance != address(0), "Zero governance");
+        require(params.creator != address(0), "Zero creator");
         // appFeeRouter can be address(0) to disable fee forwarding
 
-        appId = _appId;
-        appFactory = _factory;
-        ELTA = _elta;
-        TOKEN = _token;
-        router = _router;
-        uniFactory = IUniswapV2Factory(_router.factory());
-        targetRaisedElta = _targetRaisedElta;
-        lpLockDuration = _lpLockDuration;
-        lpBeneficiary = _lpBeneficiary;
-        treasury = _treasury;
-        appFeeRouter = _appFeeRouter;
-        elataPoints = _elataPoints;
-        governance = _governance;
+        appId = params.appId;
+        appFactory = params.factory;
+        ELTA = params.elta;
+        TOKEN = params.token;
+        router = params.router;
+        uniFactory = IUniswapV2Factory(params.router.factory());
+        targetRaisedElta = params.targetRaisedElta;
+        lpLockDuration = params.lpLockDuration;
+        lpBeneficiary = params.lpBeneficiary;
+        treasury = params.treasury;
+        appFeeRouter = params.appFeeRouter;
+        elataPoints = params.elataPoints;
+        governance = params.governance;
         launchTimestamp = block.timestamp;
-        creator = _creator;
-        feeCollector = _feeCollector;
-        referralRegistry = _referralRegistry;
+        creator = params.creator;
+        feeCollector = params.feeCollector;
+        referralRegistry = params.referralRegistry;
 
         // Set lifecycle timestamps
         state = CurveState.PENDING;
-        activationTime = block.timestamp + _activationDelay;
-        deadline = activationTime + _maxDuration;
+        activationTime = block.timestamp + params.activationDelay;
+        deadline = activationTime + params.maxDuration;
     }
 
     /**

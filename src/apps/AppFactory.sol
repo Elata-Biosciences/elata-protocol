@@ -282,22 +282,25 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
             protocolConfig != address(0) ? IProtocolConfig(protocolConfig).maxCurveDuration() : 30 days;
 
         address curveAddr = AppDeploymentLib.deployCurve(
-            appCount,
-            address(this),
-            ELTA,
-            tokenAddr,
-            router,
-            targetRaisedElta,
-            lpLockDuration,
-            msg.sender,
-            treasury,
-            appFeeRouter,
-            elataPoints,
-            governance,
-            _activationDelay,
-            _maxDuration,
-            feeCollector,
-            referralRegistry
+            AppBondingCurve.InitParams({
+                appId: appCount,
+                factory: address(this),
+                elta: ELTA,
+                token: AppToken(tokenAddr),
+                router: router,
+                targetRaisedElta: targetRaisedElta,
+                lpLockDuration: lpLockDuration,
+                lpBeneficiary: msg.sender,
+                treasury: treasury,
+                appFeeRouter: appFeeRouter,
+                elataPoints: elataPoints,
+                governance: governance,
+                activationDelay: _activationDelay,
+                maxDuration: _maxDuration,
+                creator: msg.sender,
+                feeCollector: feeCollector,
+                referralRegistry: referralRegistry
+            })
         );
 
         // Configure token & curve with 50/25/25 split

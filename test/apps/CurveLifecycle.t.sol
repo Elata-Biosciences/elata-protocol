@@ -202,23 +202,25 @@ contract CurveLifecycleTest is Test {
         );
 
         curve = new AppBondingCurve(
-            APP_ID,
-            appFactory,
-            elta,
-            appToken,
-            IUniswapV2Router02(address(router)),
-            TARGET_RAISED,
-            LP_LOCK_DURATION,
-            creator,
-            treasury,
-            IAppFeeRouter(address(feeRouter)),
-            IElataPoints(address(xp)),
-            governance,
-            1 hours, // activationDelay
-            30 days, // maxDuration
-            creator, // creator
-            address(0), // feeCollector
-            address(0) // referralRegistry
+            AppBondingCurve.InitParams({
+                appId: APP_ID,
+                factory: appFactory,
+                elta: elta,
+                token: appToken,
+                router: IUniswapV2Router02(address(router)),
+                targetRaisedElta: TARGET_RAISED,
+                lpLockDuration: LP_LOCK_DURATION,
+                lpBeneficiary: creator,
+                treasury: treasury,
+                appFeeRouter: IAppFeeRouter(address(feeRouter)),
+                elataPoints: IElataPoints(address(xp)),
+                governance: governance,
+                activationDelay: 1 hours,
+                maxDuration: 30 days,
+                creator: creator,
+                feeCollector: address(0),
+                referralRegistry: address(0)
+            })
         );
     }
 

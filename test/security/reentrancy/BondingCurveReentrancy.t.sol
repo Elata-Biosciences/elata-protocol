@@ -242,23 +242,25 @@ contract BondingCurveReentrancy is Test {
 
         // Deploy BondingCurve
         curve = new AppBondingCurve(
-            1, // appId
-            address(factory),
-            IERC20(address(elta)),
-            appToken,
-            IUniswapV2Router02(address(router)),
-            TARGET_RAISED,
-            30 days, // lpLockDuration
-            treasury, // lpBeneficiary
-            treasury, // treasury
-            IAppFeeRouter(address(feeRouter)),
-            IElataPoints(address(xp)),
-            governance,
-            0, // activationDelay
-            365 days, // maxDuration
-            creator,
-            address(0), // feeCollector
-            address(0) // referralRegistry
+            AppBondingCurve.InitParams({
+                appId: 1,
+                factory: address(factory),
+                elta: IERC20(address(elta)),
+                token: appToken,
+                router: IUniswapV2Router02(address(router)),
+                targetRaisedElta: TARGET_RAISED,
+                lpLockDuration: 30 days,
+                lpBeneficiary: treasury,
+                treasury: treasury,
+                appFeeRouter: IAppFeeRouter(address(feeRouter)),
+                elataPoints: IElataPoints(address(xp)),
+                governance: governance,
+                activationDelay: 0,
+                maxDuration: 365 days,
+                creator: creator,
+                feeCollector: address(0),
+                referralRegistry: address(0)
+            })
         );
 
         // Initialize curve

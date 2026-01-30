@@ -56,23 +56,25 @@ contract AppBondingCurveTest is Test {
         vm.mockCall(mockRouter, abi.encodeWithSignature("factory()"), abi.encode(makeAddr("mockFactory")));
 
         curve = new AppBondingCurve(
-            0, // appId
-            factory,
-            elta,
-            appToken,
-            IUniswapV2Router02(mockRouter),
-            TARGET_RAISED,
-            365 days, // lpLockDuration
-            treasury, // lpBeneficiary
-            treasury, // treasury
-            IAppFeeRouter(address(0)), // No fee router in tests
-            mockXP,
-            governance,
-            0, // activationDelay - immediate activation for tests
-            30 days, // maxDuration
-            creator, // creator
-            address(0), // feeCollector
-            address(0) // referralRegistry
+            AppBondingCurve.InitParams({
+                appId: 0,
+                factory: factory,
+                elta: elta,
+                token: appToken,
+                router: IUniswapV2Router02(mockRouter),
+                targetRaisedElta: TARGET_RAISED,
+                lpLockDuration: 365 days,
+                lpBeneficiary: treasury,
+                treasury: treasury,
+                appFeeRouter: IAppFeeRouter(address(0)),
+                elataPoints: mockXP,
+                governance: governance,
+                activationDelay: 0,
+                maxDuration: 30 days,
+                creator: creator,
+                feeCollector: address(0),
+                referralRegistry: address(0)
+            })
         );
 
         // Setup: mint tokens to curve and initialize

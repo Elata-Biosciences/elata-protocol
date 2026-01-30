@@ -22,6 +22,17 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: v1.4.2
+          cache: true
+
+      - name: Cache Foundry build
+        uses: actions/cache@v4
+        with:
+          path: |
+            cache/
+            out/
+          key: foundry-build-${{ hashFiles('foundry.toml', 'src/**/*.sol', 'test/**/*.sol', 'lib/**') }}
+          restore-keys: |
+            foundry-build-
 
       - name: Show Foundry version
         run: forge --version
@@ -29,7 +40,7 @@ jobs:
       - name: Run Forge build
         run: |
           forge --version
-          forge build
+          forge build --sizes
 
       - name: Run Forge tests
         run: |
