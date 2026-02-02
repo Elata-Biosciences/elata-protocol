@@ -102,7 +102,18 @@ contract AccumulatedDust is Test, PrecisionFixtures {
 
         // Deploy AppToken
         appToken = new AppToken(
-            "TestApp", "TEST", 18, 10_000_000 ether, creator, admin, governance, treasury, treasury, treasury
+            AppToken.InitParams({
+                name: "TestApp",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: 10_000_000 ether,
+                creator: creator,
+                admin: admin,
+                governance: governance,
+                appRewardsDistributor: treasury,
+                rewardsDistributor: treasury,
+                treasury: treasury
+            })
         );
         appToken.mint(admin, 10_000_000 ether);
 

@@ -37,14 +37,36 @@ contract AppRewardsDistributorTest is Test {
 
         // Deploy app 1
         token1 = new AppToken(
-            "Game1", "GM1", 18, 1_000_000 ether, alice, address(this), address(1), address(1), address(1), address(1)
+            AppToken.InitParams({
+                name: "Game1",
+                symbol: "GM1",
+                decimals: 18,
+                maxSupply: 1_000_000 ether,
+                creator: alice,
+                admin: address(this),
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
         );
         vault1 = new AppStakingVault("Game1", "GM1", token1, alice);
         token1.mint(address(this), 1_000_000 ether);
 
         // Deploy app 2
         token2 = new AppToken(
-            "Game2", "GM2", 18, 1_000_000 ether, bob, address(this), address(1), address(1), address(1), address(1)
+            AppToken.InitParams({
+                name: "Game2",
+                symbol: "GM2",
+                decimals: 18,
+                maxSupply: 1_000_000 ether,
+                creator: bob,
+                admin: address(this),
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
         );
         vault2 = new AppStakingVault("Game2", "GM2", token2, bob);
         token2.mint(address(this), 1_000_000 ether);

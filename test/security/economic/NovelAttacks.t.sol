@@ -34,8 +34,20 @@ contract NovelAttacks is Test {
 
         veElta = new VeELTA(IERC20(address(elta)), admin);
 
-        appToken =
-            new AppToken("TestApp", "TEST", 18, APP_TOKEN_SUPPLY, admin, admin, admin, treasury, treasury, treasury);
+        appToken = new AppToken(
+            AppToken.InitParams({
+                name: "TestApp",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: APP_TOKEN_SUPPLY,
+                creator: admin,
+                admin: admin,
+                governance: admin,
+                appRewardsDistributor: treasury,
+                rewardsDistributor: treasury,
+                treasury: treasury
+            })
+        );
 
         config = new ProtocolConfig(admin, timelock);
 

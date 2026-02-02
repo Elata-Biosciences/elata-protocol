@@ -72,16 +72,18 @@ contract MultiEpochRewardsTest is Test {
 
         // Deploy app token and vault
         appToken = new AppToken(
-            "TestApp",
-            "TEST",
-            18,
-            10_000_000 ether,
-            governance,
-            governance,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
+            AppToken.InitParams({
+                name: "TestApp",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: 10_000_000 ether,
+                creator: governance,
+                admin: governance,
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
         );
 
         appVault = new AppStakingVault("TestApp", "TEST", appToken, governance);

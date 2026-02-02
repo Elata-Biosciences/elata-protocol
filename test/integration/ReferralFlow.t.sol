@@ -118,7 +118,18 @@ contract ReferralFlowTest is Test {
 
         // Deploy AppToken
         appToken = new AppToken(
-            "TestApp", "TEST", 18, APP_TOKEN_SUPPLY, creator, admin, governance, treasury, treasury, treasury
+            AppToken.InitParams({
+                name: "TestApp",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: APP_TOKEN_SUPPLY,
+                creator: creator,
+                admin: admin,
+                governance: governance,
+                appRewardsDistributor: treasury,
+                rewardsDistributor: treasury,
+                treasury: treasury
+            })
         );
 
         // Deploy BondingCurve with ReferralRegistry wired

@@ -22,7 +22,18 @@ contract AppTokenTest is Test {
 
     function setUp() public {
         token = new AppToken(
-            "TestApp Token", "TEST", 18, MAX_SUPPLY, creator, admin, address(1), address(1), address(1), address(1)
+            AppToken.InitParams({
+                name: "TestApp Token",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: MAX_SUPPLY,
+                creator: creator,
+                admin: admin,
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
         );
     }
 
@@ -40,17 +51,54 @@ contract AppTokenTest is Test {
 
     function test_RevertWhen_DeploymentZeroAddress() public {
         vm.expectRevert("Zero address");
-        new AppToken("Test", "TEST", 18, MAX_SUPPLY, address(0), admin, address(1), address(1), address(1), address(1));
+        new AppToken(
+            AppToken.InitParams({
+                name: "Test",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: MAX_SUPPLY,
+                creator: address(0),
+                admin: admin,
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
+        );
 
         vm.expectRevert("Zero address");
         new AppToken(
-            "Test", "TEST", 18, MAX_SUPPLY, creator, address(0), address(1), address(1), address(1), address(1)
+            AppToken.InitParams({
+                name: "Test",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: MAX_SUPPLY,
+                creator: creator,
+                admin: address(0),
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
         );
     }
 
     function test_RevertWhen_DeploymentInvalidSupply() public {
         vm.expectRevert("Invalid supply");
-        new AppToken("Test", "TEST", 18, 0, creator, admin, address(1), address(1), address(1), address(1));
+        new AppToken(
+            AppToken.InitParams({
+                name: "Test",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: 0,
+                creator: creator,
+                admin: admin,
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
+        );
     }
 
     function test_Mint() public {

@@ -217,8 +217,20 @@ contract CrossContractReentrancy is Test {
         airdropDistributor = new AirdropDistributor(admin, admin);
 
         // Deploy AppToken
-        appToken =
-            new AppToken("TestApp", "TEST", 18, 10_000_000 ether, admin, admin, admin, treasury, treasury, treasury);
+        appToken = new AppToken(
+            AppToken.InitParams({
+                name: "TestApp",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: 10_000_000 ether,
+                creator: admin,
+                admin: admin,
+                governance: admin,
+                appRewardsDistributor: treasury,
+                rewardsDistributor: treasury,
+                treasury: treasury
+            })
+        );
 
         // Deploy LP token
         lpToken = new MockLPToken();

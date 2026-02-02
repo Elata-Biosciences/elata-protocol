@@ -82,8 +82,20 @@ contract AccessControlTests is Test {
         feeManager = new FeeManager(address(elta), address(usdc), admin, admin, treasury, treasury, treasury, 1 days);
 
         // Deploy AppToken
-        appToken =
-            new AppToken("TestApp", "TEST", 18, 10_000_000 ether, admin, admin, admin, treasury, treasury, treasury);
+        appToken = new AppToken(
+            AppToken.InitParams({
+                name: "TestApp",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: 10_000_000 ether,
+                creator: admin,
+                admin: admin,
+                governance: admin,
+                appRewardsDistributor: treasury,
+                rewardsDistributor: treasury,
+                treasury: treasury
+            })
+        );
 
         // Deploy AirdropDistributor
         airdrop = new AirdropDistributor(admin, admin);

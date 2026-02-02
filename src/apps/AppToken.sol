@@ -83,52 +83,46 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
     error OnlyGovernance();
     error VaultAlreadySet();
 
+    /// @notice Constructor parameters bundled to avoid stack too deep
+    struct InitParams {
+        string name;
+        string symbol;
+        uint8 decimals;
+        uint256 maxSupply;
+        address creator;
+        address admin;
+        address governance;
+        address appRewardsDistributor;
+        address rewardsDistributor;
+        address treasury;
+    }
+
     /**
      * @notice Initialize app token with metadata
-     * @param name_ Token name (e.g., "NeuroGame Token")
-     * @param symbol_ Token symbol (e.g., "NGT")
-     * @param decimals_ Token decimals (typically 18)
-     * @param maxSupply_ Maximum token supply (0 = uncapped until finalize)
-     * @param creator_ App creator address
-     * @param admin_ Admin address (typically AppFactory)
-     * @param governance_ Governance address for fee configuration
-     * @param appRewardsDistributor_ App rewards distributor address
-     * @param rewardsDistributor_ Main rewards distributor address
-     * @param treasury_ Treasury address
+     * @param p InitParams struct containing all constructor parameters
      */
-    constructor(
-        string memory name_,
-        string memory symbol_,
-        uint8 decimals_,
-        uint256 maxSupply_,
-        address creator_,
-        address admin_,
-        address governance_,
-        address appRewardsDistributor_,
-        address rewardsDistributor_,
-        address treasury_
-    ) ERC20(name_, symbol_) ERC20Permit(name_) {
-        require(creator_ != address(0) && admin_ != address(0), "Zero address");
-        require(governance_ != address(0), "Zero governance");
-        require(appRewardsDistributor_ != address(0), "Zero app rewards");
-        require(rewardsDistributor_ != address(0), "Zero rewards");
-        require(treasury_ != address(0), "Zero treasury");
-        require(maxSupply_ > 0, "Invalid supply");
+    constructor(InitParams memory p) ERC20(p.name, p.symbol) ERC20Permit(p.name) {
+        require(p.creator != address(0) && p.admin != address(0), "Zero address");
+        require(p.governance != address(0), "Zero governance");
+        require(p.appRewardsDistributor != address(0), "Zero app rewards");
+        require(p.rewardsDistributor != address(0), "Zero rewards");
+        require(p.treasury != address(0), "Zero treasury");
+        require(p.maxSupply > 0, "Invalid supply");
 
-        _decimals = decimals_;
-        maxSupply = maxSupply_;
-        appCreator = creator_;
-        governance = governance_;
-        appRewardsDistributor = appRewardsDistributor_;
-        rewardsDistributor = rewardsDistributor_;
-        treasury = treasury_;
+        _decimals = p.decimals;
+        maxSupply = p.maxSupply;
+        appCreator = p.creator;
+        governance = p.governance;
+        appRewardsDistributor = p.appRewardsDistributor;
+        rewardsDistributor = p.rewardsDistributor;
+        treasury = p.treasury;
 
         // Set initial exemptions
         transferFeeExempt[address(this)] = true;
-        transferFeeExempt[admin_] = true; // factory
+        transferFeeExempt[p.admin] = true; // factory
 
-        _grantRole(DEFAULT_ADMIN_ROLE, admin_);
-        _grantRole(MINTER_ROLE, admin_);
+        _grantRole(DEFAULT_ADMIN_ROLE, p.admin);
+        _grantRole(MINTER_ROLE, p.admin);
     }
 
     function decimals() public view override returns (uint8) {

@@ -129,7 +129,18 @@ contract FeePipelineTest is Test {
 
         // Deploy app token
         appToken = new AppToken(
-            "TestApp", "TEST", 18, APP_TOKEN_SUPPLY, creator, admin, address(1), address(1), address(1), address(1)
+            AppToken.InitParams({
+                name: "TestApp",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: APP_TOKEN_SUPPLY,
+                creator: creator,
+                admin: admin,
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
         );
         appToken.mint(admin, APP_TOKEN_SUPPLY);
 

@@ -18,15 +18,6 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Configure swap for memory-intensive compilation
-        run: |
-          sudo fallocate -l 4G /swapfile
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
-          echo "Swap configured:"
-          free -h
-
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -46,10 +37,12 @@ jobs:
       - name: Show Foundry version
         run: forge --version
 
-      - name: Run Forge build
+      - name: Run Forge build (source only)
         run: |
           forge --version
-          forge build --sizes
+          forge build src/ --sizes
+        env:
+          FOUNDRY_PROFILE: default
 
       - name: Run Forge tests
         run: |

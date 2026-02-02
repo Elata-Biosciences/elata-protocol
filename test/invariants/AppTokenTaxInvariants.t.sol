@@ -33,16 +33,18 @@ contract AppTokenTaxInvariants is Test {
     function setUp() public {
         // Deploy AppToken
         appToken = new AppToken(
-            "TestApp",
-            "TEST",
-            18,
-            INITIAL_SUPPLY,
-            creator,
-            admin,
-            governance,
-            appRewardsDistributor,
-            rewardsDistributor,
-            treasury
+            AppToken.InitParams({
+                name: "TestApp",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: INITIAL_SUPPLY,
+                creator: creator,
+                admin: admin,
+                governance: governance,
+                appRewardsDistributor: appRewardsDistributor,
+                rewardsDistributor: rewardsDistributor,
+                treasury: treasury
+            })
         );
 
         // Mint initial supply to admin (admin has MINTER_ROLE)

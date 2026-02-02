@@ -59,16 +59,18 @@ contract LPKeyedTransferTaxTest is Test {
 
         // Deploy AppToken with LP-keyed tax support
         token = new AppToken(
-            "Test App Token",
-            "TAT",
-            18,
-            INITIAL_SUPPLY,
-            creator,
-            admin,
-            governance,
-            address(appRewards),
-            address(veRewards),
-            treasury
+            AppToken.InitParams({
+                name: "Test App Token",
+                symbol: "TAT",
+                decimals: 18,
+                maxSupply: INITIAL_SUPPLY,
+                creator: creator,
+                admin: admin,
+                governance: governance,
+                appRewardsDistributor: address(appRewards),
+                rewardsDistributor: address(veRewards),
+                treasury: treasury
+            })
         );
 
         // Set up token with FeeCollector and app ID

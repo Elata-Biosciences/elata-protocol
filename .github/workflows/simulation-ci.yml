@@ -30,13 +30,6 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Configure swap for memory-intensive compilation
-        run: |
-          sudo fallocate -l 4G /swapfile
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
-
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -70,7 +63,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build contracts
-        run: forge build --sizes
+        run: forge build src/ --sizes
+        env:
+          FOUNDRY_PROFILE: default
 
       - name: Run bootstrap smoke test
         working-directory: sim
@@ -112,13 +107,6 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Configure swap for memory-intensive compilation
-        run: |
-          sudo fallocate -l 4G /swapfile
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
-
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -153,7 +141,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build contracts
-        run: forge build --sizes
+        run: forge build src/ --sizes
+        env:
+          FOUNDRY_PROFILE: default
 
       - name: Run full ecosystem smoke test
         working-directory: sim

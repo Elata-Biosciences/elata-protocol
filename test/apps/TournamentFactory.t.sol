@@ -31,7 +31,18 @@ contract TournamentFactoryTest is Test {
     function setUp() public {
         factory = new TournamentFactory(factoryOwner, treasury);
         appToken = new AppToken(
-            "TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
+            AppToken.InitParams({
+                name: "TestApp",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: MAX_SUPPLY,
+                creator: appCreator,
+                admin: admin,
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
         );
     }
 

@@ -168,16 +168,18 @@ contract CurveLifecycleTest is Test {
 
         // Deploy app token
         appToken = new AppToken(
-            "Test App",
-            "TAPP",
-            18,
-            TOKEN_SUPPLY,
-            creator,
-            appFactory, // factory as admin
-            governance,
-            address(1), // appRewards
-            address(1), // veRewards
-            treasury
+            AppToken.InitParams({
+                name: "Test App",
+                symbol: "TAPP",
+                decimals: 18,
+                maxSupply: TOKEN_SUPPLY,
+                creator: creator,
+                admin: appFactory,
+                governance: governance,
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: treasury
+            })
         );
 
         // Fund test accounts

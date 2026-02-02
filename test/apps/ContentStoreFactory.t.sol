@@ -96,7 +96,18 @@ contract ContentStoreFactoryTest is Test {
 
         // Deploy app token
         appToken = new AppToken(
-            "TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
+            AppToken.InitParams({
+                name: "TestApp",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: MAX_SUPPLY,
+                creator: appCreator,
+                admin: admin,
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
         );
 
         // Deploy content721 for the app
@@ -177,7 +188,18 @@ contract ContentStoreFactoryTest is Test {
     function test_DeployContentStoreForNewApp() public {
         // Create a new app token
         AppToken appToken2 = new AppToken(
-            "TestApp2", "TEST2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
+            AppToken.InitParams({
+                name: "TestApp2",
+                symbol: "TEST2",
+                decimals: 18,
+                maxSupply: MAX_SUPPLY,
+                creator: appCreator,
+                admin: admin,
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
         );
 
         // Deploy content721 for the new app (ContentStore requires content721)
@@ -202,7 +224,18 @@ contract ContentStoreFactoryTest is Test {
     function test_DeployContentStoreWithELTAFee() public {
         // Create a new app token
         AppToken appToken2 = new AppToken(
-            "TestApp2", "TEST2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
+            AppToken.InitParams({
+                name: "TestApp2",
+                symbol: "TEST2",
+                decimals: 18,
+                maxSupply: MAX_SUPPLY,
+                creator: appCreator,
+                admin: admin,
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
         );
 
         // Deploy content721 for the new app (ContentStore requires content721)
@@ -261,7 +294,18 @@ contract ContentStoreFactoryTest is Test {
     function test_RevertWhen_DeployContentStoreWithoutELTAApproval() public {
         // Create a new app token
         AppToken appToken2 = new AppToken(
-            "TestApp2", "TEST2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
+            AppToken.InitParams({
+                name: "TestApp2",
+                symbol: "TEST2",
+                decimals: 18,
+                maxSupply: MAX_SUPPLY,
+                creator: appCreator,
+                admin: admin,
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
         );
 
         // Deploy content721 for the new app (ContentStore requires content721)
@@ -374,7 +418,18 @@ contract ContentStoreFactoryTest is Test {
     function test_FullWorkflow_DeployBothModules() public {
         // Create a new app token
         AppToken appToken2 = new AppToken(
-            "TestApp2", "TEST2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
+            AppToken.InitParams({
+                name: "TestApp2",
+                symbol: "TEST2",
+                decimals: 18,
+                maxSupply: MAX_SUPPLY,
+                creator: appCreator,
+                admin: admin,
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
         );
 
         // Step 1: Deploy content721 via InAppContent721Factory
@@ -446,7 +501,18 @@ contract ContentStoreFactoryTest is Test {
     function test_MultipleAppsDeployContentStores() public {
         // Create second app token
         AppToken appToken2 = new AppToken(
-            "TestApp2", "TEST2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
+            AppToken.InitParams({
+                name: "TestApp2",
+                symbol: "TEST2",
+                decimals: 18,
+                maxSupply: MAX_SUPPLY,
+                creator: appCreator,
+                admin: admin,
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
         );
 
         // Deploy content721 for second app (ContentStore requires content721)

@@ -137,7 +137,18 @@ contract FrontRunningAttacks is Test {
 
         // Deploy AppToken
         appToken = new AppToken(
-            "TestApp", "TEST", 18, APP_TOKEN_SUPPLY, creator, admin, governance, treasury, treasury, treasury
+            AppToken.InitParams({
+                name: "TestApp",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: APP_TOKEN_SUPPLY,
+                creator: creator,
+                admin: admin,
+                governance: governance,
+                appRewardsDistributor: treasury,
+                rewardsDistributor: treasury,
+                treasury: treasury
+            })
         );
 
         // Deploy BondingCurve with higher target
@@ -316,7 +327,18 @@ contract FrontRunningAttacks is Test {
     function test_FrontRun_ActivationRaceCondition() public {
         // Create a new curve that's pending
         AppToken newToken = new AppToken(
-            "NewApp", "NEW", 18, APP_TOKEN_SUPPLY, creator, admin, governance, treasury, treasury, treasury
+            AppToken.InitParams({
+                name: "NewApp",
+                symbol: "NEW",
+                decimals: 18,
+                maxSupply: APP_TOKEN_SUPPLY,
+                creator: creator,
+                admin: admin,
+                governance: governance,
+                appRewardsDistributor: treasury,
+                rewardsDistributor: treasury,
+                treasury: treasury
+            })
         );
 
         AppBondingCurve newCurve = new AppBondingCurve(
@@ -391,7 +413,18 @@ contract FrontRunningAttacks is Test {
     function test_FrontRun_CancelBeforeActivate() public {
         // Create pending curve
         AppToken newToken = new AppToken(
-            "CancelApp", "CANC", 18, APP_TOKEN_SUPPLY, creator, admin, governance, treasury, treasury, treasury
+            AppToken.InitParams({
+                name: "CancelApp",
+                symbol: "CANC",
+                decimals: 18,
+                maxSupply: APP_TOKEN_SUPPLY,
+                creator: creator,
+                admin: admin,
+                governance: governance,
+                appRewardsDistributor: treasury,
+                rewardsDistributor: treasury,
+                treasury: treasury
+            })
         );
 
         AppBondingCurve newCurve = new AppBondingCurve(

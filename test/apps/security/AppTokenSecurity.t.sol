@@ -22,7 +22,18 @@ contract AppTokenSecurityTest is Test {
 
     function setUp() public {
         token = new AppToken(
-            "TestApp", "TEST", 18, MAX_SUPPLY, creator, admin, governance, address(1), address(1), address(1)
+            AppToken.InitParams({
+                name: "TestApp",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: MAX_SUPPLY,
+                creator: creator,
+                admin: admin,
+                governance: governance,
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
         );
     }
 

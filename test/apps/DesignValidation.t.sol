@@ -51,7 +51,18 @@ contract DesignValidationTest is Test {
             new ContentStoreFactory(address(elta), address(0), factoryOwner, treasury, address(feeCollector), 500);
 
         appToken = new AppToken(
-            "TestApp", "TEST", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
+            AppToken.InitParams({
+                name: "TestApp",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: MAX_SUPPLY,
+                creator: appCreator,
+                admin: admin,
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
         );
 
         // Deploy vault (simulating AppFactory)
@@ -136,7 +147,18 @@ contract DesignValidationTest is Test {
 
         // Deploy modules
         AppToken app2 = new AppToken(
-            "App2", "APP2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
+            AppToken.InitParams({
+                name: "App2",
+                symbol: "APP2",
+                decimals: 18,
+                maxSupply: MAX_SUPPLY,
+                creator: appCreator,
+                admin: admin,
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
         );
 
         vm.prank(appCreator);
@@ -323,7 +345,18 @@ contract DesignValidationTest is Test {
     function test_Design_PerAppIsolation() public {
         // Deploy second app
         AppToken app2 = new AppToken(
-            "App2", "APP2", 18, MAX_SUPPLY, appCreator, admin, address(1), address(1), address(1), address(1)
+            AppToken.InitParams({
+                name: "App2",
+                symbol: "APP2",
+                decimals: 18,
+                maxSupply: MAX_SUPPLY,
+                creator: appCreator,
+                admin: admin,
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
         );
 
         // Deploy vault for app2 (simulating AppFactory)
@@ -457,16 +490,18 @@ contract DesignValidationTest is Test {
 
         // VALIDATION: Only token owner can deploy modules
         AppToken unauthorizedApp = new AppToken(
-            "Unauthorized",
-            "UNAUTH",
-            18,
-            MAX_SUPPLY,
-            player, // Different owner
-            admin,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
+            AppToken.InitParams({
+                name: "Unauthorized",
+                symbol: "UNAUTH",
+                decimals: 18,
+                maxSupply: MAX_SUPPLY,
+                creator: player, // Different owner
+                admin: admin,
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
         );
 
         vm.expectRevert(InAppContent721Factory.NotTokenOwner.selector);
@@ -481,16 +516,18 @@ contract DesignValidationTest is Test {
     function test_Design_SustainableEmissions() public {
         // Create new token for this test to control supply
         AppToken freshToken = new AppToken(
-            "FreshApp",
-            "FRESH",
-            18,
-            200000 ether,
-            appCreator,
-            appCreator,
-            address(1),
-            address(1),
-            address(1),
-            address(1)
+            AppToken.InitParams({
+                name: "FreshApp",
+                symbol: "FRESH",
+                decimals: 18,
+                maxSupply: 200000 ether,
+                creator: appCreator,
+                admin: appCreator,
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
         );
 
         // Mint exactly 100000 to creator

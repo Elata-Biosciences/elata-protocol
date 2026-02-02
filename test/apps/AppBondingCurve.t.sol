@@ -49,7 +49,18 @@ contract AppBondingCurveTest is Test {
         mockXP = new MockElataPoints();
 
         appToken = new AppToken(
-            "TestApp", "TEST", 18, TOKEN_SUPPLY, creator, factory, governance, mockAppRewards, mockRewards, treasury
+            AppToken.InitParams({
+                name: "TestApp",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: TOKEN_SUPPLY,
+                creator: creator,
+                admin: factory,
+                governance: governance,
+                appRewardsDistributor: mockAppRewards,
+                rewardsDistributor: mockRewards,
+                treasury: treasury
+            })
         );
 
         // Mock router calls

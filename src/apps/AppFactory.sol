@@ -242,6 +242,14 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
      * @dev description, imageURI, website params are reserved for future use.
      *      Set via AppToken.updateMetadata() after creation.
      */
+    /// @notice Input parameters for createApp to reduce stack depth
+    struct CreateAppParams {
+        string name;
+        string symbol;
+        uint256 supply;
+        address[] operators;
+    }
+
     function createApp(
         string calldata name,
         string calldata symbol,
@@ -251,16 +259,26 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         string calldata, // website - set via AppToken.updateMetadata() after creation
         address[] calldata operators
     ) external nonReentrant returns (uint256 appId) {
+        // Create params struct on the stack to reduce param count
+        CreateAppParams memory p;
+        p.name = name;
+        p.symbol = symbol;
+        p.supply = supply;
+        p.operators = operators;
+        return _createAppInternal(p);
+    }
+
+    function _createAppInternal(CreateAppParams memory p) internal returns (uint256 appId) {
         if (paused) revert Paused();
-        uint256 tokenSupply = supply == 0 ? defaultSupply : supply;
+        uint256 tokenSupply = p.supply == 0 ? defaultSupply : p.supply;
         require(tokenSupply > 0, "Invalid supply");
 
         // Collect fees and deploy core contracts
         _collectCreationFees();
-        DeploymentAddresses memory addrs = _deployContracts(name, symbol, tokenSupply);
+        DeploymentAddresses memory addrs = _deployContracts(p.name, p.symbol, tokenSupply);
 
         // Configure and finalize app
-        _configureApp(addrs, tokenSupply, operators);
+        _configureApp(addrs, tokenSupply, p.operators);
 
         // Register and emit
         appId = _registerApp(addrs, tokenSupply);
@@ -281,21 +299,23 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
     }
 
     /// @dev Deploy all contracts for new app
-    function _deployContracts(string calldata name, string calldata symbol, uint256 tokenSupply)
+    function _deployContracts(string memory name, string memory symbol, uint256 tokenSupply)
         internal
         returns (DeploymentAddresses memory addrs)
     {
         addrs.token = AppDeploymentLib.deployToken(
-            name,
-            symbol,
-            defaultDecimals,
-            tokenSupply,
-            msg.sender,
-            address(this),
-            governance,
-            address(appRewardsDistributor),
-            address(rewardsDistributor),
-            treasury
+            AppToken.InitParams({
+                name: name,
+                symbol: symbol,
+                decimals: defaultDecimals,
+                maxSupply: tokenSupply,
+                creator: msg.sender,
+                admin: address(this),
+                governance: governance,
+                appRewardsDistributor: address(appRewardsDistributor),
+                rewardsDistributor: address(rewardsDistributor),
+                treasury: treasury
+            })
         );
         addrs.vault = AppDeploymentLib.deployVault(name, symbol, addrs.token, address(this));
 
@@ -330,16 +350,20 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         // Deploy vesting and ecosystem vaults
         addrs.vestingWallet = address(
             new AppVestingWallet(
-                appCount, addrs.token, msg.sender, uint64(block.timestamp), DEFAULT_VESTING_CLIFF, DEFAULT_VESTING_DURATION, msg.sender
+                appCount,
+                addrs.token,
+                msg.sender,
+                uint64(block.timestamp),
+                DEFAULT_VESTING_CLIFF,
+                DEFAULT_VESTING_DURATION,
+                msg.sender
             )
         );
         addrs.ecosystemVault = address(new AppEcosystemVault(appCount, addrs.token, msg.sender));
     }
 
     /// @dev Configure token, mint allocations, and set up roles
-    function _configureApp(DeploymentAddresses memory addrs, uint256 tokenSupply, address[] calldata operators)
-        internal
-    {
+    function _configureApp(DeploymentAddresses memory addrs, uint256 tokenSupply, address[] memory operators) internal {
         uint256 curveShare = tokenSupply / 2;
         uint256 teamShare = tokenSupply / 4;
         uint256 ecosystemShare = tokenSupply - curveShare - teamShare;
@@ -371,7 +395,7 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
     }
 
     /// @dev Grant operator roles to addresses
-    function _grantOperatorRoles(AppToken token, address[] calldata operators) internal {
+    function _grantOperatorRoles(AppToken token, address[] memory operators) internal {
         for (uint256 i = 0; i < operators.length; i++) {
             if (operators[i] != address(0)) {
                 token.grantRole(token.APP_OPERATOR_ROLE(), operators[i]);
@@ -403,7 +427,14 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         tokenToAppId[addrs.token] = appId;
 
         emit AppCreated(
-            appId, msg.sender, addrs.token, addrs.vault, addrs.curve, addrs.vestingWallet, addrs.ecosystemVault, tokenSupply / 2
+            appId,
+            msg.sender,
+            addrs.token,
+            addrs.vault,
+            addrs.curve,
+            addrs.vestingWallet,
+            addrs.ecosystemVault,
+            tokenSupply / 2
         );
 
         if (feeManager != address(0)) {

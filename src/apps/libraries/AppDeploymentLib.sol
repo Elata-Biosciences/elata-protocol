@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {AppBondingCurve} from "../AppBondingCurve.sol";
+import {AppToken} from "../AppToken.sol";
 import {AppCurveDeployer} from "./AppCurveDeployer.sol";
 import {AppTokenDeployer} from "./AppTokenDeployer.sol";
 import {AppVaultDeployer} from "./AppVaultDeployer.sol";
@@ -12,30 +13,8 @@ import {AppVaultDeployer} from "./AppVaultDeployer.sol";
  * @dev Delegates to specialized deployer libraries to reduce size
  */
 library AppDeploymentLib {
-    function deployToken(
-        string calldata name,
-        string calldata symbol,
-        uint8 decimals,
-        uint256 supply,
-        address creator,
-        address factory,
-        address governance,
-        address appRewardsDistributor,
-        address rewardsDistributor,
-        address treasury
-    ) external returns (address) {
-        return AppTokenDeployer.deployToken(
-            name,
-            symbol,
-            decimals,
-            supply,
-            creator,
-            factory,
-            governance,
-            appRewardsDistributor,
-            rewardsDistributor,
-            treasury
-        );
+    function deployToken(AppToken.InitParams memory params) external returns (address) {
+        return AppTokenDeployer.deployToken(params);
     }
 
     function deployVault(string calldata name, string calldata symbol, address token, address owner)

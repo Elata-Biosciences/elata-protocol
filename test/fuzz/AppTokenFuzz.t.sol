@@ -23,8 +23,20 @@ contract AppTokenFuzz is Test {
     uint256 public constant MAX_SUPPLY = 10_000_000 ether;
 
     function setUp() public {
-        token =
-            new AppToken("TestApp", "TEST", 18, MAX_SUPPLY, creator, admin, governance, appRewards, rewards, treasury);
+        token = new AppToken(
+            AppToken.InitParams({
+                name: "TestApp",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: MAX_SUPPLY,
+                creator: creator,
+                admin: admin,
+                governance: governance,
+                appRewardsDistributor: appRewards,
+                rewardsDistributor: rewards,
+                treasury: treasury
+            })
+        );
 
         // Mint tokens for testing
         vm.prank(admin);

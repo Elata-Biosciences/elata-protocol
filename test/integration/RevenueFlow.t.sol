@@ -69,16 +69,18 @@ contract RevenueFlowTest is Test {
 
         // Deploy app and vault
         appToken = new AppToken(
-            "Game",
-            "GAME",
-            18,
-            1_000_000 ether,
-            governance,
-            address(this),
-            address(1),
-            address(1),
-            address(1),
-            address(1)
+            AppToken.InitParams({
+                name: "Game",
+                symbol: "GAME",
+                decimals: 18,
+                maxSupply: 1_000_000 ether,
+                creator: governance,
+                admin: address(this),
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
         );
         appVault = new AppStakingVault("Game", "GAME", appToken, governance);
         appToken.mint(address(this), 1_000_000 ether);
@@ -172,16 +174,18 @@ contract RevenueFlowTest is Test {
     function test_MultipleApps_ProportionalDistribution() public {
         // Deploy second app
         AppToken appToken2 = new AppToken(
-            "Game2",
-            "GM2",
-            18,
-            1_000_000 ether,
-            governance,
-            address(this),
-            address(1),
-            address(1),
-            address(1),
-            address(1)
+            AppToken.InitParams({
+                name: "Game2",
+                symbol: "GM2",
+                decimals: 18,
+                maxSupply: 1_000_000 ether,
+                creator: governance,
+                admin: address(this),
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
         );
         AppStakingVault appVault2 = new AppStakingVault("Game2", "GM2", appToken2, governance);
         appToken2.mint(address(this), 1_000_000 ether);

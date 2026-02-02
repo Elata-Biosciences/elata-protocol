@@ -324,7 +324,20 @@ contract AppLaunchSecurityTest is Test {
         );
 
         vm.expectRevert("Zero address");
-        new AppToken("Test", "TEST", 18, 1000 ether, address(0), admin, governance, address(1), address(1), treasury);
+        new AppToken(
+            AppToken.InitParams({
+                name: "Test",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: 1000 ether,
+                creator: address(0),
+                admin: admin,
+                governance: governance,
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: treasury
+            })
+        );
 
         vm.expectRevert("Zero LP token");
         new LpLocker(1, address(0), treasury, block.timestamp + 365 days);
