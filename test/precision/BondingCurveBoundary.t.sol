@@ -343,7 +343,8 @@ contract BondingCurveBoundary is Test, PrecisionFixtures {
 
         for (uint256 i = 0; i < numTrades; i++) {
             // Random trade size between 1 and 50 ether
-            uint256 tradeSize = pseudoRandomAmount(seed + i, 1 ether, 50 ether);
+            // Use XOR to avoid overflow when seed is near type(uint256).max
+            uint256 tradeSize = pseudoRandomAmount(seed ^ i, 1 ether, 50 ether);
 
             // Check if we'd graduate
             if (curve.reserveElta() + tradeSize >= TARGET_RAISED) break;
