@@ -26,21 +26,13 @@ enum PaymentTokenType {
 
 /**
  * @title ContentStore
- * @author Elata Protocol
- * @notice Primary sales mechanism for in-app content
- * @dev Handles purchases and fee routing for InAppContent721 tokens
- *
- * Per Protocol Changes document:
- * - Accept app token by default
- * - Optional ELTA/USDC support later
- * - Route configurable share to fee pipeline
- * - No burn by default (can add burnBps later)
- *
- * Key Features:
- * - Define content listings with price and metadata URI
- * - Users purchase content with app tokens
- * - Automatic fee split to protocol and creator
- * - Integration with FeeCollector for protocol fees
+ * @author Elata Biosciences
+ * @custom:security-contact security@elata.bio
+ * @notice Primary sales contract for in-app digital content.
+ * @dev Manages content listings with prices and metadata URIs. Users purchase items with app tokens,
+ *      triggering a mint on the linked InAppContent721 contract. A configurable portion of each sale
+ *      routes to FeeCollector for protocol fees; the remainder goes to the creator. Supports time
+ *      windows and feature gates for content availability.
  */
 contract ContentStore is AccessControl, ReentrancyGuard {
     using SafeERC20 for IERC20;

@@ -74,16 +74,16 @@ This document describes the Merkle distribution flow, delta semantics, operator 
 ```bash
 pnpm ts-node scripts/xp/xp-generate-merkle.ts \
   --in scripts/xp/data/allocs.json \
-  --out ../elata-appstore/public/xp-distribution.json \
+  --out ./output/xp-distribution.json \
   --id <N>
 ```
 3. Publish root:
 ```bash
 pnpm ts-node scripts/xp/xp-publish-root.ts \
   --rpc $RPC --key $OPERATOR_PK --contract $XP_ADDR \
-  --json ../elata-appstore/public/xp-distribution.json
+  --json ./output/xp-distribution.json
 ```
-4. Users visit XP page; UI validates and enables claim
+4. Users claim via the frontend; UI validates proofs and enables claim
 
 ## How normal users update values
 - Users do not publish roots; operators do

@@ -15,23 +15,13 @@ import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 /**
  * @title ElataGovernor
  * @author Elata Biosciences
- * @notice Onchain governance contract for the Elata Protocol
- * @dev OpenZeppelin Governor with veELTA voting and timelock execution
- *
- * Features:
- * - Token-weighted voting using veELTA (vote-escrowed ELTA)
- * - Quorum requirements (4% of veELTA supply)
- * - Proposal thresholds and voting delays
- * - Emergency proposal mechanism
- * - Timelock-controlled execution for safety
- * - Delegation support for voting power
- *
- * Governance Parameters:
- * - Voting Delay: 1 day
- * - Voting Period: 7 days
- * - Proposal Threshold: 0.1% of total supply (77K tokens)
- * - Quorum: 4% of veELTA supply
- * - Timelock: 48 hour minimum delay
+ * @custom:security-contact security@elata.bio
+ * @notice On-chain governance contract for the Elata Protocol.
+ * @dev Extends OpenZeppelin Governor with veELTA-weighted voting and timelock-controlled execution.
+ *      Proposals require a threshold of 0.1% of supply to submit and 4% quorum to pass, with a
+ *      one-day voting delay followed by a seven-day voting period. Emergency proposals require a
+ *      higher 5% threshold but execute on an expedited three-day schedule. All approved proposals
+ *      are queued through a timelock with a minimum 48-hour delay before execution.
  */
 contract ElataGovernor is
     Governor,

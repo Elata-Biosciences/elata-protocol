@@ -7,21 +7,12 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title TournamentFactory
- * @author Elata Protocol
- * @notice Factory for deploying tournament contracts with registry
- * @dev Allows app creators to easily deploy tournaments for their tokens
- *
- * Key Features:
- * - Token-owner restricted deployment
- * - Default parameter templates
- * - Tournament registry per app
- * - Extensible for future tournament types
- *
- * Usage:
- * 1. App creator calls createTournament() with their app token
- * 2. Factory deploys Tournament contract
- * 3. Creator owns tournament and can configure/finalize
- * 4. Registry tracks all tournaments per app for discovery
+ * @author Elata Biosciences
+ * @custom:security-contact security@elata.bio
+ * @notice Factory for deploying Tournament contracts with a per-app registry.
+ * @dev Only the AppToken owner may deploy tournaments for their app. The factory applies default
+ *      protocol fee parameters and maintains a registry of all tournaments per app for discovery.
+ *      The deploying creator owns the resulting Tournament and can configure or finalize it.
  */
 contract TournamentFactory is Ownable {
     /// @notice Protocol treasury for tournament fees

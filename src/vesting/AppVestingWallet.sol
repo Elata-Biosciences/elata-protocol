@@ -8,28 +8,12 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 /**
  * @title AppVestingWallet
  * @author Elata Biosciences
- * @notice Vesting wallet for team token allocations with cliff and linear vesting
- * @dev Implements OZ-style vesting with added metadata and beneficiary management
- *
- * Per Protocol Changes document section 11:
- * - Team allocation held in vesting wallet from app creation time (T0)
- * - Schedule starts immediately at creation
- * - Default: 3 month cliff, 24 month linear vest after cliff
- * - Beneficiary is the team multisig
- * - Admin can update beneficiary (for multisig rotation)
- *
- * Key Features:
- * - Single ERC20 token vesting
- * - Cliff period before any tokens vest
- * - Linear vesting after cliff
- * - Permissionless release (anyone can trigger, tokens go to beneficiary)
- * - Admin-controlled beneficiary updates
- * - Metadata for off-chain attribution (appId, token)
- *
- * Security:
- * - Reentrancy protection on release
- * - Admin-only for beneficiary changes
- * - No rescue functions (tokens vest according to schedule)
+ * @custom:security-contact security@elata.bio
+ * @notice Vesting wallet for team token allocations with cliff and linear vesting.
+ * @dev Holds a single ERC20 token on behalf of a beneficiary. No tokens vest during the cliff period;
+ *      after the cliff, tokens vest linearly until the end of the vesting duration. Anyone may trigger
+ *      release(), which transfers vested tokens to the beneficiary. The admin may update the beneficiary
+ *      address (e.g., for multisig rotation). There is no early-unlock or rescue mechanism.
  */
 contract AppVestingWallet is ReentrancyGuard {
     using SafeERC20 for IERC20;

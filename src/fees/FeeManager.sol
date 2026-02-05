@@ -20,14 +20,11 @@ interface IUniswapV2Router {
 /**
  * @title FeeManager
  * @author Elata Biosciences
- * @notice Handles daily epoch distribution of ELTA fees
- * @dev Holds ELTA and distributes to stakers, veELTA holders, creators, and treasury
- *
- * Key Features:
- * - Per-app accounting
- * - Daily epochs with configurable length
- * - Configurable fee splits
- * - Caller incentives in USDC
+ * @custom:security-contact security@elata.bio
+ * @notice Manages epoch-based distribution of accumulated ELTA fees across stakeholders.
+ * @dev Receives ELTA from FeeCollector and distributes it according to configurable splits at
+ *      the end of each epoch. Per-app accounting tracks fees by app ID. Callers who trigger
+ *      epoch closure receive a USDC incentive. Epoch length and fee splits are governance-configurable.
  */
 contract FeeManager is ReentrancyGuard {
     using SafeERC20 for IERC20;

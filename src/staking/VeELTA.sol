@@ -13,22 +13,14 @@ import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
 /**
  * @title VeELTA (Vote-Escrowed ELTA)
  * @author Elata Biosciences
- * @notice Non-transferable ERC20Votes token representing voting power from locked ELTA
- * @dev Snapshot-enabled for on-chain reward distribution and governance
- *
- * Architecture:
- * - Users lock ELTA for a duration (MIN_LOCK to MAX_LOCK)
- * - veELTA minted = principal * boost(duration)
- * - No continuous decay; voting power updates only on user actions
- * - Principal returned 1:1 on unlock (veELTA burned)
- *
- * Features:
- * - lock(): Create new lock position
- * - increaseAmount(): Add more ELTA to existing lock
- * - extendLock(): Extend unlock time
- * - unlock(): Withdraw principal after expiry
- * - ERC20Votes snapshots for governance and rewards
- * - Non-transferable (soulbound to staker)
+ * @custom:security-contact security@elata.bio
+ * @notice Non-transferable token representing time-weighted voting power from locked ELTA.
+ * @dev Users lock ELTA for a duration between MIN_LOCK and MAX_LOCK, receiving veELTA
+ *      proportional to principal multiplied by a duration-based boost factor. Voting power
+ *      does not decay continuously; it updates only on explicit user actions. The principal
+ *      is returned 1:1 when the lock expires and the user calls unlock(), at which point the
+ *      veELTA is burned. Transfers are disabled, making positions soulbound. Integrates with
+ *      ERC20Votes for governance snapshots and reward distribution calculations.
  */
 contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
     using SafeERC20 for IERC20;

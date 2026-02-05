@@ -203,7 +203,7 @@ export class EltaPack implements Pack {
   private lockStateCache: Map<Address, { hasLock: boolean; unlockTime: bigint }> = new Map();
 
   // ===========================================
-  // VC METRICS TRACKING (NEW)
+  // SIMULATION METRICS TRACKING
   // ===========================================
 
   /** Total trading volume (sum of all buys + sells in ELTA) */
@@ -819,7 +819,7 @@ export class EltaPack implements Pack {
     }
 
     // ===========================================
-    // VC METRICS (NEW)
+    // SIMULATION METRICS
     // ===========================================
 
     // TVL (Total Value Locked) - veELTA locked + app tokens staked
@@ -1530,7 +1530,7 @@ export class EltaPack implements Pack {
       return result;
     };
 
-    // Track user activity for VC metrics
+    // Track user activity for simulation metrics
     this.trackUserActivity(agentId);
 
     try {
@@ -1540,7 +1540,7 @@ export class EltaPack implements Pack {
         case 'buy_app_token':
           result = await this.executeBuyAppToken(wallet, payload);
           if (result.ok) {
-            // Track volume for VC metrics
+            // Track volume for simulation metrics
             const amount = (payload as { eltaAmount?: bigint }).eltaAmount ?? 0n;
             this.trackVolume('buy', amount);
             this.appTokenTrades++;
@@ -1550,7 +1550,7 @@ export class EltaPack implements Pack {
         case 'sell_app_token':
           result = await this.executeSellAppToken(wallet, payload);
           if (result.ok) {
-            // Track volume for VC metrics
+            // Track volume for simulation metrics
             const amount = (payload as { tokenAmount?: bigint }).tokenAmount ?? 0n;
             this.trackVolume('sell', amount);
             this.appTokenTrades++;

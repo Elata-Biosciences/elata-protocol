@@ -9,8 +9,9 @@ import {ELTA} from "elta/ELTA.sol";
 /**
  * @title ProtocolStats
  * @author Elata Biosciences
- * @notice Comprehensive statistics and data aggregation for frontend integration
- * @dev Provides batch queries and aggregated data for efficient frontend loading
+ * @custom:security-contact security@elata.bio
+ * @notice Aggregates protocol statistics for frontend integration.
+ * @dev Provides batch queries across ELTA, veELTA, XP, and rewards contracts for efficient loading.
  */
 contract ProtocolStats {
     ELTA public immutable elta;

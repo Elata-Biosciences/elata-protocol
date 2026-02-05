@@ -24,9 +24,9 @@ const FDV_LEVELS = [
 ];
 
 /**
- * Total ELTA supply (from protocol)
+ * Total ELTA supply (from protocol - 77M max cap)
  */
-const ELTA_TOTAL_SUPPLY = 10_000_000_000; // 10 billion
+const ELTA_TOTAL_SUPPLY = 77_000_000; // 77 million
 
 /**
  * Convert ELTA to USD at a given FDV
@@ -77,7 +77,7 @@ interface SimulationMetrics {
   treasury_usdc_revenue: bigint;
   treasury_usdc_balance: bigint;
 
-  // VC metrics
+  // Simulation metrics
   tvl_total: bigint;
   tvl_veelta: bigint;
   tvl_apps: bigint;
@@ -106,7 +106,7 @@ interface SimulationMetrics {
 }
 
 /**
- * Generate the VC report
+ * Generate the simulation report
  */
 async function generateReport(metricsPath: string, outputDir: string): Promise<void> {
   console.log('Loading simulation metrics...');
@@ -179,7 +179,7 @@ async function generateReport(metricsPath: string, outputDir: string): Promise<v
         treasury_usdc: Number(metrics.treasury_usdc_revenue) / 1e6, // USDC has 6 decimals
       },
     },
-    vc_metrics: {
+    simulation_metrics: {
       tvl: {
         total_elta: formatElta(metrics.tvl_total),
         breakdown: {
@@ -254,7 +254,7 @@ function generateMarkdownReport(
   const projections = (json as { fdv_projections: Array<Record<string, string>> }).fdv_projections;
   const extraps = json.extrapolations as { monthly: Record<string, unknown>; annual: Record<string, unknown> };
 
-  return `# Elata Protocol - VC Simulation Report
+  return `# Elata Protocol - Simulation Report
 
 Generated: ${new Date().toISOString()}
 
@@ -353,7 +353,7 @@ ${projections.map(p => `| ${p.fdv} | ${p.tvl_usd} | ${p.daily_volume_usd} | ${p.
 1. **Tick Duration**: Each simulation tick represents 15 minutes of real-world time.
 2. **User Behavior**: Agent behaviors are parameterized to simulate realistic user patterns including trading, staking, content consumption, and governance participation.
 3. **Extrapolation**: Projections assume linear scaling, which may be conservative for network effects or optimistic for market saturation.
-4. **FDV Calculations**: Based on a total supply of ${(ELTA_TOTAL_SUPPLY / 1e9).toFixed(0)}B ELTA tokens.
+4. **FDV Calculations**: Based on a total supply of ${(ELTA_TOTAL_SUPPLY / 1e6).toFixed(0)}M ELTA tokens (77M max cap).
 
 ## Sanity Checks
 

@@ -86,6 +86,8 @@ Include in your PR description:
 
 ## Code Style
 
+See [STYLE.md](./STYLE.md) for comprehensive NatSpec conventions and formatting standards.
+
 ### Solidity
 
 Follow the [Solidity Style Guide](https://docs.soliditylang.org/en/latest/style-guide.html):
@@ -135,13 +137,17 @@ if (amount < MIN_AMOUNT) revert Errors.AmountTooLow();
 
 ```
 src/
-├── token/ELTA.sol              # Governance token
 ├── staking/VeELTA.sol          # Vote-escrowed staking
-├── experience/ElataPoints.sol      # Reputation system
+├── experience/ElataPoints.sol  # Reputation system
 ├── governance/                 # Governor, timelock, funding
 ├── rewards/                    # Fee distribution
 ├── apps/                       # App token framework
+├── fees/                       # Fee routing infrastructure
+├── modules/                    # Airdrops, referrals
+├── vesting/                    # Token vesting contracts
 └── utils/Errors.sol            # Shared error definitions
+
+lib/ELTA/                       # ELTA token (external dependency)
 
 test/
 ├── token/ELTATest.t.sol        # Unit tests per contract
@@ -180,6 +186,8 @@ When modifying contracts:
 - Write tests for the security properties you're relying on
 
 ### Reporting Security Issues
+
+See [SECURITY.md](./SECURITY.md) for our security policy and vulnerability reporting process.
 
 If you find a security vulnerability:
 

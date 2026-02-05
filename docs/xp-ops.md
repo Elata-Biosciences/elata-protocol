@@ -20,18 +20,18 @@ xp.revokeRole(XP_OPERATOR_ROLE, 0xOperator1);
 ```
 
 ## Publish distribution
-1) Generate canonical JSON in appstore/public
+1) Generate canonical JSON output
 ```bash
-pnpm ts-node ../elata-protocol/scripts/xp/xp-generate-merkle.ts \
+pnpm ts-node scripts/xp/xp-generate-merkle.ts \
   --in scripts/xp/data/allocs.json \
-  --out public/xp-distribution.json \
+  --out ./output/xp-distribution.json \
   --id <N>
 ```
 2) Publish root on-chain
 ```bash
-pnpm ts-node ../elata-protocol/scripts/xp/xp-publish-root.ts \
+pnpm ts-node scripts/xp/xp-publish-root.ts \
   --rpc $RPC --key $OPERATOR_PK --contract $XP_ADDR \
-  --json public/xp-distribution.json
+  --json ./output/xp-distribution.json
 ```
 
 ## Rotation

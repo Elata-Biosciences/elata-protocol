@@ -60,7 +60,7 @@
     "sim:smoke": "npx tsx sim/tests/smoke.ts",
     "sim:smoke:usdc": "npx tsx sim/tests/smoke-usdc-revenue.ts",
     "sim:full": "npx tsx sim/scenarios/full-ecosystem.ts",
-    "sim:report": "npx tsx sim/scripts/generate-vc-report.ts",
+    "sim:report": "npx tsx sim/scripts/generate-simulation-report.ts",
     "sim:all": "npm run sim:full && npm run sim:report"
   },
   "devDependencies": {

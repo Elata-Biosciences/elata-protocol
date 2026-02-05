@@ -8,14 +8,10 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 /**
  * @title TreasuryUSDCVault
  * @author Elata Biosciences
- * @notice Simple USDC custody with clean revenue accounting
- * @dev Intentionally boring - receives USDC, tracks revenue, allows treasury withdrawals
- *
- * Design Philosophy:
- * - Simple custody, not DeFi
- * - Clean event emission for revenue tracking
- * - Only treasury multisig can withdraw
- * - Per-app and per-epoch revenue tracking
+ * @custom:security-contact security@elata.bio
+ * @notice Simple USDC custody contract with per-app and per-epoch revenue accounting.
+ * @dev Receives USDC from fee distribution, emits events for off-chain revenue tracking, and allows
+ *      the treasury multisig to withdraw. Intentionally minimal: no yield strategies or DeFi integrations.
  */
 contract TreasuryUSDCVault is ReentrancyGuard {
     using SafeERC20 for IERC20;

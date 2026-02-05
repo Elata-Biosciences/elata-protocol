@@ -13,16 +13,11 @@ interface IFeeManager {
 /**
  * @title FeeCollector
  * @author Elata Biosciences
- * @notice Single sink for all protocol fee assets with per-app accounting
- * @dev Receives ELTA fees and app token fees, maintains per-app accounting,
- *      and exposes permissionless sweep functions
- *
- * Key Design Rules:
- * - Per-app accounting: pendingEltaFees[appId], pendingAppTokenFees[appId][token]
- * - Permissionless sweeps: anyone can call sweep functions
- * - No unbounded loops: sweeps are always per-app, never "all apps"
- * - ELTA goes to FeeManager directly
- * - App tokens go to FeeSwapper for conversion
+ * @custom:security-contact security@elata.bio
+ * @notice Aggregates protocol fees with per-app accounting and permissionless sweep functions.
+ * @dev Receives both ELTA and app token fees, tracking pending amounts by app ID. Anyone may call
+ *      the sweep functions to forward accumulated fees: ELTA goes directly to FeeManager, while
+ *      app tokens route through FeeSwapper for conversion. Sweeps are per-app to avoid unbounded loops.
  */
 contract FeeCollector is ReentrancyGuard {
     using SafeERC20 for IERC20;

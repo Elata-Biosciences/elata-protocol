@@ -145,21 +145,21 @@ cast send $TIMELOCK_ADDRESS \
 
 Or use Gnosis Safe Transaction Builder.
 
-### Vercel Environment Variables
+### Frontend Environment Variables
 
-Add these to the elata-appstore project in Vercel (Settings → Environment Variables):
+Configure your frontend application with the deployed contract addresses.
+See `deployments/base-sepolia.json` for all addresses.
 
-```
-NEXT_PUBLIC_ELTA_ADDRESS_BASE_SEPOLIA=<from_deployment>
-NEXT_PUBLIC_APP_FACTORY_ADDRESS_BASE_SEPOLIA=<from_deployment>
-NEXT_PUBLIC_APP_MODULE_FACTORY_ADDRESS_BASE_SEPOLIA=<from_deployment>
-NEXT_PUBLIC_REWARDS_DISTRIBUTOR_ADDRESS_BASE_SEPOLIA=<from_deployment>
-NEXT_PUBLIC_APP_REWARDS_DISTRIBUTOR_ADDRESS_BASE_SEPOLIA=<from_deployment>
-NEXT_PUBLIC_VE_ELTA_ADDRESS_BASE_SEPOLIA=<from_deployment>
-NEXT_PUBLIC_ELATA_XP_ADDRESS_BASE_SEPOLIA=<from_deployment>
-```
+Required contract addresses:
+- ELTA token
+- AppFactory
+- AppModuleFactory
+- RewardsDistributor
+- AppRewardsDistributor
+- VeELTA
+- ElataPoints (XP)
 
-Set scope to Preview and Development.
+See the frontend repository documentation for environment variable configuration.
 
 ## Troubleshooting
 

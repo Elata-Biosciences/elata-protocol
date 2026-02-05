@@ -7,21 +7,12 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 /**
  * @title AppFeeRouter
- * @author Elata Protocol
- * @notice Global fee collection router that forwards trading fees to RewardsDistributor
- * @dev Single instance used by all bonding curves for consistent fee handling
- *
- * Key Features:
- * - Collects ELTA fees from bonding curve trades
- * - Forwards immediately to RewardsDistributor for 70/15/15 split
- * - Configurable fee rate (capped at 5%)
- * - Governance-controlled adjustments
- *
- * Usage:
- * 1. Bonding curve computes fee from trade amount
- * 2. Bonding curve calls takeAndForwardFee()
- * 3. Router pulls fee and deposits to RewardsDistributor
- * 4. RewardsDistributor splits 70% app / 15% veELTA / 15% treasury
+ * @author Elata Biosciences
+ * @custom:security-contact security@elata.bio
+ * @notice Global router that collects trading fees from bonding curves and forwards them to RewardsDistributor.
+ * @dev A single instance serves all bonding curves. When a trade occurs, the curve calls takeAndForwardFee(),
+ *      which pulls the fee in ELTA and immediately deposits it to RewardsDistributor for the 70/15/15 split.
+ *      The fee rate is governance-configurable and capped at 5%.
  */
 contract AppFeeRouter {
     using SafeERC20 for IERC20;

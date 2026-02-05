@@ -22,23 +22,13 @@ enum EntryTokenType {
 
 /**
  * @title Tournament
- * @author Elata Protocol
- * @notice Entry-fee tournaments with multi-currency support and FeeCollector integration
- * @dev On-chain paid competitions with transparent payouts
- *
- * Key Features:
- * - Entry fee pool accumulation
- * - Multi-currency support (APP, ELTA, USDC)
- * - Protocol fee routing to FeeCollector
- * - Burn fee for deflationary pressure
- * - Merkle proof winner claims
- * - One-time finalization
- *
- * Tournament Flow:
- * 1. Deploy tournament with parameters
- * 2. Users enter during time window (pay entry fee in selected currency)
- * 3. Owner finalizes with Merkle root of winners
- * 4. Winners claim rewards with proofs
+ * @author Elata Biosciences
+ * @custom:security-contact security@elata.bio
+ * @notice Entry-fee tournament contract with multi-currency support and Merkle-based payouts.
+ * @dev Users pay an entry fee in app tokens, ELTA, or USDC during a defined time window. Entry fees
+ *      accumulate in a pool; a configurable portion routes to FeeCollector as protocol revenue. After
+ *      the competition ends, the owner finalizes by publishing a Merkle root of winners. Winners claim
+ *      their share by submitting a valid proof. Finalization is one-time and irreversible.
  */
 contract Tournament is AccessControl, ReentrancyGuard {
     using SafeERC20 for IERC20;

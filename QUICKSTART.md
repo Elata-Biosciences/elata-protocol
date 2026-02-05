@@ -37,17 +37,6 @@ When it completes, your local blockchain is running with everything deployed.
 
 ## Next Steps
 
-### Start the Frontend
-
-In a separate terminal:
-
-```bash
-cd ../elata-appstore
-npm run local:full
-```
-
-The app store runs at `http://localhost:3001`.
-
 ### View Contract Addresses
 
 ```bash
@@ -104,15 +93,6 @@ npm run local:up
 **MetaMask "nonce too high" error**
 
 Clear MetaMask activity: Settings → Advanced → Clear activity tab data
-
-**Frontend can't connect**
-
-Regenerate the config and restart:
-
-```bash
-npm run config:appstore
-cd ../elata-appstore && npm run local:full
-```
 
 ## Further Reading
 

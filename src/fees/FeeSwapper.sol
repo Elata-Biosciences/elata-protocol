@@ -8,14 +8,11 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 /**
  * @title FeeSwapper
  * @author Elata Biosciences
- * @notice Safe swapping of non-ELTA assets to ELTA with slippage protection
- * @dev Holds non-ELTA assets and swaps them into ELTA via allowlisted routers
- *
- * Key Requirements:
- * - Router allowlist (set via governance)
- * - Slippage bounds (caller-supplied minOut + maxSlippageBps enforcement)
- * - Uses Uniswap V2 "supporting fee-on-transfer" functions
- * - Reentrancy guard
+ * @custom:security-contact security@elata.bio
+ * @notice Converts non-ELTA fee assets to ELTA via governance-allowlisted DEX routers.
+ * @dev Holds app tokens swept from FeeCollector and swaps them to ELTA using Uniswap V2-compatible
+ *      routers. Swaps enforce caller-supplied minOut and a maximum slippage bound set by governance.
+ *      Uses supportingFeeOnTransferTokens functions to handle tokens with transfer fees.
  */
 contract FeeSwapper is ReentrancyGuard {
     using SafeERC20 for IERC20;

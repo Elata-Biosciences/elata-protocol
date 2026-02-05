@@ -5,8 +5,10 @@ import {AppToken} from "../AppToken.sol";
 
 /**
  * @title AppTokenDeployer
- * @notice Library for deploying AppToken contracts
- * @dev Separated to reduce AppDeploymentLib size
+ * @author Elata Biosciences
+ * @custom:security-contact security@elata.bio
+ * @notice Library for deploying AppToken contracts.
+ * @dev Separated to reduce AppDeploymentLib bytecode size.
  */
 library AppTokenDeployer {
     function deployToken(AppToken.InitParams memory params) external returns (address) {

@@ -9,24 +9,13 @@ import {IERC4906} from "@openzeppelin/contracts/interfaces/IERC4906.sol";
 
 /**
  * @title InAppContent721
- * @author Elata Protocol
- * @notice ERC-721 contract for in-app digital content
- * @dev Call them "In-App Content" or "Digital Items" - not NFTs
- *
- * Per Protocol Changes document:
- * - ERC-721 with metadata (ERC721URIStorage)
- * - ERC-4906 for metadata update signaling
- * - Optional ERC-2981 royalties for secondary markets
- * - Primary sales handled separately by ContentStore
- * - Focus on stable URIs, metadata correctness, events
- *
- * Key Features:
- * - Admin-controlled minting via ContentStore
- * - Metadata URI per token (supports IPFS, Arweave, HTTP, data URIs, etc.)
- * - ERC-4906 events for marketplace/indexer metadata refresh
- * - Optional royalty configuration
- * - Contract-level metadata for OpenSea
- * - Transfer events for marketplace indexing
+ * @author Elata Biosciences
+ * @custom:security-contact security@elata.bio
+ * @notice ERC-721 contract for in-app digital content items.
+ * @dev Combines ERC721URIStorage for per-token metadata, ERC-4906 for metadata update signaling,
+ *      and ERC-2981 for optional secondary-market royalties. Minting is restricted to an authorized
+ *      minter address, typically a ContentStore. Supports contract-level metadata for marketplace
+ *      compatibility and emits standard transfer events for indexers.
  */
 contract InAppContent721 is ERC721, ERC721URIStorage, ERC2981, Ownable {
     // =========== Errors ===========

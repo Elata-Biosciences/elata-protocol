@@ -4,8 +4,9 @@ pragma solidity ^0.8.24;
 /**
  * @title AppFactoryViews
  * @author Elata Biosciences
- * @notice View functions for AppFactory (separated to reduce main contract size)
- * @dev Helper contract that reads AppFactory storage for efficient queries
+ * @custom:security-contact security@elata.bio
+ * @notice View functions for AppFactory, separated to reduce main contract size.
+ * @dev Helper contract that reads AppFactory storage for efficient batch queries.
  */
 contract AppFactoryViews {
     // Reference to main factory

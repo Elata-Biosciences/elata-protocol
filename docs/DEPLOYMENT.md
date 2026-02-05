@@ -87,7 +87,7 @@ The script will:
 Verification usually happens automatically during deployment. If it fails:
 
 ```bash
-forge verify-contract <ADDRESS> src/token/ELTA.sol:ELTA \
+forge verify-contract <ADDRESS> lib/ELTA/src/ELTA.sol:ELTA \
   --chain sepolia \
   --etherscan-api-key $ETHERSCAN_API_KEY \
   --constructor-args $(cast abi-encode "constructor(string,string,address,address,uint256,uint256)" "ELTA" "ELTA" "0x..." "0x..." 10000000000000000000000000 77000000000000000000000000)
@@ -203,23 +203,12 @@ cast send $TIMELOCK_ADDRESS \
 
 These should be executed from the multisig via Gnosis Safe.
 
-## Updating Frontend
+## Frontend Configuration
 
-After deployment, update the App Store environment variables.
+After deployment, contract addresses should be configured in your frontend application.
+The deployment script outputs addresses to `deployments/<network>.json`.
 
-For Vercel (production):
-1. Go to elata-appstore project → Settings → Environment Variables
-2. Add variables for the new network:
-
-```
-NEXT_PUBLIC_ELTA_ADDRESS_BASE_SEPOLIA=0x...
-NEXT_PUBLIC_APP_FACTORY_ADDRESS_BASE_SEPOLIA=0x...
-NEXT_PUBLIC_VE_ELTA_ADDRESS_BASE_SEPOLIA=0x...
-NEXT_PUBLIC_ELATA_XP_ADDRESS_BASE_SEPOLIA=0x...
-NEXT_PUBLIC_REWARDS_DISTRIBUTOR_ADDRESS_BASE_SEPOLIA=0x...
-```
-
-For local development, the deploy script generates these automatically.
+See the frontend repository documentation for environment variable configuration.
 
 ## Mainnet Deployment
 

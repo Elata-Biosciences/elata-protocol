@@ -9,8 +9,10 @@ import {AppVaultDeployer} from "./AppVaultDeployer.sol";
 
 /**
  * @title AppDeploymentLib
- * @notice Minimal library for deploying app contracts
- * @dev Delegates to specialized deployer libraries to reduce size
+ * @author Elata Biosciences
+ * @custom:security-contact security@elata.bio
+ * @notice Minimal library for deploying app contracts.
+ * @dev Delegates to specialized deployer libraries to reduce contract size.
  */
 library AppDeploymentLib {
     function deployToken(AppToken.InitParams memory params) external returns (address) {

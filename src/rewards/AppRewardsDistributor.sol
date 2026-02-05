@@ -7,27 +7,14 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 /**
  * @title AppRewardsDistributor
- * @author Elata Protocol
- * @notice Distributes ELTA rewards to app stakers using on-chain snapshots
- * @dev Receives 70% of protocol revenues and distributes proportionally to app vaults
- *
- * Key Features:
- * - Registry of active app vaults (AppStakingVault addresses)
- * - Per-vault epochs with block snapshots
- * - Weight by total staked (vault.totalSupply() at distribution block)
- * - On-chain pro-rata claims via getPastVotes()
- * - Gas-bounded claims (max 100 epochs per call)
- * - Per-user cursor tracking to prevent double-claims
- *
- * Architecture:
- * 1. Factory registers new app vaults
- * 2. RewardsDistributor calls distribute() with 70% of revenue
- * 3. Allocate ELTA proportionally to vaults by totalSupply()
- * 4. Users claim via getPastVotes() at epoch blockNumber
- *
- * Governance:
- * - FACTORY_ROLE: Register new vaults at app creation
- * - GOVERNANCE_ROLE: Pause/unpause vaults, update weights
+ * @author Elata Biosciences
+ * @custom:security-contact security@elata.bio
+ * @notice Distributes the app-staker portion of protocol revenues across registered vaults.
+ * @dev Receives 70% of protocol ELTA revenues from RewardsDistributor and allocates them
+ *      proportionally to AppStakingVault contracts based on each vault's totalSupply at the
+ *      distribution block. Users claim their share via getPastVotes() snapshots, with claims
+ *      bounded to 100 epochs per call and cursor tracking to prevent double-claims. The factory
+ *      registers new vaults at app creation; governance can pause or unpause individual vaults.
  */
 interface IStakeVaultVotes {
     function totalSupply() external view returns (uint256);

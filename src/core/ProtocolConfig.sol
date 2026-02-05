@@ -4,14 +4,11 @@ pragma solidity ^0.8.24;
 /**
  * @title ProtocolConfig
  * @author Elata Biosciences
- * @notice Centralized configuration for all protocol parameters
- * @dev All parameters are bounded and emit events on change
- *
- * Access Control:
- * - Timelock: Critical parameters (fees, splits, targets)
- * - Admin: Operational parameters (slippage, router allowlist)
- *
- * All fee BPS values sum to 10000 (100%)
+ * @custom:security-contact security@elata.bio
+ * @notice Centralized configuration store for all protocol parameters.
+ * @dev Parameters are bounded and emit events on change. Critical values (fees, splits, targets) require
+ *      timelock authorization; operational values (slippage, router allowlist) are admin-controlled.
+ *      Fee BPS values must sum to 10000 (100%).
  */
 contract ProtocolConfig {
     // =========== Errors ===========

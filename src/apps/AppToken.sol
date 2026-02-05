@@ -9,17 +9,12 @@ import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20P
 /**
  * @title AppToken
  * @author Elata Biosciences
- * @notice Standard ERC20 token for individual apps in the Elata ecosystem
- * @dev Includes 1% transfer fee (configurable, capped at 2%) with 70/15/15 split
- *
- * Features:
- * - Standard ERC20 with burning capability and permit support
- * - 1% transfer fee (default) routed to app stakers, veELTA, and treasury
- * - Exemption system for bonding curve, vault, and other protocol contracts
- * - Optional supply cap with finalizeMinting() for permanent lock
- * - Role-based minting control
- * - Gasless approvals via ERC20Permit
- * - App metadata storage
+ * @custom:security-contact security@elata.bio
+ * @notice ERC20 token for individual apps in the Elata ecosystem with optional transfer fees.
+ * @dev Standard ERC20 extended with burning, ERC20Permit for gasless approvals, and a configurable
+ *      transfer fee (default 1%, max 2%) routed through FeeCollector. Protocol contracts such as
+ *      the bonding curve and staking vault are fee-exempt. Minting is role-controlled and can be
+ *      permanently finalized. Stores app metadata including description, image URI, and website.
  */
 contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");

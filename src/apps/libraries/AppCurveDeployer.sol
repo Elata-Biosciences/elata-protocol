@@ -5,8 +5,10 @@ import {AppBondingCurve} from "../AppBondingCurve.sol";
 
 /**
  * @title AppCurveDeployer
- * @notice Library for deploying AppBondingCurve contracts
- * @dev Separated to reduce AppDeploymentLib size
+ * @author Elata Biosciences
+ * @custom:security-contact security@elata.bio
+ * @notice Library for deploying AppBondingCurve contracts.
+ * @dev Separated to reduce AppDeploymentLib bytecode size.
  */
 library AppCurveDeployer {
     function deployCurve(AppBondingCurve.InitParams memory params) external returns (address) {

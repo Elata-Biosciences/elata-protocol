@@ -100,7 +100,7 @@ The exact amounts are set by XP operators and can vary based on activity type an
 
 ### Using XP
 
-XP determines voting weight in funding decisions. When the community votes on which research proposals to fund, votes are weighted by XP rather than ELTA. This means funding decisions reflect participation, not just capital.
+XP determines voting weight in funding decisions. When the community votes on which app experiments to fund, votes are weighted by XP rather than ELTA. This means funding decisions reflect participation, not just capital.
 
 XP also gates early access to new app launches. For the first 6 hours after an app launches, only users with sufficient XP (default: 100 XP) can buy tokens. This rewards active community members.
 
@@ -221,7 +221,7 @@ Protocol captures fees
     ↓
 Community votes on funding
     ↓
-Research and development funded
+App experiments and development funded
     ↓
 Better apps built
     ↓
@@ -273,7 +273,7 @@ The economic design includes several security measures:
 
 | Contract | Source |
 |----------|--------|
-| ELTA | [src/token/ELTA.sol](../src/token/ELTA.sol) |
+| ELTA | [lib/ELTA/src/ELTA.sol](../lib/ELTA/src/ELTA.sol) |
 | VeELTA | [src/staking/VeELTA.sol](../src/staking/VeELTA.sol) |
 | ElataPoints | [src/experience/ElataPoints.sol](../src/experience/ElataPoints.sol) |
 | RewardsDistributor | [src/rewards/RewardsDistributor.sol](../src/rewards/RewardsDistributor.sol) |

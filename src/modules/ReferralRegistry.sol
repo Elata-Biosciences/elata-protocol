@@ -8,26 +8,12 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 /**
  * @title ReferralRegistry
  * @author Elata Biosciences
- * @notice Tracks referrals and distributes ELTA rewards to referrers
- * @dev Per-app referral tracking with one-time binding
- *
- * Per Protocol Changes document section 14:
- * - Referrals apply to bonding curve buys
- * - referrerOf[buyer] stored once (one-time binding)
- * - Pay referral from existing fee split (not inflation)
- * - referralBps out of the existing fee
- *
- * Key Features:
- * - Per-app referrer binding (one buyer can have different referrers per app)
- * - One-time binding per app (first referrer wins)
- * - Rewards accrue in ELTA, claimable anytime
- * - No self-referral
- * - Authorized callers (bonding curves) set referrers
- *
- * Security:
- * - ReentrancyGuard on claims
- * - Authorized caller whitelist
- * - BPS cap to prevent excessive referral fees
+ * @custom:security-contact security@elata.bio
+ * @notice Tracks per-app referrals and distributes ELTA rewards to referrers.
+ * @dev Bonding curves call setReferrer() on a buyer's first purchase to bind a referrer for that app.
+ *      The binding is one-time and per-app; self-referral is prohibited. Referral rewards accrue from
+ *      the existing fee split (not inflation) and are claimable anytime. A governance-controlled BPS
+ *      cap limits the maximum referral share.
  */
 contract ReferralRegistry is ReentrancyGuard {
     using SafeERC20 for IERC20;

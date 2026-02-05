@@ -9,21 +9,12 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 /**
  * @title InAppContent721Factory
- * @author Elata Protocol
- * @notice Factory for deploying InAppContent721 (ERC-721) collections for apps
- * @dev Restricted to app token owners only, optional ELTA creation fee
- *
- * Key Features:
- * - Deploys InAppContent721 (ERC-721) for digital content/collectibles
- * - Restricted: only AppToken owner can deploy
- * - Optional ELTA fee to align protocol value
- * - Registry for discovery
- * - Non-upgradeable, simple
- *
- * Usage:
- * 1. App creator launches app via AppFactory (gets AppToken + AppStakingVault automatically)
- * 2. App creator calls deployContent721() to add InAppContent721 (pays ELTA fee if set)
- * 3. Optionally deploy ContentStore via ContentStoreFactory to enable sales
+ * @author Elata Biosciences
+ * @custom:security-contact security@elata.bio
+ * @notice Factory for deploying InAppContent721 (ERC-721) collections for apps.
+ * @dev Only the AppToken owner may deploy a collection for their app. An optional ELTA creation fee
+ *      can be configured. A registry tracks all deployed collections for discovery. Creators may
+ *      subsequently deploy a ContentStore via ContentStoreFactory to enable primary sales.
  */
 contract InAppContent721Factory is Ownable {
     using SafeERC20 for IERC20;

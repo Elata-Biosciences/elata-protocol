@@ -6,14 +6,11 @@ import {IUniswapV2Pair} from "../interfaces/IUniswapV2Pair.sol";
 /**
  * @title LpLocker
  * @author Elata Biosciences
- * @notice Time-locked LP token holder for app token liquidity
- * @dev Non-custodial LP locker with fixed unlock time
- *
- * Features:
- * - Immutable lock parameters for security
- * - Single claim after unlock time
- * - Non-custodial design
- * - Emergency-resistant (no early unlock)
+ * @custom:security-contact security@elata.bio
+ * @notice Time-locked holder for LP tokens created at bonding curve graduation.
+ * @dev Holds LP tokens until a fixed unlock timestamp, at which point the beneficiary may claim.
+ *      Lock parameters are immutable; there is no early-unlock mechanism. Designed to ensure
+ *      graduated app tokens maintain permanent liquidity for a defined period.
  */
 contract LpLocker {
     address public immutable lpToken;

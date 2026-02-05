@@ -33,24 +33,13 @@ interface IProtocolConfig {
 /**
  * @title AppFactory
  * @author Elata Biosciences
- * @notice Permissionless factory for launching app tokens with vesting and ecosystem allocations
- * @dev Central registry and launch mechanism for the Elata app ecosystem
- *
- * Features:
- * - Permissionless app token creation
- * - Standardized bonding curve launches
- * - Team vesting wallet deployment
- * - Ecosystem vault for airdrops
- * - Protocol fee collection via router
- * - Emergency pause mechanism
- *
- * Economics (50/25/25 split):
- * - 50% goes to bonding curve for public sale
- * - 25% goes to team vesting wallet (cliff + linear vest)
- * - 25% goes to ecosystem vault (for airdrops/initiatives)
- * - Protocol collects trading fees (forwarded to rewards)
- * - Automated liquidity provision on graduation
- * - LP token locking for security
+ * @custom:security-contact security@elata.bio
+ * @notice Permissionless factory for launching app tokens with integrated vesting and ecosystem allocations.
+ * @dev Deploys an AppToken, AppBondingCurve, AppStakingVault, AppVestingWallet, and AppEcosystemVault
+ *      for each new app. Token supply is split 50/25/25: half to the bonding curve for public sale,
+ *      a quarter to a cliff-then-linear vesting wallet for the team, and a quarter to an ecosystem
+ *      vault for airdrops. The factory collects a creation fee and registers the app in an on-chain
+ *      registry. An emergency pause mechanism halts new launches if needed.
  */
 contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
     using SafeERC20 for IERC20;

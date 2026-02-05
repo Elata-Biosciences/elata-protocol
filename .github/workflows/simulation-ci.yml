@@ -279,7 +279,7 @@ jobs:
 
       - name: Generate simulation report
         working-directory: sim
-        run: pnpm exec tsx scripts/generate-vc-report.ts ./simulation-results/full-ecosystem/metrics.json ./simulation-results/full-ecosystem/reports
+        run: pnpm exec tsx scripts/generate-simulation-report.ts ./simulation-results/full-ecosystem/metrics.json ./simulation-results/full-ecosystem/reports
 
       - name: Upload simulation results
         uses: actions/upload-artifact@v4

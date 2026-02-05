@@ -9,24 +9,11 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 /**
  * @title AirdropDistributor
  * @author Elata Biosciences
- * @notice Merkle-based airdrop distributor for ecosystem pool tokens
- * @dev Supports multiple campaigns with per-campaign Merkle roots
- *
- * Per Protocol Changes document section 10.2:
- * - Ecosystem pool distributed via Merkle airdrops
- * - Developer incentives from ecosystem vault
- *
- * Key Features:
- * - Multiple campaigns per contract
- * - Per-campaign Merkle root
- * - Double-claim protection
- * - Campaign deactivation for emergencies
- * - Token rescue for unclaimed amounts
- *
- * Security:
- * - ReentrancyGuard on claims
- * - Admin-only campaign management
- * - Operator role for campaign creation
+ * @custom:security-contact security@elata.bio
+ * @notice Merkle-based airdrop distributor for ecosystem pool tokens.
+ * @dev Supports multiple campaigns, each with its own Merkle root and token. Users claim by submitting
+ *      a valid proof; double-claims are prevented by per-user tracking. Campaigns can be deactivated
+ *      for emergencies, and unclaimed tokens may be rescued by the admin after a campaign ends.
  */
 contract AirdropDistributor is ReentrancyGuard {
     using SafeERC20 for IERC20;

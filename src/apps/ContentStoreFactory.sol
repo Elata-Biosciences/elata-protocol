@@ -10,23 +10,12 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 /**
  * @title ContentStoreFactory
- * @author Elata Protocol
- * @notice Factory for deploying ContentStore sales contracts for apps
- * @dev Restricted to app token owners only, optional ELTA creation fee
- *
- * Key Features:
- * - Deploys ContentStore for primary sales with time windows and feature gates
- * - Links to existing InAppContent721 for minting
- * - Restricted: only AppToken owner can deploy
- * - Optional ELTA fee to align protocol value
- * - Registry for discovery
- * - Non-upgradeable, simple
- *
- * Usage:
- * 1. App creator deploys InAppContent721 via InAppContent721Factory
- * 2. App creator calls deployContentStore() to add sales functionality
- * 3. ContentStore is automatically set as minter for the InAppContent721
- * 4. Configure content listings, time windows, and feature gates
+ * @author Elata Biosciences
+ * @custom:security-contact security@elata.bio
+ * @notice Factory for deploying ContentStore sales contracts linked to InAppContent721 collections.
+ * @dev Only the AppToken owner may deploy a ContentStore for their app. An optional ELTA fee can be
+ *      configured. The deployed ContentStore is automatically granted minter rights on the target
+ *      InAppContent721 contract. A registry tracks all deployed stores for discovery.
  */
 contract ContentStoreFactory is Ownable {
     using SafeERC20 for IERC20;

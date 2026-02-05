@@ -14,10 +14,11 @@ import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 /**
  * @title ElataPoints
  * @author Elata Biosciences
- * @notice Non-transferable experience points token for the Elata ecosystem.
- * @dev ERC20 with no transfers allowed. Supports role-based mint/burn and off-chain signature-based
- * awards.
- * Extends ERC20Votes for governance integration (Points can be used for voting weight).
+ * @custom:security-contact security@elata.bio
+ * @notice Non-transferable reputation token tracking user participation in the Elata ecosystem.
+ * @dev Implements ERC20 with transfers disabled, making balances soulbound to each address.
+ *      Points are minted via operator roles, off-chain EIP-712 signatures, or Merkle proof claims.
+ *      Extends ERC20Votes so balances can serve as governance weight in funding decisions.
  */
 contract ElataPoints is ERC20, ERC20Permit, ERC20Votes, AccessControl, ReentrancyGuard {
     bytes32 public constant POINTS_OPERATOR_ROLE = keccak256("POINTS_OPERATOR_ROLE");

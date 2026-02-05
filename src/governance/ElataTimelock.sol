@@ -6,20 +6,12 @@ import {TimelockController} from "@openzeppelin/contracts/governance/TimelockCon
 /**
  * @title ElataTimelock
  * @author Elata Biosciences
- * @notice Timelock controller for the Elata Protocol governance
- * @dev Extends OpenZeppelin TimelockController with custom configuration
- *
- * Features:
- * - 48-hour minimum delay for standard operations
- * - 6-hour emergency delay for critical fixes
- * - Multi-signature proposer and executor roles
- * - Cancellation capabilities for security
- *
- * Security:
- * - Role-based access control for proposers and executors
- * - Time delays prevent immediate execution of governance decisions
- * - Cancellation mechanism for emergency situations
- * - Transparent operation queuing and execution
+ * @custom:security-contact security@elata.bio
+ * @notice Timelock controller enforcing execution delays on governance proposals.
+ * @dev Wraps OpenZeppelin TimelockController with protocol-specific delay constants. Standard
+ *      operations require a 48-hour delay; critical fixes may use a 6-hour emergency path.
+ *      Proposer and executor roles are assigned at deployment, typically to the Governor and
+ *      a multisig. Operations can be cancelled before execution if a security issue is discovered.
  */
 contract ElataTimelock is TimelockController {
     /// @notice Standard delay for governance operations (48 hours)

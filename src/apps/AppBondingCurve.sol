@@ -34,22 +34,13 @@ interface IReferralRegistry {
 /**
  * @title AppBondingCurve
  * @author Elata Biosciences
- * @notice Constant-product bonding curve for fair app token distribution
- * @dev Buy-only curve that graduates to Uniswap LP at target threshold
- *
- * Features:
- * - Constant product formula (x * y = k)
- * - Fair price discovery with no premine
- * - Automatic graduation to DEX liquidity
- * - LP token locking for security
- * - Slippage protection
- * - Refund mechanism for overages
- *
- * Economics:
- * - Creator stakes ELTA to seed initial liquidity
- * - Buyers purchase tokens with ELTA along curve
- * - Price increases with each purchase
- * - At target raised, auto-creates locked LP
+ * @custom:security-contact security@elata.bio
+ * @notice Constant-product bonding curve for fair app token distribution.
+ * @dev Implements x*y=k pricing where buyers exchange ELTA for app tokens along a deterministic
+ *      curve. The creator seeds initial liquidity; price increases with each purchase until the
+ *      graduation threshold is reached. Upon graduation, remaining tokens and accumulated ELTA
+ *      form a Uniswap LP pair with the LP tokens locked for a fixed duration. Includes slippage
+ *      bounds and refund logic for purchases that exceed available supply.
  */
 contract AppBondingCurve is ReentrancyGuard {
     using SafeERC20 for IERC20;

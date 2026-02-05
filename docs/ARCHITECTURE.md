@@ -60,7 +60,7 @@ ELTA is a standard ERC20 token with governance extensions. It serves as the econ
 
 The token uses OpenZeppelin's AccessControl for minting permissions. Only addresses with `MINTER_ROLE` can mint new tokens, and minting always respects the supply cap.
 
-Source: [src/token/ELTA.sol](../src/token/ELTA.sol)
+Source: [lib/ELTA/src/ELTA.sol](../lib/ELTA/src/ELTA.sol)
 
 ### VeELTA Staking
 

@@ -10,28 +10,14 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 /**
  * @title RewardsDistributor
  * @author Elata Biosciences
- * @notice Central revenue hub with 70/15/15 split and on-chain snapshot rewards
- * @dev Universal entry point for all protocol ELTA revenues
- *
- * Revenue Flow:
- * 1. All ELTA revenues call deposit()
- * 2. Split: 70% → AppRewardsDistributor (app stakers)
- *           15% → veELTA epoch (snapshot-based claims)
- *           15% → Treasury (immediate transfer)
- * 3. Users claim veELTA rewards via claimVe() using getPastVotes()
- *
- * Architecture:
- * - deposit(): Accept ELTA and split 70/15/15
- * - claimVe(): On-chain pro-rata claims for veELTA stakers
- * - No Merkle roots, no off-chain computation
- * - Snapshot at deposit block ensures fairness
- *
- * Features:
- * - Pure on-chain reward distribution
- * - ERC20Votes snapshot integration
- * - Gas-bounded claims (max 100 epochs)
- * - Cursor tracking for efficiency
- * - Emergency pause capability
+ * @custom:security-contact security@elata.bio
+ * @notice Central revenue hub that splits incoming ELTA fees across protocol stakeholders.
+ * @dev All protocol revenues flow through deposit(), which applies a fixed 70/15/15 split:
+ *      70% to AppRewardsDistributor for app stakers, 15% to a veELTA epoch pool, and 15%
+ *      transferred immediately to the treasury. VeELTA holders claim their share via claimVe(),
+ *      which computes pro-rata entitlements using on-chain ERC20Votes snapshots taken at each
+ *      deposit block. Claims are gas-bounded to 100 epochs per call with cursor tracking to
+ *      prevent double-claims. An emergency pause capability exists for incident response.
  */
 import {IAppRewardsDistributor} from "../interfaces/IAppRewardsDistributor.sol";
 import {IFeeManager} from "../interfaces/IFeeManager.sol";

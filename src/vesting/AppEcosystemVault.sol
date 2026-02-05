@@ -8,24 +8,10 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 /**
  * @title AppEcosystemVault
  * @author Elata Biosciences
- * @notice Simple custody contract for app ecosystem token pool
- * @dev Holds tokens for airdrops and ecosystem initiatives
- *
- * Per Protocol Changes document:
- * - 25% of app token supply goes to ecosystem vault
- * - Admin-controlled withdrawals to AirdropDistributor or other destinations
- * - Transparent events for all movements
- *
- * Key Features:
- * - Simple custody with admin withdrawals
- * - Can withdraw to AirdropDistributor for distribution
- * - Events for full transparency
- * - Admin can transfer admin role
- *
- * Security:
- * - Reentrancy protection
- * - Admin-only withdrawals
- * - Zero-address checks
+ * @custom:security-contact security@elata.bio
+ * @notice Simple custody contract holding an app's ecosystem token allocation for airdrops and initiatives.
+ * @dev Receives 25% of app token supply at launch. The admin may withdraw tokens to AirdropDistributor
+ *      or other destinations. All movements emit events for transparency. The admin role is transferable.
  */
 contract AppEcosystemVault is ReentrancyGuard {
     using SafeERC20 for IERC20;
