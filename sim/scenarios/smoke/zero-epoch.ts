@@ -10,11 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { SimulationEngine, createLogger, defineScenario } from '@elata-biosciences/agentforge';
 import { FeeKeeperAgent, BasicUserAgent, RewardHunterAgent } from '../../agents/index.js';
 import { createEltaPack } from '../../packs/EltaPack.js';
-import {
-  basicStabilityAssertions,
-  printScenarioResults,
-  allocatePort,
-} from '../../lib/index.js';
+import { printScenarioResults, allocatePort } from '../../lib/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const protocolPath = join(__dirname, '..', '..', '..');
@@ -65,13 +61,14 @@ const scenario = defineScenario({
 
   metrics: {
     sampleEveryTicks: 1,
-    track: ['app_count', 'fees_collected_total', 'veelta_total_locked'],
+    track: ['app_count', 'fees_collected_total', 'veelta_total_locked', 'elta_total_supply'],
   },
 
   assertions: [
-    ...basicStabilityAssertions(),
+    { type: 'gte', metric: 'elta_total_supply', value: 1 },
+    { type: 'gte', metric: 'app_count', value: 1 },
     // Fees should still be collected even without epoch closure
-    { type: 'gte', metric: 'fees_collected_total', value: 0 },
+    { type: 'gte', metric: 'fees_collected_total', value: 1 },
   ],
 });
 

@@ -7,6 +7,9 @@ import {AppFactoryViews} from "../../src/apps/AppFactoryViews.sol";
 import {AppStakingVault} from "../../src/apps/AppStakingVault.sol";
 import {AppToken} from "../../src/apps/AppToken.sol";
 import {LpLocker} from "../../src/apps/LpLocker.sol";
+import {AppRegistry} from "../../src/registry/AppRegistry.sol";
+import {ContributorSplitFactory} from "../../src/contributors/ContributorSplitFactory.sol";
+import {FeeSwapper} from "../../src/fees/FeeSwapper.sol";
 import {IAppFeeRouter} from "../../src/interfaces/IAppFeeRouter.sol";
 import {IAppRewardsDistributor} from "../../src/interfaces/IAppRewardsDistributor.sol";
 import {IRewardsDistributor} from "../../src/interfaces/IRewardsDistributor.sol";
@@ -29,6 +32,9 @@ contract AppLaunchIntegrationTest is Test {
     ELTA public elta;
     AppFactory public factory;
     AppFactoryViews public views;
+    AppRegistry public registry;
+    ContributorSplitFactory public splitFactory;
+    FeeSwapper public feeSwapper;
 
     address public admin = makeAddr("admin");
     address public treasury = makeAddr("treasury");
@@ -66,6 +72,17 @@ contract AppLaunchIntegrationTest is Test {
             governance,
             admin
         );
+
+        // Configure vNext dependencies (required by createApp wrapper).
+        registry = new AppRegistry(governance, address(factory));
+        splitFactory = new ContributorSplitFactory(governance, address(factory));
+        feeSwapper = new FeeSwapper(address(elta), admin, governance, treasury, address(registry));
+
+        vm.startPrank(admin);
+        factory.setAppRegistry(address(registry));
+        factory.setContributorSplitFactory(address(splitFactory));
+        factory.setFeeSwapper(address(feeSwapper));
+        vm.stopPrank();
 
         // Deploy views contract for complex queries
         views = new AppFactoryViews(address(factory));
@@ -449,9 +466,10 @@ contract AppLaunchIntegrationTest is Test {
         uint256 creationGas = gasBefore - gasAfter;
         console2.log("App creation gas:", creationGas);
 
-        // V5: Gas increased due to vesting and ecosystem vault deployment
-        // Threshold updated to 9.5M to account for additional contract deployments
-        assertLt(creationGas, 9_500_000);
+        // VNext: Gas includes app registry registration + per-app contributor split clone,
+        // in addition to token/curve/vault/vesting/ecosystem deployments.
+        // Keep this as a coarse regression guard, not a tight ceiling.
+        assertLt(creationGas, 10_500_000);
 
         // Test purchase gas costs
         AppFactory.App memory app = factory.getApp(appId);

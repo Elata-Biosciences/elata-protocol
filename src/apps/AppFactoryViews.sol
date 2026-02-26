@@ -26,6 +26,10 @@ contract AppFactoryViews {
         bool graduated;
         uint256 totalRaised;
         uint256 finalSupply;
+        bool tokenLaunched;
+        address ownerSafe;
+        address contributorSplit;
+        string metadataURI;
     }
 
     constructor(address _factory) {
@@ -52,7 +56,11 @@ contract AppFactoryViews {
             uint64 graduatedAt,
             bool graduated,
             uint256 totalRaised,
-            uint256 finalSupply
+            uint256 finalSupply,
+            bool tokenLaunched,
+            address ownerSafe,
+            address contributorSplit,
+            string memory metadataURI
         ) = IAppFactoryState(factory).apps(appId);
 
         return App({
@@ -68,7 +76,11 @@ contract AppFactoryViews {
             graduatedAt: graduatedAt,
             graduated: graduated,
             totalRaised: totalRaised,
-            finalSupply: finalSupply
+            finalSupply: finalSupply,
+            tokenLaunched: tokenLaunched,
+            ownerSafe: ownerSafe,
+            contributorSplit: contributorSplit,
+            metadataURI: metadataURI
         });
     }
 
@@ -86,7 +98,7 @@ contract AppFactoryViews {
 
         // Count apps by this creator
         for (uint256 i = 0; i < appCount; i++) {
-            (address appCreator,,,,,,,,,,,,) = factoryState.apps(i);
+            (address appCreator,,,,,,,,,,,,,,,,) = factoryState.apps(i);
             if (appCreator == creator) count++;
         }
 
@@ -95,7 +107,7 @@ contract AppFactoryViews {
         uint256 index = 0;
 
         for (uint256 i = 0; i < appCount; i++) {
-            (address appCreator,,,,,,,,,,,,) = factoryState.apps(i);
+            (address appCreator,,,,,,,,,,,,,,,,) = factoryState.apps(i);
             if (appCreator == creator) {
                 result[index] = i;
                 index++;
@@ -169,7 +181,7 @@ contract AppFactoryViews {
 
         // Count graduated apps
         for (uint256 i = 0; i < appCount; i++) {
-            (,,,,,,,,,, bool isGrad,,) = factoryState.apps(i);
+            (,,,,,,,,,, bool isGrad,,,,,,) = factoryState.apps(i);
             if (isGrad) graduatedCount++;
         }
 
@@ -178,7 +190,7 @@ contract AppFactoryViews {
         uint256 index = 0;
 
         for (uint256 i = 0; i < appCount; i++) {
-            (,,,,,,,,,, bool isGrad,,) = factoryState.apps(i);
+            (,,,,,,,,,, bool isGrad,,,,,,) = factoryState.apps(i);
             if (isGrad) {
                 graduatedList[index] = i;
                 index++;
@@ -204,7 +216,7 @@ contract AppFactoryViews {
         totalApps = factoryState.appCount();
 
         for (uint256 i = 0; i < totalApps; i++) {
-            (,,,,,,,,,, bool graduated, uint256 totalRaised,) = factoryState.apps(i);
+            (,,,,,,,,,, bool graduated, uint256 totalRaised,,,,,) = factoryState.apps(i);
             if (graduated) {
                 graduatedApps++;
                 totalValueLocked += totalRaised;
@@ -236,7 +248,11 @@ interface IAppFactoryState {
             uint64 graduatedAt,
             bool graduated,
             uint256 totalRaised,
-            uint256 finalSupply
+            uint256 finalSupply,
+            bool tokenLaunched,
+            address ownerSafe,
+            address contributorSplit,
+            string memory metadataURI
         );
     function tokenToAppId(address) external view returns (uint256);
     function seedElta() external view returns (uint256);

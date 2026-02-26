@@ -22,6 +22,9 @@ contract MockAppFactory {
         bool graduated;
         uint256 totalRaised;
         uint256 finalSupply;
+        bool tokenLaunched;
+        address ownerSafe;
+        address contributorSplit;
     }
 
     App[] public appList;
@@ -65,7 +68,10 @@ contract MockAppFactory {
                 graduatedAt: graduatedAt,
                 graduated: graduated,
                 totalRaised: totalRaised,
-                finalSupply: finalSupply
+                finalSupply: finalSupply,
+                tokenLaunched: token != address(0),
+                ownerSafe: creator,
+                contributorSplit: address(0)
             })
         );
         if (token != address(0)) {
@@ -93,26 +99,32 @@ contract MockAppFactory {
             uint64 graduatedAt,
             bool graduated,
             uint256 totalRaised,
-            uint256 finalSupply
+            uint256 finalSupply,
+            bool tokenLaunched,
+            address ownerSafe,
+            address contributorSplit,
+            string memory metadataURI
         )
     {
         require(appId < appList.length, "Invalid app ID");
         App storage app = appList[appId];
-        return (
-            app.creator,
-            app.token,
-            app.vault,
-            app.curve,
-            app.vestingWallet,
-            app.ecosystemVault,
-            app.pair,
-            app.locker,
-            app.createdAt,
-            app.graduatedAt,
-            app.graduated,
-            app.totalRaised,
-            app.finalSupply
-        );
+        creator = app.creator;
+        token = app.token;
+        vault = app.vault;
+        curve = app.curve;
+        vestingWallet = app.vestingWallet;
+        ecosystemVault = app.ecosystemVault;
+        pair = app.pair;
+        locker = app.locker;
+        createdAt = app.createdAt;
+        graduatedAt = app.graduatedAt;
+        graduated = app.graduated;
+        totalRaised = app.totalRaised;
+        finalSupply = app.finalSupply;
+        tokenLaunched = app.tokenLaunched;
+        ownerSafe = app.ownerSafe;
+        contributorSplit = app.contributorSplit;
+        metadataURI = "";
     }
 
     function tokenToAppId(address token) external view returns (uint256) {

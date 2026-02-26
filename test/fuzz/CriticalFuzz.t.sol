@@ -7,7 +7,7 @@ import {ELTA} from "elta/ELTA.sol";
 import {VeELTA} from "../../src/staking/VeELTA.sol";
 import {ProtocolConfig} from "../../src/core/ProtocolConfig.sol";
 import {FeeCollector} from "../../src/fees/FeeCollector.sol";
-import {FeeManager} from "../../src/fees/FeeManager.sol";
+import {FeeKind} from "../../src/fees/FeeKind.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
@@ -31,14 +31,11 @@ contract CriticalFuzz is Test {
     VeELTA public veElta;
     ProtocolConfig public config;
     FeeCollector public feeCollector;
-    FeeManager public feeManager;
     MockUSDC public usdc;
 
     address public admin = makeAddr("admin");
     address public timelock = makeAddr("timelock");
     address public treasury = makeAddr("treasury");
-    address public appRewards = makeAddr("appRewards");
-    address public veRewards = makeAddr("veRewards");
     address public feeSwapper = makeAddr("feeSwapper");
     address public user = makeAddr("user");
 
@@ -59,15 +56,6 @@ contract CriticalFuzz is Test {
 
         // Deploy FeeCollector
         feeCollector = new FeeCollector(address(elta), admin, address(0), feeSwapper);
-
-        // Deploy FeeManager
-        feeManager = new FeeManager(address(elta), address(usdc), admin, admin, appRewards, veRewards, treasury, 1 days);
-
-        // Setup
-        vm.prank(admin);
-        feeCollector.setFeeManager(address(feeManager));
-        vm.prank(admin);
-        feeManager.setDepositor(address(feeCollector), true);
 
         // Fund user
         vm.prank(admin);
@@ -274,13 +262,14 @@ contract CriticalFuzz is Test {
     function testFuzz_FeeCollector_Deposit(uint256 appId, uint256 amount) public {
         appId = bound(appId, 0, 100);
         amount = bound(amount, 1 ether, 1_000_000 ether);
+        FeeKind kind = FeeKind.TRADING_FEE;
 
         vm.startPrank(user);
         elta.approve(address(feeCollector), amount);
-        feeCollector.depositElta(appId, amount);
+        feeCollector.depositElta(appId, kind, amount);
         vm.stopPrank();
 
-        assertEq(feeCollector.pendingEltaFees(appId), amount, "Pending fees incorrect");
+        assertEq(feeCollector.pendingEltaFees(appId, kind), amount, "Pending fees incorrect");
     }
 
     function testFuzz_FeeCollector_MultipleDeposits(uint256 appId, uint256 numDeposits, uint256 seed) public {
@@ -289,6 +278,7 @@ contract CriticalFuzz is Test {
         appId = bound(appId, 0, 100);
 
         uint256 total = 0;
+        FeeKind kind = FeeKind.TRADING_FEE;
         vm.startPrank(user);
         elta.approve(address(feeCollector), 10_000_000 ether);
 
@@ -297,23 +287,11 @@ contract CriticalFuzz is Test {
             uint256 amt = bound(uint256(keccak256(abi.encodePacked(seed, i))), 1 ether, 100_000 ether);
             total += amt;
             if (total > 9_000_000 ether) break;
-            feeCollector.depositElta(appId, amt);
+            feeCollector.depositElta(appId, kind, amt);
         }
         vm.stopPrank();
 
-        assertGe(feeCollector.pendingEltaFees(appId), 0, "Should have pending fees");
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    // FEE MANAGER FUZZ TESTS
-    // ═══════════════════════════════════════════════════════════════════════════
-
-    function testFuzz_FeeManager_FeeSplitsConstant() public {
-        // Verify fee splits always sum to 100%
-        (uint256 appStakers, uint256 veEltaShare, uint256 creator, uint256 treasuryShare, uint256 referral) =
-            feeManager.feeSplits();
-
-        assertEq(appStakers + veEltaShare + creator + treasuryShare + referral, 10000, "Splits should sum to 10000");
+        assertGe(feeCollector.pendingEltaFees(appId, kind), 0, "Should have pending fees");
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

@@ -7,6 +7,7 @@ import {StdUtils} from "forge-std/StdUtils.sol";
 import {ELTA} from "elta/ELTA.sol";
 import {FeeCollector} from "../../../src/fees/FeeCollector.sol";
 import {FeeManager} from "../../../src/fees/FeeManager.sol";
+import {FeeKind} from "../../../src/fees/FeeKind.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
@@ -95,7 +96,7 @@ contract FeeSettlementHandler is CommonBase, StdCheats, StdUtils {
         appIndex = bound(appIndex, 0, appIds.length - 1);
         uint256 appId = appIds[appIndex];
 
-        uint256 pending = feeCollector.pendingEltaFees(appId);
+        uint256 pending = feeCollector.pendingEltaFees(appId, FeeKind.TRADING_FEE);
         if (pending == 0) return;
 
         feeCollector.sweepElta(appId);
@@ -158,7 +159,7 @@ contract FeeSettlementHandler is CommonBase, StdCheats, StdUtils {
 
     function getTotalPendingFees() external view returns (uint256 total) {
         for (uint256 i = 0; i < appIds.length; i++) {
-            total += feeCollector.pendingEltaFees(appIds[i]);
+            total += feeCollector.pendingEltaFees(appIds[i], FeeKind.TRADING_FEE);
         }
     }
 

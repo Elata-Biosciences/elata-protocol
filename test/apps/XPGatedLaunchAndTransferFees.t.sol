@@ -16,6 +16,11 @@ import {IVeEltaVotes} from "../../src/interfaces/IVeEltaVotes.sol";
 import {AppRewardsDistributor} from "../../src/rewards/AppRewardsDistributor.sol";
 import {RewardsDistributor} from "../../src/rewards/RewardsDistributor.sol";
 import {VeELTA} from "../../src/staking/VeELTA.sol";
+import {FeeCollector} from "../../src/fees/FeeCollector.sol";
+import {FeeKind} from "../../src/fees/FeeKind.sol";
+import {AppRegistry} from "../../src/registry/AppRegistry.sol";
+import {ContributorSplitFactory} from "../../src/contributors/ContributorSplitFactory.sol";
+import {FeeSwapper} from "../../src/fees/FeeSwapper.sol";
 import {ELTA} from "elta/ELTA.sol";
 import {MockElataPoints} from "../mocks/MockContracts.sol";
 import "forge-std/Test.sol";
@@ -36,6 +41,10 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
     AppRewardsDistributor public appRewardsDistributor;
     AppFeeRouter public appFeeRouter;
     AppFactory public factory;
+    AppRegistry public registry;
+    ContributorSplitFactory public splitFactory;
+    FeeSwapper public feeSwapper;
+    FeeCollector public feeCollector;
 
     address public admin = makeAddr("admin");
     address public treasury = makeAddr("treasury");
@@ -78,8 +87,8 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
             governance
         );
 
-        // Deploy fee router
-        appFeeRouter = new AppFeeRouter(elta, IRewardsDistributor(address(rewardsDistributor)), governance);
+        // Deploy fee router (feeBps config only; no yield distribution)
+        appFeeRouter = new AppFeeRouter(elta, governance);
 
         // Setup mock Uniswap
         _setupMockUniswap();
@@ -96,6 +105,22 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
             governance,
             admin
         );
+
+        // Configure vNext dependencies (required by createApp wrapper).
+        registry = new AppRegistry(governance, address(factory));
+        splitFactory = new ContributorSplitFactory(governance, address(factory));
+        feeSwapper = new FeeSwapper(address(elta), admin, governance, treasury, address(registry));
+
+        vm.startPrank(admin);
+        factory.setAppRegistry(address(registry));
+        factory.setContributorSplitFactory(address(splitFactory));
+        factory.setFeeSwapper(address(feeSwapper));
+        vm.stopPrank();
+
+        // Configure FeeCollector so LP-keyed transfer tax has a valid routing sink.
+        feeCollector = new FeeCollector(address(elta), admin, address(feeSwapper), address(feeSwapper));
+        vm.prank(admin);
+        factory.setFeeCollector(address(feeCollector));
 
         // Grant factory role to the actual factory
         vm.startPrank(governance);
@@ -335,6 +360,10 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
         // LP should receive 99% (1% fee applied)
         uint256 expectedNet = transferAmount * 99 / 100;
         assertEq(token.balanceOf(lpAddress), expectedNet);
+
+        // Fee should be deposited into FeeCollector under the protocol transfer tax bucket.
+        uint256 expectedFee = transferAmount - expectedNet;
+        assertEq(feeCollector.pendingAppTokenFees(appId, FeeKind.TRANSFER_TAX, address(token)), expectedFee);
     }
 
     function test_FoT_FeesSplitCorrectlyOnLPTransfer() public {
@@ -367,14 +396,8 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
         vm.prank(governance); // Governance can set LP addresses
         token.setLiquidityPool(lpAddress, true);
 
-        // Get distributor balances before (legacy 70/15/15 split when no FeeCollector)
-        address appRewards = token.appRewardsDistributor();
-        address veRewards = token.rewardsDistributor();
-        address treasuryAddr = token.treasury();
-
-        uint256 appRewardsBefore = token.balanceOf(appRewards);
-        uint256 veRewardsBefore = token.balanceOf(veRewards);
-        uint256 treasuryBefore = token.balanceOf(treasuryAddr);
+        uint256 pendingBefore = feeCollector.pendingAppTokenFees(appId, FeeKind.TRANSFER_TAX, address(token));
+        uint256 collectorBalanceBefore = token.balanceOf(address(feeCollector));
 
         // Transfer TO LP (LP-keyed tax applies)
         uint256 transferAmount = 10000 ether;
@@ -382,15 +405,12 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
         vm.prank(xpUser);
         token.transfer(lpAddress, transferAmount);
 
-        // Check fee split: 1% fee = 100 tokens
-        // 70% = 70, 15% = 15, 15% = 15
-        uint256 expectedAppFee = 70 ether;
-        uint256 expectedVeFee = 15 ether;
-        uint256 expectedTreasuryFee = 15 ether;
-
-        assertEq(token.balanceOf(appRewards) - appRewardsBefore, expectedAppFee);
-        assertEq(token.balanceOf(veRewards) - veRewardsBefore, expectedVeFee);
-        assertEq(token.balanceOf(treasuryAddr) - treasuryBefore, expectedTreasuryFee);
+        // New pipeline: LP-keyed transfer tax is deposited into FeeCollector for later sweeping/swapping.
+        uint256 expectedFee = transferAmount / 100; // 1%
+        assertEq(
+            feeCollector.pendingAppTokenFees(appId, FeeKind.TRANSFER_TAX, address(token)) - pendingBefore, expectedFee
+        );
+        assertEq(token.balanceOf(address(feeCollector)) - collectorBalanceBefore, expectedFee);
     }
 
     function test_FoT_ExemptAddressesSkipFee() public {

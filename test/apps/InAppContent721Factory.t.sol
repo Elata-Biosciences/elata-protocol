@@ -6,12 +6,14 @@ import {InAppContent721Factory} from "../../src/apps/InAppContent721Factory.sol"
 import {AppToken} from "../../src/apps/AppToken.sol";
 import {ELTA} from "elta/ELTA.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {MockAppRegistry} from "../mocks/MockAppRegistry.sol";
 import "forge-std/Test.sol";
 
 contract InAppContent721FactoryTest is Test {
     InAppContent721Factory public factory;
     ELTA public elta;
     AppToken public appToken;
+    MockAppRegistry public registry;
 
     address public factoryOwner = makeAddr("factoryOwner");
     address public treasury = makeAddr("treasury");
@@ -30,9 +32,10 @@ contract InAppContent721FactoryTest is Test {
     function setUp() public {
         // Deploy ELTA
         elta = new ELTA(factoryOwner);
+        registry = new MockAppRegistry();
 
         // Deploy factory
-        factory = new InAppContent721Factory(address(elta), factoryOwner, treasury);
+        factory = new InAppContent721Factory(address(elta), address(registry), factoryOwner, treasury);
 
         // Deploy app token
         appToken = new AppToken(
@@ -49,6 +52,8 @@ contract InAppContent721FactoryTest is Test {
                 treasury: address(1)
             })
         );
+
+        registry.setApp(APP_ID, appCreator, address(0xBEEF), address(appToken), true);
 
         // Transfer ELTA to app creator for fees
         vm.prank(factoryOwner);
@@ -67,7 +72,8 @@ contract InAppContent721FactoryTest is Test {
     }
 
     function test_DeploymentWithZeroELTA() public {
-        InAppContent721Factory noFeeFactory = new InAppContent721Factory(address(0), factoryOwner, treasury);
+        InAppContent721Factory noFeeFactory =
+            new InAppContent721Factory(address(0), address(registry), factoryOwner, treasury);
         assertEq(noFeeFactory.ELTA(), address(0));
     }
 
@@ -248,7 +254,8 @@ contract InAppContent721FactoryTest is Test {
 
     function test_DeployContent721WithFactoryELTADisabled() public {
         // Factory with ELTA disabled
-        InAppContent721Factory noEltaFactory = new InAppContent721Factory(address(0), factoryOwner, treasury);
+        InAppContent721Factory noEltaFactory =
+            new InAppContent721Factory(address(0), address(registry), factoryOwner, treasury);
 
         vm.prank(factoryOwner);
         noEltaFactory.setCreateFee(100 ether); // Set fee (but ELTA is disabled)

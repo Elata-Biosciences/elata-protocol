@@ -9,11 +9,9 @@ import {ProtocolConfig} from "../src/core/ProtocolConfig.sol";
 import {ElataPoints} from "../src/experience/ElataPoints.sol";
 import {AppFeeRouter} from "../src/fees/AppFeeRouter.sol";
 import {FeeCollector} from "../src/fees/FeeCollector.sol";
-import {FeeManager} from "../src/fees/FeeManager.sol";
 import {FeeSwapper} from "../src/fees/FeeSwapper.sol";
-import {TreasuryUSDCVault} from "../src/fees/TreasuryUSDCVault.sol";
-import {ReferralRegistry} from "../src/modules/ReferralRegistry.sol";
-import {AirdropDistributor} from "../src/modules/AirdropDistributor.sol";
+import {AppRegistry} from "../src/registry/AppRegistry.sol";
+import {ContributorSplitFactory} from "../src/contributors/ContributorSplitFactory.sol";
 import {ElataGovernor} from "../src/governance/ElataGovernor.sol";
 import {ElataTimelock} from "../src/governance/ElataTimelock.sol";
 import {IAppFeeRouter} from "../src/interfaces/IAppFeeRouter.sol";
@@ -21,9 +19,6 @@ import {IAppRewardsDistributor} from "../src/interfaces/IAppRewardsDistributor.s
 import {IElataPoints} from "../src/interfaces/IElataPoints.sol";
 import {IRewardsDistributor} from "../src/interfaces/IRewardsDistributor.sol";
 import {IUniswapV2Router02} from "../src/interfaces/IUniswapV2Router02.sol";
-import {IVeEltaVotes} from "../src/interfaces/IVeEltaVotes.sol";
-import {AppRewardsDistributor} from "../src/rewards/AppRewardsDistributor.sol";
-import {RewardsDistributor} from "../src/rewards/RewardsDistributor.sol";
 import {VeELTA} from "../src/staking/VeELTA.sol";
 import {ELTA} from "elta/ELTA.sol";
 import {NetworkConfig} from "./config/NetworkConfig.sol";
@@ -72,8 +67,6 @@ contract Deploy is Script {
         ELTA token;
         ElataPoints xp;
         VeELTA staking;
-        AppRewardsDistributor appRewardsDistributor;
-        RewardsDistributor rewards;
         AppFeeRouter appFeeRouter;
         TimelockController timelock;
         ElataGovernor governor;
@@ -83,13 +76,11 @@ contract Deploy is Script {
         TournamentFactory tournamentFactory;
         // Fee Pipeline (only deployed if USDC and Uniswap exist)
         FeeCollector feeCollector;
-        FeeManager feeManager;
-        TreasuryUSDCVault treasuryVault;
         FeeSwapper feeSwapper;
+        AppRegistry appRegistry;
+        ContributorSplitFactory contributorSplitFactory;
         // Additional Modules
         ProtocolConfig protocolConfig;
-        ReferralRegistry referralRegistry;
-        AirdropDistributor airdropDistributor;
         // External addresses (from NetworkConfig)
         address uniswapV2Factory;
         address uniswapV2Router;
@@ -152,31 +143,9 @@ contract Deploy is Script {
         protocol.governor = new ElataGovernor(IVotes(address(protocol.staking)), address(protocol.timelock));
         console2.log("   Governor deployed at:", address(protocol.governor));
 
-        // ===== STEP 4: Deploy Rewards Architecture (Economic Upgrade V2) =====
-        console2.log("\n[4/8] Deploying Rewards Architecture (70/15/15)...");
-
-        // 5a. AppRewardsDistributor (receives 70% for app stakers)
-        // AppRewardsDistributor requires a non-zero factory in constructor.
-        // Use initialAdmin as initial factory; grant FACTORY_ROLE to AppFactory after it is deployed.
-        protocol.appRewardsDistributor = new AppRewardsDistributor(protocol.token, initialAdmin, initialAdmin);
-        console2.log("   AppRewardsDistributor deployed at:", address(protocol.appRewardsDistributor));
-
-        // 5b. RewardsDistributor (central hub with 70/15/15 split)
-        protocol.rewards = new RewardsDistributor(
-            protocol.token,
-            IVeEltaVotes(address(protocol.staking)),
-            IAppRewardsDistributor(address(protocol.appRewardsDistributor)),
-            treasury,
-            initialAdmin
-        );
-        console2.log("   RewardsDistributor deployed at:", address(protocol.rewards));
-        console2.log("   - 70% to app stakers");
-        console2.log("   - 15% to veELTA stakers");
-        console2.log("   - 15% to treasury");
-
-        // 5c. AppFeeRouter (collects trading fees)
-        protocol.appFeeRouter =
-            new AppFeeRouter(protocol.token, IRewardsDistributor(address(protocol.rewards)), initialAdmin);
+        // ===== STEP 4: Deploy Trading Fee Config =====
+        console2.log("\n[4/9] Deploying Trading Fee Config...");
+        protocol.appFeeRouter = new AppFeeRouter(protocol.token, initialAdmin);
         console2.log("   AppFeeRouter deployed at:", address(protocol.appFeeRouter));
         console2.log("   Fee rate: 100 bps (1%)");
 
@@ -207,13 +176,22 @@ contract Deploy is Script {
                 IUniswapV2Router02(routerAddress),
                 treasury,
                 IAppFeeRouter(address(protocol.appFeeRouter)),
-                IAppRewardsDistributor(address(protocol.appRewardsDistributor)),
-                IRewardsDistributor(address(protocol.rewards)),
+                IAppRewardsDistributor(address(0)),
+                IRewardsDistributor(address(0)),
                 IElataPoints(address(protocol.xp)),
                 initialAdmin,
                 initialAdmin
             );
             console2.log("   AppFactory deployed at:", address(protocol.appFactory));
+
+            // AppRegistry (governed by timelock, set to the deployed AppFactory)
+            protocol.appRegistry = new AppRegistry(address(protocol.timelock), address(protocol.appFactory));
+            console2.log("   AppRegistry deployed at:", address(protocol.appRegistry));
+
+            // ContributorSplitFactory (used by AppFactory Phase-A app creation)
+            protocol.contributorSplitFactory =
+                new ContributorSplitFactory(address(protocol.timelock), address(protocol.appFactory));
+            console2.log("   ContributorSplitFactory deployed at:", address(protocol.contributorSplitFactory));
         } else {
             console2.log("   AppFactory skipped (no router configured)");
         }
@@ -223,23 +201,28 @@ contract Deploy is Script {
 
         // USDC address from NetworkConfig (address(0) for local dev)
         address usdcAddress = networkConfig.usdc;
-        uint256 defaultProtocolFeeBps = 500; // 5% default fee for ContentStore
+        address wethAddress = networkConfig.weth;
         if (usdcAddress != address(0)) {
             console2.log("   Using USDC:", usdcAddress);
         }
+        if (wethAddress != address(0)) {
+            console2.log("   Using WETH:", wethAddress);
+        }
 
         // InAppContent721Factory: Deploys NFT collections for apps
-        protocol.content721Factory = new InAppContent721Factory(address(protocol.token), initialAdmin, treasury);
+        protocol.content721Factory =
+            new InAppContent721Factory(address(protocol.token), address(protocol.appRegistry), initialAdmin, treasury);
         console2.log("   InAppContent721Factory deployed at:", address(protocol.content721Factory));
 
         // ContentStoreFactory: Deploys sales contracts for apps
         protocol.contentStoreFactory = new ContentStoreFactory(
             address(protocol.token),
             usdcAddress,
+            wethAddress,
+            address(protocol.appRegistry),
             initialAdmin,
             treasury,
-            address(protocol.appFeeRouter), // feeCollector
-            defaultProtocolFeeBps
+            address(0) // feeSwapper (set after FeeSwapper deployment)
         );
         console2.log("   ContentStoreFactory deployed at:", address(protocol.contentStoreFactory));
 
@@ -250,43 +233,33 @@ contract Deploy is Script {
         if (usdcAddress != address(0) && routerAddress != address(0)) {
             console2.log("\n[7/9] Deploying Fee Pipeline...");
 
-            // TreasuryUSDCVault (feeManager set after deployment)
-            protocol.treasuryVault = new TreasuryUSDCVault(usdcAddress, initialAdmin, treasury, address(0));
-            console2.log("   TreasuryUSDCVault deployed at:", address(protocol.treasuryVault));
-
-            // FeeManager
-            protocol.feeManager = new FeeManager(
-                address(protocol.token),
-                usdcAddress,
-                initialAdmin,
-                initialAdmin, // governance
-                address(protocol.appRewardsDistributor),
-                address(protocol.rewards),
-                address(protocol.treasuryVault),
-                1 days // epoch length
-            );
-            console2.log("   FeeManager deployed at:", address(protocol.feeManager));
-
-            // Wire FeeManager to TreasuryVault
-            protocol.treasuryVault.setFeeManager(address(protocol.feeManager));
-
-            // Set swap router on FeeManager
-            protocol.feeManager.setSwapRouter(routerAddress);
-
             // FeeSwapper
             protocol.feeSwapper = new FeeSwapper(
-                address(protocol.token), initialAdmin, address(protocol.timelock), address(protocol.feeManager)
+                // Deploy with governance = initialAdmin so we can do one-time setup
+                // (e.g. router allowlist) during the deployment tx, then immediately hand
+                // governance over to the timelock.
+                address(protocol.token),
+                initialAdmin,
+                initialAdmin,
+                treasury,
+                address(protocol.appRegistry)
             );
             console2.log("   FeeSwapper deployed at:", address(protocol.feeSwapper));
 
             // FeeCollector (now with FeeSwapper)
             protocol.feeCollector = new FeeCollector(
-                address(protocol.token), initialAdmin, address(protocol.feeManager), address(protocol.feeSwapper)
+                address(protocol.token), initialAdmin, address(protocol.feeSwapper), address(protocol.feeSwapper)
             );
             console2.log("   FeeCollector deployed at:", address(protocol.feeCollector));
 
             // Authorize Uniswap router in FeeSwapper
             protocol.feeSwapper.setRouterAllowed(routerAddress, true);
+
+            // Hand FeeSwapper governance to the timelock for long-term control.
+            protocol.feeSwapper.transferGovernance(address(protocol.timelock));
+
+            // Wire FeeSwapper into ContentStoreFactory for 80/20 routing.
+            protocol.contentStoreFactory.setFeeSwapper(address(protocol.feeSwapper));
         } else {
             console2.log("\n[7/9] Fee Pipeline skipped (requires USDC and Uniswap)");
             console2.log("   For local development, use DeployLocal.sol");
@@ -298,14 +271,6 @@ contract Deploy is Script {
         // ProtocolConfig
         protocol.protocolConfig = new ProtocolConfig(initialAdmin, address(protocol.timelock));
         console2.log("   ProtocolConfig deployed at:", address(protocol.protocolConfig));
-
-        // ReferralRegistry (500 bps = 5% referral fee)
-        protocol.referralRegistry = new ReferralRegistry(initialAdmin, address(protocol.token), 500);
-        console2.log("   ReferralRegistry deployed at:", address(protocol.referralRegistry));
-
-        // AirdropDistributor
-        protocol.airdropDistributor = new AirdropDistributor(initialAdmin, initialAdmin);
-        console2.log("   AirdropDistributor deployed at:", address(protocol.airdropDistributor));
 
         // ===== STEP 8: Configure Permissions =====
         console2.log("\n[8/9] Configuring Permissions...");
@@ -333,8 +298,8 @@ contract Deploy is Script {
             address(protocol.token),
             address(protocol.staking),
             address(protocol.xp),
-            address(protocol.appRewardsDistributor),
-            address(protocol.rewards),
+            address(0),
+            address(0),
             address(protocol.appFeeRouter),
             address(protocol.governor),
             address(protocol.timelock),
@@ -380,36 +345,17 @@ contract Deploy is Script {
             if (op != address(0)) protocol.xp.grantRole(protocol.xp.POINTS_OPERATOR_ROLE(), op);
         }
 
-        // Rewards: Grant DISTRIBUTOR_ROLE to AppFeeRouter
-        protocol.rewards.grantRole(protocol.rewards.DISTRIBUTOR_ROLE(), address(protocol.appFeeRouter));
-
-        // AppRewards: Grant FACTORY_ROLE to AppFactory
-        if (address(protocol.appFactory) != address(0)) {
-            protocol.appRewardsDistributor
-                .grantRole(protocol.appRewardsDistributor.FACTORY_ROLE(), address(protocol.appFactory));
-        }
-
-        // ===== Wire FeeManager for USDC conversion =====
-        if (address(protocol.feeManager) != address(0)) {
-            // Set feeManager on RewardsDistributor so treasury fees route through it
-            protocol.rewards.setFeeManager(address(protocol.feeManager));
-
-            // Make RewardsDistributor an authorized depositor on FeeManager
-            protocol.feeManager.setDepositor(address(protocol.rewards), true);
-
-            // Make FeeCollector an authorized depositor on FeeManager
-            if (address(protocol.feeCollector) != address(0)) {
-                protocol.feeManager.setDepositor(address(protocol.feeCollector), true);
-            }
-
-            // Wire ReferralRegistry to FeeManager
-            if (address(protocol.referralRegistry) != address(0)) {
-                protocol.feeManager.setReferralRegistry(address(protocol.referralRegistry));
-            }
-        }
+        // No yield distributor roles to configure in the vNext 80/20 fee model.
 
         // ===== Wire AppFactory with additional modules =====
         if (address(protocol.appFactory) != address(0)) {
+            // vNext: canonical app registry + per-app split factory + fee swapper.
+            protocol.appFactory.setAppRegistry(address(protocol.appRegistry));
+            protocol.appFactory.setContributorSplitFactory(address(protocol.contributorSplitFactory));
+            if (address(protocol.feeSwapper) != address(0)) {
+                protocol.appFactory.setFeeSwapper(address(protocol.feeSwapper));
+            }
+
             // Wire ProtocolConfig
             if (address(protocol.protocolConfig) != address(0)) {
                 protocol.appFactory.setProtocolConfig(address(protocol.protocolConfig));
@@ -418,11 +364,6 @@ contract Deploy is Script {
             // Wire FeeCollector
             if (address(protocol.feeCollector) != address(0)) {
                 protocol.appFactory.setFeeCollector(address(protocol.feeCollector));
-            }
-
-            // Wire ReferralRegistry
-            if (address(protocol.referralRegistry) != address(0)) {
-                protocol.appFactory.setReferralRegistry(address(protocol.referralRegistry));
             }
         }
     }
@@ -443,14 +384,6 @@ contract Deploy is Script {
         // Transfer VeELTA admin
         protocol.staking.grantRole(DEFAULT_ADMIN_ROLE, to);
         protocol.staking.revokeRole(DEFAULT_ADMIN_ROLE, from);
-
-        // Transfer RewardsDistributor admin
-        protocol.rewards.grantRole(DEFAULT_ADMIN_ROLE, to);
-        protocol.rewards.revokeRole(DEFAULT_ADMIN_ROLE, from);
-
-        // Transfer AppRewardsDistributor admin
-        protocol.appRewardsDistributor.grantRole(DEFAULT_ADMIN_ROLE, to);
-        protocol.appRewardsDistributor.revokeRole(DEFAULT_ADMIN_ROLE, from);
 
         // Transfer Timelock admin
         protocol.timelock.grantRole(DEFAULT_ADMIN_ROLE, to);
@@ -502,9 +435,6 @@ contract Deploy is Script {
             '    "VeELTA": "',
             vm.toString(address(protocol.staking)),
             '",\n',
-            '    "RewardsDistributor": "',
-            vm.toString(address(protocol.rewards)),
-            '",\n',
             '    "ElataTimelock": "',
             vm.toString(address(protocol.timelock)),
             '",\n',
@@ -517,6 +447,12 @@ contract Deploy is Script {
             '    "AppFactory": "',
             vm.toString(address(protocol.appFactory)),
             '",\n',
+            '    "AppRegistry": "',
+            vm.toString(address(protocol.appRegistry)),
+            '",\n',
+            '    "ContributorSplitFactory": "',
+            vm.toString(address(protocol.contributorSplitFactory)),
+            '",\n',
             '    "InAppContent721Factory": "',
             vm.toString(address(protocol.content721Factory)),
             '",\n',
@@ -525,9 +461,6 @@ contract Deploy is Script {
             '",\n',
             '    "TournamentFactory": "',
             vm.toString(address(protocol.tournamentFactory)),
-            '",\n',
-            '    "AppRewardsDistributor": "',
-            vm.toString(address(protocol.appRewardsDistributor)),
             '",\n',
             '    "AppFeeRouter": "',
             vm.toString(address(protocol.appFeeRouter)),
@@ -538,23 +471,11 @@ contract Deploy is Script {
             '    "FeeCollector": "',
             vm.toString(address(protocol.feeCollector)),
             '",\n',
-            '    "FeeManager": "',
-            vm.toString(address(protocol.feeManager)),
-            '",\n',
             '    "FeeSwapper": "',
             vm.toString(address(protocol.feeSwapper)),
             '",\n',
-            '    "TreasuryUSDCVault": "',
-            vm.toString(address(protocol.treasuryVault)),
-            '",\n',
             '    "ProtocolConfig": "',
             vm.toString(address(protocol.protocolConfig)),
-            '",\n',
-            '    "ReferralRegistry": "',
-            vm.toString(address(protocol.referralRegistry)),
-            '",\n',
-            '    "AirdropDistributor": "',
-            vm.toString(address(protocol.airdropDistributor)),
             '",\n',
             '    "USDC": "',
             vm.toString(protocol.usdc),
@@ -574,6 +495,18 @@ contract Deploy is Script {
 
         vm.writeFile(filename, json);
         console2.log("   Deployment saved to:", filename);
+
+        // Optional: write an additional, uniquely-named deployment artifact.
+        // This is intended for real testnet deployments so fork simulations don't overwrite
+        // the artifact your frontend ingests.
+        //
+        // Set `ELATA_DEPLOYMENT_TAG` to something like `20260219-2359-abc123`.
+        string memory tag = vm.envOr("ELATA_DEPLOYMENT_TAG", string(""));
+        if (bytes(tag).length != 0) {
+            string memory tagged = string.concat("./deployments/", _getNetworkName(), "-", tag, ".json");
+            vm.writeFile(tagged, json);
+            console2.log("   Deployment saved to:", tagged);
+        }
 
         // Also maintain legacy local path for appstore config script
         if (block.chainid == 31337) {
@@ -600,9 +533,6 @@ contract Deploy is Script {
         console2.log("  VeELTA Staking:          ", address(protocol.staking));
         console2.log("  Governor:                ", address(protocol.governor));
         console2.log("  Timelock:                ", address(protocol.timelock));
-        console2.log("\nRewards:");
-        console2.log("  AppRewardsDistributor:   ", address(protocol.appRewardsDistributor));
-        console2.log("  RewardsDistributor:      ", address(protocol.rewards));
         console2.log("  AppFeeRouter:            ", address(protocol.appFeeRouter));
         console2.log("\nApp Framework:");
         console2.log("  AppFactory:              ", address(protocol.appFactory));
@@ -611,13 +541,9 @@ contract Deploy is Script {
         console2.log("  TournamentFactory:       ", address(protocol.tournamentFactory));
         console2.log("\nFee Pipeline:");
         console2.log("  FeeCollector:            ", address(protocol.feeCollector));
-        console2.log("  FeeManager:              ", address(protocol.feeManager));
         console2.log("  FeeSwapper:              ", address(protocol.feeSwapper));
-        console2.log("  TreasuryUSDCVault:       ", address(protocol.treasuryVault));
         console2.log("\nAdditional Modules:");
         console2.log("  ProtocolConfig:          ", address(protocol.protocolConfig));
-        console2.log("  ReferralRegistry:        ", address(protocol.referralRegistry));
-        console2.log("  AirdropDistributor:      ", address(protocol.airdropDistributor));
         console2.log("================================");
 
         // Next steps

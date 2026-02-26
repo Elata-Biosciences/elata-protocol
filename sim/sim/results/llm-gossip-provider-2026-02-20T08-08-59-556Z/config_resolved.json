@@ -1,0 +1,94 @@
+{
+  "scenario": {
+    "name": "llm-gossip-provider",
+    "seed": 2026,
+    "ticks": 15,
+    "tickSeconds": 3600,
+    "packName": "ToyPack",
+    "agentCount": 11,
+    "agentTypes": [
+      {
+        "type": "RandomTraderAgent",
+        "count": 5
+      },
+      {
+        "type": "MomentumAgent",
+        "count": 2
+      },
+      {
+        "type": "HolderAgent",
+        "count": 2
+      },
+      {
+        "type": "ProviderBackedGossipAgent",
+        "count": 2
+      }
+    ],
+    "metrics": {
+      "sampleEveryTicks": 1,
+      "track": [
+        "totalVolume",
+        "price_ALPHA",
+        "price_BETA",
+        "totalAgentValue"
+      ]
+    },
+    "assertions": [
+      {
+        "type": "gt",
+        "metric": "totalVolume",
+        "value": 0
+      }
+    ],
+    "mode": "exploration",
+    "studio": {
+      "report": {
+        "v": "v1",
+        "blocks": [
+          {
+            "kind": "markdown",
+            "markdown": "# LLM + Gossip (Canonical)\n\n- `exploration`: live provider responses are posted to gossip channels.\n- `deterministic` / `replay`: deterministic fallback messages, no live provider calls.\n\nUse this run to compare reproducibility versus discovery behavior."
+          },
+          {
+            "kind": "dataset",
+            "as": "core",
+            "title": "Core Metrics",
+            "table": "metrics",
+            "spec": {
+              "v": "v1",
+              "select": [
+                "tick",
+                "totalVolume",
+                "price_ALPHA",
+                "price_BETA"
+              ],
+              "sort": {
+                "field": "tick",
+                "dir": "asc"
+              },
+              "limit": 5000
+            }
+          },
+          {
+            "kind": "chart",
+            "title": "Volume over Time",
+            "chartType": "line",
+            "dataset": "core",
+            "xField": "tick",
+            "yField": "totalVolume"
+          }
+        ]
+      }
+    }
+  },
+  "options": {
+    "outDir": "sim/results",
+    "ci": false,
+    "verbose": false,
+    "memoryCapture": {
+      "enabled": true,
+      "sampleEveryTicks": 1,
+      "maxBytesPerRecord": 262144
+    }
+  }
+}

@@ -5,20 +5,22 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {FeeKind} from "../fees/FeeKind.sol";
+import {IAppRegistry} from "../interfaces/IAppRegistry.sol";
+import {IFeeSwapper} from "../interfaces/IFeeSwapper.sol";
 
 /// @notice Interface for InAppContent721
 interface IInAppContent721 {
     function mint(address to, string memory uri) external returns (uint256 tokenId);
 }
 
-/// @notice Interface for FeeCollector
-interface IFeeCollector {
-    function depositAppToken(uint256 appId, address token, uint256 amount) external;
-    function depositElta(uint256 appId, uint256 amount) external;
+interface IWETH {
+    function deposit() external payable;
 }
 
 /// @notice Supported payment token types
 enum PaymentTokenType {
+    NATIVE, // ETH / native gas token
     APP, // App token (default)
     ELTA, // ELTA token
     USDC // USDC stablecoin
@@ -55,6 +57,9 @@ contract ContentStore is AccessControl, ReentrancyGuard {
     error PurchaseTooEarly();
     error PurchaseTooLate();
     error InvalidTimeWindow();
+    error AppTokenNotSet();
+    error PaymentTokenDisabled();
+    error InvalidAppToken();
 
     // =========== Events ===========
     event ContentListed(uint256 indexed contentId, string uri, uint256 price, uint256 maxSupply);
@@ -74,16 +79,19 @@ contract ContentStore is AccessControl, ReentrancyGuard {
         bytes32 indexed featureId, uint256 minStake, uint256 requiredContentId, bool requireBoth, bool active
     );
     event ContentTimeWindowUpdated(uint256 indexed contentId, uint64 startTime, uint64 endTime);
+    event ContentPriceSet(
+        uint256 indexed contentId, PaymentTokenType indexed paymentType, uint256 oldPrice, uint256 newPrice
+    );
 
     // =========== Structs ===========
 
     struct Content {
         string uri; // Metadata URI for minted tokens
-        uint256 price; // Price in payment token
+        uint256 price; // Default price in default payment token
         uint256 maxSupply; // 0 = unlimited
         uint256 minted; // Count of purchases
         bool active; // Whether available for purchase
-        PaymentTokenType paymentType; // Which token to accept
+        PaymentTokenType paymentType; // Default payment type for purchase(contentId)
         uint64 startTime; // 0 = always available
         uint64 endTime; // 0 = no end time
     }
@@ -101,11 +109,12 @@ contract ContentStore is AccessControl, ReentrancyGuard {
         address appToken;
         address elta;
         address usdc;
-        address treasury;
+        address weth;
         address content721;
+        address appRegistry;
+        address factory;
         address admin;
-        address feeCollector;
-        uint256 protocolFeeBps;
+        address feeSwapper;
     }
 
     // =========== State ===========
@@ -114,7 +123,7 @@ contract ContentStore is AccessControl, ReentrancyGuard {
     uint256 public immutable appId;
 
     /// @notice App token for payments
-    IERC20 public immutable appToken;
+    IERC20 public appToken;
 
     /// @notice ELTA token for payments
     IERC20 public immutable elta;
@@ -122,20 +131,20 @@ contract ContentStore is AccessControl, ReentrancyGuard {
     /// @notice USDC token for payments
     IERC20 public immutable usdc;
 
-    /// @notice Protocol treasury for USDC fees
-    address public immutable treasury;
+    /// @notice WETH used to wrap native payments for routing
+    IERC20 public immutable WETH;
 
     /// @notice InAppContent721 contract to mint to
     IInAppContent721 public immutable content721;
 
-    /// @notice FeeCollector for protocol fees
-    address public feeCollector;
+    /// @notice AppRegistry used for token attach validation
+    IAppRegistry public immutable appRegistry;
 
-    /// @notice Protocol fee in basis points (e.g., 500 = 5%)
-    uint256 public protocolFeeBps;
+    /// @notice Factory address (granted MODULE_ADMIN_ROLE for safe attach workflows)
+    address public immutable factory;
 
-    /// @notice Maximum protocol fee (15%)
-    uint256 public constant MAX_PROTOCOL_FEE_BPS = 1500;
+    /// @notice FeeSwapper for final routing (80/20 contributors/treasury)
+    IFeeSwapper public immutable feeSwapper;
 
     /// @notice Optional burn fee in basis points (portion of purchase burned)
     uint256 public burnBps = 0;
@@ -152,11 +161,13 @@ contract ContentStore is AccessControl, ReentrancyGuard {
     /// @notice Content listings
     mapping(uint256 => Content) public contents;
 
+    /// @notice Optional per-token prices per contentId (0 => not enabled)
+    mapping(uint256 => mapping(PaymentTokenType => uint256)) public contentPrices;
+
     /// @notice Next content ID
     uint256 public nextContentId;
 
-    /// @notice Accumulated creator revenue per payment type
-    mapping(PaymentTokenType => uint256) public creatorRevenue;
+    // Creator revenue is no longer stored locally; all proceeds route immediately via FeeSwapper.
 
     /// @notice Feature gates by feature ID
     mapping(bytes32 => FeatureGate) public gates;
@@ -168,23 +179,43 @@ contract ContentStore is AccessControl, ReentrancyGuard {
      * @param config Initialization configuration struct
      */
     constructor(InitConfig memory config) {
-        if (config.appToken == address(0)) revert ZeroAddress();
         if (config.content721 == address(0)) revert ZeroAddress();
-        if (config.protocolFeeBps > MAX_PROTOCOL_FEE_BPS) revert InvalidFeeBps();
+        if (config.appRegistry == address(0)) revert ZeroAddress();
+        if (config.feeSwapper == address(0)) revert ZeroAddress();
+        if (config.weth == address(0)) revert ZeroAddress();
 
         appId = config.appId;
+        // Tokenless apps deploy with appToken=0 and can attach later.
         appToken = IERC20(config.appToken);
         elta = IERC20(config.elta);
         usdc = IERC20(config.usdc);
-        treasury = config.treasury;
+        WETH = IERC20(config.weth);
         content721 = IInAppContent721(config.content721);
-        feeCollector = config.feeCollector;
-        protocolFeeBps = config.protocolFeeBps;
+        appRegistry = IAppRegistry(config.appRegistry);
+        factory = config.factory;
+        feeSwapper = IFeeSwapper(config.feeSwapper);
 
         // Grant roles to admin
         _grantRole(DEFAULT_ADMIN_ROLE, config.admin);
         _grantRole(MODULE_ADMIN_ROLE, config.admin);
         _grantRole(MODULE_OPERATOR_ROLE, config.admin);
+
+        // Allow factory to perform narrow admin actions (e.g., attach launched appToken).
+        if (config.factory != address(0)) {
+            _grantRole(MODULE_ADMIN_ROLE, config.factory);
+        }
+    }
+
+    /**
+     * @notice Attach the app token after it is launched (tokenless -> token-launched upgrade).
+     * @dev This is intentionally one-way; it enables APP-token payments and fee routing.\n
+     */
+    function setAppToken(address newAppToken) external onlyRole(MODULE_ADMIN_ROLE) {
+        if (newAppToken == address(0)) revert ZeroAddress();
+        IAppRegistry.AppInfo memory info = appRegistry.getApp(appId);
+        if (!info.tokenLaunched) revert InvalidAppToken();
+        if (info.appToken != newAppToken) revert InvalidAppToken();
+        appToken = IERC20(newAppToken);
     }
 
     // =========== Listing Functions ===========
@@ -215,6 +246,10 @@ contract ContentStore is AccessControl, ReentrancyGuard {
             startTime: 0,
             endTime: 0
         });
+
+        // Enable pricing for the default payment token.
+        contentPrices[contentId][paymentType] = price;
+        emit ContentPriceSet(contentId, paymentType, 0, price);
 
         emit ContentListed(contentId, uri, price, maxSupply);
     }
@@ -252,7 +287,25 @@ contract ContentStore is AccessControl, ReentrancyGuard {
             endTime: endTime
         });
 
+        // Enable pricing for the default payment token.
+        contentPrices[contentId][paymentType] = price;
+        emit ContentPriceSet(contentId, paymentType, 0, price);
+
         emit ContentListedWithTimeWindow(contentId, uri, price, maxSupply, startTime, endTime);
+    }
+
+    /**
+     * @notice Set (or disable) a price for a specific payment token type for a contentId.
+     * @dev Setting price=0 disables that payment type for this contentId.
+     */
+    function setContentPrice(uint256 contentId, PaymentTokenType paymentType, uint256 price)
+        external
+        onlyRole(MODULE_OPERATOR_ROLE)
+    {
+        if (contentId >= nextContentId) revert ContentDoesNotExist();
+        uint256 old = contentPrices[contentId][paymentType];
+        contentPrices[contentId][paymentType] = price;
+        emit ContentPriceSet(contentId, paymentType, old, price);
     }
 
     /**
@@ -283,10 +336,24 @@ contract ContentStore is AccessControl, ReentrancyGuard {
      * @return tokenId The minted token ID
      * @dev User must approve this contract for payment tokens first
      */
-    function purchase(uint256 contentId) external nonReentrant returns (uint256 tokenId) {
+    function purchase(uint256 contentId) external returns (uint256 tokenId) {
+        Content storage content = contents[contentId];
+        return purchaseWithToken(contentId, content.paymentType);
+    }
+
+    /**
+     * @notice Purchase content using a specific payment token type (supports per-token pricing).
+     * @dev For NATIVE payments, msg.value must equal the content price.
+     */
+    function purchaseWithToken(uint256 contentId, PaymentTokenType paymentType)
+        public
+        payable
+        nonReentrant
+        returns (uint256 tokenId)
+    {
+        if (contentId >= nextContentId) revert ContentDoesNotExist();
         Content storage content = contents[contentId];
 
-        if (contentId >= nextContentId) revert ContentDoesNotExist();
         if (!content.active) revert ContentNotActive();
         if (content.maxSupply > 0 && content.minted >= content.maxSupply) {
             revert MaxSupplyReached();
@@ -298,56 +365,52 @@ contract ContentStore is AccessControl, ReentrancyGuard {
             revert PurchaseTooLate();
         }
 
-        uint256 price = content.price;
-        PaymentTokenType paymentType = content.paymentType;
-
-        // Get the appropriate payment token
-        IERC20 paymentToken = _getPaymentToken(paymentType);
+        uint256 price = contentPrices[contentId][paymentType];
+        if (price == 0) revert ZeroPrice();
 
         // Collect payment
-        paymentToken.safeTransferFrom(msg.sender, address(this), price);
+        if (paymentType == PaymentTokenType.NATIVE) {
+            if (msg.value != price) revert InsufficientPayment();
+        } else {
+            IERC20 paymentToken = _getPaymentToken(paymentType);
+            paymentToken.safeTransferFrom(msg.sender, address(this), price);
+        }
 
         // Calculate and apply burn (if enabled)
         uint256 burnAmount = 0;
         if (burnBps > 0) {
             burnAmount = (price * burnBps) / BPS;
             if (burnAmount > 0) {
-                paymentToken.safeTransfer(BURN_SINK, burnAmount);
+                if (paymentType == PaymentTokenType.NATIVE) {
+                    (bool ok,) = payable(BURN_SINK).call{value: burnAmount}("");
+                    require(ok, "burn failed");
+                } else {
+                    IERC20 paymentToken = _getPaymentToken(paymentType);
+                    paymentToken.safeTransfer(BURN_SINK, burnAmount);
+                }
             }
         }
 
-        // Calculate and route protocol fee (from remaining amount)
         uint256 remainingAfterBurn = price - burnAmount;
-        uint256 protocolFee = (remainingAfterBurn * protocolFeeBps) / BPS;
-        if (protocolFee > 0 && _canRouteProtocolFee(paymentType)) {
-            _routeProtocolFee(paymentType, paymentToken, protocolFee);
-        } else {
-            // If no fee collector, all goes to creator
-            protocolFee = 0;
+        if (remainingAfterBurn > 0) {
+            if (paymentType == PaymentTokenType.NATIVE) {
+                // Wrap to WETH so ContributorSplit can handle it as an ERC20 asset.
+                IWETH(address(WETH)).deposit{value: remainingAfterBurn}();
+                WETH.safeIncreaseAllowance(address(feeSwapper), remainingAfterBurn);
+                feeSwapper.accrue(appId, FeeKind.CONTENT_SALE, address(WETH), remainingAfterBurn, msg.sender);
+            } else {
+                IERC20 paymentToken = _getPaymentToken(paymentType);
+                paymentToken.safeIncreaseAllowance(address(feeSwapper), remainingAfterBurn);
+                feeSwapper.accrue(appId, FeeKind.CONTENT_SALE, address(paymentToken), remainingAfterBurn, msg.sender);
+            }
         }
 
-        // Remaining goes to creator revenue
-        creatorRevenue[paymentType] += remainingAfterBurn - protocolFee;
-
-        // Increment minted count
+        // In the 80/20 model, the "protocol fee" is the fixed treasury take (20%).
+        uint256 protocolFee = (remainingAfterBurn * 2000) / BPS;
         content.minted++;
-
-        // Mint token to buyer
         tokenId = content721.mint(msg.sender, content.uri);
 
         emit ContentPurchased(contentId, msg.sender, tokenId, price, protocolFee);
-    }
-
-    /**
-     * @dev Check if protocol fee can be routed for a given payment type
-     */
-    function _canRouteProtocolFee(PaymentTokenType paymentType) internal view returns (bool) {
-        if (paymentType == PaymentTokenType.APP || paymentType == PaymentTokenType.ELTA) {
-            return feeCollector != address(0);
-        } else {
-            // USDC goes to treasury
-            return treasury != address(0);
-        }
     }
 
     /**
@@ -355,81 +418,25 @@ contract ContentStore is AccessControl, ReentrancyGuard {
      */
     function _getPaymentToken(PaymentTokenType paymentType) internal view returns (IERC20) {
         if (paymentType == PaymentTokenType.APP) {
-            return appToken;
+            IERC20 token = appToken;
+            if (address(token) == address(0)) revert AppTokenNotSet();
+            return token;
         } else if (paymentType == PaymentTokenType.ELTA) {
-            return elta;
+            IERC20 token = elta;
+            if (address(token) == address(0)) revert PaymentTokenDisabled();
+            return token;
+        } else if (paymentType == PaymentTokenType.USDC) {
+            IERC20 token = usdc;
+            if (address(token) == address(0)) revert PaymentTokenDisabled();
+            return token;
         } else {
-            return usdc;
+            revert("native");
         }
     }
 
-    /**
-     * @dev Route protocol fee to FeeCollector or treasury
-     */
-    function _routeProtocolFee(PaymentTokenType paymentType, IERC20 token, uint256 amount) internal {
-        if (paymentType == PaymentTokenType.APP) {
-            if (feeCollector != address(0)) {
-                token.approve(feeCollector, amount);
-                IFeeCollector(feeCollector).depositAppToken(appId, address(token), amount);
-            }
-        } else if (paymentType == PaymentTokenType.ELTA) {
-            if (feeCollector != address(0)) {
-                token.approve(feeCollector, amount);
-                IFeeCollector(feeCollector).depositElta(appId, amount);
-            }
-        } else {
-            // USDC goes directly to treasury
-            if (treasury != address(0)) {
-                token.safeTransfer(treasury, amount);
-            }
-        }
-    }
+    receive() external payable {}
 
     // =========== Admin Functions ===========
-
-    /**
-     * @notice Withdraw accumulated creator revenue for a specific token type
-     * @param to Recipient address
-     * @param paymentType Which revenue type to withdraw (APP, ELTA, USDC)
-     */
-    function withdrawRevenue(address to, PaymentTokenType paymentType)
-        external
-        onlyRole(MODULE_ADMIN_ROLE)
-        nonReentrant
-    {
-        if (to == address(0)) revert ZeroAddress();
-
-        uint256 amount = creatorRevenue[paymentType];
-        creatorRevenue[paymentType] = 0;
-
-        IERC20 token = _getPaymentToken(paymentType);
-        token.safeTransfer(to, amount);
-
-        emit RevenueWithdrawn(to, amount);
-    }
-
-    /**
-     * @notice Set protocol fee
-     * @param newBps New fee in basis points
-     */
-    function setProtocolFeeBps(uint256 newBps) external onlyRole(MODULE_ADMIN_ROLE) {
-        if (newBps > MAX_PROTOCOL_FEE_BPS) revert InvalidFeeBps();
-
-        uint256 oldBps = protocolFeeBps;
-        protocolFeeBps = newBps;
-
-        emit ProtocolFeeBpsUpdated(oldBps, newBps);
-    }
-
-    /**
-     * @notice Set fee collector address
-     * @param _feeCollector New fee collector
-     */
-    function setFeeCollector(address _feeCollector) external onlyRole(MODULE_ADMIN_ROLE) {
-        address oldCollector = feeCollector;
-        feeCollector = _feeCollector;
-        emit FeeCollectorUpdated(oldCollector, _feeCollector);
-    }
 
     /**
      * @notice Set burn fee for content purchases

@@ -1,299 +1,193 @@
 # Elata Protocol Summary
 
-This document provides concise summaries and formal specifications of the Elata Protocol for technical review.
+This document defines the current protocol behavior from deployed contracts and tests.
 
 ## One-Sentence Summary
 
-Elata is a permissionless protocol where anyone can launch app tokens via constant-product bonding curves, with trading fees distributed to app stakers, veELTA holders, and a community-governed treasury.
+Elata is a permissionless app-launch protocol where app tokens are sold on a constant-product ELTA bonding curve, then routed into a fee pipeline that sends launch fees to treasury and app revenue to contributor splits plus treasury.
 
 ## One-Paragraph Summary
 
-Elata Protocol enables permissionless app token launches on constant-product bonding curves, funded by ELTA (the native token with 77M max supply). App creators pay 110 ELTA to launch (100 seed liquidity + 10 creation fee); tokens are split 50% to the bonding curve for public sale, 25% to a cliff-then-linear vesting wallet for the team, and 25% to an ecosystem vault for airdrops. Price rises along the curve until 42,000 ELTA is raised, at which point the app "graduates" to a Uniswap V2 LP pair with 2-year locked liquidity. Protocol revenue flows from 1% trading fees on bonding curve trades, which are split 70/15/15 to app stakers, veELTA holders, and treasury respectively. Users earn non-transferable XP through participation, which gates early access to new launches (first 6 hours) and weights votes in funding allocation decisions.
+An app launch costs `110 ELTA` (`100` seed + `10` launch fee). `AppFactory` deploys an app stack (`AppToken`, `AppBondingCurve`, `AppStakingVault`, `AppVestingWallet`, `AppEcosystemVault`) and mints exactly `10,000,000` app tokens split `50%` curve, `25%` vesting wallet, `25%` ecosystem vault. The curve follows `x*y=k`, supports buys while active, and graduates at `42,000 ELTA` (or can be force-graduated at deadline), creating a Uniswap V2 pair with LP locked for `730 days`. Trading and LP-keyed transfer taxes flow through `FeeCollector` and `FeeSwapper`: `LAUNCH_FEE` routes `100%` to treasury, while app-revenue fee kinds route to contributor split + treasury (default `80/20`, governance-configurable). ELTA has a fixed `77,000,000` supply cap minted at deployment, veELTA lock boost ranges from `1x` to `2x`, and XP gates early buys by default (`100 XP` for first `6 hours`).
 
 ---
 
 ## System of Equations
 
-### 1. Bonding Curve Mechanics
+### 1. Bonding Curve
 
-The bonding curve implements constant-product automated market making.
+Invariant:
 
-**Invariant:**
 ```
-k = reserveElta × reserveToken
-```
-
-**Initial State (at launch):**
-```
-reserveElta₀ = seedElta = 100 ELTA
-reserveToken₀ = curveSupply = 5,000,000 tokens (50% of 10M total)
-k = 100 × 5,000,000 = 500,000,000
+k = reserveElta * reserveToken
 ```
 
-**Spot Price:**
+Initialization defaults:
+
 ```
-price = reserveElta / reserveToken
+reserveElta0 = 100 ELTA
+reserveToken0 = 5,000,000 APP
+k0 = reserveElta0 * reserveToken0
 ```
 
-**Buy Execution (ELTA → App Token):**
-```
-Given: eltaIn (amount of ELTA spent)
+Buy path:
 
+```
 newReserveElta = reserveElta + eltaIn
 newReserveToken = k / newReserveElta
 tokensOut = reserveToken - newReserveToken
 ```
 
-**Sell Execution (App Token → ELTA):**
-```
-Given: tokensIn (amount of tokens sold)
+Spot price approximation:
 
-newReserveToken = reserveToken + tokensIn
-newReserveElta = k / newReserveToken
-eltaOut = reserveElta - newReserveElta
+```
+price ~= reserveElta / reserveToken
 ```
 
-### 2. Fee Calculations
+### 2. Bonding-Curve Trading Fee
 
-**Trading Fee (1%):**
-```
-tradingFee = eltaIn × 0.01
-totalCost = eltaIn + tradingFee  (buyer pays fee on top)
-```
+Base trade fee from `AppFeeRouter.feeBps()` (default `100 bps`):
 
-**Sniper Fee (optional, first hour):**
 ```
-if (timestamp < launchTime + 1 hour) AND sniperFeeEnabled:
-    sniperFee = eltaIn × 0.05
-    totalCost = eltaIn + tradingFee + sniperFee
+tradingFee = actualEltaIn * feeBps / 10_000
+buyerPays = actualEltaIn + tradingFee
 ```
 
-**Fee Distribution:**
+Optional sniper add-on (default disabled):
+
 ```
-Given: collectedFees (total ELTA fees)
-
-appStakersShare = collectedFees × 0.70
-veEltaShare = collectedFees × 0.15
-treasuryShare = collectedFees × 0.15
-
-Invariant: appStakersShare + veEltaShare + treasuryShare = collectedFees
+if sniperFeeEnabled and now < activationTime + sniperFeeDuration:
+    effectiveFeeBps = feeBps + sniperFeeBps
 ```
 
-### 3. App Token Allocation
+### 3. Token Supply and Launch Allocation
 
-**At Launch:**
+Per-app supply:
+
 ```
-totalSupply = 10,000,000 tokens
-
-curveAllocation = totalSupply × 0.50 = 5,000,000 tokens
-vestingAllocation = totalSupply × 0.25 = 2,500,000 tokens
-ecosystemAllocation = totalSupply × 0.25 = 2,500,000 tokens
-
-Invariant: curveAllocation + vestingAllocation + ecosystemAllocation = totalSupply
+totalSupply = 10,000,000 APP
+curveShare = 50%
+teamVestingShare = 25%
+ecosystemShare = 25%
 ```
 
-**Vesting Schedule:**
-```
-cliff = 90 days
-vestingDuration = 730 days (2 years)
+Conservation:
 
-if (timestamp < launchTime + cliff):
-    vestedAmount = 0
+```
+curveShare + teamVestingShare + ecosystemShare = totalSupply
+```
+
+### 4. Graduation Rules
+
+Target graduation:
+
+```
+graduate when reserveElta >= 42,000 ELTA
+```
+
+Forced graduation:
+
+```
+deadline = activationTime + maxCurveDuration
+if now >= deadline and state not in {GRADUATED, CANCELLED}:
+    forceGraduate()
+```
+
+LP lock:
+
+```
+lpUnlockAt = graduationTimestamp + 730 days   // default
+```
+
+### 5. veELTA Voting Power
+
+Lock window:
+
+```
+minLock = 7 days
+maxLock = 730 days
+```
+
+Boost:
+
+```
+boost = 1 + duration / maxLockDuration
+votingPower = lockedAmount * boost
+boost range: [1x, 2x]
+```
+
+### 6. Fee Routing Policy (Current V2 Pipeline)
+
+`FeeCollector` tracks pending balances by `(appId, feeKind, asset)` and sweeps to `FeeSwapper`.
+
+Routing policy:
+
+```
+if appPaused:
+    100% treasury
+else if kind == LAUNCH_FEE:
+    100% treasury
 else:
-    elapsed = timestamp - (launchTime + cliff)
-    vestedAmount = min(vestingAllocation × elapsed / vestingDuration, vestingAllocation)
+    treasury = amount * treasuryTakeBps / 10_000      // default 2000 bps
+    contributors = amount - treasury                  // default 8000 bps
 ```
 
-### 4. Graduation Mechanics
+Where `contributors` is forwarded to the app's `ContributorSplit`.
 
-**Graduation Condition:**
-```
-graduated = (reserveElta >= targetRaisedElta)
-         = (reserveElta >= 42,000 ELTA)
-```
+### 7. XP Early Access Gate
 
-**LP Pair Creation:**
-```
-At graduation:
-    lpElta = reserveElta (all accumulated ELTA)
-    lpTokens = reserveToken (remaining unsold tokens)
-    
-    LP tokens locked for: lpLockDuration = 730 days (2 years)
-    LP beneficiary: app creator
-```
+Defaults:
 
-### 5. veELTA Staking
-
-**Lock Parameters:**
 ```
-minLockDuration = 7 days
-maxLockDuration = 730 days (2 years)
-```
-
-**Voting Power Calculation:**
-```
-Given: lockedAmount, lockDuration
-
-boost = 1 + (lockDuration / maxLockDuration)
-      = 1 + (lockDuration / 730 days)
-
-Range: [1.0, 2.0]
-
-votingPower = lockedAmount × boost
-```
-
-**Examples:**
-```
-7-day lock:   boost = 1 + (7/730) ≈ 1.01x
-365-day lock: boost = 1 + (365/730) = 1.50x
-730-day lock: boost = 1 + (730/730) = 2.00x
-```
-
-### 6. XP Gating
-
-**Early Access Gate:**
-```
-earlyBuyDuration = 6 hours
 xpMinForEarlyBuy = 100 XP
+earlyBuyDuration = 6 hours
+```
 
-if (timestamp < launchTime + earlyBuyDuration):
+Constraint:
+
+```
+if now < launchTimestamp + earlyBuyDuration:
     require(userXP >= xpMinForEarlyBuy)
 ```
 
-### 7. Protocol Revenue Model
+---
 
-**Revenue Sources:**
-```
-1. App Creation Fees:    creationFee = 10 ELTA per launch
-2. Trading Fees:         tradingFee = tradeVolume × 0.01
-3. App Token Transfer:   transferFee ≤ 2% (optional, per-app)
-4. Tournament Rake:      rake = 2.5% of prize pool
-5. Content Sales:        protocolFee ≤ 15% of sale price
-```
+## One-Pager
 
-**Aggregate Protocol Revenue:**
-```
-totalRevenue = Σ(creationFees) + Σ(tradingFees) + Σ(transferFees) + Σ(tournamentRake) + Σ(contentFees)
-```
+### Core Flow
+
+1. Developer registers app and launches token via `AppFactory`.
+2. Pays `10 ELTA` launch fee + `100 ELTA` curve seed.
+3. App token (`10,000,000`) is minted as `50/25/25` curve/vesting/ecosystem.
+4. Buyers purchase from active bonding curve (`x*y=k`).
+5. Trading fees and LP-keyed transfer taxes accumulate and are swept to `FeeCollector`.
+6. `FeeSwapper` routes by fee kind:
+   - `LAUNCH_FEE`: `100%` treasury
+   - App revenue kinds: default `80%` contributor split / `20%` treasury
+7. At `42,000 ELTA` (or deadline), curve graduates to Uniswap LP and locks LP.
+
+### Key Constants (Defaults)
+
+| Parameter | Value |
+|---|---|
+| ELTA max supply | `77,000,000` |
+| App launch total | `110 ELTA` |
+| App creation fee | `10 ELTA` |
+| Curve seed | `100 ELTA` |
+| App token supply | `10,000,000` |
+| Curve graduation target | `42,000 ELTA` |
+| LP lock duration | `730 days` |
+| XP early gate | `100 XP`, first `6h` |
+| Base trade fee | `1%` (`100 bps`) |
+
+### Invariants To Preserve
+
+- `k = x*y` for curve math (within integer rounding behavior).
+- Curve lifecycle is monotonic: `PENDING -> ACTIVE -> GRADUATED` or `PENDING -> CANCELLED`.
+- `AppToken.transferFeeBps <= 200 bps`.
+- Fee routing never exceeds incoming amount.
+- ELTA total supply remains fixed at `77,000,000`.
 
 ---
 
-## One-Pager: Protocol Overview
-
-### What is Elata?
-
-Elata is a permissionless protocol for launching app tokens with built-in fair distribution, staking rewards, and governance. It combines bonding curve mechanics with a comprehensive fee distribution system that aligns incentives across app developers, token holders, and the protocol treasury.
-
-### How It Works
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        APP LAUNCH FLOW                          │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│   Creator pays 110 ELTA ──► AppFactory deploys:                │
-│                              ├─ AppToken (10M supply)          │
-│                              ├─ AppBondingCurve                │
-│                              ├─ AppStakingVault                │
-│                              ├─ AppVestingWallet (25%)         │
-│                              └─ AppEcosystemVault (25%)        │
-│                                                                 │
-│   Bonding Curve receives 50% of tokens + 100 ELTA seed         │
-│                                                                 │
-│   Buyers exchange ELTA for tokens along x*y=k curve            │
-│   Price rises with each purchase                               │
-│                                                                 │
-│   When 42,000 ELTA raised ──► Graduation:                      │
-│                               └─ Create Uniswap LP pair        │
-│                               └─ Lock LP tokens for 2 years    │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Revenue Model
-
-The protocol generates revenue through multiple streams:
-
-| Source | Rate | Flow |
-|--------|------|------|
-| App Creation | 10 ELTA/launch | FeeCollector → FeeManager |
-| Trading Fees | 1% per trade | FeeCollector → RewardsDistributor |
-| Transfer Fees | 0-2% (optional) | AppToken → RewardsDistributor |
-| Tournament Rake | 2.5% | Tournament → AppFeeRouter |
-| Content Sales | Up to 15% | ContentStore → FeeCollector |
-
-### Fee Distribution
-
-All protocol fees flow through the RewardsDistributor:
-
-```
-                    ┌──────────────────┐
-                    │ Collected Fees   │
-                    └────────┬─────────┘
-                             │
-         ┌───────────────────┼───────────────────┐
-         │                   │                   │
-         ▼                   ▼                   ▼
-   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-   │ App Stakers │    │   veELTA    │    │  Treasury   │
-   │    70%      │    │    15%      │    │    15%      │
-   └─────────────┘    └─────────────┘    └─────────────┘
-```
-
-### Economic Flywheel
-
-1. **App Launch** → Creator pays ELTA → Protocol earns creation fee
-2. **Trading Activity** → Users trade on curve → Protocol earns trading fees
-3. **Fee Distribution** → Fees split to stakers → Incentivizes staking
-4. **Staking Rewards** → Stakers earn yield → Increases TVL
-5. **Governance Power** → veELTA holders vote → Protocol improvement
-6. **Better Protocol** → More app launches → Cycle repeats
-
-### Key Invariants
-
-These properties must always hold:
-
-| Invariant | Description |
-|-----------|-------------|
-| `k = x × y` | Bonding curve constant product preserved |
-| `fees_out ≤ fees_in` | Cannot distribute more than collected |
-| `ELTA.totalSupply() ≤ 77M` | Supply cap enforced |
-| `splits = 70 + 15 + 15 = 100%` | Fee splits sum to 100% |
-| `lockDuration ∈ [7, 730] days` | Staking within bounds |
-
-### Security Properties
-
-- **Non-upgradeable**: All contracts are immutable after deployment
-- **Role-based access**: Admin functions require multisig approval
-- **Supply cap enforcement**: ELTA minting capped at 77M
-- **Time-locked governance**: 48-hour delay on proposal execution
-- **LP lock**: Graduated liquidity locked for 2 years
-
-### Key Parameters
-
-```
-ELTA Supply Cap:         77,000,000 tokens
-App Token Supply:        10,000,000 tokens per app
-Seed Liquidity:          100 ELTA
-Creation Fee:            10 ELTA
-Graduation Threshold:    42,000 ELTA
-LP Lock Duration:        730 days (2 years)
-veELTA Lock Range:       7 - 730 days
-veELTA Boost Range:      1x - 2x
-Trading Fee:             1%
-Revenue Split:           70% app / 15% veELTA / 15% treasury
-Governance Quorum:       4% of veELTA supply
-Proposal Threshold:      0.1% of veELTA supply
-Timelock Delay:          48 hours
-```
-
-### Governance
-
-Two complementary governance mechanisms:
-
-1. **Protocol Governance (veELTA)**: Parameter changes, treasury allocation, emergency actions
-2. **Funding Decisions (XP)**: App experiment funding weighted by participation reputation
-
----
-
-*For implementation details, see [ARCHITECTURE.md](./ARCHITECTURE.md) and [TOKENOMICS.md](./TOKENOMICS.md).*
+For deeper contract mapping, see [ARCHITECTURE.md](./ARCHITECTURE.md) and [TOKENOMICS.md](./TOKENOMICS.md).

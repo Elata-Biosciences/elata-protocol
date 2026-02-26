@@ -11,7 +11,6 @@ import { SimulationEngine, createLogger, defineScenario } from '@elata-bioscienc
 import { RewardHunterAgent, StakerAgent } from '../../agents/index.js';
 import { createEltaPack } from '../../packs/EltaPack.js';
 import {
-  basicStabilityAssertions,
   printScenarioResults,
   allocatePort,
 } from '../../lib/index.js';
@@ -57,13 +56,14 @@ const scenario = defineScenario({
 
   metrics: {
     sampleEveryTicks: 1,
-    track: ['app_count', 'veelta_total_locked', 'fees_collected_total'],
+    track: ['app_count', 'veelta_total_locked', 'fees_collected_total', 'elta_total_supply'],
   },
 
   assertions: [
-    ...basicStabilityAssertions(),
+    { type: 'gte', metric: 'app_count', value: 1 },
+    { type: 'gte', metric: 'elta_total_supply', value: 1 },
     // Should have some veELTA locked from stakers
-    { type: 'gte', metric: 'veelta_total_locked', value: 0 },
+    { type: 'gte', metric: 'veelta_total_locked', value: 1 },
   ],
 });
 

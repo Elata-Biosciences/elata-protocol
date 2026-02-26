@@ -5,6 +5,11 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC20Burnable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import {FeeKind} from "../fees/FeeKind.sol";
+
+interface IFeeCollector {
+    function depositAppToken(uint256 appId, FeeKind kind, address token, uint256 amount) external;
+}
 
 /**
  * @title AppToken
@@ -52,10 +57,6 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
     address public feeCollector;
     uint256 public appId; // App ID for FeeCollector accounting
 
-    // Reward distributor addresses (legacy - kept for compatibility)
-    address public appRewardsDistributor;
-    address public rewardsDistributor;
-    address public treasury;
     address public appVault; // Store vault for exemption
 
     event AppMetadataUpdated(string description, string imageURI, string website);
@@ -67,9 +68,6 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
     event LPAddressUpdated(address indexed lp, bool isLP);
     event FeeCollectorUpdated(address indexed oldCollector, address indexed newCollector, uint256 appId);
     event TransferTaxCollected(uint256 indexed appId, address indexed token, uint256 amount, address from, address to);
-    event TransferFeeCollected(
-        address indexed from, address indexed to, uint256 totalFee, uint256 appFee, uint256 veFee, uint256 treasuryFee
-    );
 
     error SupplyCapExceeded();
     error OnlyCreator();
@@ -77,6 +75,7 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
     error FeeTooHigh();
     error OnlyGovernance();
     error VaultAlreadySet();
+    error FeeCollectorNotSet();
 
     /// @notice Constructor parameters bundled to avoid stack too deep
     struct InitParams {
@@ -87,6 +86,7 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
         address creator;
         address admin;
         address governance;
+        // Legacy fields (no longer used for fee routing / yield distribution).
         address appRewardsDistributor;
         address rewardsDistributor;
         address treasury;
@@ -99,18 +99,12 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
     constructor(InitParams memory p) ERC20(p.name, p.symbol) ERC20Permit(p.name) {
         require(p.creator != address(0) && p.admin != address(0), "Zero address");
         require(p.governance != address(0), "Zero governance");
-        require(p.appRewardsDistributor != address(0), "Zero app rewards");
-        require(p.rewardsDistributor != address(0), "Zero rewards");
-        require(p.treasury != address(0), "Zero treasury");
         require(p.maxSupply > 0, "Invalid supply");
 
         _decimals = p.decimals;
         maxSupply = p.maxSupply;
         appCreator = p.creator;
         governance = p.governance;
-        appRewardsDistributor = p.appRewardsDistributor;
-        rewardsDistributor = p.rewardsDistributor;
-        treasury = p.treasury;
 
         // Set initial exemptions
         transferFeeExempt[address(this)] = true;
@@ -339,20 +333,16 @@ contract AppToken is ERC20, ERC20Burnable, ERC20Permit, AccessControl {
         // Route remaining fee to FeeCollector (if configured) or legacy distributors
         if (routedFee > 0) {
             if (feeCollector != address(0)) {
-                // New path: FeeCollector handles distribution
-                super._update(from, feeCollector, routedFee);
+                // FeeCollector accounting must be explicit (do not just transfer tokens).
+                // Move the fee to this contract, then deposit into FeeCollector so it can bucket
+                // by (appId, FeeKind, asset) and be swept/swapped into FeeSwapper.
+                super._update(from, address(this), routedFee);
+                _approve(address(this), feeCollector, routedFee);
+                IFeeCollector(feeCollector).depositAppToken(appId, FeeKind.TRANSFER_TAX, address(this), routedFee);
                 emit TransferTaxCollected(appId, address(this), routedFee, from, to);
             } else {
-                // Legacy path: direct 70/15/15 split (for backwards compatibility)
-                uint256 appFee = (routedFee * 7000) / 10_000;
-                uint256 veFee = (routedFee * 1500) / 10_000;
-                uint256 treasuryFee = routedFee - appFee - veFee;
-
-                if (appFee > 0) super._update(from, appRewardsDistributor, appFee);
-                if (veFee > 0) super._update(from, rewardsDistributor, veFee);
-                if (treasuryFee > 0) super._update(from, treasury, treasuryFee);
-
-                emit TransferFeeCollected(from, to, routedFee, appFee, veFee, treasuryFee);
+                // Enforce a single fee path; avoid silent legacy yield-like routing.
+                revert FeeCollectorNotSet();
             }
         }
     }

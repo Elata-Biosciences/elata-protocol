@@ -6,6 +6,7 @@ import {IOwnable} from "./Interfaces.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IAppRegistry} from "../interfaces/IAppRegistry.sol";
 
 /**
  * @title InAppContent721Factory
@@ -31,6 +32,12 @@ contract InAppContent721Factory is Ownable {
     /// @notice Deployed InAppContent721 by app token address
     mapping(address => address) public content721ByApp;
 
+    /// @notice Deployed InAppContent721 by appId (tokenless-first)
+    mapping(uint256 => address) public content721ByAppId;
+
+    /// @notice AppRegistry for appId ownership + token attach validation
+    IAppRegistry public immutable appRegistry;
+
     // =========== Events ===========
 
     event Content721Deployed(address indexed appToken, address indexed content721, uint256 appId);
@@ -41,6 +48,8 @@ contract InAppContent721Factory is Ownable {
 
     error NotTokenOwner();
     error AlreadyDeployed();
+    error ZeroAddress();
+    error InvalidAppState();
 
     /**
      * @notice Initialize factory
@@ -48,8 +57,10 @@ contract InAppContent721Factory is Ownable {
      * @param initialOwner Factory owner
      * @param treasury_ Protocol treasury address
      */
-    constructor(address elta, address initialOwner, address treasury_) Ownable(initialOwner) {
+    constructor(address elta, address appRegistry_, address initialOwner, address treasury_) Ownable(initialOwner) {
+        if (appRegistry_ == address(0)) revert ZeroAddress();
         ELTA = elta;
+        appRegistry = IAppRegistry(appRegistry_);
         treasury = treasury_;
     }
 
@@ -107,8 +118,54 @@ contract InAppContent721Factory is Ownable {
 
         // Register deployment
         content721ByApp[appToken] = content721;
+        content721ByAppId[appId] = content721;
 
         emit Content721Deployed(appToken, content721, appId);
+    }
+
+    /**
+     * @notice Deploy InAppContent721 for an appId before token launch (tokenless mode).
+     * @dev Only callable by the app ownerSafe (from AppRegistry).
+     */
+    function deployContent721ForApp(
+        uint256 appId,
+        string calldata name,
+        string calldata symbol,
+        string calldata contractURI
+    ) external returns (address content721) {
+        IAppRegistry.AppInfo memory info = appRegistry.getApp(appId);
+        address ownerSafe = info.ownerSafe;
+        if (ownerSafe == address(0)) revert InvalidAppState();
+        if (msg.sender != ownerSafe) revert NotTokenOwner();
+
+        if (content721ByAppId[appId] != address(0)) revert AlreadyDeployed();
+
+        _collectFee();
+
+        // Owner is the app ownerSafe; minter will be set later (typically to ContentStore).
+        content721 = address(new InAppContent721(appId, name, symbol, ownerSafe, address(0), contractURI));
+        content721ByAppId[appId] = content721;
+
+        emit Content721Deployed(address(0), content721, appId);
+    }
+
+    /**
+     * @notice Attach the launched app token to an existing tokenless content721 and register it under appToken.
+     * @dev Only callable by the app ownerSafe (from AppRegistry).
+     */
+    function attachLaunchedToken(uint256 appId) external {
+        IAppRegistry.AppInfo memory info = appRegistry.getApp(appId);
+        address ownerSafe = info.ownerSafe;
+        if (ownerSafe == address(0)) revert InvalidAppState();
+        if (msg.sender != ownerSafe) revert NotTokenOwner();
+        if (!info.tokenLaunched || info.appToken == address(0)) revert InvalidAppState();
+
+        address content721 = content721ByAppId[appId];
+        if (content721 == address(0)) revert InvalidAppState();
+
+        if (content721ByApp[info.appToken] == address(0)) {
+            content721ByApp[info.appToken] = content721;
+        }
     }
 
     // =========== Internal Functions ===========
@@ -131,5 +188,9 @@ contract InAppContent721Factory is Ownable {
      */
     function getContent721(address appToken) external view returns (address content721) {
         return content721ByApp[appToken];
+    }
+
+    function getContent721ByAppId(uint256 appId) external view returns (address content721) {
+        return content721ByAppId[appId];
     }
 }

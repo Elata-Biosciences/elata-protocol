@@ -6,6 +6,9 @@ import {console2} from "forge-std/console2.sol";
 import {ELTA} from "elta/ELTA.sol";
 import {AppFactory} from "../../src/apps/AppFactory.sol";
 import {AppFactoryViews} from "../../src/apps/AppFactoryViews.sol";
+import {AppRegistry} from "../../src/registry/AppRegistry.sol";
+import {ContributorSplitFactory} from "../../src/contributors/ContributorSplitFactory.sol";
+import {FeeSwapper} from "../../src/fees/FeeSwapper.sol";
 import {IUniswapV2Router02} from "../../src/interfaces/IUniswapV2Router02.sol";
 import {IAppFeeRouter} from "../../src/interfaces/IAppFeeRouter.sol";
 import {IAppRewardsDistributor} from "../../src/interfaces/IAppRewardsDistributor.sol";
@@ -70,6 +73,9 @@ contract AppFactorySecurity is Test {
     ELTA public elta;
     AppFactory public factory;
     AppFactoryViews public views;
+    AppRegistry public registry;
+    ContributorSplitFactory public splitFactory;
+    FeeSwapper public feeSwapper;
 
     MockRouter public router;
     MockAppFeeRouter public feeRouter;
@@ -109,6 +115,17 @@ contract AppFactorySecurity is Test {
             governance,
             admin
         );
+
+        // Configure vNext dependencies (required by createApp wrapper).
+        registry = new AppRegistry(governance, address(factory));
+        splitFactory = new ContributorSplitFactory(governance, address(factory));
+        feeSwapper = new FeeSwapper(address(elta), admin, governance, treasury, address(registry));
+
+        vm.startPrank(admin);
+        factory.setAppRegistry(address(registry));
+        factory.setContributorSplitFactory(address(splitFactory));
+        factory.setFeeSwapper(address(feeSwapper));
+        vm.stopPrank();
 
         views = new AppFactoryViews(address(factory));
 

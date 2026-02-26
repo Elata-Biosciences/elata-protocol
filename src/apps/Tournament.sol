@@ -6,11 +6,12 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import {FeeKind} from "../fees/FeeKind.sol";
 
 /// @notice Interface for FeeCollector
 interface IFeeCollector {
-    function depositElta(uint256 appId, uint256 amount) external;
-    function depositAppToken(uint256 appId, address token, uint256 amount) external;
+    function depositElta(uint256 appId, FeeKind kind, uint256 amount) external;
+    function depositAppToken(uint256 appId, FeeKind kind, address token, uint256 amount) external;
 }
 
 /// @notice Supported entry token types
@@ -264,9 +265,9 @@ contract Tournament is AccessControl, ReentrancyGuard {
             entryToken.approve(feeCollector, amount);
 
             if (entryTokenType == EntryTokenType.ELTA) {
-                IFeeCollector(feeCollector).depositElta(appId, amount);
+                IFeeCollector(feeCollector).depositElta(appId, FeeKind.TOURNAMENT_FEE, amount);
             } else if (entryTokenType == EntryTokenType.APP) {
-                IFeeCollector(feeCollector).depositAppToken(appId, address(entryToken), amount);
+                IFeeCollector(feeCollector).depositAppToken(appId, FeeKind.TOURNAMENT_FEE, address(entryToken), amount);
             } else {
                 // USDC goes directly to treasury
                 entryToken.safeTransfer(protocolTreasury, amount);

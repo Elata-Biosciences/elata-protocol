@@ -11,26 +11,27 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SimulationEngine, createLogger, defineScenario } from '@elata-biosciences/agentforge';
 import {
+  AppStakerAgent,
   BasicUserAgent,
-  WhaleUserAgent,
   CautiousUserAgent,
   DeveloperAgent,
-  StakerAgent,
-  AppStakerAgent,
-  RewardHunterAgent,
   FeeKeeperAgent,
   GovernorAgent,
+  RewardHunterAgent,
+  StakerAgent,
   VoterAgent,
+  WhaleUserAgent,
 } from '../../../agents/index.js';
-import { createEltaPack } from '../../../packs/EltaPack.js';
 import {
-  economicAssertions,
-  printScenarioResults,
   allocatePort,
+  createNotebookReport,
+  economicAssertions,
   formatElta,
-  projectAnnualRevenue,
   groupAgentStatsByType,
+  printScenarioResults,
+  projectAnnualRevenue,
 } from '../../../lib/index.js';
+import { createEltaPack } from '../../../packs/EltaPack.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const protocolPath = join(__dirname, '..', '..', '..', '..');
@@ -158,6 +159,30 @@ const scenario = defineScenario({
   },
 
   assertions: economicAssertions({ minApps: 10 }),
+  studio: {
+    report: createNotebookReport({
+      title: 'Economic Long-Run: Annual Simulation',
+      experimentNotes:
+        '365-day mixed-population simulation to test full-cycle sustainability, revenue consistency, and long-horizon protocol behavior.',
+      hypotheses: [
+        'A diversified agent mix should keep fees and participation structurally positive.',
+        'Long-horizon app growth and veELTA lock depth remain stable under mixed behavior.',
+      ],
+      successCriteria: [
+        'Annual economic assertions pass.',
+        'Fees, app count, and veELTA lock remain healthy by end of run.',
+      ],
+      metricFields: [
+        'app_count',
+        'fees_collected_total',
+        'veelta_total_locked',
+        'graduated_apps',
+        'gas_total',
+      ],
+      primaryMetric: 'fees_collected_total',
+      mlFeatures: ['tick', 'app_count', 'veelta_total_locked'],
+    }),
+  },
 });
 
 async function main(): Promise<void> {
@@ -199,7 +224,9 @@ async function main(): Promise<void> {
     console.log('\nProtocol State:');
     console.log('  Apps created: ' + result.finalMetrics.app_count);
     console.log('  Graduated apps: ' + (result.finalMetrics.graduated_apps ?? 0));
-    console.log('  veELTA locked: ' + formatElta(result.finalMetrics.veelta_total_locked as bigint));
+    console.log(
+      '  veELTA locked: ' + formatElta(result.finalMetrics.veelta_total_locked as bigint)
+    );
 
     // Agent performance
     const grouped = groupAgentStatsByType(result.agentStats);

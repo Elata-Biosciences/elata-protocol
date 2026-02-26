@@ -62,10 +62,37 @@ export interface BaseProtocolAgentParams {
   minEltaReserve?: bigint;
 }
 
+type DecisionMemoryPrimitive = string | number | boolean | null;
+
+export interface DecisionMemoryOutcome {
+  ok: boolean;
+  error?: string;
+}
+
+export interface DecisionMemoryEntry {
+  tick: number;
+  decision: string;
+  reason: string;
+  outcome?: DecisionMemoryOutcome;
+  context?: Record<string, DecisionMemoryPrimitive>;
+}
+
+export interface DecisionMemoryPayload {
+  decision: string;
+  reason: string;
+  context?: Record<string, unknown>;
+  outcome?: DecisionMemoryOutcome;
+}
+
 /**
  * Base class for Elata Protocol agents
  */
 export abstract class BaseProtocolAgent extends BaseAgent {
+  protected static readonly DECISION_MEMORY_HISTORY_LIMIT = 25;
+  protected static readonly DECISION_MEMORY_MAX_REASON_CHARS = 120;
+  protected static readonly DECISION_MEMORY_MAX_CONTEXT_KEYS = 10;
+  protected static readonly DECISION_MEMORY_MAX_STRING_CHARS = 160;
+
   /** Agent's wallet address (set during initialize) */
   protected address: Address | null = null;
 
@@ -648,6 +675,94 @@ export abstract class BaseProtocolAgent extends BaseAgent {
   // ============================================
   // Enhanced Helper Methods (Phase 1)
   // ============================================
+
+  protected recordDecisionMemory(ctx: TickContext, payload: DecisionMemoryPayload): void {
+    const decision = payload.decision.trim() || 'no_op';
+    const reason =
+      payload.reason.trim().slice(0, BaseProtocolAgent.DECISION_MEMORY_MAX_REASON_CHARS) ||
+      'unspecified';
+
+    const lastResult = ctx.lastResult ?? null;
+    const outcome: DecisionMemoryOutcome | undefined =
+      payload.outcome ??
+      (lastResult
+        ? {
+            ok: lastResult.ok,
+            ...(lastResult.error
+              ? {
+                  error: lastResult.error.slice(
+                    0,
+                    BaseProtocolAgent.DECISION_MEMORY_MAX_STRING_CHARS
+                  ),
+                }
+              : {}),
+          }
+        : undefined);
+
+    const compactContext = this.compactDecisionContext(payload.context);
+    const entry: DecisionMemoryEntry = {
+      tick: ctx.tick,
+      decision,
+      reason,
+      ...(outcome ? { outcome } : {}),
+      ...(Object.keys(compactContext).length > 0 ? { context: compactContext } : {}),
+    };
+
+    const historyLimit = this.resolveDecisionHistoryLimit();
+    const history = this.recall<DecisionMemoryEntry[]>('decisionHistory', []) ?? [];
+    history.push(entry);
+    const boundedHistory = history.slice(-historyLimit);
+
+    this.remember('lastTick', ctx.tick);
+    this.remember('lastDecision', decision);
+    this.remember('lastReason', reason);
+    this.remember('lastOutcome', outcome ?? null);
+    this.remember('decisionHistory', boundedHistory);
+  }
+
+  private resolveDecisionHistoryLimit(): number {
+    const configured = this.getParam<number>(
+      'decisionMemoryHistoryLimit',
+      BaseProtocolAgent.DECISION_MEMORY_HISTORY_LIMIT
+    );
+    if (!Number.isFinite(configured) || configured < 1) {
+      return BaseProtocolAgent.DECISION_MEMORY_HISTORY_LIMIT;
+    }
+    return Math.min(Math.floor(configured), 200);
+  }
+
+  private compactDecisionContext(
+    context: Record<string, unknown> | undefined
+  ): Record<string, DecisionMemoryPrimitive> {
+    if (!context) return {};
+
+    const compact: Record<string, DecisionMemoryPrimitive> = {};
+    const entries = Object.entries(context).slice(0, BaseProtocolAgent.DECISION_MEMORY_MAX_CONTEXT_KEYS);
+
+    for (const [key, value] of entries) {
+      const normalized = this.normalizeDecisionContextValue(value);
+      if (normalized !== undefined) {
+        compact[key] = normalized;
+      }
+    }
+
+    return compact;
+  }
+
+  private normalizeDecisionContextValue(value: unknown): DecisionMemoryPrimitive | undefined {
+    if (value === null) return null;
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') {
+      return Number.isFinite(value) ? value : undefined;
+    }
+    if (typeof value === 'string') {
+      return value.slice(0, BaseProtocolAgent.DECISION_MEMORY_MAX_STRING_CHARS);
+    }
+    if (typeof value === 'bigint') {
+      return value.toString();
+    }
+    return undefined;
+  }
 
   /**
    * Pre-step hook - override in subclasses for setup before step logic

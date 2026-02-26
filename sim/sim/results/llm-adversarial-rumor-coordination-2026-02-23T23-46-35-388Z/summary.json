@@ -1,0 +1,133 @@
+{
+  "runId": "llm-adversarial-rumor-coordination-2026-02-23T23-46-35-388Z",
+  "scenarioName": "llm-adversarial-rumor-coordination",
+  "seed": 8601,
+  "ticks": 2,
+  "durationMs": 3554,
+  "success": false,
+  "failedAssertions": [
+    {
+      "assertion": {
+        "type": "gte",
+        "metric": "fees_collected_total",
+        "value": 1
+      },
+      "actualValue": 0,
+      "message": "Expected fees_collected_total gte 1, got 0"
+    }
+  ],
+  "finalMetrics": {
+    "elta_total_supply": "77000000000000000000000000",
+    "app_count": 3,
+    "fees_collected_total": "0",
+    "gas_total": "971727"
+  },
+  "agentStats": [
+    {
+      "id": "RegimeNoiseTraderAgent-0",
+      "type": "RegimeNoiseTraderAgent",
+      "actionsAttempted": 1,
+      "actionsSucceeded": 1,
+      "actionsFailed": 0
+    },
+    {
+      "id": "RegimeNoiseTraderAgent-1",
+      "type": "RegimeNoiseTraderAgent",
+      "actionsAttempted": 1,
+      "actionsSucceeded": 1,
+      "actionsFailed": 0
+    },
+    {
+      "id": "RegimeNoiseTraderAgent-2",
+      "type": "RegimeNoiseTraderAgent",
+      "actionsAttempted": 1,
+      "actionsSucceeded": 1,
+      "actionsFailed": 0
+    },
+    {
+      "id": "RegimeNoiseTraderAgent-3",
+      "type": "RegimeNoiseTraderAgent",
+      "actionsAttempted": 2,
+      "actionsSucceeded": 2,
+      "actionsFailed": 0
+    },
+    {
+      "id": "OpportunisticAttackerAgent-4",
+      "type": "OpportunisticAttackerAgent",
+      "actionsAttempted": 1,
+      "actionsSucceeded": 1,
+      "actionsFailed": 0
+    },
+    {
+      "id": "OpportunisticAttackerAgent-5",
+      "type": "OpportunisticAttackerAgent",
+      "actionsAttempted": 0,
+      "actionsSucceeded": 0,
+      "actionsFailed": 0
+    },
+    {
+      "id": "OpportunisticAttackerAgent-6",
+      "type": "OpportunisticAttackerAgent",
+      "actionsAttempted": 0,
+      "actionsSucceeded": 0,
+      "actionsFailed": 0
+    },
+    {
+      "id": "LiquidityDefenderAgent-7",
+      "type": "LiquidityDefenderAgent",
+      "actionsAttempted": 2,
+      "actionsSucceeded": 2,
+      "actionsFailed": 0
+    },
+    {
+      "id": "LiquidityDefenderAgent-8",
+      "type": "LiquidityDefenderAgent",
+      "actionsAttempted": 2,
+      "actionsSucceeded": 2,
+      "actionsFailed": 0
+    },
+    {
+      "id": "BadActorPersonaAgent-9",
+      "type": "BadActorPersonaAgent",
+      "actionsAttempted": 2,
+      "actionsSucceeded": 2,
+      "actionsFailed": 0
+    },
+    {
+      "id": "SaboteurPersonaAgent-10",
+      "type": "SaboteurPersonaAgent",
+      "actionsAttempted": 2,
+      "actionsSucceeded": 2,
+      "actionsFailed": 0
+    },
+    {
+      "id": "HackerPersonaAgent-11",
+      "type": "HackerPersonaAgent",
+      "actionsAttempted": 2,
+      "actionsSucceeded": 0,
+      "actionsFailed": 2
+    },
+    {
+      "id": "EconomicPersonaAgent-12",
+      "type": "EconomicPersonaAgent",
+      "actionsAttempted": 2,
+      "actionsSucceeded": 2,
+      "actionsFailed": 0
+    },
+    {
+      "id": "LlmGossipCoordinatorAgent-13",
+      "type": "LlmGossipCoordinatorAgent",
+      "actionsAttempted": 0,
+      "actionsSucceeded": 0,
+      "actionsFailed": 0
+    },
+    {
+      "id": "LlmGossipCoordinatorAgent-14",
+      "type": "LlmGossipCoordinatorAgent",
+      "actionsAttempted": 0,
+      "actionsSucceeded": 0,
+      "actionsFailed": 0
+    }
+  ],
+  "timestamp": "2026-02-23T23:46:38.942Z"
+}

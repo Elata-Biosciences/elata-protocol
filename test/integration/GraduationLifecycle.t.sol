@@ -10,6 +10,10 @@ import {AppVestingWallet} from "../../src/vesting/AppVestingWallet.sol";
 import {AppEcosystemVault} from "../../src/vesting/AppEcosystemVault.sol";
 import {LpLocker} from "../../src/apps/LpLocker.sol";
 import {FeeCollector} from "../../src/fees/FeeCollector.sol";
+import {FeeSwapper} from "../../src/fees/FeeSwapper.sol";
+import {FeeKind} from "../../src/fees/FeeKind.sol";
+import {AppRegistry} from "../../src/registry/AppRegistry.sol";
+import {ContributorSplitFactory} from "../../src/contributors/ContributorSplitFactory.sol";
 import {IAppFeeRouter} from "../../src/interfaces/IAppFeeRouter.sol";
 import {IAppRewardsDistributor} from "../../src/interfaces/IAppRewardsDistributor.sol";
 import {IRewardsDistributor} from "../../src/interfaces/IRewardsDistributor.sol";
@@ -40,6 +44,9 @@ contract GraduationLifecycleTest is Test {
     AppFactory public factory;
     AppFactoryViews public views;
     FeeCollector public feeCollector;
+    FeeSwapper public feeSwapper;
+    AppRegistry public registry;
+    ContributorSplitFactory public splitFactory;
     MockAppFeeRouter public mockFeeRouter;
     MockAppRewardsDistributor public mockAppRewards;
     MockRewardsDistributor public mockRewards;
@@ -48,7 +55,6 @@ contract GraduationLifecycleTest is Test {
     address public admin = makeAddr("admin");
     address public treasury = makeAddr("treasury");
     address public feeManager = makeAddr("feeManager");
-    address public feeSwapper = makeAddr("feeSwapper");
     address public governance = makeAddr("governance");
 
     // Creator
@@ -90,9 +96,6 @@ contract GraduationLifecycleTest is Test {
         mockRewards = new MockRewardsDistributor();
         mockXP = new MockElataPoints();
 
-        // Deploy FeeCollector
-        feeCollector = new FeeCollector(address(elta), admin, feeManager, feeSwapper);
-
         // Deploy AppFactory
         factory = new AppFactory(
             elta,
@@ -105,6 +108,20 @@ contract GraduationLifecycleTest is Test {
             governance,
             admin
         );
+
+        // Configure vNext dependencies (required by createApp wrapper).
+        registry = new AppRegistry(governance, address(factory));
+        splitFactory = new ContributorSplitFactory(governance, address(factory));
+        feeSwapper = new FeeSwapper(address(elta), admin, governance, treasury, address(registry));
+
+        vm.startPrank(admin);
+        factory.setAppRegistry(address(registry));
+        factory.setContributorSplitFactory(address(splitFactory));
+        factory.setFeeSwapper(address(feeSwapper));
+        vm.stopPrank();
+
+        // Deploy FeeCollector (route ELTA sweeps + app token sweeps to FeeSwapper).
+        feeCollector = new FeeCollector(address(elta), admin, address(feeSwapper), address(feeSwapper));
 
         // Set FeeCollector on factory
         vm.prank(admin);
@@ -470,7 +487,9 @@ contract GraduationLifecycleTest is Test {
             console2.log("Fees swept to collector:", feesCollected / 1e18, "ELTA");
 
             // Verify fees reached collector
-            assertGt(feeCollector.pendingEltaFees(appId), 0, "FeeCollector should have pending fees");
+            assertGt(
+                feeCollector.pendingEltaFees(appId, FeeKind.TRADING_FEE), 0, "FeeCollector should have pending fees"
+            );
         }
 
         // Note: Full fee pipeline (FeeCollector -> FeeManager -> RewardsDistributor)

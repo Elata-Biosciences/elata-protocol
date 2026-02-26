@@ -223,17 +223,16 @@ contract SeedLocalData is Script {
             new address[](0)
         );
 
-        // Get app token address (apps mapping returns the full struct as tuple)
-        // App struct: creator, token, vault, curve, vestingWallet, ecosystemVault, pair, locker,
-        // createdAt, graduatedAt, graduated, totalRaised, finalSupply
-        (, app.token,,,,,,,,,,,) = factory.apps(app.appId);
+        // Read app record (avoid tuple destructuring drift as the struct evolves)
+        AppFactory.App memory appRecord = factory.getApp(app.appId);
+        app.token = appRecord.token;
         app.name = name;
         app.symbol = symbol;
 
         console2.log("       Created app:", name, "at", app.token);
 
         // Note: vault is already deployed by AppFactory, get it from the app struct
-        (,, address vaultAddr,,,,,,,,,,) = AppFactory(APP_FACTORY_ADDRESS).apps(app.appId);
+        address vaultAddr = appRecord.vault;
 
         // Deploy utility modules via separate factories
         // Step 1: Deploy NFT collection
@@ -265,7 +264,7 @@ contract SeedLocalData is Script {
     }
 
     function _configureSingleApp(TestApp memory app) internal {
-        ContentStore store = ContentStore(app.contentStore);
+        ContentStore store = ContentStore(payable(app.contentStore));
 
         // Create tiered content listings for each app
 

@@ -11,6 +11,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SimulationEngine, createLogger, defineScenario } from '@elata-biosciences/agentforge';
 import { AppStakerAgent, DeveloperAgent, StakerAgent } from '../../agents/index.js';
+import { anvilPort, createNotebookReport, scenarioSeed } from '../../lib/index.js';
 import { createEltaPack } from '../../packs/EltaPack.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -18,13 +19,13 @@ const protocolPath = join(__dirname, '..', '..', '..');
 
 const pack = createEltaPack({
   protocolPath,
-  anvilPort: 8561,
+  anvilPort: anvilPort(8561),
   silent: true,
 });
 
 const scenario = defineScenario({
   name: 'staking-stress',
-  seed: 123,
+  seed: scenarioSeed(123),
   ticks: 30,
   tickSeconds: 3600,
 
@@ -75,10 +76,33 @@ const scenario = defineScenario({
     // Apps should be created for staking
     { type: 'gte', metric: 'app_count', value: 5 },
     // veELTA staking should happen
-    { type: 'gte', metric: 'veelta_total_locked', value: 0 },
+    { type: 'gte', metric: 'veelta_total_locked', value: 1 },
     // System should remain stable
     { type: 'gte', metric: 'elta_total_supply', value: 1 },
   ],
+  studio: {
+    report: createNotebookReport({
+      title: 'Integration: Staking Stress',
+      experimentNotes:
+        'Applies heavy concurrent veELTA and app-staking activity to validate staking-path reliability under sustained load.',
+      hypotheses: [
+        'High staking throughput should preserve positive veELTA lock depth.',
+        'Protocol stays stable while staking and claiming paths are saturated.',
+      ],
+      successCriteria: [
+        'App count exceeds staking baseline.',
+        'veELTA lock and ELTA supply remain positive through run.',
+      ],
+      metricFields: [
+        'app_count',
+        'veelta_total_locked',
+        'fees_collected_total',
+        'elta_total_supply',
+      ],
+      primaryMetric: 'veelta_total_locked',
+      mlFeatures: ['tick', 'app_count', 'fees_collected_total'],
+    }),
+  },
 });
 
 async function main(): Promise<void> {

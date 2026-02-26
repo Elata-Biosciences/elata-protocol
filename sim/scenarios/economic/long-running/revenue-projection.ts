@@ -12,23 +12,24 @@ import { fileURLToPath } from 'node:url';
 import { SimulationEngine, createLogger, defineScenario } from '@elata-biosciences/agentforge';
 import {
   BasicUserAgent,
-  WhaleUserAgent,
   CautiousUserAgent,
   DeveloperAgent,
-  StakerAgent,
   FeeKeeperAgent,
+  StakerAgent,
+  WhaleUserAgent,
 } from '../../../agents/index.js';
-import { createEltaPack } from '../../../packs/EltaPack.js';
 import {
-  economicAssertions,
-  printScenarioResults,
   allocatePort,
-  formatElta,
-  projectAnnualRevenue,
-  calculateRevenuePerUser,
   calculateRevenuePerTransaction,
+  calculateRevenuePerUser,
+  createNotebookReport,
+  economicAssertions,
+  formatElta,
   groupAgentStatsByType,
+  printScenarioResults,
+  projectAnnualRevenue,
 } from '../../../lib/index.js';
+import { createEltaPack } from '../../../packs/EltaPack.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const protocolPath = join(__dirname, '..', '..', '..', '..');
@@ -120,6 +121,30 @@ const scenario = defineScenario({
   },
 
   assertions: economicAssertions({ minApps: 25 }),
+  studio: {
+    report: createNotebookReport({
+      title: 'Economic Long-Run: Revenue Projection',
+      experimentNotes:
+        'High-scale 200-day simulation for fee/revenue behavior under mixed cohorts (regular users, whales, cautious users, developers, stakers, keepers).',
+      hypotheses: [
+        'Sustained high-volume participation should keep fee growth positive over long horizons.',
+        'Revenue-per-user and revenue-per-transaction stay interpretable under scale.',
+      ],
+      successCriteria: [
+        'Economic assertions pass at scale.',
+        'Fee collection and app growth remain positive through the run window.',
+      ],
+      metricFields: [
+        'app_count',
+        'fees_collected_total',
+        'veelta_total_locked',
+        'graduated_apps',
+        'gas_total',
+      ],
+      primaryMetric: 'fees_collected_total',
+      mlFeatures: ['tick', 'app_count', 'graduated_apps'],
+    }),
+  },
 });
 
 async function main(): Promise<void> {
@@ -193,7 +218,9 @@ async function main(): Promise<void> {
     console.log('\nProtocol State:');
     console.log('  Apps created: ' + result.finalMetrics.app_count);
     console.log('  Graduated apps: ' + (result.finalMetrics.graduated_apps ?? 0));
-    console.log('  veELTA locked: ' + formatElta(result.finalMetrics.veelta_total_locked as bigint));
+    console.log(
+      '  veELTA locked: ' + formatElta(result.finalMetrics.veelta_total_locked as bigint)
+    );
 
     printScenarioResults(result, {
       highlightMetrics: ['fees_collected_total', 'app_count', 'veelta_total_locked'],

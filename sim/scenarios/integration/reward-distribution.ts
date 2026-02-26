@@ -17,6 +17,7 @@ import {
   RewardHunterAgent,
   WhaleUserAgent,
 } from '../../agents/index.js';
+import { anvilPort, createNotebookReport, scenarioSeed } from '../../lib/index.js';
 import { createEltaPack } from '../../packs/EltaPack.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -24,13 +25,13 @@ const protocolPath = join(__dirname, '..', '..', '..');
 
 const pack = createEltaPack({
   protocolPath,
-  anvilPort: 8562,
+  anvilPort: anvilPort(8562),
   silent: true,
 });
 
 const scenario = defineScenario({
   name: 'reward-distribution',
-  seed: 456,
+  seed: scenarioSeed(456),
   ticks: 60,
   tickSeconds: 3600,
 
@@ -97,12 +98,36 @@ const scenario = defineScenario({
     // Apps should be created
     { type: 'gte', metric: 'app_count', value: 8 },
     // Fees should be collected from all the trading
-    { type: 'gte', metric: 'fees_collected_total', value: 0 },
+    { type: 'gte', metric: 'fees_collected_total', value: 1 },
     // veELTA should be locked for rewards
-    { type: 'gte', metric: 'veelta_total_locked', value: 0 },
+    { type: 'gte', metric: 'veelta_total_locked', value: 1 },
     // System should remain stable
     { type: 'gte', metric: 'elta_total_supply', value: 1 },
   ],
+  studio: {
+    report: createNotebookReport({
+      title: 'Integration: Reward Distribution',
+      experimentNotes:
+        'Validates fee generation, distribution pipeline, and downstream claiming behavior with mixed normal users, whales, and reward hunters.',
+      hypotheses: [
+        'Higher trade activity should keep total protocol fees positive.',
+        'Reward-oriented actors should sustain non-zero veELTA lock and claiming flow.',
+      ],
+      successCriteria: [
+        'App count grows above baseline.',
+        'Fees and veELTA lock are both positive by end of run.',
+      ],
+      metricFields: [
+        'app_count',
+        'fees_collected_total',
+        'fees_distributed',
+        'veelta_total_locked',
+        'elta_total_supply',
+      ],
+      primaryMetric: 'fees_collected_total',
+      mlFeatures: ['tick', 'app_count', 'veelta_total_locked'],
+    }),
+  },
 });
 
 async function main(): Promise<void> {

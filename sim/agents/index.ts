@@ -189,3 +189,49 @@ export type { ModuleDeployerAgentParams } from './ModuleDeployerAgent.js';
 
 export { AppGraduatorAgent } from './AppGraduatorAgent.js';
 export type { AppGraduatorAgentParams } from './AppGraduatorAgent.js';
+
+// ===========================================
+// DETERMINISTIC PROTOCOL AGENTS
+// ===========================================
+
+export { EpochFeeClaimerAgent } from './EpochFeeClaimerAgent.js';
+export type { EpochFeeClaimerAgentParams } from './EpochFeeClaimerAgent.js';
+
+export { ThresholdRebalancerAgent } from './ThresholdRebalancerAgent.js';
+export type { ThresholdRebalancerAgentParams } from './ThresholdRebalancerAgent.js';
+
+export { GovernanceStrategistAgent } from './GovernanceStrategistAgent.js';
+export type { GovernanceStrategistAgentParams } from './GovernanceStrategistAgent.js';
+
+export { LiquidityDefenderAgent } from './LiquidityDefenderAgent.js';
+export type { LiquidityDefenderAgentParams } from './LiquidityDefenderAgent.js';
+
+// ===========================================
+// NON-DETERMINISTIC PROTOCOL AGENTS
+// ===========================================
+
+export { RegimeNoiseTraderAgent } from './RegimeNoiseTraderAgent.js';
+export type { RegimeNoiseTraderAgentParams } from './RegimeNoiseTraderAgent.js';
+
+export { BurstyCreatorAgent } from './BurstyCreatorAgent.js';
+export type { BurstyCreatorAgentParams } from './BurstyCreatorAgent.js';
+
+export { ProbabilisticStakerAgent } from './ProbabilisticStakerAgent.js';
+export type { ProbabilisticStakerAgentParams } from './ProbabilisticStakerAgent.js';
+
+export { OpportunisticAttackerAgent } from './OpportunisticAttackerAgent.js';
+export type { OpportunisticAttackerAgentParams } from './OpportunisticAttackerAgent.js';
+
+// ===========================================
+// LLM + GOSSIP AGENTS
+// ===========================================
+
+export { LlmGossipCoordinatorAgent } from './LlmGossipCoordinatorAgent.js';
+export type { LlmGossipCoordinatorAgentParams } from './LlmGossipCoordinatorAgent.js';
+export { BaseElataPersonaLlmAgent } from './BaseElataPersonaLlmAgent.js';
+export type { BaseElataPersonaLlmAgentParams } from './BaseElataPersonaLlmAgent.js';
+export { CreatorPersonaAgent } from './CreatorPersonaAgent.js';
+export { EconomicPersonaAgent } from './EconomicPersonaAgent.js';
+export { BadActorPersonaAgent } from './BadActorPersonaAgent.js';
+export { SaboteurPersonaAgent } from './SaboteurPersonaAgent.js';
+export { HackerPersonaAgent } from './HackerPersonaAgent.js';

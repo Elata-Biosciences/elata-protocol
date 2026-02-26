@@ -7,10 +7,15 @@ import {ELTA} from "elta/ELTA.sol";
 import {VeELTA} from "../../src/staking/VeELTA.sol";
 import {FeeManager} from "../../src/fees/FeeManager.sol";
 import {FeeCollector} from "../../src/fees/FeeCollector.sol";
+import {FeeSwapper} from "../../src/fees/FeeSwapper.sol";
+import {FeeKind} from "../../src/fees/FeeKind.sol";
 import {RewardsDistributor} from "../../src/rewards/RewardsDistributor.sol";
 import {AppRewardsDistributor} from "../../src/rewards/AppRewardsDistributor.sol";
 import {AppVestingWallet} from "../../src/vesting/AppVestingWallet.sol";
 import {PrecisionFixtures} from "../fixtures/PrecisionFixtures.sol";
+import {AppRegistry} from "../../src/registry/AppRegistry.sol";
+import {ContributorSplitFactory} from "../../src/contributors/ContributorSplitFactory.sol";
+import {IContributorSplit} from "../../src/interfaces/IContributorSplit.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IVeEltaVotes} from "../../src/interfaces/IVeEltaVotes.sol";
@@ -57,6 +62,12 @@ contract EpochBoundary is Test, PrecisionFixtures {
     VeELTA public veElta;
     FeeManager public feeManager;
     FeeCollector public feeCollector;
+    FeeSwapper public feeSwapper;
+    AppRegistry public registry;
+    ContributorSplitFactory public splitFactory;
+    address public ownerSafe = makeAddr("ownerSafe");
+    address public contributor = makeAddr("contributor");
+    address public split;
     RewardsDistributor public rewards;
     AppRewardsDistributor public appRewards;
     AppVestingWallet public vestingWallet;
@@ -67,7 +78,6 @@ contract EpochBoundary is Test, PrecisionFixtures {
     address public appRewardsAddr = makeAddr("appRewardsAddr");
     address public veRewardsAddr = makeAddr("veRewardsAddr");
     address public factory = makeAddr("factory");
-    address public feeSwapper = makeAddr("feeSwapper");
     address public beneficiary = makeAddr("beneficiary");
     address public user = makeAddr("user");
 
@@ -101,17 +111,24 @@ contract EpochBoundary is Test, PrecisionFixtures {
         );
         rewards.grantRole(rewards.DISTRIBUTOR_ROLE(), admin);
 
-        // Deploy FeeCollector
-        feeCollector = new FeeCollector(address(elta), admin, address(0), feeSwapper);
-
-        // Deploy FeeManager
+        // Deploy FeeManager (kept for epoch math coverage).
         feeManager = new FeeManager(
             address(elta), address(usdc), admin, admin, appRewardsAddr, veRewardsAddr, treasury, EPOCH_LENGTH
         );
 
-        // Connect FeeCollector to FeeManager
-        feeCollector.setFeeManager(address(feeManager));
-        feeManager.setDepositor(address(feeCollector), true);
+        // Deploy vNext fee pipeline: FeeCollector -> FeeSwapper.
+        registry = new AppRegistry(admin, address(this));
+        splitFactory = new ContributorSplitFactory(admin, address(this));
+        feeSwapper = new FeeSwapper(address(elta), admin, admin, treasury, address(registry));
+        feeCollector = new FeeCollector(address(elta), admin, address(feeSwapper), address(feeSwapper));
+
+        // ContributorSplitFactory/AppRegistry are app-factory gated; call as the test contract.
+        vm.stopPrank();
+        IContributorSplit.Contributor[] memory contributors = new IContributorSplit.Contributor[](1);
+        contributors[0] = IContributorSplit.Contributor({account: contributor, shares: 10_000});
+        split = splitFactory.createSplit(1, ownerSafe, address(feeSwapper), contributors);
+        registry.registerApp(1, ownerSafe, split, "");
+        vm.startPrank(admin);
 
         // Deploy app token and vesting wallet
         appToken = new MockAppToken();
@@ -173,20 +190,14 @@ contract EpochBoundary is Test, PrecisionFixtures {
 
         // Deposit fees
         vm.prank(user);
-        feeCollector.depositElta(appId, depositAmount);
+        feeCollector.depositElta(appId, FeeKind.TRADING_FEE, depositAmount);
 
-        // Sweep to FeeManager
-        feeCollector.sweepElta(appId);
-
-        // Try to close before epoch ends (should revert)
-        vm.expectRevert();
-        feeManager.closeEpoch(appId);
-
-        // Warp to exactly one epoch
+        // vNext: sweeps are not epoch-gated. Sweeping at "exact boundary" should work.
         vm.warp(feeManager.deploymentTime() + EPOCH_LENGTH);
-
-        // Now should succeed
-        feeManager.closeEpoch(appId);
+        uint256 treasuryBefore = elta.balanceOf(treasury);
+        feeCollector.sweepElta(appId, FeeKind.TRADING_FEE);
+        uint256 expectedTreasury = (depositAmount * feeSwapper.defaultTreasuryTakeBps()) / 10_000;
+        assertEq(elta.balanceOf(treasury) - treasuryBefore, expectedTreasury);
     }
 
     /// @notice Test epoch close 1 second early fails
@@ -195,19 +206,16 @@ contract EpochBoundary is Test, PrecisionFixtures {
         uint256 depositAmount = 1000 ether;
 
         vm.prank(user);
-        feeCollector.depositElta(appId, depositAmount);
-        feeCollector.sweepElta(appId);
+        feeCollector.depositElta(appId, FeeKind.TRADING_FEE, depositAmount);
 
-        // Warp to 1 second before epoch ends
+        // Warp to 1 second before epoch ends.
         vm.warp(feeManager.deploymentTime() + EPOCH_LENGTH - 1);
 
-        // Should fail
-        vm.expectRevert();
-        feeManager.closeEpoch(appId);
-
-        // One more second and it works
-        vm.warp(block.timestamp + 1);
-        feeManager.closeEpoch(appId);
+        // vNext: sweeping isn't epoch-based, so it should still succeed.
+        uint256 treasuryBefore = elta.balanceOf(treasury);
+        feeCollector.sweepElta(appId, FeeKind.TRADING_FEE);
+        uint256 expectedTreasury = (depositAmount * feeSwapper.defaultTreasuryTakeBps()) / 10_000;
+        assertEq(elta.balanceOf(treasury) - treasuryBefore, expectedTreasury);
     }
 
     /// @notice Test multiple epoch closes
@@ -343,22 +351,26 @@ contract EpochBoundary is Test, PrecisionFixtures {
         uint256 depositAmount = 1000 ether;
 
         vm.prank(user);
-        feeCollector.depositElta(appId, depositAmount);
-        feeCollector.sweepElta(appId);
+        feeCollector.depositElta(appId, FeeKind.TRADING_FEE, depositAmount);
 
         uint256 epochEnd = feeManager.deploymentTime() + EPOCH_LENGTH;
 
         // 15 seconds before epoch end
         vm.warp(epochEnd - 15);
 
-        // If miner can manipulate +15s, they could close early
-        // In our tests, this would fail
-        vm.expectRevert();
-        feeManager.closeEpoch(appId);
+        // vNext: fee sweeping is not epoch-gated, so it should work even near boundaries.
+        uint256 treasuryBefore = elta.balanceOf(treasury);
+        feeCollector.sweepElta(appId, FeeKind.TRADING_FEE);
+        uint256 expectedTreasury = (depositAmount * feeSwapper.defaultTreasuryTakeBps()) / 10_000;
+        assertEq(elta.balanceOf(treasury) - treasuryBefore, expectedTreasury);
 
-        // But at exactly epoch end, works
+        // But at exactly epoch end it should still work (for a new deposit).
+        vm.prank(user);
+        feeCollector.depositElta(appId, FeeKind.TRADING_FEE, depositAmount);
         vm.warp(epochEnd);
-        feeManager.closeEpoch(appId);
+        treasuryBefore = elta.balanceOf(treasury);
+        feeCollector.sweepElta(appId, FeeKind.TRADING_FEE);
+        assertEq(elta.balanceOf(treasury) - treasuryBefore, expectedTreasury);
     }
 
     /// @notice Test vesting with timestamp variance

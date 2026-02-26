@@ -158,6 +158,17 @@ if [ "$USE_LEDGER" = true ]; then
 fi
 echo ""
 
+# Tag this deployment so Deploy.sol writes a uniquely-named artifact.
+# This prevents fork simulations from overwriting the file the appstore ingests.
+if [ -z "$ELATA_DEPLOYMENT_TAG" ]; then
+    # Best-effort: include a short git sha if available.
+    GIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "nogit")
+    ELATA_DEPLOYMENT_TAG="$(date +%Y%m%d-%H%M)-$GIT_SHA"
+    export ELATA_DEPLOYMENT_TAG
+fi
+echo "  Deployment tag: $ELATA_DEPLOYMENT_TAG"
+echo ""
+
 # Deploy contracts
 if [ -n "$BASESCAN_API_KEY" ]; then
     echo "Deploying with contract verification..."

@@ -5,6 +5,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {AppBondingCurve} from "../../src/apps/AppBondingCurve.sol";
 import {AppToken} from "../../src/apps/AppToken.sol";
 import {FeeCollector} from "../../src/fees/FeeCollector.sol";
+import {FeeKind} from "../../src/fees/FeeKind.sol";
 import {FeeManager} from "../../src/fees/FeeManager.sol";
 import {IAppFeeRouter} from "../../src/interfaces/IAppFeeRouter.sol";
 import {IElataPoints} from "../../src/interfaces/IElataPoints.sol";
@@ -298,7 +299,7 @@ contract FeeCollectionTest is Test {
         assertGt(collectorBalance, 0, "FeeCollector should have ELTA");
 
         // Get pending ELTA fees for this app in collector
-        uint256 pendingAppFees = feeCollector.pendingEltaFees(APP_ID);
+        uint256 pendingAppFees = feeCollector.pendingEltaFees(APP_ID, FeeKind.TRADING_FEE);
         assertGt(pendingAppFees, 0, "App fees should be tracked in pendingEltaFees");
     }
 }

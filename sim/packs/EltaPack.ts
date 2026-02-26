@@ -8,7 +8,14 @@
  * - Metrics collection
  */
 
-import type { Action, ActionResult, FundingConfig, Pack, WorldState } from '@elata-biosciences/agentforge';
+import type {
+  Action,
+  ActionResult,
+  CapabilityManifest,
+  FundingConfig,
+  Pack,
+  WorldState,
+} from '@elata-biosciences/agentforge';
 import {
   type AnvilInstance,
   anvilRpc,
@@ -693,6 +700,46 @@ export class EltaPack implements Pack {
       throw new Error('EltaPack not initialized');
     }
     return this.state;
+  }
+
+  getDeployedContracts(): string[] {
+    return [...this.deployedAddresses.keys()].sort((a, b) => a.localeCompare(b));
+  }
+
+  getCapabilityManifest(): CapabilityManifest {
+    const contracts = [...this.deployedAddresses.entries()].map(([alias, address]) => ({
+      alias,
+      address,
+    }));
+    return {
+      version: 'v1',
+      tools: ['QueryWorld', 'RpcCall', 'PostMessage', 'ContractCall', 'ContractRead'],
+      queryEndpoints: [
+        { name: 'get_world', cost: 1 },
+        { name: 'get_apps', cost: 2 },
+        { name: 'get_fee_state', cost: 2 },
+        { name: 'get_governance_state', cost: 2 },
+        { name: 'get_agent_position', cost: 2 },
+      ],
+      contracts,
+      actionTemplates: [
+        {
+          name: 'QueryWorld',
+          description: 'Read indexed protocol state',
+          exampleParams: { endpoint: 'get_world', params: {} },
+        },
+        {
+          name: 'RpcCall',
+          description: 'Probe chain state via JSON-RPC',
+          exampleParams: { method: 'eth_blockNumber', params: [] },
+        },
+        {
+          name: 'PostMessage',
+          description: 'Broadcast to gossip channel',
+          exampleParams: { channelId: 'global', text: 'signal', intentTag: 'inform' },
+        },
+      ],
+    };
   }
 
   /**
@@ -1726,6 +1773,16 @@ export class EltaPack implements Pack {
         error: (error as Error).message,
       };
     }
+  }
+
+  async callRpc(method: string, params: unknown[] = []): Promise<unknown> {
+    if (!this.publicClient) {
+      throw new Error('Public client not initialized');
+    }
+    return this.publicClient.request({
+      method: method as never,
+      params: params as never,
+    });
   }
 
   /**

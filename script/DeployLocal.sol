@@ -28,21 +28,17 @@ import {InAppContent721Factory} from "../src/apps/InAppContent721Factory.sol";
 import {ContentStoreFactory} from "../src/apps/ContentStoreFactory.sol";
 import {TournamentFactory} from "../src/apps/TournamentFactory.sol";
 
-// Rewards
-import {RewardsDistributor} from "../src/rewards/RewardsDistributor.sol";
-import {AppRewardsDistributor} from "../src/rewards/AppRewardsDistributor.sol";
+// Trading fee config (no yield distribution)
 import {AppFeeRouter} from "../src/fees/AppFeeRouter.sol";
 
 // Fee Pipeline
 import {FeeCollector} from "../src/fees/FeeCollector.sol";
-import {FeeManager} from "../src/fees/FeeManager.sol";
 import {FeeSwapper} from "../src/fees/FeeSwapper.sol";
-import {TreasuryUSDCVault} from "../src/fees/TreasuryUSDCVault.sol";
+import {AppRegistry} from "../src/registry/AppRegistry.sol";
+import {ContributorSplitFactory} from "../src/contributors/ContributorSplitFactory.sol";
 
 // Additional Modules
 import {ProtocolConfig} from "../src/core/ProtocolConfig.sol";
-import {ReferralRegistry} from "../src/modules/ReferralRegistry.sol";
-import {AirdropDistributor} from "../src/modules/AirdropDistributor.sol";
 
 // Mocks
 import {MockUSDC} from "./mocks/MockUSDC.sol";
@@ -60,7 +56,6 @@ import {IUniswapV2Router02} from "../src/interfaces/IUniswapV2Router02.sol";
 import {IAppFeeRouter} from "../src/interfaces/IAppFeeRouter.sol";
 import {IAppRewardsDistributor} from "../src/interfaces/IAppRewardsDistributor.sol";
 import {IRewardsDistributor} from "../src/interfaces/IRewardsDistributor.sol";
-import {IVeEltaVotes} from "../src/interfaces/IVeEltaVotes.sol";
 import {IElataPoints} from "../src/interfaces/IElataPoints.sol";
 
 contract DeployLocal is Script {
@@ -81,19 +76,15 @@ contract DeployLocal is Script {
         InAppContent721Factory content721Factory;
         ContentStoreFactory contentStoreFactory;
         TournamentFactory tournamentFactory;
-        // Rewards
-        RewardsDistributor rewardsDistributor;
-        AppRewardsDistributor appRewardsDistributor;
+        // Trading fee config
         AppFeeRouter appFeeRouter;
         // Fee Pipeline
         FeeCollector feeCollector;
-        FeeManager feeManager;
         FeeSwapper feeSwapper;
-        TreasuryUSDCVault treasuryVault;
+        AppRegistry appRegistry;
+        ContributorSplitFactory contributorSplitFactory;
         // Additional Modules
         ProtocolConfig protocolConfig;
-        ReferralRegistry referralRegistry;
-        AirdropDistributor airdropDistributor;
         // External Mocks
         MockUSDC usdc;
         MockWETH weth;
@@ -149,26 +140,11 @@ contract DeployLocal is Script {
         console2.log("   Timelock:", address(contracts.timelock));
         console2.log("   Governor:", address(contracts.governor));
 
-        // ===== PHASE 5: Deploy Rewards Architecture =====
-        console2.log("\n[5/8] Deploying Rewards Architecture (70/15/15)...");
+        // ===== PHASE 5: Deploy Trading Fee Config =====
+        console2.log("\n[5/8] Deploying Trading Fee Config...");
 
-        // AppRewardsDistributor
-        contracts.appRewardsDistributor = new AppRewardsDistributor(contracts.elta, deployer, deployer);
-        console2.log("   AppRewardsDistributor:", address(contracts.appRewardsDistributor));
-
-        // RewardsDistributor (central hub)
-        contracts.rewardsDistributor = new RewardsDistributor(
-            contracts.elta,
-            IVeEltaVotes(address(contracts.veElta)),
-            IAppRewardsDistributor(address(contracts.appRewardsDistributor)),
-            treasury,
-            deployer
-        );
-        console2.log("   RewardsDistributor:", address(contracts.rewardsDistributor));
-
-        // AppFeeRouter
-        contracts.appFeeRouter =
-            new AppFeeRouter(contracts.elta, IRewardsDistributor(address(contracts.rewardsDistributor)), deployer);
+        // AppFeeRouter is now only a global feeBps source of truth (no yield distribution).
+        contracts.appFeeRouter = new AppFeeRouter(contracts.elta, deployer);
         console2.log("   AppFeeRouter:", address(contracts.appFeeRouter));
 
         // ===== PHASE 6: Deploy App Framework =====
@@ -180,26 +156,36 @@ contract DeployLocal is Script {
             IUniswapV2Router02(address(contracts.uniswapRouter)),
             treasury,
             IAppFeeRouter(address(contracts.appFeeRouter)),
-            IAppRewardsDistributor(address(contracts.appRewardsDistributor)),
-            IRewardsDistributor(address(contracts.rewardsDistributor)),
+            IAppRewardsDistributor(address(0)),
+            IRewardsDistributor(address(0)),
             IElataPoints(address(contracts.xp)),
             deployer,
             deployer
         );
         console2.log("   AppFactory:", address(contracts.appFactory));
 
+        // AppRegistry (use deployer as governance for local testing)
+        contracts.appRegistry = new AppRegistry(deployer, address(contracts.appFactory));
+        console2.log("   AppRegistry:", address(contracts.appRegistry));
+
+        // ContributorSplitFactory (required for Phase-A tokenless app creation)
+        contracts.contributorSplitFactory = new ContributorSplitFactory(deployer, address(contracts.appFactory));
+        console2.log("   ContributorSplitFactory:", address(contracts.contributorSplitFactory));
+
         // InAppContent721Factory
-        contracts.content721Factory = new InAppContent721Factory(address(contracts.elta), deployer, treasury);
+        contracts.content721Factory =
+            new InAppContent721Factory(address(contracts.elta), address(contracts.appRegistry), deployer, treasury);
         console2.log("   InAppContent721Factory:", address(contracts.content721Factory));
 
         // ContentStoreFactory
         contracts.contentStoreFactory = new ContentStoreFactory(
             address(contracts.elta),
             address(contracts.usdc),
+            address(contracts.weth),
+            address(contracts.appRegistry),
             deployer,
             treasury,
-            address(contracts.appFeeRouter),
-            500 // 5% default protocol fee
+            address(0) // feeSwapper set after FeeSwapper deploy
         );
         console2.log("   ContentStoreFactory:", address(contracts.contentStoreFactory));
 
@@ -210,51 +196,27 @@ contract DeployLocal is Script {
         // ===== PHASE 7: Deploy Fee Pipeline =====
         console2.log("\n[7/8] Deploying Fee Pipeline...");
 
-        // TreasuryUSDCVault (deploy first, feeManager set later)
-        contracts.treasuryVault = new TreasuryUSDCVault(
-            address(contracts.usdc),
-            deployer,
-            treasury,
-            address(0) // Will set feeManager after deployment
-        );
-        console2.log("   TreasuryUSDCVault:", address(contracts.treasuryVault));
-
-        // FeeManager
-        contracts.feeManager = new FeeManager(
-            address(contracts.elta),
-            address(contracts.usdc),
-            deployer,
-            deployer, // governance
-            address(contracts.appRewardsDistributor),
-            address(contracts.rewardsDistributor),
-            address(contracts.treasuryVault),
-            FEE_EPOCH_LENGTH
-        );
-        console2.log("   FeeManager:", address(contracts.feeManager));
-
-        // Set FeeManager on TreasuryVault
-        contracts.treasuryVault.setFeeManager(address(contracts.feeManager));
-
-        // Set swap router on FeeManager
-        contracts.feeManager.setSwapRouter(address(contracts.uniswapRouter));
-
         // FeeSwapper (use deployer as governance for local so we can configure immediately)
         contracts.feeSwapper = new FeeSwapper(
             address(contracts.elta),
             deployer,
             deployer, // Use deployer as governance for local testing
-            address(contracts.feeManager)
+            treasury,
+            address(contracts.appRegistry)
         );
         console2.log("   FeeSwapper:", address(contracts.feeSwapper));
 
         // FeeCollector (now with FeeSwapper)
         contracts.feeCollector = new FeeCollector(
-            address(contracts.elta), deployer, address(contracts.feeManager), address(contracts.feeSwapper)
+            address(contracts.elta), deployer, address(contracts.feeSwapper), address(contracts.feeSwapper)
         );
         console2.log("   FeeCollector:", address(contracts.feeCollector));
 
         // Authorize Uniswap router in FeeSwapper
         contracts.feeSwapper.setRouterAllowed(address(contracts.uniswapRouter), true);
+
+        // Wire FeeSwapper into ContentStoreFactory for 80/20 routing.
+        contracts.contentStoreFactory.setFeeSwapper(address(contracts.feeSwapper));
 
         // ===== PHASE 7.5: Deploy Additional Modules =====
         console2.log("\n[7.5/8] Deploying Additional Modules...");
@@ -262,14 +224,6 @@ contract DeployLocal is Script {
         // ProtocolConfig
         contracts.protocolConfig = new ProtocolConfig(deployer, address(contracts.timelock));
         console2.log("   ProtocolConfig:", address(contracts.protocolConfig));
-
-        // ReferralRegistry (500 bps = 5% referral fee)
-        contracts.referralRegistry = new ReferralRegistry(deployer, address(contracts.elta), 500);
-        console2.log("   ReferralRegistry:", address(contracts.referralRegistry));
-
-        // AirdropDistributor
-        contracts.airdropDistributor = new AirdropDistributor(deployer, deployer);
-        console2.log("   AirdropDistributor:", address(contracts.airdropDistributor));
 
         // ===== PHASE 8: Setup Liquidity & Permissions =====
         console2.log("\n[8/8] Setting up Liquidity & Permissions...");
@@ -333,36 +287,17 @@ contract DeployLocal is Script {
         // XP operator role for local development
         contracts.xp.grantRole(contracts.xp.POINTS_OPERATOR_ROLE(), msg.sender);
 
-        // Rewards distributor role
-        contracts.rewardsDistributor
-            .grantRole(contracts.rewardsDistributor.DISTRIBUTOR_ROLE(), address(contracts.appFeeRouter));
-
-        // AppRewards factory role
-        contracts.appRewardsDistributor
-            .grantRole(contracts.appRewardsDistributor.FACTORY_ROLE(), address(contracts.appFactory));
-
-        // ===== Wire FeeManager for USDC conversion =====
-        // Set feeManager on RewardsDistributor so treasury fees route through it
-        contracts.rewardsDistributor.setFeeManager(address(contracts.feeManager));
-
-        // Make RewardsDistributor an authorized depositor on FeeManager
-        contracts.feeManager.setDepositor(address(contracts.rewardsDistributor), true);
-
-        // Make FeeCollector an authorized depositor on FeeManager
-        contracts.feeManager.setDepositor(address(contracts.feeCollector), true);
-
-        // Wire ReferralRegistry to FeeManager
-        contracts.feeManager.setReferralRegistry(address(contracts.referralRegistry));
-
         // ===== Wire AppFactory with additional modules =====
+        // vNext: canonical app registry + per-app split factory + fee swapper.
+        contracts.appFactory.setAppRegistry(address(contracts.appRegistry));
+        contracts.appFactory.setContributorSplitFactory(address(contracts.contributorSplitFactory));
+        contracts.appFactory.setFeeSwapper(address(contracts.feeSwapper));
+
         // Wire ProtocolConfig
         contracts.appFactory.setProtocolConfig(address(contracts.protocolConfig));
 
         // Wire FeeCollector
         contracts.appFactory.setFeeCollector(address(contracts.feeCollector));
-
-        // Wire ReferralRegistry
-        contracts.appFactory.setReferralRegistry(address(contracts.referralRegistry));
     }
 
     function _saveDeploymentAddresses(LocalContracts memory contracts, address deployer) internal {
@@ -384,9 +319,6 @@ contract DeployLocal is Script {
             '    "VeELTA": "',
             vm.toString(address(contracts.veElta)),
             '",\n',
-            '    "RewardsDistributor": "',
-            vm.toString(address(contracts.rewardsDistributor)),
-            '",\n',
             '    "ElataTimelock": "',
             vm.toString(address(contracts.timelock)),
             '",\n',
@@ -395,6 +327,12 @@ contract DeployLocal is Script {
             '",\n',
             '    "AppFactory": "',
             vm.toString(address(contracts.appFactory)),
+            '",\n',
+            '    "AppRegistry": "',
+            vm.toString(address(contracts.appRegistry)),
+            '",\n',
+            '    "ContributorSplitFactory": "',
+            vm.toString(address(contracts.contributorSplitFactory)),
             '",\n',
             '    "InAppContent721Factory": "',
             vm.toString(address(contracts.content721Factory)),
@@ -405,9 +343,6 @@ contract DeployLocal is Script {
             '    "TournamentFactory": "',
             vm.toString(address(contracts.tournamentFactory)),
             '",\n',
-            '    "AppRewardsDistributor": "',
-            vm.toString(address(contracts.appRewardsDistributor)),
-            '",\n',
             '    "AppFeeRouter": "',
             vm.toString(address(contracts.appFeeRouter)),
             '",\n',
@@ -415,24 +350,12 @@ contract DeployLocal is Script {
             '    "FeeCollector": "',
             vm.toString(address(contracts.feeCollector)),
             '",\n',
-            '    "FeeManager": "',
-            vm.toString(address(contracts.feeManager)),
-            '",\n',
             '    "FeeSwapper": "',
             vm.toString(address(contracts.feeSwapper)),
-            '",\n',
-            '    "TreasuryUSDCVault": "',
-            vm.toString(address(contracts.treasuryVault)),
             '",\n',
             // Additional Modules
             '    "ProtocolConfig": "',
             vm.toString(address(contracts.protocolConfig)),
-            '",\n',
-            '    "ReferralRegistry": "',
-            vm.toString(address(contracts.referralRegistry)),
-            '",\n',
-            '    "AirdropDistributor": "',
-            vm.toString(address(contracts.airdropDistributor)),
             '",\n',
             // External
             '    "MockUSDC": "',
@@ -466,8 +389,7 @@ contract DeployLocal is Script {
         console2.log("  AppFactory:              ", address(contracts.appFactory));
         console2.log("\nFee Pipeline:");
         console2.log("  FeeCollector:            ", address(contracts.feeCollector));
-        console2.log("  FeeManager:              ", address(contracts.feeManager));
-        console2.log("  TreasuryUSDCVault:       ", address(contracts.treasuryVault));
+        console2.log("  FeeSwapper:              ", address(contracts.feeSwapper));
         console2.log("\nExternal:");
         console2.log("  MockUSDC:                ", address(contracts.usdc));
         console2.log("  UniswapV2Router:         ", address(contracts.uniswapRouter));

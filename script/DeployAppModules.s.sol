@@ -25,18 +25,21 @@ contract DeployAppModules is Script {
     // Environment variables (set these before running)
     address public eltaAddress;
     address public usdcAddress;
+    address public wethAddress;
     address public treasury;
-    address public feeCollector;
+    address public feeSwapper;
+    address public appRegistry;
     address public appCreator;
     uint256 public createFeeELTA = 50 ether;
-    uint256 public defaultProtocolFeeBps = 500; // 5%
 
     function setUp() public {
         // Load from environment or use defaults
         eltaAddress = vm.envOr("ELTA_ADDRESS", address(0));
         usdcAddress = vm.envOr("USDC_ADDRESS", address(0));
+        wethAddress = vm.envOr("WETH_ADDRESS", address(0));
         treasury = vm.envOr("TREASURY_ADDRESS", msg.sender);
-        feeCollector = vm.envOr("FEE_COLLECTOR_ADDRESS", address(0));
+        feeSwapper = vm.envOr("FEE_SWAPPER_ADDRESS", address(0));
+        appRegistry = vm.envOr("APP_REGISTRY_ADDRESS", address(0));
         appCreator = vm.envOr("APP_CREATOR", msg.sender);
     }
 
@@ -47,18 +50,21 @@ contract DeployAppModules is Script {
         console.log("Deploying App Modules with deployer:", deployer);
         console.log("ELTA Address:", eltaAddress);
         console.log("USDC Address:", usdcAddress);
+        console.log("WETH Address:", wethAddress);
         console.log("Treasury:", treasury);
-        console.log("Fee Collector:", feeCollector);
+        console.log("Fee Swapper:", feeSwapper);
 
         vm.startBroadcast(deployerPrivateKey);
 
         // 1. Deploy InAppContent721Factory (deploys NFT collections)
-        InAppContent721Factory content721Factory = new InAppContent721Factory(eltaAddress, deployer, treasury);
+        require(appRegistry != address(0), "APP_REGISTRY_ADDRESS required");
+        InAppContent721Factory content721Factory =
+            new InAppContent721Factory(eltaAddress, appRegistry, deployer, treasury);
         console.log("InAppContent721Factory deployed at:", address(content721Factory));
 
         // 2. Deploy ContentStoreFactory (deploys sales contracts)
         ContentStoreFactory contentStoreFactory =
-            new ContentStoreFactory(eltaAddress, usdcAddress, deployer, treasury, feeCollector, defaultProtocolFeeBps);
+            new ContentStoreFactory(eltaAddress, usdcAddress, wethAddress, appRegistry, deployer, treasury, feeSwapper);
         console.log("ContentStoreFactory deployed at:", address(contentStoreFactory));
 
         // 3. Deploy TournamentFactory
@@ -82,7 +88,7 @@ contract DeployAppModules is Script {
         console.log("Treasury:", content721Factory.treasury());
         console.log("Content721 Create Fee:", content721Factory.createFeeELTA());
         console.log("ContentStore Create Fee:", contentStoreFactory.createFeeELTA());
-        console.log("Default Protocol Fee:", contentStoreFactory.defaultProtocolFeeBps(), "bps");
+        console.log("FeeSwapper:", contentStoreFactory.feeSwapper());
     }
 }
 
@@ -96,8 +102,10 @@ contract DeployFullExample is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerPrivateKey);
         address treasury = vm.envOr("TREASURY_ADDRESS", deployer);
-        address feeCollector = vm.envOr("FEE_COLLECTOR_ADDRESS", address(0));
+        address feeSwapper = vm.envOr("FEE_SWAPPER_ADDRESS", address(0));
         address usdcAddress = vm.envOr("USDC_ADDRESS", address(0));
+        address wethAddress = vm.envOr("WETH_ADDRESS", address(0));
+        address appRegistry = vm.envOr("APP_REGISTRY_ADDRESS", address(0));
 
         console.log("Deploying Full App Example");
         console.log("Deployer/App Creator:", deployer);
@@ -109,11 +117,14 @@ contract DeployFullExample is Script {
         console.log("ELTA deployed at:", address(elta));
 
         // 2. Deploy factories
-        InAppContent721Factory content721Factory = new InAppContent721Factory(address(elta), deployer, treasury);
+        require(appRegistry != address(0), "APP_REGISTRY_ADDRESS required");
+        InAppContent721Factory content721Factory =
+            new InAppContent721Factory(address(elta), appRegistry, deployer, treasury);
         console.log("InAppContent721Factory deployed at:", address(content721Factory));
 
-        ContentStoreFactory contentStoreFactory =
-            new ContentStoreFactory(address(elta), usdcAddress, deployer, treasury, feeCollector, 500);
+        ContentStoreFactory contentStoreFactory = new ContentStoreFactory(
+            address(elta), usdcAddress, wethAddress, appRegistry, deployer, treasury, feeSwapper
+        );
         console.log("ContentStoreFactory deployed at:", address(contentStoreFactory));
 
         TournamentFactory tournamentFactory = new TournamentFactory(deployer, treasury);

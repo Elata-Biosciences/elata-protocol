@@ -7,6 +7,7 @@ import {IOwnable} from "./Interfaces.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IAppRegistry} from "../interfaces/IAppRegistry.sol";
 
 /**
  * @title ContentStoreFactory
@@ -26,14 +27,14 @@ contract ContentStoreFactory is Ownable {
     /// @notice USDC token address for ContentStore payments
     address public immutable USDC;
 
+    /// @notice WETH used to wrap native payments in ContentStore
+    address public immutable WETH;
+
     /// @notice Protocol treasury for fee collection
     address public treasury;
 
-    /// @notice FeeCollector address for ContentStore integration
-    address public feeCollector;
-
-    /// @notice Default protocol fee for ContentStore (in bps, e.g., 500 = 5%)
-    uint256 public defaultProtocolFeeBps;
+    /// @notice FeeSwapper address for 80/20 routing (set after deploy)
+    address public feeSwapper;
 
     /// @notice ELTA fee for deploying content stores
     uint256 public createFeeELTA;
@@ -41,47 +42,53 @@ contract ContentStoreFactory is Ownable {
     /// @notice Deployed ContentStore by app token address
     mapping(address => address) public contentStoreByApp;
 
-    /// @notice Maximum protocol fee (15%)
-    uint256 public constant MAX_PROTOCOL_FEE_BPS = 1500;
+    /// @notice Deployed ContentStore by appId (tokenless-first)
+    mapping(uint256 => address) public contentStoreByAppId;
+
+    /// @notice AppRegistry for appId ownership + token attach validation
+    IAppRegistry public immutable appRegistry;
 
     // =========== Events ===========
 
     event ContentStoreDeployed(address indexed appToken, address indexed contentStore, address indexed content721);
     event TreasurySet(address treasury);
-    event FeeCollectorSet(address feeCollector);
     event FeeSet(uint256 fee);
-    event DefaultProtocolFeeBpsSet(uint256 bps);
+    event FeeSwapperSet(address feeSwapper);
 
     // =========== Errors ===========
 
     error NotTokenOwner();
     error AlreadyDeployed();
-    error InvalidProtocolFeeBps();
     error NotContent721Owner();
+    error ZeroAddress();
+    error InvalidAppState();
 
     /**
      * @notice Initialize factory
      * @param elta ELTA token address (address(0) to disable fees)
      * @param usdc USDC token address
+     * @param weth WETH token address (for native payment wrapping)
      * @param initialOwner Factory owner
      * @param treasury_ Protocol treasury address
-     * @param feeCollector_ FeeCollector address
-     * @param defaultProtocolFeeBps_ Default protocol fee for new ContentStores
+     * @param feeSwapper_ FeeSwapper address (can be address(0) initially; set later)
      */
     constructor(
         address elta,
         address usdc,
+        address weth,
+        address appRegistry_,
         address initialOwner,
         address treasury_,
-        address feeCollector_,
-        uint256 defaultProtocolFeeBps_
+        address feeSwapper_
     ) Ownable(initialOwner) {
-        if (defaultProtocolFeeBps_ > MAX_PROTOCOL_FEE_BPS) revert InvalidProtocolFeeBps();
+        if (weth == address(0)) revert ZeroAddress();
+        if (appRegistry_ == address(0)) revert ZeroAddress();
         ELTA = elta;
         USDC = usdc;
+        WETH = weth;
+        appRegistry = IAppRegistry(appRegistry_);
         treasury = treasury_;
-        feeCollector = feeCollector_;
-        defaultProtocolFeeBps = defaultProtocolFeeBps_;
+        feeSwapper = feeSwapper_;
     }
 
     // =========== Admin Functions ===========
@@ -96,12 +103,12 @@ contract ContentStoreFactory is Ownable {
     }
 
     /**
-     * @notice Set fee collector address
-     * @param fc New fee collector address
+     * @notice Set FeeSwapper address (routing sink)
+     * @dev Can be set post-deploy once FeeSwapper exists.
      */
-    function setFeeCollector(address fc) external onlyOwner {
-        feeCollector = fc;
-        emit FeeCollectorSet(fc);
+    function setFeeSwapper(address fs) external onlyOwner {
+        feeSwapper = fs;
+        emit FeeSwapperSet(fs);
     }
 
     /**
@@ -111,16 +118,6 @@ contract ContentStoreFactory is Ownable {
     function setCreateFee(uint256 fee) external onlyOwner {
         createFeeELTA = fee;
         emit FeeSet(fee);
-    }
-
-    /**
-     * @notice Set default protocol fee for new ContentStores
-     * @param bps New fee in basis points (max 1500 = 15%)
-     */
-    function setDefaultProtocolFeeBps(uint256 bps) external onlyOwner {
-        if (bps > MAX_PROTOCOL_FEE_BPS) revert InvalidProtocolFeeBps();
-        defaultProtocolFeeBps = bps;
-        emit DefaultProtocolFeeBpsSet(bps);
     }
 
     // =========== Deployment Function ===========
@@ -158,11 +155,12 @@ contract ContentStoreFactory is Ownable {
             appToken: appToken,
             elta: ELTA,
             usdc: USDC,
-            treasury: treasury,
+            weth: WETH,
             content721: content721,
+            appRegistry: address(appRegistry),
+            factory: address(this),
             admin: msg.sender,
-            feeCollector: feeCollector,
-            protocolFeeBps: defaultProtocolFeeBps
+            feeSwapper: feeSwapper
         });
 
         contentStore = address(new ContentStore(config));
@@ -172,8 +170,68 @@ contract ContentStoreFactory is Ownable {
 
         // Register deployment
         contentStoreByApp[appToken] = contentStore;
+        contentStoreByAppId[appId] = contentStore;
 
         emit ContentStoreDeployed(appToken, contentStore, content721);
+    }
+
+    /**
+     * @notice Deploy ContentStore for an appId before token launch (tokenless mode).
+     * @dev Only callable by the app ownerSafe (from AppRegistry).
+     */
+    function deployContentStoreForApp(uint256 appId, address content721) external returns (address contentStore) {
+        IAppRegistry.AppInfo memory info = appRegistry.getApp(appId);
+        address ownerSafe = info.ownerSafe;
+        if (ownerSafe == address(0)) revert InvalidAppState();
+        if (msg.sender != ownerSafe) revert NotTokenOwner();
+
+        // Verify caller owns the content721 (ownerSafe must be owner)
+        if (content721 == address(0) || IOwnable(content721).owner() != ownerSafe) revert NotContent721Owner();
+
+        if (contentStoreByAppId[appId] != address(0)) revert AlreadyDeployed();
+
+        _collectFee();
+
+        ContentStore.InitConfig memory config = ContentStore.InitConfig({
+            appId: appId,
+            appToken: address(0),
+            elta: ELTA,
+            usdc: USDC,
+            weth: WETH,
+            content721: content721,
+            appRegistry: address(appRegistry),
+            factory: address(this),
+            admin: ownerSafe,
+            feeSwapper: feeSwapper
+        });
+
+        contentStore = address(new ContentStore(config));
+        contentStoreByAppId[appId] = contentStore;
+
+        emit ContentStoreDeployed(address(0), contentStore, content721);
+    }
+
+    /**
+     * @notice Attach a launched app token to an existing tokenless ContentStore and register it under appToken.
+     * @dev Only callable by the app ownerSafe (from AppRegistry).
+     */
+    function attachLaunchedToken(uint256 appId) external {
+        IAppRegistry.AppInfo memory info = appRegistry.getApp(appId);
+        address ownerSafe = info.ownerSafe;
+        if (ownerSafe == address(0)) revert InvalidAppState();
+        if (msg.sender != ownerSafe) revert NotTokenOwner();
+        if (!info.tokenLaunched || info.appToken == address(0)) revert InvalidAppState();
+
+        address store = contentStoreByAppId[appId];
+        if (store == address(0)) revert InvalidAppState();
+
+        // Register by appToken for discoverability.
+        if (contentStoreByApp[info.appToken] == address(0)) {
+            contentStoreByApp[info.appToken] = store;
+        }
+
+        // Enable APP payments in the store.
+        ContentStore(payable(store)).setAppToken(info.appToken);
     }
 
     // =========== Internal Functions ===========
@@ -196,5 +254,9 @@ contract ContentStoreFactory is Ownable {
      */
     function getContentStore(address appToken) external view returns (address contentStore) {
         return contentStoreByApp[appToken];
+    }
+
+    function getContentStoreByAppId(uint256 appId) external view returns (address contentStore) {
+        return contentStoreByAppId[appId];
     }
 }

@@ -11,7 +11,7 @@
  *   pnpm analyze --detailed   # Include detailed metrics
  */
 
-import { readFile, readdir } from 'node:fs/promises';
+import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -58,6 +58,25 @@ interface ScenarioStats {
   }>;
 }
 
+type PersonaQuality = {
+  runId: string;
+  scenarioName: string;
+  generatedAt: string;
+  personas: Array<{
+    personaId: string;
+    actions: number;
+    successRate: number;
+    novelty: number;
+    stateImpactProxy: number;
+    costEfficiency: number;
+    usefulnessScore: number;
+  }>;
+  aggregate: {
+    actions: number;
+    meanUsefulnessScore: number;
+  };
+};
+
 async function findResultDirs(scenarioFilter?: string): Promise<Map<string, string[]>> {
   const scenarioMap = new Map<string, string[]>();
 
@@ -97,6 +116,80 @@ async function loadSummary(runDir: string): Promise<SummaryJson | null> {
     return JSON.parse(content) as SummaryJson;
   } catch {
     return null;
+  }
+}
+
+async function writePersonaQuality(runDir: string, summary: SummaryJson): Promise<void> {
+  try {
+    const actionsPath = join(runDir, 'actions.ndjson');
+    const content = await readFile(actionsPath, 'utf-8');
+    const lines = content
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const byPersona = new Map<
+      string,
+      { actions: number; ok: number; names: Set<string>; impactActions: number }
+    >();
+    for (const line of lines) {
+      let row: any;
+      try {
+        row = JSON.parse(line);
+      } catch {
+        continue;
+      }
+      const personaId = String(row?.action?.metadata?.personaId ?? '').trim();
+      if (!personaId) continue;
+      const actionName = String(row?.action?.name ?? 'unknown');
+      const ok = row?.result?.ok === true;
+      const current = byPersona.get(personaId) ?? {
+        actions: 0,
+        ok: 0,
+        names: new Set<string>(),
+        impactActions: 0,
+      };
+      current.actions += 1;
+      if (ok) current.ok += 1;
+      current.names.add(actionName);
+      if (actionName !== 'DoNothing' && actionName !== 'QueryWorld') current.impactActions += 1;
+      byPersona.set(personaId, current);
+    }
+
+    const personas = [...byPersona.entries()].map(([personaId, s]) => {
+      const actions = Math.max(1, s.actions);
+      const successRate = s.ok / actions;
+      const novelty = s.names.size / actions;
+      const stateImpactProxy = s.impactActions / actions;
+      const costEfficiency = s.ok / actions;
+      const usefulnessScore =
+        0.35 * successRate + 0.25 * novelty + 0.25 * stateImpactProxy + 0.15 * costEfficiency;
+      return {
+        personaId,
+        actions: s.actions,
+        successRate,
+        novelty,
+        stateImpactProxy,
+        costEfficiency,
+        usefulnessScore,
+      };
+    });
+
+    const artifact: PersonaQuality = {
+      runId: summary.runId,
+      scenarioName: summary.scenarioName,
+      generatedAt: new Date().toISOString(),
+      personas,
+      aggregate: {
+        actions: personas.reduce((acc, p) => acc + p.actions, 0),
+        meanUsefulnessScore:
+          personas.length > 0
+            ? personas.reduce((acc, p) => acc + p.usefulnessScore, 0) / personas.length
+            : 0,
+      },
+    };
+    await writeFile(join(runDir, 'persona_quality.json'), JSON.stringify(artifact, null, 2), 'utf-8');
+  } catch {
+    // Non-persona or incomplete runs can skip this artifact.
   }
 }
 
@@ -400,6 +493,7 @@ async function main(): Promise<void> {
       if (summary) {
         summaries.push(summary);
         allSummaries.push(summary);
+        await writePersonaQuality(runDir, summary);
       }
     }
 

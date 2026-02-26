@@ -5,8 +5,11 @@ import {AppBondingCurve} from "../../src/apps/AppBondingCurve.sol";
 import {AppFactory} from "../../src/apps/AppFactory.sol";
 import {AppFactoryViews} from "../../src/apps/AppFactoryViews.sol";
 import {AppToken} from "../../src/apps/AppToken.sol";
+import {AppRegistry} from "../../src/registry/AppRegistry.sol";
+import {ContributorSplitFactory} from "../../src/contributors/ContributorSplitFactory.sol";
 import {IAppFeeRouter} from "../../src/interfaces/IAppFeeRouter.sol";
 import {IAppRewardsDistributor} from "../../src/interfaces/IAppRewardsDistributor.sol";
+import {IContributorSplit} from "../../src/interfaces/IContributorSplit.sol";
 import {IElataPoints} from "../../src/interfaces/IElataPoints.sol";
 import {IRewardsDistributor} from "../../src/interfaces/IRewardsDistributor.sol";
 import {IUniswapV2Router02} from "../../src/interfaces/IUniswapV2Router02.sol";
@@ -53,6 +56,10 @@ contract AppFactoryTest is Test {
     MockRewardsDistributor public mockRewards;
     MockElataPoints public mockXP;
 
+    AppRegistry public appRegistry;
+    ContributorSplitFactory public splitFactory;
+    address public mockFeeSwapper = makeAddr("mockFeeSwapper");
+
     function setUp() public {
         elta = new ELTA(treasury);
 
@@ -77,6 +84,16 @@ contract AppFactoryTest is Test {
             governance,
             admin
         );
+
+        // Configure vNext dependencies required by createApp/createAppWithoutToken
+        appRegistry = new AppRegistry(governance, address(factory));
+        splitFactory = new ContributorSplitFactory(governance, address(factory));
+
+        vm.startPrank(admin);
+        factory.setAppRegistry(address(appRegistry));
+        factory.setContributorSplitFactory(address(splitFactory));
+        factory.setFeeSwapper(mockFeeSwapper);
+        vm.stopPrank();
 
         // Deploy views contract for complex queries
         views = new AppFactoryViews(address(factory));

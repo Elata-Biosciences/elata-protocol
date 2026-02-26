@@ -5,6 +5,9 @@ import {AppBondingCurve} from "../../src/apps/AppBondingCurve.sol";
 import {AppFactory} from "../../src/apps/AppFactory.sol";
 import {AppToken} from "../../src/apps/AppToken.sol";
 import {LpLocker} from "../../src/apps/LpLocker.sol";
+import {AppRegistry} from "../../src/registry/AppRegistry.sol";
+import {ContributorSplitFactory} from "../../src/contributors/ContributorSplitFactory.sol";
+import {FeeSwapper} from "../../src/fees/FeeSwapper.sol";
 import {IAppFeeRouter} from "../../src/interfaces/IAppFeeRouter.sol";
 import {IAppRewardsDistributor} from "../../src/interfaces/IAppRewardsDistributor.sol";
 import {IRewardsDistributor} from "../../src/interfaces/IRewardsDistributor.sol";
@@ -26,6 +29,9 @@ import "forge-std/Test.sol";
 contract AppLaunchSecurityTest is Test {
     ELTA public elta;
     AppFactory public factory;
+    AppRegistry public registry;
+    ContributorSplitFactory public splitFactory;
+    FeeSwapper public feeSwapper;
 
     address public admin = makeAddr("admin");
     address public treasury = makeAddr("treasury");
@@ -58,6 +64,17 @@ contract AppLaunchSecurityTest is Test {
             governance,
             admin
         );
+
+        // Configure vNext dependencies (required by createApp wrapper).
+        registry = new AppRegistry(governance, address(factory));
+        splitFactory = new ContributorSplitFactory(governance, address(factory));
+        feeSwapper = new FeeSwapper(address(elta), admin, governance, treasury, address(registry));
+
+        vm.startPrank(admin);
+        factory.setAppRegistry(address(registry));
+        factory.setContributorSplitFactory(address(splitFactory));
+        factory.setFeeSwapper(address(feeSwapper));
+        vm.stopPrank();
 
         // Distribute ELTA
         vm.startPrank(treasury);

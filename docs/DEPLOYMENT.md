@@ -79,7 +79,7 @@ The script will:
 - Compile contracts
 - Deploy in the correct order
 - Set up role permissions
-- Mint initial ELTA to treasury
+- Deploy ELTA and mint fixed supply (`77,000,000`) to treasury
 - Output addresses to `deployments/sepolia.json`
 
 ### Step 4: Verify Contracts
@@ -174,7 +174,7 @@ You'll approve each transaction on the device.
 After deploying, verify:
 
 - [ ] All contracts deployed and verified on block explorer
-- [ ] Initial ELTA supply minted to treasury
+- [ ] ELTA fixed supply (`77,000,000`) minted to treasury
 - [ ] Admin roles assigned to multisig
 - [ ] Deployer wallet has no remaining admin roles
 - [ ] Timelock configured with correct delays

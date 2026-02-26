@@ -17,6 +17,7 @@ contract AppTokenSecurityTest is Test {
     address public governance = makeAddr("governance");
     address public user1 = makeAddr("user1");
     address public attacker = makeAddr("attacker");
+    address public feeCollector = makeAddr("feeCollector");
 
     uint256 public constant MAX_SUPPLY = 1_000_000_000 ether;
 
@@ -34,6 +35,14 @@ contract AppTokenSecurityTest is Test {
                 rewardsDistributor: address(1),
                 treasury: address(1)
             })
+        );
+
+        // In vNext, LP-keyed transfer tax must route through FeeCollector.
+        // For these token-level security tests we just mock the FeeCollector sink.
+        vm.prank(admin);
+        token.setFeeCollector(feeCollector, 0);
+        vm.mockCall(
+            feeCollector, abi.encodeWithSignature("depositAppToken(uint256,uint8,address,uint256)"), abi.encode()
         );
     }
 

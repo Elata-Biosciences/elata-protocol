@@ -6,6 +6,7 @@ import {console2} from "forge-std/console2.sol";
 import {ELTA} from "elta/ELTA.sol";
 import {VeELTA} from "../../src/staking/VeELTA.sol";
 import {FeeCollector} from "../../src/fees/FeeCollector.sol";
+import {FeeKind} from "../../src/fees/FeeKind.sol";
 import {FeeManager} from "../../src/fees/FeeManager.sol";
 import {RewardsDistributor} from "../../src/rewards/RewardsDistributor.sol";
 import {AppRewardsDistributor} from "../../src/rewards/AppRewardsDistributor.sol";
@@ -165,7 +166,7 @@ contract AccumulatedDust is Test, PrecisionFixtures {
             totalDeposited += depositAmount;
         }
 
-        uint256 pending = feeCollector.pendingEltaFees(appId);
+        uint256 pending = feeCollector.pendingEltaFees(appId, FeeKind.TRADING_FEE);
         uint256 balance = elta.balanceOf(address(feeCollector));
 
         console2.log("Total deposited:", totalDeposited);
@@ -195,7 +196,7 @@ contract AccumulatedDust is Test, PrecisionFixtures {
             totalDeposited += amount;
         }
 
-        uint256 pending = feeCollector.pendingEltaFees(appId);
+        uint256 pending = feeCollector.pendingEltaFees(appId, FeeKind.TRADING_FEE);
         assertEq(pending, totalDeposited, "Pending should match deposited");
     }
 
@@ -220,7 +221,7 @@ contract AccumulatedDust is Test, PrecisionFixtures {
 
         // Verify each app's pending matches
         for (uint256 appId = 0; appId < numApps; appId++) {
-            uint256 pending = feeCollector.pendingEltaFees(appId);
+            uint256 pending = feeCollector.pendingEltaFees(appId, FeeKind.TRADING_FEE);
             assertEq(pending, expectedPerApp[appId], "App pending mismatch");
         }
     }
@@ -572,6 +573,6 @@ contract AccumulatedDust is Test, PrecisionFixtures {
 
         // Verify no unexpected dust
         console2.log("Vault total supply:", stakingVault.totalSupply());
-        console2.log("Fee collector pending:", feeCollector.pendingEltaFees(0));
+        console2.log("Fee collector pending:", feeCollector.pendingEltaFees(0, FeeKind.TRADING_FEE));
     }
 }

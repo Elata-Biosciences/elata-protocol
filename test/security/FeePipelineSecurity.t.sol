@@ -5,8 +5,11 @@ import {Test} from "forge-std/Test.sol";
 import {console2} from "forge-std/console2.sol";
 import {ELTA} from "elta/ELTA.sol";
 import {FeeCollector} from "../../src/fees/FeeCollector.sol";
-import {FeeManager} from "../../src/fees/FeeManager.sol";
 import {FeeSwapper} from "../../src/fees/FeeSwapper.sol";
+import {FeeKind} from "../../src/fees/FeeKind.sol";
+import {AppRegistry} from "../../src/registry/AppRegistry.sol";
+import {ContributorSplitFactory} from "../../src/contributors/ContributorSplitFactory.sol";
+import {IContributorSplit} from "../../src/interfaces/IContributorSplit.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -30,21 +33,21 @@ contract MockAppToken is ERC20 {
 
 /**
  * @title FeePipelineSecurity
- * @notice Red team security tests for FeeCollector, FeeSwapper, FeeManager
+ * @notice Red team security tests for FeeCollector + FeeSwapper
  */
 contract FeePipelineSecurity is Test {
     ELTA public elta;
     MockUSDC public usdc;
     MockAppToken public appToken;
     FeeCollector public feeCollector;
-    FeeManager public feeManager;
     FeeSwapper public feeSwapper;
+    AppRegistry public appRegistry;
+    ContributorSplitFactory public splitFactory;
+    address public split;
 
     address public admin = makeAddr("admin");
     address public governance = makeAddr("governance");
     address public treasury = makeAddr("treasury");
-    address public appRewardsDistributor = makeAddr("appRewardsDistributor");
-    address public veRewardsDistributor = makeAddr("veRewardsDistributor");
     address public attacker = makeAddr("attacker");
 
     uint256 public constant ELTA_MAX_SUPPLY = 77_000_000 ether;
@@ -56,31 +59,20 @@ contract FeePipelineSecurity is Test {
         usdc = new MockUSDC();
         appToken = new MockAppToken();
 
-        // Deploy FeeSwapper (with temporary feeManager address, will update later)
-        feeSwapper = new FeeSwapper(address(elta), admin, governance, address(0));
+        // Deploy AppRegistry (required by FeeSwapper routing)
+        appRegistry = new AppRegistry(governance, address(this));
+        // Deploy FeeSwapper (unified router + swap helper)
+        feeSwapper = new FeeSwapper(address(elta), admin, governance, treasury, address(appRegistry));
 
-        // Deploy FeeManager
-        feeManager = new FeeManager(
-            address(elta),
-            address(usdc),
-            admin,
-            governance,
-            appRewardsDistributor,
-            veRewardsDistributor,
-            treasury,
-            1 days
-        );
+        splitFactory = new ContributorSplitFactory(governance, address(this));
+
+        IContributorSplit.Contributor[] memory contributors = new IContributorSplit.Contributor[](1);
+        contributors[0] = IContributorSplit.Contributor({account: attacker, shares: 10_000});
+        split = splitFactory.createSplit(0, attacker, address(feeSwapper), contributors);
+        appRegistry.registerApp(0, attacker, split, "ipfs://meta");
 
         // Deploy FeeCollector
-        feeCollector = new FeeCollector(address(elta), admin, address(feeManager), address(feeSwapper));
-
-        // Connect components
-        vm.prank(admin);
-        feeManager.setDepositor(address(feeCollector), true);
-
-        // Update FeeSwapper's feeManager
-        vm.prank(admin);
-        feeSwapper.setFeeManager(address(feeManager));
+        feeCollector = new FeeCollector(address(elta), admin, address(feeSwapper), address(feeSwapper));
 
         // Fund attacker
         vm.prank(admin);
@@ -107,13 +99,13 @@ contract FeePipelineSecurity is Test {
         feeCollector.depositElta(0, 1000 ether);
         vm.stopPrank();
 
-        // Sweep is permissionless, but funds go to feeManager
-        uint256 managerBefore = elta.balanceOf(address(feeManager));
+        // Sweep is permissionless, but funds route to treasury
+        uint256 treasuryBefore = elta.balanceOf(treasury);
         feeCollector.sweepElta(0);
-        uint256 managerAfter = elta.balanceOf(address(feeManager));
+        uint256 treasuryAfter = elta.balanceOf(treasury);
 
-        // Funds should go to manager, not attacker
-        assertGt(managerAfter, managerBefore, "Funds should go to manager");
+        // Funds should go to treasury, not attacker
+        assertGt(treasuryAfter, treasuryBefore, "Funds should go to treasury");
     }
 
     function test_Security_CannotExtractFundsDirectly() public {
@@ -138,7 +130,7 @@ contract FeePipelineSecurity is Test {
         feeCollector.depositElta(0, 500 ether);
 
         // Check accounting
-        uint256 pending = feeCollector.pendingEltaFees(0);
+        uint256 pending = feeCollector.pendingEltaFees(0, FeeKind.TRADING_FEE);
         assertEq(pending, 1000 ether, "Should track both deposits");
         vm.stopPrank();
     }
@@ -147,10 +139,10 @@ contract FeePipelineSecurity is Test {
     // FEE SWAPPER SECURITY TESTS
     // ═══════════════════════════════════════════════════════════════════════════
 
-    function test_Security_OnlyAdminCanSetFeeManager() public {
+    function test_Security_OnlyAdminCanSetTreasury() public {
         vm.expectRevert(FeeSwapper.OnlyAdmin.selector);
         vm.prank(attacker);
-        feeSwapper.setFeeManager(attacker);
+        feeSwapper.setTreasury(attacker);
     }
 
     function test_Security_OnlyGovernanceCanSetRouter() public {
@@ -169,7 +161,7 @@ contract FeePipelineSecurity is Test {
 
         // Try to swap with unallowed router
         vm.expectRevert(FeeSwapper.RouterNotAllowed.selector);
-        feeSwapper.swapFromBalance(0, address(appToken), 100 ether, 0, attacker, path);
+        feeSwapper.swapFromBalance(0, FeeKind.TRANSFER_TAX, address(appToken), 100 ether, 0, attacker, path);
     }
 
     function test_Security_SwapperMinThresholdEnforced() public {
@@ -190,88 +182,7 @@ contract FeePipelineSecurity is Test {
 
         // Try to swap below threshold
         vm.expectRevert(FeeSwapper.BelowMinSwapThreshold.selector);
-        feeSwapper.swapFromBalance(0, address(appToken), 10 ether, 0, makeAddr("router"), path);
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    // FEE MANAGER SECURITY TESTS
-    // ═══════════════════════════════════════════════════════════════════════════
-
-    function test_Security_OnlyDepositorCanDeposit() public {
-        vm.startPrank(attacker);
-        elta.approve(address(feeManager), 1000 ether);
-
-        vm.expectRevert(FeeManager.OnlyDepositor.selector);
-        feeManager.depositEltaForApp(0, 1000 ether);
-        vm.stopPrank();
-    }
-
-    function test_Security_CannotCloseEpochEarly() public {
-        // Deposit via collector/sweep
-        vm.startPrank(attacker);
-        elta.approve(address(feeCollector), 1000 ether);
-        feeCollector.depositElta(0, 1000 ether);
-        vm.stopPrank();
-
-        feeCollector.sweepElta(0);
-
-        // Try to close epoch immediately (should fail - epoch not ended)
-        vm.expectRevert(FeeManager.EpochNotEnded.selector);
-        feeManager.closeEpoch(0);
-    }
-
-    function test_Security_EpochClosesAfterDelay() public {
-        // Deposit via collector/sweep
-        vm.startPrank(attacker);
-        elta.approve(address(feeCollector), 1000 ether);
-        feeCollector.depositElta(0, 1000 ether);
-        vm.stopPrank();
-
-        feeCollector.sweepElta(0);
-
-        // Warp past epoch
-        vm.warp(block.timestamp + 1 days + 1);
-
-        // Now should work
-        feeManager.closeEpoch(0);
-    }
-
-    function test_Security_CannotDoubleCloseEpoch() public {
-        // Setup and deposit
-        vm.startPrank(attacker);
-        elta.approve(address(feeCollector), 2000 ether);
-        feeCollector.depositElta(0, 1000 ether);
-        vm.stopPrank();
-
-        feeCollector.sweepElta(0);
-
-        // Close first epoch
-        vm.warp(block.timestamp + 1 days + 1);
-        feeManager.closeEpoch(0);
-
-        // Second close should fail - either EpochNotEnded (if epoch resets) or NothingToDistribute
-        vm.expectRevert(); // Generic revert, either error is acceptable
-        feeManager.closeEpoch(0);
-    }
-
-    function test_Security_FeeSplitsSumTo100() public {
-        (uint256 appStakers, uint256 veElta, uint256 creator, uint256 treasury_, uint256 referral) =
-            feeManager.feeSplits();
-
-        assertEq(appStakers + veElta + creator + treasury_ + referral, 10000, "Fee splits must sum to 10000 bps");
-    }
-
-    function test_Security_CannotSetInvalidFeeSplits() public {
-        // Try to set splits that exceed 100%
-        vm.expectRevert(FeeManager.InvalidFeeSplits.selector);
-        vm.prank(governance);
-        feeManager.setFeeSplits(5000, 5000, 5000, 0, 0); // 150%
-    }
-
-    function test_Security_OnlyGovernanceCanSetSplits() public {
-        vm.expectRevert(FeeManager.OnlyGovernance.selector);
-        vm.prank(attacker);
-        feeManager.setFeeSplits(2500, 2500, 2500, 2500, 0);
+        feeSwapper.swapFromBalance(0, FeeKind.TRANSFER_TAX, address(appToken), 10 ether, 0, makeAddr("router"), path);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -286,7 +197,7 @@ contract FeePipelineSecurity is Test {
         feeCollector.depositElta(0, amount);
         vm.stopPrank();
 
-        uint256 pending = feeCollector.pendingEltaFees(0);
+        uint256 pending = feeCollector.pendingEltaFees(0, FeeKind.TRADING_FEE);
         assertEq(pending, amount, "Pending should match deposit");
     }
 
@@ -307,10 +218,12 @@ contract FeePipelineSecurity is Test {
 
         // Verify per-app accounting
         if (appId1 == appId2) {
-            assertEq(feeCollector.pendingEltaFees(appId1), amount1 + amount2, "Same app should sum");
+            assertEq(
+                feeCollector.pendingEltaFees(appId1, FeeKind.TRADING_FEE), amount1 + amount2, "Same app should sum"
+            );
         } else {
-            assertEq(feeCollector.pendingEltaFees(appId1), amount1, "App 1 amount correct");
-            assertEq(feeCollector.pendingEltaFees(appId2), amount2, "App 2 amount correct");
+            assertEq(feeCollector.pendingEltaFees(appId1, FeeKind.TRADING_FEE), amount1, "App 1 amount correct");
+            assertEq(feeCollector.pendingEltaFees(appId2, FeeKind.TRADING_FEE), amount2, "App 2 amount correct");
         }
     }
 }

@@ -5,8 +5,11 @@ import {Test} from "forge-std/Test.sol";
 import {console2} from "forge-std/console2.sol";
 import {ELTA} from "elta/ELTA.sol";
 import {FeeCollector} from "../../src/fees/FeeCollector.sol";
-import {FeeManager} from "../../src/fees/FeeManager.sol";
-import {ProtocolConfig} from "../../src/core/ProtocolConfig.sol";
+import {FeeSwapper} from "../../src/fees/FeeSwapper.sol";
+import {FeeKind} from "../../src/fees/FeeKind.sol";
+import {AppRegistry} from "../../src/registry/AppRegistry.sol";
+import {ContributorSplitFactory} from "../../src/contributors/ContributorSplitFactory.sol";
+import {IContributorSplit} from "../../src/interfaces/IContributorSplit.sol";
 import {FeeHandler} from "./handlers/FeeHandler.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
@@ -28,18 +31,19 @@ contract MockUSDC is ERC20 {
  */
 contract FeeInvariants is Test {
     ELTA public elta;
-    MockUSDC public usdc;
     FeeCollector public feeCollector;
-    FeeManager public feeManager;
-    ProtocolConfig public protocolConfig;
+    FeeSwapper public feeRouter;
+    AppRegistry public appRegistry;
+    ContributorSplitFactory public splitFactory;
     FeeHandler public handler;
+    address public contributorSplit;
 
     address public admin = makeAddr("admin");
-    address public timelock = makeAddr("timelock");
     address public treasury = makeAddr("treasury");
-    address public feeSwapper = makeAddr("feeSwapper");
-    address public appRewardsDistributor = makeAddr("appRewardsDistributor");
-    address public veRewardsDistributor = makeAddr("veRewardsDistributor");
+    address public feeSwapper = address(0);
+    address public ownerSafe = makeAddr("ownerSafe");
+    address public contributorA = makeAddr("contributorA");
+    address public contributorB = makeAddr("contributorB");
 
     uint256 public constant ELTA_MAX_SUPPLY = 77_000_000 ether;
 
@@ -48,42 +52,23 @@ contract FeeInvariants is Test {
         vm.prank(admin);
         elta = new ELTA(admin);
 
-        // Deploy USDC
-        usdc = new MockUSDC();
+        // Deploy registry + split factory (appFactory set to this test contract)
+        appRegistry = new AppRegistry(admin, address(this));
+        splitFactory = new ContributorSplitFactory(admin, address(this));
 
-        // Deploy ProtocolConfig
-        protocolConfig = new ProtocolConfig(admin, timelock);
+        // Deploy fee router + collector
+        feeRouter = new FeeSwapper(address(elta), admin, admin, treasury, address(appRegistry));
+        feeCollector = new FeeCollector(address(elta), admin, address(feeRouter), feeSwapper);
 
-        // Deploy FeeCollector
-        feeCollector = new FeeCollector(
-            address(elta),
-            admin,
-            address(0), // feeManager - set later
-            feeSwapper
-        );
-
-        // Deploy FeeManager
-        feeManager = new FeeManager(
-            address(elta),
-            address(usdc),
-            admin,
-            admin, // governance
-            appRewardsDistributor,
-            veRewardsDistributor,
-            treasury,
-            1 days // epochLength
-        );
-
-        // Connect FeeCollector to FeeManager
-        vm.prank(admin);
-        feeCollector.setFeeManager(address(feeManager));
-
-        // Allow FeeCollector to deposit to FeeManager
-        vm.prank(admin);
-        feeManager.setDepositor(address(feeCollector), true);
+        // Create contributor split and register appId=1
+        IContributorSplit.Contributor[] memory contributors = new IContributorSplit.Contributor[](2);
+        contributors[0] = IContributorSplit.Contributor({account: contributorA, shares: 60});
+        contributors[1] = IContributorSplit.Contributor({account: contributorB, shares: 40});
+        contributorSplit = splitFactory.createSplit(1, ownerSafe, address(feeRouter), contributors);
+        appRegistry.registerApp(1, ownerSafe, contributorSplit, "");
 
         // Deploy handler
-        handler = new FeeHandler(elta, feeCollector, feeManager, protocolConfig);
+        handler = new FeeHandler(elta, feeCollector);
 
         // Fund actors with ELTA
         for (uint256 i = 0; i < handler.getActorCount(); i++) {
@@ -96,57 +81,37 @@ contract FeeInvariants is Test {
         targetContract(address(handler));
     }
 
-    // =========== Fee Split Invariants ===========
-
-    /// @notice Fee splits should always sum to 100% (10000 bps)
-    function invariant_FeeSplitsSumTo100Percent() public view {
-        (uint256 appStakers, uint256 veElta, uint256 creator, uint256 treasury_, uint256 referral) =
-            feeManager.feeSplits();
-
-        uint256 total = appStakers + veElta + creator + treasury_ + referral;
-        assertEq(total, 10000, "Fee splits don't sum to 10000 bps");
-    }
-
     // =========== Fee Collector Invariants ===========
 
     /// @notice FeeCollector ELTA balance should equal sum of pending fees
     function invariant_CollectorBalanceEqualsPending() public view {
-        uint256 totalPending = handler.getTotalPendingFees();
+        uint256 totalPending = handler.getTotalPendingElta();
         uint256 balance = elta.balanceOf(address(feeCollector));
 
-        // Balance should be >= pending (might have untracked deposits)
-        assertGe(balance, totalPending, "Collector balance < pending fees");
-    }
-
-    /// @notice Ghost deposited should be >= ghost swept
-    function invariant_DepositedGteSwept() public view {
-        uint256 deposited = handler.ghost_totalDeposited();
-        uint256 swept = handler.ghost_totalSwept();
-
-        assertGe(deposited, swept, "Swept more than deposited");
-    }
-
-    // =========== Fee Manager Invariants ===========
-
-    /// @notice FeeManager should not hold more ELTA than was deposited
-    function invariant_FeeManagerBalanceBounded() public view {
-        uint256 balance = elta.balanceOf(address(feeManager));
-
-        // FeeManager balance should be bounded by what was swept to it
-        // This is a loose bound since we don't track exact amounts
-        assertLe(balance, handler.ghost_totalDeposited(), "FeeManager has more than deposited");
+        assertEq(balance, totalPending, "Collector balance != pending fees");
     }
 
     // =========== Cross-Component Invariants ===========
 
-    /// @notice Total ELTA in fee system should be conserved
+    /// @notice FeeRouterV2 should not retain ELTA after routing
+    function invariant_FeeRouterDoesNotHoldElta() public view {
+        assertEq(elta.balanceOf(address(feeRouter)), 0, "FeeRouterV2 retained ELTA");
+    }
+
+    /// @notice Total ELTA in fee system should be conserved (no minting in routing)
     function invariant_EltaConserved() public view {
         uint256 collectorBalance = elta.balanceOf(address(feeCollector));
-        uint256 managerBalance = elta.balanceOf(address(feeManager));
+        uint256 treasuryBalance = elta.balanceOf(treasury);
+        uint256 splitBalance = elta.balanceOf(contributorSplit);
 
-        // Total in fee system should be less than or equal to what actors deposited
-        uint256 totalInSystem = collectorBalance + managerBalance;
-        assertLe(totalInSystem, handler.ghost_totalDeposited(), "ELTA appeared from nowhere");
+        uint256 totalInSystem = collectorBalance + treasuryBalance + splitBalance;
+        assertEq(totalInSystem, handler.ghost_totalDeposited(), "ELTA not conserved in fee system");
+    }
+
+    /// @notice Treasury and split balances match handler ghost routing totals
+    function invariant_RoutingMatchesGhostAccounting() public view {
+        assertEq(elta.balanceOf(treasury), handler.ghost_totalSweptToTreasury(), "Treasury != ghost");
+        assertEq(elta.balanceOf(contributorSplit), handler.ghost_totalSweptToSplit(), "Split != ghost");
     }
 
     // =========== Debug Helpers ===========
@@ -155,10 +120,12 @@ contract FeeInvariants is Test {
         console2.log("Fee Call Summary:");
         console2.log("  Total calls:", handler.ghost_callCount());
         console2.log("  Total deposited:", handler.ghost_totalDeposited());
-        console2.log("  Total swept:", handler.ghost_totalSwept());
-        console2.log("  Total pending:", handler.getTotalPendingFees());
+        console2.log("  Treasury swept:", handler.ghost_totalSweptToTreasury());
+        console2.log("  Split swept:", handler.ghost_totalSweptToSplit());
+        console2.log("  Total pending:", handler.getTotalPendingElta());
         console2.log("  Collector balance:", elta.balanceOf(address(feeCollector)));
-        console2.log("  Manager balance:", elta.balanceOf(address(feeManager)));
+        console2.log("  Treasury balance:", elta.balanceOf(treasury));
+        console2.log("  Split balance:", elta.balanceOf(contributorSplit));
     }
 
     // =========== Post-Campaign Analysis ===========
@@ -167,21 +134,17 @@ contract FeeInvariants is Test {
     function afterInvariant() public {
         console2.log("\n=== Fee Pipeline Post-Campaign ===");
         console2.log("Total deposited:", handler.ghost_totalDeposited());
-        console2.log("Total swept:", handler.ghost_totalSwept());
+        console2.log("Treasury swept:", handler.ghost_totalSweptToTreasury());
+        console2.log("Split swept:", handler.ghost_totalSweptToSplit());
 
         // Verify all pending fees can be swept
-        uint256 pendingFees = handler.getTotalPendingFees();
+        uint256 pendingFees = handler.getTotalPendingElta();
         uint256 collectorBalance = elta.balanceOf(address(feeCollector));
 
         console2.log("Pending fees:", pendingFees);
         console2.log("Collector balance:", collectorBalance);
 
-        // Balance should be >= pending (might have untracked deposits)
-        assertGe(collectorBalance, pendingFees, "Collector underfunded");
-
-        // Verify fee splits sum correctly
-        (uint256 appStakers, uint256 veElta_, uint256 creator_, uint256 treasury_, uint256 referral) =
-            feeManager.feeSplits();
-        assertEq(appStakers + veElta_ + creator_ + treasury_ + referral, 10000, "Fee splits don't sum to 100%");
+        assertEq(collectorBalance, pendingFees, "Collector balance != pending");
+        assertEq(elta.balanceOf(address(feeRouter)), 0, "FeeRouter retained ELTA");
     }
 }

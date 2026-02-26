@@ -8,6 +8,7 @@ import {IUniswapV2Pair} from "../interfaces/IUniswapV2Pair.sol";
 import {IUniswapV2Router02} from "../interfaces/IUniswapV2Router02.sol";
 import {AppToken} from "./AppToken.sol";
 import {LpLocker} from "./LpLocker.sol";
+import {FeeKind} from "../fees/FeeKind.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -24,11 +25,7 @@ interface IAppFactory {
 }
 
 interface IFeeCollector {
-    function depositElta(uint256 appId, uint256 amount) external;
-}
-
-interface IReferralRegistry {
-    function setReferrer(uint256 appId, address buyer, address referrer) external;
+    function depositElta(uint256 appId, FeeKind kind, uint256 amount) external;
 }
 
 /**
@@ -81,7 +78,7 @@ contract AppBondingCurve is ReentrancyGuard {
     uint256 public pendingFees;
     address public feeCollector;
 
-    // Referral tracking
+    // ReferralRegistry removed; kept as unused storage slot for upgrade-safety in tests/scripts.
     address public referralRegistry;
 
     // Post-graduation data
@@ -139,7 +136,6 @@ contract AppBondingCurve is ReentrancyGuard {
     event ForceGraduated(uint256 indexed appId, uint256 eltaRaised);
     event FeesSwepted(uint256 indexed appId, uint256 amount, address indexed feeCollector);
     event FeeCollectorUpdated(address indexed oldCollector, address indexed newCollector);
-    event ReferralRegistryUpdated(address indexed oldRegistry, address indexed newRegistry);
 
     error AlreadyGraduated();
     error NotGraduated();
@@ -326,10 +322,8 @@ contract AppBondingCurve is ReentrancyGuard {
         if (eltaIn == 0) revert ZeroInput();
         if (reserveElta == 0) revert NotInitialized();
 
-        // Set referrer if provided and registry is configured
-        if (referrer != address(0) && referralRegistry != address(0)) {
-            IReferralRegistry(referralRegistry).setReferrer(appId, msg.sender, referrer);
-        }
+        // ReferralRegistry removed; `referrer` is accepted for ABI/back-compat but ignored.
+        referrer = referrer;
 
         // XP gating for early launch window
         if (block.timestamp < launchTimestamp + earlyBuyDuration) {
@@ -611,7 +605,7 @@ contract AppBondingCurve is ReentrancyGuard {
         pendingFees = 0;
 
         ELTA.approve(feeCollector, amount);
-        IFeeCollector(feeCollector).depositElta(appId, amount);
+        IFeeCollector(feeCollector).depositElta(appId, FeeKind.TRADING_FEE, amount);
 
         emit FeesSwepted(appId, amount, feeCollector);
     }
@@ -628,20 +622,6 @@ contract AppBondingCurve is ReentrancyGuard {
         feeCollector = _feeCollector;
 
         emit FeeCollectorUpdated(oldCollector, _feeCollector);
-    }
-
-    /**
-     * @notice Set ReferralRegistry for referral tracking
-     * @param _referralRegistry New referral registry address
-     * @dev Callable by governance or factory
-     */
-    function setReferralRegistry(address _referralRegistry) external {
-        if (msg.sender != governance && msg.sender != appFactory) revert OnlyGovernance();
-
-        address oldRegistry = referralRegistry;
-        referralRegistry = _referralRegistry;
-
-        emit ReferralRegistryUpdated(oldRegistry, _referralRegistry);
     }
 
     /**

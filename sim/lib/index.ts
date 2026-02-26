@@ -98,3 +98,6 @@ export {
   // Main function helper
   runScenario,
 } from './scenario-helpers.js';
+
+export { createNotebookReport } from './studio-report.js';
+export { anvilPort, scenarioSeed } from './runtime-config.js';

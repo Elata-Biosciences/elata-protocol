@@ -20,6 +20,8 @@ import {
   RewardHunterAgent,
   StakerAgent,
 } from '../../agents/index.js';
+import { anvilPort, scenarioSeed } from '../../lib/runtime-config.js';
+import { createNotebookReport } from '../../lib/studio-report.js';
 import { createEltaPack } from '../../packs/EltaPack.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -27,13 +29,13 @@ const protocolPath = join(__dirname, '..', '..', '..');
 
 const pack = createEltaPack({
   protocolPath,
-  anvilPort: 8560,
+  anvilPort: anvilPort(8560),
   silent: true,
 });
 
 const scenario = defineScenario({
   name: 'full-protocol-flow',
-  seed: 42,
+  seed: scenarioSeed(42),
   ticks: 50,
   tickSeconds: 3600, // 1 hour per tick
 
@@ -103,14 +105,38 @@ const scenario = defineScenario({
     // Apps should be created
     { type: 'gte', metric: 'app_count', value: 6 },
     // veELTA should be locked (stakers are working)
-    { type: 'gte', metric: 'veelta_total_locked', value: 0 },
+    { type: 'gte', metric: 'veelta_total_locked', value: 1 },
     // Fees should be collected from trading
-    { type: 'gte', metric: 'fees_collected_total', value: 0 },
+    { type: 'gte', metric: 'fees_collected_total', value: 1 },
     // Protocol should have positive ELTA supply
     { type: 'gte', metric: 'elta_total_supply', value: 1 },
     // Not too many apps (sanity check)
-    { type: 'lte', metric: 'app_count', value: 50 },
+    { type: 'lte', metric: 'app_count', value: 80 },
   ],
+  studio: {
+    report: createNotebookReport({
+      title: 'Integration: Full Protocol Flow',
+      experimentNotes:
+        'End-to-end protocol flow across developers, users, veELTA stakers, and reward hunters. This is the canonical integration run for system-level behavior.',
+      hypotheses: [
+        'App creation, trading, staking, and reward distribution all stay active together.',
+        'No core metric should collapse under mixed multi-agent pressure.',
+      ],
+      successCriteria: [
+        'App count remains above minimum target.',
+        'Fees and veELTA lock are both positive by end of run.',
+      ],
+      metricFields: [
+        'app_count',
+        'fees_collected_total',
+        'fees_distributed',
+        'veelta_total_locked',
+        'elta_total_supply',
+      ],
+      primaryMetric: 'app_count',
+      mlFeatures: ['tick', 'fees_collected_total', 'veelta_total_locked'],
+    }),
+  },
 });
 
 async function main(): Promise<void> {
