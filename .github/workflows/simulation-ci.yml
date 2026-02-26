@@ -2,13 +2,13 @@ name: Simulation Tests
 
 on:
   push:
-    branches: [main, vNext]
+    branches: [main]
     paths:
       - 'sim/**'
       - 'src/**'
       - 'script/**'
   pull_request:
-    branches: [main, vNext]
+    branches: [main]
     paths:
       - 'sim/**'
       - 'src/**'
