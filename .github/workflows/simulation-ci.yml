@@ -17,6 +17,7 @@ on:
 
 env:
   FOUNDRY_PROFILE: ci
+  AGENTFORGE_REF: 400b09dff0ddfaf21879f81d30d72553f5cb5657
 
 jobs:
   protocol-fast:
@@ -60,7 +61,9 @@ jobs:
             foundry-smoke-
 
       - name: Clone AgentForge sibling repo
-        run: git clone --depth 1 https://github.com/Elata-Biosciences/agentforge.git ../agentforge
+        run: |
+          git clone https://github.com/Elata-Biosciences/agentforge.git ../agentforge
+          git -C ../agentforge checkout "${AGENTFORGE_REF}"
 
       - name: Build linked AgentForge
         run: pnpm -C ../agentforge install --frozen-lockfile && pnpm -C ../agentforge build
@@ -131,7 +134,9 @@ jobs:
             foundry-smoke-
 
       - name: Clone AgentForge sibling repo
-        run: git clone --depth 1 https://github.com/Elata-Biosciences/agentforge.git ../agentforge
+        run: |
+          git clone https://github.com/Elata-Biosciences/agentforge.git ../agentforge
+          git -C ../agentforge checkout "${AGENTFORGE_REF}"
 
       - name: Build linked AgentForge
         run: pnpm -C ../agentforge install --frozen-lockfile && pnpm -C ../agentforge build
@@ -203,7 +208,9 @@ jobs:
             foundry-smoke-
 
       - name: Clone AgentForge sibling repo
-        run: git clone --depth 1 https://github.com/Elata-Biosciences/agentforge.git ../agentforge
+        run: |
+          git clone https://github.com/Elata-Biosciences/agentforge.git ../agentforge
+          git -C ../agentforge checkout "${AGENTFORGE_REF}"
 
       - name: Build linked AgentForge
         run: pnpm -C ../agentforge install --frozen-lockfile && pnpm -C ../agentforge build
@@ -253,7 +260,9 @@ jobs:
             sim/pnpm-lock.yaml
 
       - name: Clone AgentForge sibling repo
-        run: git clone --depth 1 https://github.com/Elata-Biosciences/agentforge.git ../agentforge
+        run: |
+          git clone https://github.com/Elata-Biosciences/agentforge.git ../agentforge
+          git -C ../agentforge checkout "${AGENTFORGE_REF}"
 
       - name: Build linked AgentForge
         run: pnpm -C ../agentforge install --frozen-lockfile && pnpm -C ../agentforge build
@@ -287,7 +296,9 @@ jobs:
             sim/pnpm-lock.yaml
 
       - name: Clone AgentForge sibling repo
-        run: git clone --depth 1 https://github.com/Elata-Biosciences/agentforge.git ../agentforge
+        run: |
+          git clone https://github.com/Elata-Biosciences/agentforge.git ../agentforge
+          git -C ../agentforge checkout "${AGENTFORGE_REF}"
 
       - name: Build linked AgentForge
         run: pnpm -C ../agentforge install --frozen-lockfile && pnpm -C ../agentforge build
@@ -330,7 +341,9 @@ jobs:
           version: nightly
 
       - name: Clone AgentForge sibling repo
-        run: git clone --depth 1 https://github.com/Elata-Biosciences/agentforge.git ../agentforge
+        run: |
+          git clone https://github.com/Elata-Biosciences/agentforge.git ../agentforge
+          git -C ../agentforge checkout "${AGENTFORGE_REF}"
 
       - name: Build linked AgentForge
         run: pnpm -C ../agentforge install --frozen-lockfile && pnpm -C ../agentforge build
