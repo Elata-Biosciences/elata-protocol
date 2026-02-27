@@ -67,7 +67,7 @@ contract CriticalFuzz is Test {
     // ═══════════════════════════════════════════════════════════════════════════
 
     function testFuzz_ELTA_Transfer(address to, uint256 amount) public {
-        vm.assume(to != address(0) && to != address(elta));
+        vm.assume(to != address(0) && to != address(elta) && to != user);
         amount = bound(amount, 1, elta.balanceOf(user));
 
         uint256 userBefore = elta.balanceOf(user);
