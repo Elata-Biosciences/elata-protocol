@@ -53,6 +53,17 @@ library NetworkConfig {
             });
         }
 
+        // Ethereum Sepolia Testnet
+        if (chainId == 11155111) {
+            return Config({
+                uniswapV2Router: 0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3,
+                uniswapV2Factory: 0xF62c03E08ada871A0bEb309762E260a7a6a880E6,
+                usdc: 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238,
+                weth: 0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14,
+                deployMocks: false
+            });
+        }
+
         // Ethereum Mainnet (for future use)
         if (chainId == 1) {
             return Config({

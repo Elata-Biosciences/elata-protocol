@@ -44,6 +44,11 @@ contract VestingHandler is CommonBase, StdCheats, StdUtils {
         // Bound to reasonable range: 1 second to 5 years
         secondsToWarp = bound(secondsToWarp, 1, 365 days * 5);
 
+        // Keep handler timestamp synchronized with chain time so we never warp backwards.
+        if (ghost_currentTimestamp < block.timestamp) {
+            ghost_currentTimestamp = block.timestamp;
+        }
+
         ghost_currentTimestamp += secondsToWarp;
         vm.warp(ghost_currentTimestamp);
         ghost_timeWarpCount++;

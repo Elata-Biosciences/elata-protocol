@@ -1,5 +1,5 @@
 #!/bin/bash
-# Base Sepolia Post-Deployment Verification Script
+# Ethereum Sepolia Post-Deployment Verification Script
 # Verifies deployed contracts and their configuration
 
 set -e
@@ -23,16 +23,16 @@ fi
 # Pick a deployment artifact:
 # - arg1 (explicit path) wins
 # - else ELATA_VERIFY_DEPLOYMENT_FILE
-# - else newest tagged base-sepolia-*.json
-# - else legacy base-sepolia-deployment.json
+# - else newest tagged sepolia-*.json
+# - else legacy sepolia-deployment.json
 DEPLOYMENT_FILE="${1:-${ELATA_VERIFY_DEPLOYMENT_FILE:-}}"
 if [ -z "$DEPLOYMENT_FILE" ]; then
-    # Tagged files look like: deployments/base-sepolia-20260219-2359-abc123.json
-    NEWEST_TAGGED=$(ls -1t deployments/base-sepolia-[0-9]*.json 2>/dev/null | head -n 1 || true)
+    # Tagged files look like: deployments/sepolia-20260219-2359-abc123.json
+    NEWEST_TAGGED=$(ls -1t deployments/sepolia-[0-9]*.json 2>/dev/null | head -n 1 || true)
     if [ -n "$NEWEST_TAGGED" ]; then
         DEPLOYMENT_FILE="$NEWEST_TAGGED"
     else
-        DEPLOYMENT_FILE="deployments/base-sepolia-deployment.json"
+        DEPLOYMENT_FILE="deployments/sepolia-deployment.json"
     fi
 fi
 
@@ -95,9 +95,12 @@ echo "  USDC:                    $USDC_ADDRESS"
 echo "  UniswapV2Router:         $UNISWAP_V2_ROUTER"
 echo ""
 
+# Resolve RPC variable (prefer Ethereum Sepolia name; keep Base fallback for compatibility)
+RPC_URL="${SEPOLIA_RPC_URL:-$BASE_SEPOLIA_RPC_URL}"
+
 # Check RPC URL
-if [ -z "$BASE_SEPOLIA_RPC_URL" ]; then
-    echo -e "${RED}Error: BASE_SEPOLIA_RPC_URL not set${NC}"
+if [ -z "$RPC_URL" ]; then
+    echo -e "${RED}Error: SEPOLIA_RPC_URL not set${NC}"
     exit 1
 fi
 
@@ -125,7 +128,7 @@ check_contract_exists() {
     fi
     
     echo -n "Checking $name... "
-    local code=$(cast code "$address" --rpc-url "$BASE_SEPOLIA_RPC_URL")
+    local code=$(cast code "$address" --rpc-url "$RPC_URL")
     if [ "$code" = "0x" ]; then
         echo -e "${RED}FAILED${NC} (no code at address)"
         return 1
@@ -133,6 +136,11 @@ check_contract_exists() {
         echo -e "${GREEN}OK${NC}"
         return 0
     fi
+}
+
+# Normalize cast scalar output (strip any trailing annotations like "[7.7e25]")
+normalize_cast_uint() {
+    echo "$1" | awk '{print $1}'
 }
 
 # Check all contracts exist
@@ -155,7 +163,8 @@ echo ""
 
 # Check ELTA total supply
 echo -n "Checking ELTA total supply... "
-TOTAL_SUPPLY=$(cast call "$ELTA_ADDRESS" "totalSupply()(uint256)" --rpc-url "$BASE_SEPOLIA_RPC_URL")
+TOTAL_SUPPLY_RAW=$(cast call "$ELTA_ADDRESS" "totalSupply()(uint256)" --rpc-url "$RPC_URL")
+TOTAL_SUPPLY=$(normalize_cast_uint "$TOTAL_SUPPLY_RAW")
 EXPECTED_SUPPLY="77000000000000000000000000" # 77,000,000 * 10^18
 if [ "$TOTAL_SUPPLY" = "$EXPECTED_SUPPLY" ]; then
     echo -e "${GREEN}OK${NC} (77,000,000 ELTA)"
@@ -166,7 +175,8 @@ fi
 # Check treasury balance
 if [ -n "$TREASURY" ]; then
     echo -n "Checking treasury ELTA balance... "
-    TREASURY_BALANCE=$(cast call "$ELTA_ADDRESS" "balanceOf(address)(uint256)" "$TREASURY" --rpc-url "$BASE_SEPOLIA_RPC_URL")
+    TREASURY_BALANCE_RAW=$(cast call "$ELTA_ADDRESS" "balanceOf(address)(uint256)" "$TREASURY" --rpc-url "$RPC_URL")
+    TREASURY_BALANCE=$(normalize_cast_uint "$TREASURY_BALANCE_RAW")
     if [ "$TREASURY_BALANCE" = "$EXPECTED_SUPPLY" ]; then
         echo -e "${GREEN}OK${NC} (77,000,000 ELTA)"
     else
@@ -180,7 +190,7 @@ if [[ "$FEE_SWAPPER_ADDRESS" =~ ^0x[a-fA-F0-9]{40}$ ]]; then
     echo "FeeSwapper Configuration:"
 
     echo -n "  governance == timelock... "
-    GOV=$(cast call "$FEE_SWAPPER_ADDRESS" "governance()(address)" --rpc-url "$BASE_SEPOLIA_RPC_URL")
+    GOV=$(cast call "$FEE_SWAPPER_ADDRESS" "governance()(address)" --rpc-url "$RPC_URL")
     if [ "$(echo "$GOV" | tr '[:upper:]' '[:lower:]')" = "$(echo "$TIMELOCK_ADDRESS" | tr '[:upper:]' '[:lower:]')" ]; then
         echo -e "${GREEN}OK${NC}"
     else
@@ -188,7 +198,7 @@ if [[ "$FEE_SWAPPER_ADDRESS" =~ ^0x[a-fA-F0-9]{40}$ ]]; then
     fi
 
     echo -n "  defaultTreasuryTakeBps == 2000... "
-    TAKE=$(cast call "$FEE_SWAPPER_ADDRESS" "defaultTreasuryTakeBps()(uint16)" --rpc-url "$BASE_SEPOLIA_RPC_URL")
+    TAKE=$(cast call "$FEE_SWAPPER_ADDRESS" "defaultTreasuryTakeBps()(uint16)" --rpc-url "$RPC_URL")
     if [ "$TAKE" = "2000" ]; then
         echo -e "${GREEN}OK${NC}"
     else
@@ -197,7 +207,7 @@ if [[ "$FEE_SWAPPER_ADDRESS" =~ ^0x[a-fA-F0-9]{40}$ ]]; then
 
     if [[ "$UNISWAP_V2_ROUTER" =~ ^0x[a-fA-F0-9]{40}$ ]]; then
         echo -n "  router allowlisted... "
-        ALLOWED=$(cast call "$FEE_SWAPPER_ADDRESS" "isRouterAllowed(address)(bool)" "$UNISWAP_V2_ROUTER" --rpc-url "$BASE_SEPOLIA_RPC_URL")
+        ALLOWED=$(cast call "$FEE_SWAPPER_ADDRESS" "isRouterAllowed(address)(bool)" "$UNISWAP_V2_ROUTER" --rpc-url "$RPC_URL")
         if [ "$ALLOWED" = "true" ]; then
             echo -e "${GREEN}OK${NC}"
         else
@@ -209,7 +219,7 @@ fi
 # ContentStoreFactory wiring check
 if [[ "$CONTENT_STORE_FACTORY_ADDRESS" =~ ^0x[a-fA-F0-9]{40}$ ]] && [[ "$FEE_SWAPPER_ADDRESS" =~ ^0x[a-fA-F0-9]{40}$ ]]; then
     echo -n "Checking ContentStoreFactory.feeSwapper == FeeSwapper... "
-    CSF_FS=$(cast call "$CONTENT_STORE_FACTORY_ADDRESS" "feeSwapper()(address)" --rpc-url "$BASE_SEPOLIA_RPC_URL")
+    CSF_FS=$(cast call "$CONTENT_STORE_FACTORY_ADDRESS" "feeSwapper()(address)" --rpc-url "$RPC_URL")
     if [ "$(echo "$CSF_FS" | tr '[:upper:]' '[:lower:]')" = "$(echo "$FEE_SWAPPER_ADDRESS" | tr '[:upper:]' '[:lower:]')" ]; then
         echo -e "${GREEN}OK${NC}"
     else
@@ -223,13 +233,13 @@ if [ -n "$MULTISIG" ]; then
 
     if [[ "$VE_ELTA_ADDRESS" =~ ^0x[a-fA-F0-9]{40}$ ]]; then
         echo -n "Checking multisig admin role on VeELTA... "
-        HAS_ROLE=$(cast call "$VE_ELTA_ADDRESS" "hasRole(bytes32,address)(bool)" "$DEFAULT_ADMIN_ROLE" "$MULTISIG" --rpc-url "$BASE_SEPOLIA_RPC_URL")
+        HAS_ROLE=$(cast call "$VE_ELTA_ADDRESS" "hasRole(bytes32,address)(bool)" "$DEFAULT_ADMIN_ROLE" "$MULTISIG" --rpc-url "$RPC_URL")
         if [ "$HAS_ROLE" = "true" ]; then echo -e "${GREEN}OK${NC}"; else echo -e "${RED}FAILED${NC}"; fi
     fi
 
     if [[ "$ELATA_XP_ADDRESS" =~ ^0x[a-fA-F0-9]{40}$ ]]; then
         echo -n "Checking multisig admin role on ElataPoints... "
-        HAS_ROLE=$(cast call "$ELATA_XP_ADDRESS" "hasRole(bytes32,address)(bool)" "$DEFAULT_ADMIN_ROLE" "$MULTISIG" --rpc-url "$BASE_SEPOLIA_RPC_URL")
+        HAS_ROLE=$(cast call "$ELATA_XP_ADDRESS" "hasRole(bytes32,address)(bool)" "$DEFAULT_ADMIN_ROLE" "$MULTISIG" --rpc-url "$RPC_URL")
         if [ "$HAS_ROLE" = "true" ]; then echo -e "${GREEN}OK${NC}"; else echo -e "${RED}FAILED${NC}"; fi
     fi
 fi
@@ -240,8 +250,8 @@ echo "  Verification Complete"
 echo "=================================================="
 echo ""
 echo "Please manually verify:"
-echo "  1. All contracts are verified on BaseScan"
-echo "     https://sepolia.basescan.org/address/$ELTA_ADDRESS"
+echo "  1. All contracts are verified on Etherscan (Sepolia)"
+echo "     https://sepolia.etherscan.io/address/$ELTA_ADDRESS"
 echo "  2. Multisig has no unexpected permissions"
 echo "  3. No ELTA tokens in deployer wallet"
 echo ""

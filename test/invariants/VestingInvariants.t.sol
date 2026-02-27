@@ -59,13 +59,22 @@ contract VestingInvariants is Test {
 
         // Target the handler
         targetContract(address(handler));
+
+        // Restrict fuzzed calls to vesting handler actions only.
+        bytes4[] memory selectors = new bytes4[](4);
+        selectors[0] = VestingHandler.warpTime.selector;
+        selectors[1] = VestingHandler.release.selector;
+        selectors[2] = VestingHandler.changeBeneficiary.selector;
+        selectors[3] = VestingHandler.multipleReleases.selector;
+        targetSelector(FuzzSelector({addr: address(handler), selectors: selectors}));
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
     // INVARIANT: Total released never exceeds total vested
     // ═══════════════════════════════════════════════════════════════════════════
 
-    function invariant_TotalReleasedNeverExceedsVested() public view {
+    function invariant_TotalReleasedNeverExceedsVested() public {
+        _syncTimestampToHandler();
         uint256 released = vestingWallet.released();
         uint256 vested = vestingWallet.vestedAmount();
 
@@ -93,7 +102,8 @@ contract VestingInvariants is Test {
     // INVARIANT: Nothing releasable before cliff
     // ═══════════════════════════════════════════════════════════════════════════
 
-    function invariant_NothingReleasableBeforeCliff() public view {
+    function invariant_NothingReleasableBeforeCliff() public {
+        _syncTimestampToHandler();
         if (handler.isBeforeCliff()) {
             uint256 releasable = vestingWallet.releasable();
             assertEq(releasable, 0, "Tokens releasable before cliff");
@@ -104,7 +114,8 @@ contract VestingInvariants is Test {
     // INVARIANT: Fully vested after duration completes
     // ═══════════════════════════════════════════════════════════════════════════
 
-    function invariant_FullyVestedAfterDuration() public view {
+    function invariant_FullyVestedAfterDuration() public {
+        _syncTimestampToHandler();
         if (handler.isAfterFullVesting()) {
             uint256 totalAllocation = handler.getTotalAllocation();
             uint256 vested = vestingWallet.vestedAmount();
@@ -147,7 +158,8 @@ contract VestingInvariants is Test {
     // INVARIANT: Releasable = vested - released
     // ═══════════════════════════════════════════════════════════════════════════
 
-    function invariant_ReleasableEqualsVestedMinusReleased() public view {
+    function invariant_ReleasableEqualsVestedMinusReleased() public {
+        _syncTimestampToHandler();
         uint256 releasable = vestingWallet.releasable();
         uint256 vested = vestingWallet.vestedAmount();
         uint256 released = vestingWallet.released();
@@ -170,7 +182,8 @@ contract VestingInvariants is Test {
     // DEBUG HELPER
     // ═══════════════════════════════════════════════════════════════════════════
 
-    function invariant_callSummary() public view {
+    function invariant_callSummary() public {
+        _syncTimestampToHandler();
         console2.log("Vesting Invariant Call Summary:");
         console2.log("  Time warp count:", handler.ghost_timeWarpCount());
         console2.log("  Release call count:", handler.ghost_releaseCallCount());
@@ -184,10 +197,18 @@ contract VestingInvariants is Test {
         console2.log("  Is after full vesting:", handler.isAfterFullVesting());
     }
 
+    function _syncTimestampToHandler() internal {
+        uint256 handlerTimestamp = handler.ghost_currentTimestamp();
+        if (block.timestamp < handlerTimestamp) {
+            vm.warp(handlerTimestamp);
+        }
+    }
+
     // =========== Post-Campaign Analysis ===========
 
     /// @notice Called after each invariant run to verify all tokens can be claimed
     function afterInvariant() public {
+        uint256 snapshotId = vm.snapshot();
         console2.log("\n=== Vesting Post-Campaign ===");
 
         // Warp to after full vesting
@@ -214,5 +235,8 @@ contract VestingInvariants is Test {
 
         // After full vesting, everything should be released
         assertEq(vestingWallet.releasable(), 0, "Tokens still releasable after claim");
+
+        // Preserve campaign state for subsequent invariant runs/replays.
+        vm.revertTo(snapshotId);
     }
 }
