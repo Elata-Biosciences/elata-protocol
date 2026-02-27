@@ -89,6 +89,8 @@
     "llm:governance-gossip:deterministic": "tsx scenarios/llm/governance-gossip-coordination.ts",
     "llm:adversarial-rumor:deterministic": "tsx scenarios/llm/adversarial-rumor-coordination.ts",
     "llm:persona-matrix:deterministic": "tsx scenarios/llm/persona-matrix.ts",
+    "llm:stability:governance": "SIM_RUN_TAG=stable_a tsx scenarios/llm/governance-gossip-coordination.ts && SIM_RUN_TAG=stable_b tsx scenarios/llm/governance-gossip-coordination.ts && tsx scripts/validate-llm-consistency.ts --scenario llm-governance-gossip-coordination --tag-a stable_a --tag-b stable_b",
+    "llm:smoke": "npm run llm:governance-gossip:deterministic && npm run llm:adversarial-rumor:deterministic && npm run llm:persona-matrix:deterministic && npm run results:validate:gossip && npm run results:validate:persona && npm run llm:stability:governance",
     "llm:all": "npm run llm:governance-gossip && npm run llm:adversarial-rumor && npm run llm:persona-matrix",
     "protocol:fast": "npm run smoke:all && npm run smoke:veelta && npm run smoke:governance && npm run smoke:adversarial && npm run smoke:usdc-revenue && npm run integration:rewards",
     "protocol:deep": "npm run smoke:extended && npm run smoke:edge-cases && npm run smoke:agents && npm run integration:all && npm run economic:all && npm run stress:all",

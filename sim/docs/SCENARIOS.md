@@ -13,6 +13,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SimulationEngine, createLogger, defineScenario } from 'agentforge';
 import { BasicUserAgent, DeveloperAgent } from '../../agents/index.js';
+import { scenarioCiMode, scenarioOutDir, scenarioSeed } from '../../lib/index.js';
 import { createEltaPack } from '../../packs/EltaPack.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -26,7 +27,7 @@ const pack = createEltaPack({
 
 const scenario = defineScenario({
   name: 'my-scenario',
-  seed: 42,
+  seed: scenarioSeed(42),
   ticks: 30,
   tickSeconds: 3600,
   pack,
@@ -125,8 +126,8 @@ async function main(): Promise<void> {
   const engine = new SimulationEngine({ logger });
 
   const result = await engine.run(scenario, {
-    outDir: './results/my-scenario',
-    ci: true,
+    outDir: scenarioOutDir('./results/my-scenario'),
+    ci: scenarioCiMode(true),
   });
 
   console.log(`Result: ${result.success ? 'PASS' : 'FAIL'}`);

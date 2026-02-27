@@ -161,6 +161,49 @@ ${markdownList(successCriteria)}
         dataset: 'metrics_core',
         limit: 5000,
       },
+      {
+        kind: 'dataset',
+        as: 'action_mix',
+        title: 'Action Mix',
+        table: 'actions',
+        spec: {
+          v: 'v1',
+          groupBy: ['action.name'],
+          aggregates: [{ as: 'action_count', op: 'count' }],
+          sort: { field: 'action_count', dir: 'desc' },
+          limit: 500,
+        },
+      },
+      {
+        kind: 'chart',
+        title: 'Action Mix (Donut)',
+        chartType: 'donut',
+        dataset: 'action_mix',
+        xField: 'action.name',
+        yField: 'action_count',
+      },
+      {
+        kind: 'dataset',
+        as: 'gossip_intents',
+        title: 'Gossip Intent Mix',
+        table: 'actions',
+        spec: {
+          v: 'v1',
+          filters: [{ field: 'action.name', op: 'eq', value: 'PostMessage' }],
+          groupBy: ['action.params.intentTag'],
+          aggregates: [{ as: 'post_count', op: 'count' }],
+          sort: { field: 'post_count', dir: 'desc' },
+          limit: 100,
+        },
+      },
+      {
+        kind: 'chart',
+        title: 'Gossip Intent Mix (Bar)',
+        chartType: 'bar',
+        dataset: 'gossip_intents',
+        xField: 'action.params.intentTag',
+        yField: 'post_count',
+      },
       ...(includePersonaQuality
         ? [
             {

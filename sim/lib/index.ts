@@ -100,4 +100,10 @@ export {
 } from './scenario-helpers.js';
 
 export { createNotebookReport } from './studio-report.js';
-export { anvilPort, scenarioSeed } from './runtime-config.js';
+export {
+  anvilPort,
+  anvilTimestamp,
+  scenarioCiMode,
+  scenarioOutDir,
+  scenarioSeed,
+} from './runtime-config.js';

@@ -50,6 +50,8 @@ export interface EltaPackConfig {
   protocolPath: string;
   /** Port for Anvil (default: 8545) */
   anvilPort?: number;
+  /** Optional fixed Anvil genesis timestamp for deterministic runs */
+  anvilTimestamp?: number;
   /** Initial ELTA supply to mint */
   initialEltaSupply?: bigint;
   /** Initial ETH balance per agent */
@@ -253,6 +255,7 @@ export class EltaPack implements Pack {
     const baseConfig = {
       protocolPath: config.protocolPath,
       anvilPort: config.anvilPort ?? 8545,
+      anvilTimestamp: config.anvilTimestamp ?? 1_700_000_000,
       initialEltaSupply: config.initialEltaSupply ?? parseEther('10000000'),
       agentEthBalance: config.agentEthBalance ?? parseEther('1000'),
       agentEltaBalance: config.agentEltaBalance ?? parseEther('10000'),
@@ -310,6 +313,7 @@ export class EltaPack implements Pack {
     console.log(`Spawning Anvil on port ${this.config.anvilPort}...`);
     this.anvil = await spawnAnvil({
       port: this.config.anvilPort,
+      timestamp: this.config.anvilTimestamp,
       chainId: 31337,
       accounts: 100, // Enough accounts for deployer + many agents
       balance: parseEther('100000'), // 100k ETH per account for deployment

@@ -9,7 +9,14 @@ import {
   LlmGossipCoordinatorAgent,
   SaboteurPersonaAgent,
 } from '../../agents/index.js';
-import { anvilPort, createNotebookReport, scenarioSeed } from '../../lib/index.js';
+import {
+  anvilPort,
+  anvilTimestamp,
+  createNotebookReport,
+  scenarioCiMode,
+  scenarioOutDir,
+  scenarioSeed,
+} from '../../lib/index.js';
 import { createEltaPack } from '../../packs/EltaPack.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -18,6 +25,7 @@ const protocolPath = join(__dirname, '..', '..', '..');
 const pack = createEltaPack({
   protocolPath,
   anvilPort: anvilPort(8602),
+  anvilTimestamp: anvilTimestamp(1_700_008_602),
   silent: true,
 });
 
@@ -101,8 +109,8 @@ async function main(): Promise<void> {
   const logger = createLogger({ level: 'warn', pretty: false });
   const engine = new SimulationEngine({ logger });
   const result = await engine.run(scenario, {
-    outDir: join(__dirname, '..', '..', 'results', 'llm-persona-matrix-autonomy'),
-    ci: true,
+    outDir: scenarioOutDir(join(__dirname, '..', '..', 'results', 'llm-persona-matrix-autonomy')),
+    ci: scenarioCiMode(true),
     memoryCapture: {
       enabled: true,
       sampleEveryTicks: 1,

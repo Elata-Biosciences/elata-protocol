@@ -109,6 +109,26 @@ Mode semantics (Studio Start Run):
 For direct `tsx` scripts above, provider mode is toggled via `LLM_GOSSIP_FORCE_PROVIDER=1`.
 By default, both LLM gossip scenarios now use `OPENAI_API_KEY` + `OPENAI_MODEL` from environment.
 
+#### LLM reliability controls
+
+Provider clients now include retry + timeout behavior for transient API/network failures:
+
+```bash
+export AGENTFORGE_LLM_TIMEOUT_MS=20000
+export AGENTFORGE_LLM_MAX_ATTEMPTS=3
+export AGENTFORGE_LLM_RETRY_BASE_MS=300
+export AGENTFORGE_LLM_RETRY_MAX_MS=2500
+```
+
+Deterministic consistency smoke lane:
+
+```bash
+pnpm run llm:smoke
+```
+
+This runs deterministic LLM scenarios, validates gossip/persona artifacts, and performs a repeat-run
+consistency check for governance-gossip outputs.
+
 ### Persona LLM extension pattern
 
 Persona agents are layered:
