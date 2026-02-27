@@ -1,16 +1,16 @@
 #!/bin/bash
-# Update Vercel Environment Variables with Base Sepolia Contract Addresses
-# This script reads deployment addresses and provides commands to set Vercel env vars
+# Update Vercel Environment Variables with Ethereum Sepolia contract addresses.
+# This script reads deployment artifacts and prints ready-to-run Vercel env commands.
 
 set -e
 
 echo "=================================================="
-echo "  Vercel Environment Variable Generator"
+echo "  Vercel Environment Variable Generator (Sepolia)"
 echo "=================================================="
 echo ""
 
 # Load deployment addresses
-DEPLOYMENT_FILE="deployments/base-sepolia-deployment.json"
+DEPLOYMENT_FILE="${1:-deployments/sepolia-deployment.json}"
 if [ ! -f "$DEPLOYMENT_FILE" ]; then
     echo "Error: Deployment file not found: $DEPLOYMENT_FILE"
     echo "Please run deployment first"
@@ -21,13 +21,17 @@ echo "Reading deployment from $DEPLOYMENT_FILE..."
 echo ""
 
 # Extract addresses
-ELTA_ADDRESS=$(grep '"ELTA"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
-VE_ELTA_ADDRESS=$(grep '"VeELTA"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
-ELATA_XP_ADDRESS=$(grep '"ElataPoints"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
-APP_FACTORY_ADDRESS=$(grep '"AppFactory"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
-APP_MODULE_FACTORY_ADDRESS=$(grep '"AppModuleFactory"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
-REWARDS_DIST_ADDRESS=$(grep '"RewardsDistributor"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
-APP_REWARDS_DIST_ADDRESS=$(grep '"AppRewardsDistributor"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
+ELTA_ADDRESS=$(rg '"ELTA"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
+VE_ELTA_ADDRESS=$(rg '"VeELTA"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
+ELATA_XP_ADDRESS=$(rg '"ElataPoints"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
+APP_FACTORY_ADDRESS=$(rg '"AppFactory"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
+APP_REGISTRY_ADDRESS=$(rg '"AppRegistry"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
+FEE_COLLECTOR_ADDRESS=$(rg '"FeeCollector"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
+FEE_SWAPPER_ADDRESS=$(rg '"FeeSwapper"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
+CONTRIBUTOR_SPLIT_FACTORY_ADDRESS=$(rg '"ContributorSplitFactory"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
+PROTOCOL_CONFIG_ADDRESS=$(rg '"ProtocolConfig"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
+ELATA_GOVERNOR_ADDRESS=$(rg '"ElataGovernor"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
+ELATA_TIMELOCK_ADDRESS=$(rg '"ElataTimelock"' "$DEPLOYMENT_FILE" | sed 's/.*: "\(0x[^"]*\)".*/\1/')
 
 echo "=================================================="
 echo "  Copy these commands to update Vercel env vars"
@@ -40,13 +44,19 @@ echo "# Set environment variables (scope: development, preview)"
 echo ""
 
 cat << EOF
-vercel env add NEXT_PUBLIC_ELTA_ADDRESS_BASE_SEPOLIA development preview <<< "$ELTA_ADDRESS"
-vercel env add NEXT_PUBLIC_APP_FACTORY_ADDRESS_BASE_SEPOLIA development preview <<< "$APP_FACTORY_ADDRESS"
-vercel env add NEXT_PUBLIC_APP_MODULE_FACTORY_ADDRESS_BASE_SEPOLIA development preview <<< "$APP_MODULE_FACTORY_ADDRESS"
-vercel env add NEXT_PUBLIC_REWARDS_DISTRIBUTOR_ADDRESS_BASE_SEPOLIA development preview <<< "$REWARDS_DIST_ADDRESS"
-vercel env add NEXT_PUBLIC_APP_REWARDS_DISTRIBUTOR_ADDRESS_BASE_SEPOLIA development preview <<< "$APP_REWARDS_DIST_ADDRESS"
-vercel env add NEXT_PUBLIC_VE_ELTA_ADDRESS_BASE_SEPOLIA development preview <<< "$VE_ELTA_ADDRESS"
-vercel env add NEXT_PUBLIC_ELATA_XP_ADDRESS_BASE_SEPOLIA development preview <<< "$ELATA_XP_ADDRESS"
+vercel env add NEXT_PUBLIC_CHAIN_ID development preview <<< "11155111"
+vercel env add NEXT_PUBLIC_RPC_SEPOLIA development preview <<< "https://ethereum-sepolia-rpc.publicnode.com"
+vercel env add NEXT_PUBLIC_ELTA_ADDRESS_SEPOLIA development preview <<< "$ELTA_ADDRESS"
+vercel env add NEXT_PUBLIC_APP_FACTORY_ADDRESS_SEPOLIA development preview <<< "$APP_FACTORY_ADDRESS"
+vercel env add NEXT_PUBLIC_APP_REGISTRY_ADDRESS_SEPOLIA development preview <<< "$APP_REGISTRY_ADDRESS"
+vercel env add NEXT_PUBLIC_FEE_COLLECTOR_ADDRESS_SEPOLIA development preview <<< "$FEE_COLLECTOR_ADDRESS"
+vercel env add NEXT_PUBLIC_FEE_SWAPPER_ADDRESS_SEPOLIA development preview <<< "$FEE_SWAPPER_ADDRESS"
+vercel env add NEXT_PUBLIC_CONTRIBUTOR_SPLIT_FACTORY_ADDRESS_SEPOLIA development preview <<< "$CONTRIBUTOR_SPLIT_FACTORY_ADDRESS"
+vercel env add NEXT_PUBLIC_PROTOCOL_CONFIG_ADDRESS_SEPOLIA development preview <<< "$PROTOCOL_CONFIG_ADDRESS"
+vercel env add NEXT_PUBLIC_VE_ELTA_ADDRESS_SEPOLIA development preview <<< "$VE_ELTA_ADDRESS"
+vercel env add NEXT_PUBLIC_ELATA_GOVERNOR_ADDRESS_SEPOLIA development preview <<< "$ELATA_GOVERNOR_ADDRESS"
+vercel env add NEXT_PUBLIC_ELATA_TIMELOCK_ADDRESS_SEPOLIA development preview <<< "$ELATA_TIMELOCK_ADDRESS"
+vercel env add NEXT_PUBLIC_ELATA_XP_ADDRESS_SEPOLIA development preview <<< "$ELATA_XP_ADDRESS"
 EOF
 
 echo ""
@@ -58,17 +68,31 @@ echo "Go to: https://vercel.com/[your-team]/elata-appstore/settings/environment-
 echo ""
 echo "Add these variables with scope 'Preview' and 'Development':"
 echo ""
+echo "NEXT_PUBLIC_CHAIN_ID=11155111"
+echo "NEXT_PUBLIC_RPC_SEPOLIA=https://ethereum-sepolia-rpc.publicnode.com"
+echo "NEXT_PUBLIC_ELTA_ADDRESS_SEPOLIA=$ELTA_ADDRESS"
+echo "NEXT_PUBLIC_APP_FACTORY_ADDRESS_SEPOLIA=$APP_FACTORY_ADDRESS"
+echo "NEXT_PUBLIC_APP_REGISTRY_ADDRESS_SEPOLIA=$APP_REGISTRY_ADDRESS"
+echo "NEXT_PUBLIC_FEE_COLLECTOR_ADDRESS_SEPOLIA=$FEE_COLLECTOR_ADDRESS"
+echo "NEXT_PUBLIC_FEE_SWAPPER_ADDRESS_SEPOLIA=$FEE_SWAPPER_ADDRESS"
+echo "NEXT_PUBLIC_CONTRIBUTOR_SPLIT_FACTORY_ADDRESS_SEPOLIA=$CONTRIBUTOR_SPLIT_FACTORY_ADDRESS"
+echo "NEXT_PUBLIC_PROTOCOL_CONFIG_ADDRESS_SEPOLIA=$PROTOCOL_CONFIG_ADDRESS"
+echo "NEXT_PUBLIC_VE_ELTA_ADDRESS_SEPOLIA=$VE_ELTA_ADDRESS"
+echo "NEXT_PUBLIC_ELATA_GOVERNOR_ADDRESS_SEPOLIA=$ELATA_GOVERNOR_ADDRESS"
+echo "NEXT_PUBLIC_ELATA_TIMELOCK_ADDRESS_SEPOLIA=$ELATA_TIMELOCK_ADDRESS"
+echo "NEXT_PUBLIC_ELATA_XP_ADDRESS_SEPOLIA=$ELATA_XP_ADDRESS"
+echo ""
+echo "Optional compatibility vars (if old Base-Sepolia keys are still used):"
 echo "NEXT_PUBLIC_ELTA_ADDRESS_BASE_SEPOLIA=$ELTA_ADDRESS"
 echo "NEXT_PUBLIC_APP_FACTORY_ADDRESS_BASE_SEPOLIA=$APP_FACTORY_ADDRESS"
-echo "NEXT_PUBLIC_APP_MODULE_FACTORY_ADDRESS_BASE_SEPOLIA=$APP_MODULE_FACTORY_ADDRESS"
-echo "NEXT_PUBLIC_REWARDS_DISTRIBUTOR_ADDRESS_BASE_SEPOLIA=$REWARDS_DIST_ADDRESS"
-echo "NEXT_PUBLIC_APP_REWARDS_DISTRIBUTOR_ADDRESS_BASE_SEPOLIA=$APP_REWARDS_DIST_ADDRESS"
+echo "NEXT_PUBLIC_APP_REGISTRY_ADDRESS_BASE_SEPOLIA=$APP_REGISTRY_ADDRESS"
+echo "NEXT_PUBLIC_FEE_COLLECTOR_ADDRESS_BASE_SEPOLIA=$FEE_COLLECTOR_ADDRESS"
+echo "NEXT_PUBLIC_FEE_SWAPPER_ADDRESS_BASE_SEPOLIA=$FEE_SWAPPER_ADDRESS"
+echo "NEXT_PUBLIC_CONTRIBUTOR_SPLIT_FACTORY_ADDRESS_BASE_SEPOLIA=$CONTRIBUTOR_SPLIT_FACTORY_ADDRESS"
+echo "NEXT_PUBLIC_PROTOCOL_CONFIG_ADDRESS_BASE_SEPOLIA=$PROTOCOL_CONFIG_ADDRESS"
 echo "NEXT_PUBLIC_VE_ELTA_ADDRESS_BASE_SEPOLIA=$VE_ELTA_ADDRESS"
+echo "NEXT_PUBLIC_ELATA_GOVERNOR_ADDRESS_BASE_SEPOLIA=$ELATA_GOVERNOR_ADDRESS"
+echo "NEXT_PUBLIC_ELATA_TIMELOCK_ADDRESS_BASE_SEPOLIA=$ELATA_TIMELOCK_ADDRESS"
 echo "NEXT_PUBLIC_ELATA_XP_ADDRESS_BASE_SEPOLIA=$ELATA_XP_ADDRESS"
-echo ""
-echo "Also add these if not already set:"
-echo "NEXT_PUBLIC_ENVIRONMENT=dev"
-echo "NEXT_PUBLIC_CHAIN_ID=84532"
-echo "NEXT_PUBLIC_RPC_BASE_SEPOLIA=https://sepolia.base.org"
 echo ""
 
