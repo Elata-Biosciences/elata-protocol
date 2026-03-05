@@ -17,7 +17,6 @@ on:
 
 env:
   FOUNDRY_PROFILE: ci
-  AGENTFORGE_REF: 400b09dff0ddfaf21879f81d30d72553f5cb5657
 
 jobs:
   protocol-fast:
@@ -60,15 +59,7 @@ jobs:
           restore-keys: |
             foundry-smoke-
 
-      - name: Clone AgentForge sibling repo
-        run: |
-          git clone https://github.com/Elata-Biosciences/agentforge.git ../agentforge
-          git -C ../agentforge checkout "${AGENTFORGE_REF}"
-
-      - name: Build linked AgentForge
-        run: pnpm -C ../agentforge install --frozen-lockfile && pnpm -C ../agentforge build
-
-      - name: Install simulation dependencies (linked)
+      - name: Install simulation dependencies
         run: pnpm -C sim install --frozen-lockfile
 
       - name: Build contracts
@@ -135,15 +126,7 @@ jobs:
             foundry-integration-
             foundry-smoke-
 
-      - name: Clone AgentForge sibling repo
-        run: |
-          git clone https://github.com/Elata-Biosciences/agentforge.git ../agentforge
-          git -C ../agentforge checkout "${AGENTFORGE_REF}"
-
-      - name: Build linked AgentForge
-        run: pnpm -C ../agentforge install --frozen-lockfile && pnpm -C ../agentforge build
-
-      - name: Install simulation dependencies (linked)
+      - name: Install simulation dependencies
         run: pnpm -C sim install --frozen-lockfile
 
       - name: Build contracts
@@ -209,15 +192,7 @@ jobs:
             foundry-integration-
             foundry-smoke-
 
-      - name: Clone AgentForge sibling repo
-        run: |
-          git clone https://github.com/Elata-Biosciences/agentforge.git ../agentforge
-          git -C ../agentforge checkout "${AGENTFORGE_REF}"
-
-      - name: Build linked AgentForge
-        run: pnpm -C ../agentforge install --frozen-lockfile && pnpm -C ../agentforge build
-
-      - name: Install simulation dependencies (linked)
+      - name: Install simulation dependencies
         run: pnpm -C sim install --frozen-lockfile
 
       - name: Build contracts
@@ -261,15 +236,7 @@ jobs:
           cache-dependency-path: |
             sim/pnpm-lock.yaml
 
-      - name: Clone AgentForge sibling repo
-        run: |
-          git clone https://github.com/Elata-Biosciences/agentforge.git ../agentforge
-          git -C ../agentforge checkout "${AGENTFORGE_REF}"
-
-      - name: Build linked AgentForge
-        run: pnpm -C ../agentforge install --frozen-lockfile && pnpm -C ../agentforge build
-
-      - name: Install simulation dependencies (linked)
+      - name: Install simulation dependencies
         run: pnpm -C sim install --frozen-lockfile
 
       - name: Run typecheck
@@ -298,15 +265,7 @@ jobs:
           cache-dependency-path: |
             sim/pnpm-lock.yaml
 
-      - name: Clone AgentForge sibling repo
-        run: |
-          git clone https://github.com/Elata-Biosciences/agentforge.git ../agentforge
-          git -C ../agentforge checkout "${AGENTFORGE_REF}"
-
-      - name: Build linked AgentForge
-        run: pnpm -C ../agentforge install --frozen-lockfile && pnpm -C ../agentforge build
-
-      - name: Install simulation dependencies (linked)
+      - name: Install simulation dependencies
         run: pnpm -C sim install --frozen-lockfile
 
       - name: Run lint
@@ -343,15 +302,7 @@ jobs:
         with:
           version: nightly
 
-      - name: Clone AgentForge sibling repo
-        run: |
-          git clone https://github.com/Elata-Biosciences/agentforge.git ../agentforge
-          git -C ../agentforge checkout "${AGENTFORGE_REF}"
-
-      - name: Build linked AgentForge
-        run: pnpm -C ../agentforge install --frozen-lockfile && pnpm -C ../agentforge build
-
-      - name: Install simulation dependencies (linked)
+      - name: Install simulation dependencies
         run: pnpm -C sim install --frozen-lockfile
 
       - name: Build contracts

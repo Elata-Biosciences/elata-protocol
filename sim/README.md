@@ -15,17 +15,12 @@ The simulation framework validates protocol economics by deploying actual contra
 ## Quick Start
 
 ```bash
-# Build local AgentForge (linked dependency at ../../agentforge)
-pnpm -C ../../agentforge build
-
-# Install dependencies
+# Install dependencies (pulls @elata-biosciences/agentforge from npm)
 pnpm install
 
 # Run smoke tests (validates basic functionality)
 pnpm run smoke:all
 ```
-
-`sim` now links AgentForge from the local sibling repo (`link:../../agentforge`). Rebuild AgentForge after pulling upstream changes.
 
 ## Three-Tier Simulation Guide
 

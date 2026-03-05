@@ -107,7 +107,7 @@
     "clean": "rm -rf dist results generated/*.ts"
   },
   "dependencies": {
-    "@elata-biosciences/agentforge": "link:../../agentforge",
+    "@elata-biosciences/agentforge": "^0.2.0",
     "viem": "^2.21.0"
   },
   "devDependencies": {
