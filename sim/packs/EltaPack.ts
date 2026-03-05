@@ -740,7 +740,7 @@ export class EltaPack implements Pack {
         {
           name: 'PostMessage',
           description: 'Broadcast to gossip channel',
-          exampleParams: { channelId: 'global', text: 'signal', intentTag: 'inform' },
+          exampleParams: { channelId: 'global', text: 'signal' },
         },
       ],
     };
