@@ -60,7 +60,7 @@ jobs:
             foundry-smoke-
 
       - name: Install simulation dependencies
-        run: pnpm -C sim install --frozen-lockfile
+        run: pnpm -C sim install
 
       - name: Build contracts
         run: forge build src/ --sizes
@@ -127,7 +127,7 @@ jobs:
             foundry-smoke-
 
       - name: Install simulation dependencies
-        run: pnpm -C sim install --frozen-lockfile
+        run: pnpm -C sim install
 
       - name: Build contracts
         run: forge build src/ --sizes
@@ -193,7 +193,7 @@ jobs:
             foundry-smoke-
 
       - name: Install simulation dependencies
-        run: pnpm -C sim install --frozen-lockfile
+        run: pnpm -C sim install
 
       - name: Build contracts
         run: forge build src/ --sizes
@@ -237,7 +237,7 @@ jobs:
             sim/pnpm-lock.yaml
 
       - name: Install simulation dependencies
-        run: pnpm -C sim install --frozen-lockfile
+        run: pnpm -C sim install
 
       - name: Run typecheck
         run: pnpm -C sim run typecheck
@@ -266,7 +266,7 @@ jobs:
             sim/pnpm-lock.yaml
 
       - name: Install simulation dependencies
-        run: pnpm -C sim install --frozen-lockfile
+        run: pnpm -C sim install
 
       - name: Run lint
         run: pnpm -C sim run lint || echo "Lint warnings found (non-blocking)"
@@ -303,7 +303,7 @@ jobs:
           version: nightly
 
       - name: Install simulation dependencies
-        run: pnpm -C sim install --frozen-lockfile
+        run: pnpm -C sim install
 
       - name: Build contracts
         run: forge build --sizes
