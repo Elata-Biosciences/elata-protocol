@@ -24,7 +24,7 @@ export class HackerPersonaAgent extends BaseElataPersonaLlmAgent {
       name: 'RpcCall',
       params: { method, params },
       rationale: 'Continuously probe low-level chain state for anomalies.',
-      metadata: { intentTag: 'hacker', confidence: 0.68 },
+      metadata: { confidence: 0.68 },
     };
   }
 }

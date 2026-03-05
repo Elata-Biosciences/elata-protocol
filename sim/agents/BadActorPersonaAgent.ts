@@ -25,13 +25,13 @@ export class BadActorPersonaAgent extends BaseElataPersonaLlmAgent {
         name: 'RpcCall',
         params: { method: 'eth_blockNumber', params: [] },
         rationale: 'Probe chain state before choosing manipulation target.',
-        metadata: { intentTag: 'bad_actor', confidence: 0.55 },
+        metadata: { confidence: 0.55 },
       };
     }
 
     const buyAmount = BigInt(75e18);
     if (!this.hasEnoughElta(buyAmount)) {
-      return { name: 'noop', params: { reason: 'bad_actor_no_budget' }, metadata: { intentTag: 'bad_actor' } };
+      return { name: 'noop', params: { reason: 'bad_actor_no_budget' } };
     }
     const buy = buyAppToken(String(target.id), target.tokenAddress, buyAmount);
     return {
@@ -43,7 +43,7 @@ export class BadActorPersonaAgent extends BaseElataPersonaLlmAgent {
         minTokensOut: buy.minTokensOut,
       },
       rationale: 'Push price quickly to create short-term dislocation.',
-      metadata: { intentTag: 'bad_actor', confidence: 0.72 },
+      metadata: { confidence: 0.72 },
     };
   }
 }

@@ -21,7 +21,7 @@ export class CreatorPersonaAgent extends BaseElataPersonaLlmAgent {
   protected getFallbackIntent(ctx: TickContext) {
     const world = this.getWorldState();
     if (world.appCount >= 18 || ctx.tick % 2 !== 0) {
-      return { name: 'noop', params: { reason: 'creator_wait' }, metadata: { intentTag: 'creator' } };
+      return { name: 'noop', params: { reason: 'creator_wait' } };
     }
     const suffix = `${this.id}-${ctx.tick}`;
     const action = createApp(`PersonaApp-${suffix}`, `PA${ctx.tick % 100}`, `ipfs://persona/${suffix}`);
@@ -33,7 +33,7 @@ export class CreatorPersonaAgent extends BaseElataPersonaLlmAgent {
         metadataUri: action.metadataUri,
       },
       rationale: 'Expand protocol surface with a fresh app launch.',
-      metadata: { intentTag: 'creator', confidence: 0.7 },
+      metadata: { confidence: 0.7 },
     };
   }
 }

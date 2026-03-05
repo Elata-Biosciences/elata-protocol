@@ -65,10 +65,9 @@ class GossipHarness extends BaseElataPersonaLlmAgent {
       params: {
         channelId: 'global',
         text: 'state changed',
-        intentTag: 'inform',
       },
       rationale: 'share signal',
-      metadata: { personaId: 'gossip-test', intentTag: 'inform', confidence: 0.6 },
+      metadata: { personaId: 'gossip-test', confidence: 0.6 },
     };
   }
 
@@ -91,7 +90,7 @@ class LlmGuardrailHarness extends BaseElataPersonaLlmAgent {
     return {
       name: 'noop',
       params: { reason: 'fallback_unused' },
-      metadata: { personaId: 'guardrail-test', intentTag: 'observer' },
+      metadata: { personaId: 'guardrail-test' },
     };
   }
 
@@ -158,7 +157,6 @@ test('persona fallback can emit PostMessage with normalized intent metadata', as
   setAgentBalance(gossip, { elta: BigInt(100e18), veElta: 0n });
   const action = await gossip.step(createTestContext({ tick: 3 }));
   assert.equal(action?.name, 'PostMessage');
-  assert.equal(String((action as Action)?.params?.intentTag ?? ''), 'inform');
   assert.match(getLastReason(gossip), /persona_gossip-test_/);
 });
 
@@ -189,7 +187,7 @@ test('persona action parse salvage keeps valid action and logs diagnostics', asy
       if (calls === 1) {
         return '{"hypothesis":"observe","expectedEffect":"act","preferredActionFamily":"PostMessage","confidence":0.9}';
       }
-      return '{"name":"PostMessage","params":{"channelId":"global","text":"salvaged signal"},"metadata":{"personaId":"guardrail-test","intentTag":"inform","confidence":2}}';
+      return '{"name":"PostMessage","params":{"channelId":"global","text":"salvaged signal"},"metadata":{"personaId":"guardrail-test","confidence":2}}';
     },
   };
   const gossip = {
@@ -253,9 +251,9 @@ test('llm post retry prefers PostMessage when posting is due', async () => {
         return '{"hypothesis":"scan inbox","expectedEffect":"decide","preferredActionFamily":"QueryWorld","confidence":0.7}';
       }
       if (calls === 2) {
-        return '{"name":"QueryWorld","params":{"endpoint":"get_world"},"metadata":{"personaId":"guardrail-test","intentTag":"observer","confidence":0.6}}';
+        return '{"name":"QueryWorld","params":{"endpoint":"get_world"},"metadata":{"personaId":"guardrail-test","confidence":0.6}}';
       }
-      return '{"name":"PostMessage","params":{"channelId":"global","text":"I disagree with prior signal; risk is underestimated","intentTag":"coordinate"},"metadata":{"personaId":"guardrail-test","intentTag":"coordinate","confidence":0.75}}';
+      return '{"name":"PostMessage","params":{"channelId":"global","text":"I disagree with prior signal; risk is underestimated"},"metadata":{"personaId":"guardrail-test","confidence":0.75}}';
     },
   };
   const gossip = {

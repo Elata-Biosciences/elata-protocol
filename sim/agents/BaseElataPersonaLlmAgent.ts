@@ -30,7 +30,7 @@ type ParsedIntent = {
   name: string;
   params: Record<string, unknown>;
   rationale?: string;
-  metadata?: { personaId?: string; intentTag?: string; confidence?: number };
+  metadata?: { personaId?: string; confidence?: number };
 };
 
 type ParsedIntentDiagnostics = {
@@ -243,7 +243,6 @@ export abstract class BaseElataPersonaLlmAgent extends BaseProtocolAgent {
         ),
         worldDelta: observationDelta.slice(0, 240),
         memorySummary: memorySummary.slice(0, 240),
-        intentTag: intent.metadata?.intentTag ?? 'none',
       },
     });
     return action;
@@ -278,7 +277,7 @@ export abstract class BaseElataPersonaLlmAgent extends BaseProtocolAgent {
         : 'Posting cadence can be opportunistic within scenario budgets.',
       stage === 'plan'
         ? 'Return STRICT JSON only: {"hypothesis":"...","target":{"domain":"market|governance|fees|gossip|rpc|other","identifier":"..."},"expectedEffect":"...","preferredActionFamily":"QueryWorld|RpcCall|PostMessage|ContractCall|ContractRead|ProtocolAction","confidence":0.0}'
-        : 'Return STRICT JSON only: {"name":"ActionName","params":{},"rationale":"...","metadata":{"personaId":"...","intentTag":"...","confidence":0.0}}. If postingPolicy.postTargetDue=true in user context, strongly prefer PostMessage with concise persona interpretation (not raw stat dump).',
+        : 'Return STRICT JSON only: {"name":"ActionName","params":{},"rationale":"...","metadata":{"personaId":"...","confidence":0.0}}. If postingPolicy.postTargetDue=true in user context, strongly prefer PostMessage with concise persona interpretation (not raw stat dump).',
     ].join(' ');
   }
 
@@ -389,9 +388,6 @@ export abstract class BaseElataPersonaLlmAgent extends BaseProtocolAgent {
           ? {
               ...(parsed.metadata.personaId !== undefined
                 ? { personaId: parsed.metadata.personaId }
-                : {}),
-              ...(parsed.metadata.intentTag !== undefined
-                ? { intentTag: this.normalizeIntentTag(parsed.metadata.intentTag) }
                 : {}),
               ...(parsed.metadata.confidence !== undefined
                 ? { confidence: parsed.metadata.confidence }
@@ -509,7 +505,6 @@ export abstract class BaseElataPersonaLlmAgent extends BaseProtocolAgent {
   private intentToAction(intent: ParsedIntent, ctx: TickContext, llmSource: string): Action | null {
     const personaMetadata = {
       personaId: intent.metadata?.personaId ?? this.getPersonaProfile().id,
-      ...(intent.metadata?.intentTag ? { intentTag: intent.metadata.intentTag } : {}),
       ...(intent.rationale ? { rationale: intent.rationale } : {}),
       llmSource,
     };
@@ -547,17 +542,12 @@ export abstract class BaseElataPersonaLlmAgent extends BaseProtocolAgent {
       if (text.length === 0) {
         return this.createAction('noop', { type: 'noop', reason: 'empty_gossip_message' }, ctx.tick);
       }
-      const intentTagRaw =
-        typeof intent.params.intentTag === 'string'
-          ? this.normalizeIntentTag(intent.params.intentTag)
-          : 'other';
       const action: Action = {
         id: this.generateActionId('PostMessage', ctx.tick),
         name: 'PostMessage',
         params: {
           channelId,
           text,
-          intentTag: intentTagRaw,
         },
         metadata: personaMetadata,
       };
@@ -643,12 +633,10 @@ export abstract class BaseElataPersonaLlmAgent extends BaseProtocolAgent {
       params: {
         channelId,
         text,
-        intentTag: this.normalizeIntentTag(personaId),
       },
       rationale: 'Share concise world update due to posting guardrail trigger.',
       metadata: {
         personaId,
-        intentTag: this.normalizeIntentTag(personaId),
         confidence: 0.51,
       },
     };
@@ -817,12 +805,6 @@ export abstract class BaseElataPersonaLlmAgent extends BaseProtocolAgent {
     return normalized.slice(start, end + 1);
   }
 
-  private normalizeIntentTag(raw: unknown): string {
-    const tag = String(raw ?? '').trim().toLowerCase();
-    if (!tag) return 'other';
-    return tag;
-  }
-
   private salvageIntent(payload: unknown): ParsedIntent | null {
     if (!payload || typeof payload !== 'object') return null;
     const candidate = payload as Record<string, unknown>;
@@ -841,9 +823,6 @@ export abstract class BaseElataPersonaLlmAgent extends BaseProtocolAgent {
     const metadata = {
       ...(typeof metadataRaw.personaId === 'string' && metadataRaw.personaId.trim().length > 0
         ? { personaId: metadataRaw.personaId.trim() }
-        : {}),
-      ...(metadataRaw.intentTag !== undefined
-        ? { intentTag: this.normalizeIntentTag(metadataRaw.intentTag) }
         : {}),
       ...(typeof metadataRaw.confidence === 'number' &&
       Number.isFinite(metadataRaw.confidence) &&

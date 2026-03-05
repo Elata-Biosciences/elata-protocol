@@ -25,13 +25,13 @@ export class SaboteurPersonaAgent extends BaseElataPersonaLlmAgent {
         name: 'RpcCall',
         params: { method: 'eth_gasPrice', params: [] },
         rationale: 'Sample network conditions before sabotage attempts.',
-        metadata: { intentTag: 'saboteur', confidence: 0.5 },
+        metadata: { confidence: 0.5 },
       };
     }
 
     const held = this.getAppTokenBalance(String(target.id));
     if (held <= 0n) {
-      return { name: 'noop', params: { reason: 'no_inventory_to_dump' }, metadata: { intentTag: 'saboteur' } };
+      return { name: 'noop', params: { reason: 'no_inventory_to_dump' } };
     }
     const sell = sellAppToken(String(target.id), target.tokenAddress, held);
     return {
@@ -43,7 +43,7 @@ export class SaboteurPersonaAgent extends BaseElataPersonaLlmAgent {
         minEltaOut: sell.minEltaOut,
       },
       rationale: 'Dump holdings to trigger volatility.',
-      metadata: { intentTag: 'saboteur', confidence: 0.8 },
+      metadata: { confidence: 0.8 },
     };
   }
 }

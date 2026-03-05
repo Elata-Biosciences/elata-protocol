@@ -135,7 +135,6 @@ export class LlmGossipCoordinatorAgent extends BaseProtocolAgent {
       channelId,
       { text },
       {
-        intentTag: 'inform',
         audience: { type: 'public' },
         credibilityPrior: isLiveProvider ? 0.65 : 0.95,
       }

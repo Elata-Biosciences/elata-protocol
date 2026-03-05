@@ -24,7 +24,7 @@ export class EconomicPersonaAgent extends BaseElataPersonaLlmAgent {
       return {
         name: 'QueryWorld',
         params: { endpoint: this.getQueryEndpointHint(), params: {} },
-        metadata: { intentTag: 'economic', confidence: 0.6 },
+        metadata: { confidence: 0.6 },
       };
     }
 
@@ -40,13 +40,13 @@ export class EconomicPersonaAgent extends BaseElataPersonaLlmAgent {
           minEltaOut: sell.minEltaOut,
         },
         rationale: 'Realize gains and rebalance exposure.',
-        metadata: { intentTag: 'economic', confidence: 0.65 },
+        metadata: { confidence: 0.65 },
       };
     }
 
     const buyAmount = BigInt(40e18);
     if (!this.hasEnoughElta(buyAmount)) {
-      return { name: 'noop', params: { reason: 'reserve_preservation' }, metadata: { intentTag: 'economic' } };
+      return { name: 'noop', params: { reason: 'reserve_preservation' } };
     }
     const buy = buyAppToken(String(target.id), target.tokenAddress, buyAmount);
     return {
@@ -58,7 +58,7 @@ export class EconomicPersonaAgent extends BaseElataPersonaLlmAgent {
         minTokensOut: buy.minTokensOut,
       },
       rationale: 'Allocate ELTA into active app market.',
-      metadata: { intentTag: 'economic', confidence: 0.7 },
+      metadata: { confidence: 0.7 },
     };
   }
 }
