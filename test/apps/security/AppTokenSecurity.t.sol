@@ -14,14 +14,35 @@ contract AppTokenSecurityTest is Test {
 
     address public admin = makeAddr("admin");
     address public creator = makeAddr("creator");
+    address public governance = makeAddr("governance");
     address public user1 = makeAddr("user1");
     address public attacker = makeAddr("attacker");
+    address public feeCollector = makeAddr("feeCollector");
 
     uint256 public constant MAX_SUPPLY = 1_000_000_000 ether;
 
     function setUp() public {
         token = new AppToken(
-            "TestApp", "TEST", 18, MAX_SUPPLY, creator, admin, address(1), address(1), address(1), address(1)
+            AppToken.InitParams({
+                name: "TestApp",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: MAX_SUPPLY,
+                creator: creator,
+                admin: admin,
+                governance: governance,
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
+        );
+
+        // In vNext, LP-keyed transfer tax must route through FeeCollector.
+        // For these token-level security tests we just mock the FeeCollector sink.
+        vm.prank(admin);
+        token.setFeeCollector(feeCollector, 0);
+        vm.mockCall(
+            feeCollector, abi.encodeWithSignature("depositAppToken(uint256,uint8,address,uint256)"), abi.encode()
         );
     }
 
@@ -227,11 +248,30 @@ contract AppTokenSecurityTest is Test {
         vm.prank(admin);
         token.mint(user1, 1000 ether);
 
+        // LP-keyed taxation: wallet-to-wallet transfers are NOT taxed
         vm.prank(user1);
         token.transfer(attacker, 500 ether);
 
-        // Recipient gets 99% due to 1% transfer fee (500 * 0.99 = 495)
-        assertEq(token.balanceOf(attacker), 495 ether);
+        // Recipient gets FULL amount (no tax for wallet-to-wallet)
+        assertEq(token.balanceOf(attacker), 500 ether);
+        assertEq(token.balanceOf(user1), 500 ether);
+    }
+
+    function test_Security_LPTransferFeeApplied() public {
+        vm.prank(admin);
+        token.mint(user1, 1000 ether);
+
+        // Set up an LP address
+        address lpAddress = makeAddr("lpAddress");
+        vm.prank(governance);
+        token.setLiquidityPool(lpAddress, true);
+
+        // LP-keyed taxation: transfers TO LP are taxed
+        vm.prank(user1);
+        token.transfer(lpAddress, 500 ether);
+
+        // LP gets 99% due to 1% transfer fee (500 * 0.99 = 495)
+        assertEq(token.balanceOf(lpAddress), 495 ether);
         assertEq(token.balanceOf(user1), 500 ether); // Sender pays full amount
     }
 
@@ -311,12 +351,12 @@ contract AppTokenSecurityTest is Test {
         vm.prank(admin);
         token.finalizeMinting();
 
-        // Transfers should still work (with transfer fee applied)
+        // Transfers should still work (wallet-to-wallet has no fee with LP-keyed tax)
         vm.prank(user1);
         token.transfer(attacker, 500 ether);
 
-        // Recipient gets 99% due to 1% transfer fee (500 * 0.99 = 495)
-        assertEq(token.balanceOf(attacker), 495 ether);
+        // Recipient gets FULL amount (no tax for wallet-to-wallet)
+        assertEq(token.balanceOf(attacker), 500 ether);
     }
 
     function test_Security_CanApproveAfterFinalize() public {

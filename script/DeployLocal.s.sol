@@ -1,6 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+/**
+ * @title DeployLocal
+ * @notice DEPRECATED - Use Deploy.sol instead
+ *
+ * This script is kept for backwards compatibility only. It does NOT deploy
+ * the full protocol (missing AppFactory, fee infrastructure, rewards, etc).
+ *
+ * For full local deployment, run:
+ *   make local
+ * or:
+ *   forge script script/Deploy.sol:Deploy --rpc-url http://127.0.0.1:8545 --broadcast
+ *
+ * @dev This script only deploys MockELTA and mock Uniswap contracts.
+ */
+
 import {AppFactory} from "../src/apps/AppFactory.sol";
 import {IUniswapV2Router02} from "../src/interfaces/IUniswapV2Router02.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";

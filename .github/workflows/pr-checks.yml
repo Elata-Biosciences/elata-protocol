@@ -58,38 +58,6 @@ jobs:
           forge test --match-contract Security -vv
           forge test --match-contract CoreSecurityVerification -vv
 
-  gas-report:
-    name: Gas Report
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: v1.4.2
-
-      - name: Generate gas report
-        run: forge test --gas-report
-
-      - name: Post gas report as comment
-        uses: actions/github-script@v7
-        if: github.event_name == 'pull_request'
-        with:
-          script: |
-            const fs = require('fs');
-            const gasReport = await exec.getExecOutput('forge test --gas-report');
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: '## ⛽ Gas Report\n\n```\n' + gasReport.stdout + '\n```'
-            });
-        continue-on-error: true
-
   coverage:
     name: Test Coverage
     runs-on: ubuntu-latest

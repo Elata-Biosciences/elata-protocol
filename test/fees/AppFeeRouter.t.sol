@@ -2,33 +2,12 @@
 pragma solidity ^0.8.24;
 
 import {AppFeeRouter} from "../../src/fees/AppFeeRouter.sol";
-import {IRewardsDistributor} from "../../src/interfaces/IRewardsDistributor.sol";
-import {ELTA} from "../../src/token/ELTA.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ELTA} from "elta/ELTA.sol";
 import "forge-std/Test.sol";
-
-contract MockRewardsDistributor is IRewardsDistributor {
-    IERC20 public immutable eltaToken;
-    uint256 public totalDeposited;
-
-    constructor(IERC20 _elta) {
-        eltaToken = _elta;
-    }
-
-    function deposit(uint256 amount) external {
-        eltaToken.transferFrom(msg.sender, address(this), amount);
-        totalDeposited += amount;
-    }
-
-    function depositVeInToken(IERC20 token, uint256 amount) external {
-        token.transferFrom(msg.sender, address(this), amount);
-    }
-}
 
 contract AppFeeRouterTest is Test {
     ELTA public elta;
     AppFeeRouter public feeRouter;
-    MockRewardsDistributor public rewardsDistributor;
 
     address public governance = address(0x1);
     address public trader = address(0x2);
@@ -40,13 +19,10 @@ contract AppFeeRouterTest is Test {
 
     function setUp() public {
         // Deploy ELTA
-        elta = new ELTA("ELTA", "ELTA", governance, governance, 1_000_000 ether, 0);
+        elta = new ELTA(governance);
 
-        // Deploy mock rewards distributor
-        rewardsDistributor = new MockRewardsDistributor(elta);
-
-        // Deploy fee router - MockRewardsDistributor implements the IRewardsDistributor interface
-        feeRouter = new AppFeeRouter(elta, IRewardsDistributor(address(rewardsDistributor)), governance);
+        // Deploy fee router (feeBps config only; no yield distribution)
+        feeRouter = new AppFeeRouter(elta, governance);
 
         // Fund trader
         vm.prank(governance);
@@ -59,7 +35,6 @@ contract AppFeeRouterTest is Test {
 
     function test_InitialState() public view {
         assertEq(address(feeRouter.ELTA()), address(elta));
-        assertEq(address(feeRouter.rewardsDistributor()), address(rewardsDistributor));
         assertEq(feeRouter.governance(), governance);
         assertEq(feeRouter.feeBps(), 100); // 1%
         assertEq(feeRouter.MAX_FEE_BPS(), 500); // 5%
@@ -67,28 +42,16 @@ contract AppFeeRouterTest is Test {
 
     function test_TakeAndForwardFee() public {
         uint256 grossAmount = 1000 ether;
-        uint256 expectedFee = (grossAmount * 100) / 10_000; // 1% = 10 ether
-
-        vm.expectEmit(true, true, false, true);
-        emit FeeForwarded(bondingCurve, trader, grossAmount, expectedFee);
-
         vm.prank(bondingCurve);
+        vm.expectRevert(AppFeeRouter.Deprecated.selector);
         feeRouter.takeAndForwardFee(trader, grossAmount);
-
-        assertEq(rewardsDistributor.totalDeposited(), expectedFee);
-        assertEq(elta.balanceOf(trader), 10_000 ether - expectedFee);
     }
 
     function test_TakeAndForwardFee_SmallAmount() public {
-        uint256 traderBalanceBefore = elta.balanceOf(trader);
         uint256 grossAmount = 9 ether;
-        uint256 expectedFee = (grossAmount * 100) / 10_000; // 0.09 ELTA
-
         vm.prank(bondingCurve);
+        vm.expectRevert(AppFeeRouter.Deprecated.selector);
         feeRouter.takeAndForwardFee(trader, grossAmount);
-
-        assertEq(rewardsDistributor.totalDeposited(), expectedFee);
-        assertEq(elta.balanceOf(trader), traderBalanceBefore - expectedFee);
     }
 
     function test_SetFeeBps() public {
@@ -99,15 +62,6 @@ contract AppFeeRouterTest is Test {
         feeRouter.setFeeBps(250); // 2.5%
 
         assertEq(feeRouter.feeBps(), 250);
-
-        // Verify new fee rate works
-        uint256 grossAmount = 1000 ether;
-        uint256 expectedFee = (grossAmount * 250) / 10_000; // 2.5% = 25 ether
-
-        vm.prank(bondingCurve);
-        feeRouter.takeAndForwardFee(trader, grossAmount);
-
-        assertEq(rewardsDistributor.totalDeposited(), expectedFee);
     }
 
     function test_SetFeeBps_RevertIfNotGovernance() public {
@@ -170,24 +124,9 @@ contract AppFeeRouterTest is Test {
     function testFuzz_TakeAndForwardFee(uint256 grossAmount) public {
         grossAmount = bound(grossAmount, 1, 1_000_000 ether);
 
-        // Fund trader if needed
-        uint256 expectedFee = (grossAmount * feeRouter.feeBps()) / 10_000;
-        if (expectedFee == 0) return;
-
-        if (elta.balanceOf(trader) < expectedFee) {
-            vm.prank(governance);
-            elta.transfer(trader, expectedFee);
-            vm.prank(trader);
-            elta.approve(address(feeRouter), expectedFee);
-        }
-
-        uint256 traderBalanceBefore = elta.balanceOf(trader);
-
         vm.prank(bondingCurve);
+        vm.expectRevert(AppFeeRouter.Deprecated.selector);
         feeRouter.takeAndForwardFee(trader, grossAmount);
-
-        assertEq(elta.balanceOf(trader), traderBalanceBefore - expectedFee);
-        assertEq(rewardsDistributor.totalDeposited(), expectedFee);
     }
 
     function testFuzz_SetFeeBps(uint256 newBps) public {

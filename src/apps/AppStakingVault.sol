@@ -12,22 +12,13 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 
 /**
  * @title AppStakingVault
- * @author Elata Protocol
- * @notice Per-app staking vault with snapshot-enabled ERC20Votes shares
- * @dev Non-transferable stake-share tokens for feature gating and rewards
- *
- * Architecture:
- * - Users stake app tokens, receive non-transferable share tokens 1:1
- * - Share balance = voting power for app governance
- * - Snapshot at each block enables on-chain reward distribution
- * - Apps read balanceOf(user) for feature gating
- * - AppRewardsDistributor uses getPastVotes() for pro-rata rewards
- *
- * Usage:
- * 1. Users stake app tokens to unlock features
- * 2. Apps check balanceOf(user) >= threshold
- * 3. Users earn ELTA rewards proportional to stake
- * 4. Users can unstake anytime (no lock period)
+ * @author Elata Biosciences
+ * @custom:security-contact security@elata.bio
+ * @notice Per-app staking vault issuing non-transferable share tokens for feature gating and rewards.
+ * @dev Users deposit app tokens and receive ERC20Votes shares 1:1. Shares are soulbound and serve
+ *      as voting power for app-level governance. Apps can gate features by checking balanceOf(user).
+ *      AppRewardsDistributor uses getPastVotes() snapshots to compute pro-rata ELTA rewards. Users
+ *      may unstake at any time without a lock period.
  */
 contract AppStakingVault is ERC20, ERC20Permit, ERC20Votes, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -114,6 +105,16 @@ contract AppStakingVault is ERC20, ERC20Permit, ERC20Votes, Ownable, ReentrancyG
      * @return Staked balance
      */
     function stakedOf(address user) external view returns (uint256) {
+        return balanceOf(user);
+    }
+
+    /**
+     * @notice Get user's staked balance (alias for stakedOf)
+     * @dev Matches Protocol Changes document naming convention
+     * @param user User address
+     * @return Staked balance
+     */
+    function stakedBalanceOf(address user) external view returns (uint256) {
         return balanceOf(user);
     }
 

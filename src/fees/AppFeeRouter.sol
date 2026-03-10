@@ -1,36 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {IRewardsDistributor} from "../interfaces/IRewardsDistributor.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title AppFeeRouter
- * @author Elata Protocol
- * @notice Global fee collection router that forwards trading fees to RewardsDistributor
- * @dev Single instance used by all bonding curves for consistent fee handling
- *
- * Key Features:
- * - Collects ELTA fees from bonding curve trades
- * - Forwards immediately to RewardsDistributor for 70/15/15 split
- * - Configurable fee rate (capped at 5%)
- * - Governance-controlled adjustments
- *
- * Usage:
- * 1. Bonding curve computes fee from trade amount
- * 2. Bonding curve calls takeAndForwardFee()
- * 3. Router pulls fee and deposits to RewardsDistributor
- * 4. RewardsDistributor splits 70% app / 15% veELTA / 15% treasury
+ * @author Elata Biosciences
+ * @custom:security-contact security@elata.bio
+ * @notice Global config contract for bonding-curve trading fee rate.
+ * @dev Historical versions forwarded fees into a yield distributor. In the current fee pipeline, bonding curves
+ *      accrue trading fees into `pendingFees` and sweep to `FeeCollector`, which routes via `FeeSwapper` (80/20).
+ *      This contract remains as a single global source of truth for `feeBps`.
  */
 contract AppFeeRouter {
     using SafeERC20 for IERC20;
 
     error OnlyGovernance();
     error FeeTooHigh();
+    error Deprecated();
 
     IERC20 public immutable ELTA;
-    IRewardsDistributor public immutable rewardsDistributor;
     address public governance;
 
     /// @notice Fee rate in basis points (100 = 1.00%)
@@ -46,16 +36,13 @@ contract AppFeeRouter {
     /**
      * @notice Initialize fee router
      * @param _elta ELTA token address
-     * @param _rewardsDistributor RewardsDistributor address for depositing fees
      * @param _governance Governance address for fee adjustments
      */
-    constructor(IERC20 _elta, IRewardsDistributor _rewardsDistributor, address _governance) {
+    constructor(IERC20 _elta, address _governance) {
         require(address(_elta) != address(0), "Zero ELTA");
-        require(address(_rewardsDistributor) != address(0), "Zero RD");
         require(_governance != address(0), "Zero gov");
 
         ELTA = _elta;
-        rewardsDistributor = _rewardsDistributor;
         governance = _governance;
     }
 
@@ -66,14 +53,9 @@ contract AppFeeRouter {
      * @param grossAmount Gross trade amount (used for fee calculation context)
      */
     function takeAndForwardFee(address payer, uint256 grossAmount) external {
-        uint256 fee = (grossAmount * feeBps) / 10_000;
-        if (fee == 0) return;
-
-        ELTA.safeTransferFrom(payer, address(this), fee);
-        ELTA.approve(address(rewardsDistributor), fee);
-        rewardsDistributor.deposit(fee);
-
-        emit FeeForwarded(msg.sender, payer, grossAmount, fee);
+        payer = payer;
+        grossAmount = grossAmount;
+        revert Deprecated();
     }
 
     /**

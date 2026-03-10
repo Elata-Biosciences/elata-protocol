@@ -20,9 +20,8 @@ When it completes, your local blockchain is running with everything deployed.
 
 **Core Contracts**
 - ELTA Token (ERC20 governance token)
-- ElataXP (non-transferable reputation)
+- ElataPoints (non-transferable reputation)
 - VeELTA (vote-escrowed staking)
-- LotPool (funding round governance)
 - RewardsDistributor (fee distribution)
 - ElataGovernor and ElataTimelock (on-chain governance)
 
@@ -35,20 +34,8 @@ When it completes, your local blockchain is running with everything deployed.
 - 5 users with XP balances (300–5,000 XP each)
 - Staking positions (10,000 ELTA locked for 2 years)
 - 3 sample apps (NeuroPong, MindfulBreath, FocusTrainer)
-- 1 active funding round with 10,000 ELTA
 
 ## Next Steps
-
-### Start the Frontend
-
-In a separate terminal:
-
-```bash
-cd ../elata-appstore
-npm run local:full
-```
-
-The app store runs at `http://localhost:3001`.
 
 ### View Contract Addresses
 
@@ -106,15 +93,6 @@ npm run local:up
 **MetaMask "nonce too high" error**
 
 Clear MetaMask activity: Settings → Advanced → Clear activity tab data
-
-**Frontend can't connect**
-
-Regenerate the config and restart:
-
-```bash
-npm run config:appstore
-cd ../elata-appstore && npm run local:full
-```
 
 ## Further Reading
 

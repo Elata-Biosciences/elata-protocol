@@ -10,30 +10,17 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 /**
  * @title RewardsDistributor
  * @author Elata Biosciences
- * @notice Central revenue hub with 70/15/15 split and on-chain snapshot rewards
- * @dev Universal entry point for all protocol ELTA revenues
- *
- * Revenue Flow:
- * 1. All ELTA revenues call deposit()
- * 2. Split: 70% → AppRewardsDistributor (app stakers)
- *           15% → veELTA epoch (snapshot-based claims)
- *           15% → Treasury (immediate transfer)
- * 3. Users claim veELTA rewards via claimVe() using getPastVotes()
- *
- * Architecture:
- * - deposit(): Accept ELTA and split 70/15/15
- * - claimVe(): On-chain pro-rata claims for veELTA stakers
- * - No Merkle roots, no off-chain computation
- * - Snapshot at deposit block ensures fairness
- *
- * Features:
- * - Pure on-chain reward distribution
- * - ERC20Votes snapshot integration
- * - Gas-bounded claims (max 100 epochs)
- * - Cursor tracking for efficiency
- * - Emergency pause capability
+ * @custom:security-contact security@elata.bio
+ * @notice Central revenue hub that splits incoming ELTA fees across protocol stakeholders.
+ * @dev All protocol revenues flow through deposit(), which applies a fixed 70/15/15 split:
+ *      70% to AppRewardsDistributor for app stakers, 15% to a veELTA epoch pool, and 15%
+ *      transferred immediately to the treasury. VeELTA holders claim their share via claimVe(),
+ *      which computes pro-rata entitlements using on-chain ERC20Votes snapshots taken at each
+ *      deposit block. Claims are gas-bounded to 100 epochs per call with cursor tracking to
+ *      prevent double-claims. An emergency pause capability exists for incident response.
  */
 import {IAppRewardsDistributor} from "../interfaces/IAppRewardsDistributor.sol";
+import {IFeeManager} from "../interfaces/IFeeManager.sol";
 import {IVeEltaVotes} from "../interfaces/IVeEltaVotes.sol";
 
 contract RewardsDistributor is ReentrancyGuard, AccessControl {
@@ -51,6 +38,9 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
     IAppRewardsDistributor public immutable appRewardsDistributor;
 
     address public treasury;
+
+    /// @notice FeeManager for USDC conversion of treasury fees
+    address public feeManager;
 
     /// @notice Split configuration in basis points (must sum to 10,000)
     uint256 public constant BIPS_APP = 7000; // 70%
@@ -88,6 +78,7 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
         address indexed user, address indexed token, uint256 fromEpoch, uint256 toEpoch, uint256 amount
     );
     event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury);
+    event FeeManagerUpdated(address indexed oldFeeManager, address indexed newFeeManager);
     event EmergencyPause(bool paused);
 
     /**
@@ -156,8 +147,15 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
         veEpochs.push(Epoch({blockNumber: block.number, amount: veAmount}));
         emit VeEpochCreated(veEpochs.length - 1, block.number, veAmount);
 
-        // 3) Transfer to treasury (15%)
-        ELTA.safeTransfer(treasury, treasuryAmount);
+        // 3) Transfer to treasury (15%) - route through FeeManager for USDC conversion
+        if (feeManager != address(0)) {
+            // Route through FeeManager for USDC conversion
+            ELTA.approve(feeManager, treasuryAmount);
+            IFeeManager(feeManager).depositEltaForApp(0, treasuryAmount); // appId 0 = protocol fees
+        } else {
+            // Fallback: direct transfer to treasury
+            ELTA.safeTransfer(treasury, treasuryAmount);
+        }
 
         emit RevenueSplit(block.number, amount, appAmount, veAmount, treasuryAmount);
     }
@@ -286,6 +284,15 @@ contract RewardsDistributor is ReentrancyGuard, AccessControl {
 
         emit TreasuryUpdated(treasury, newTreasury);
         treasury = newTreasury;
+    }
+
+    /**
+     * @notice Update fee manager address for USDC conversion
+     * @param newFeeManager New fee manager address (can be zero to disable)
+     */
+    function setFeeManager(address newFeeManager) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        emit FeeManagerUpdated(feeManager, newFeeManager);
+        feeManager = newFeeManager;
     }
 
     /**

@@ -5,19 +5,24 @@ import {AppBondingCurve} from "../../src/apps/AppBondingCurve.sol";
 import {AppFactory} from "../../src/apps/AppFactory.sol";
 import {AppStakingVault} from "../../src/apps/AppStakingVault.sol";
 import {AppToken} from "../../src/apps/AppToken.sol";
-import {ElataXP} from "../../src/experience/ElataXP.sol";
+import {ElataPoints} from "../../src/experience/ElataPoints.sol";
 import {AppFeeRouter} from "../../src/fees/AppFeeRouter.sol";
 import {IAppFeeRouter} from "../../src/interfaces/IAppFeeRouter.sol";
 import {IAppRewardsDistributor} from "../../src/interfaces/IAppRewardsDistributor.sol";
-import {IElataXP} from "../../src/interfaces/IElataXP.sol";
+import {IElataPoints} from "../../src/interfaces/IElataPoints.sol";
 import {IRewardsDistributor} from "../../src/interfaces/IRewardsDistributor.sol";
 import {IUniswapV2Router02} from "../../src/interfaces/IUniswapV2Router02.sol";
 import {IVeEltaVotes} from "../../src/interfaces/IVeEltaVotes.sol";
 import {AppRewardsDistributor} from "../../src/rewards/AppRewardsDistributor.sol";
 import {RewardsDistributor} from "../../src/rewards/RewardsDistributor.sol";
 import {VeELTA} from "../../src/staking/VeELTA.sol";
-import {ELTA} from "../../src/token/ELTA.sol";
-import {MockElataXP} from "../mocks/MockContracts.sol";
+import {FeeCollector} from "../../src/fees/FeeCollector.sol";
+import {FeeKind} from "../../src/fees/FeeKind.sol";
+import {AppRegistry} from "../../src/registry/AppRegistry.sol";
+import {ContributorSplitFactory} from "../../src/contributors/ContributorSplitFactory.sol";
+import {FeeSwapper} from "../../src/fees/FeeSwapper.sol";
+import {ELTA} from "elta/ELTA.sol";
+import {MockElataPoints} from "../mocks/MockContracts.sol";
 import "forge-std/Test.sol";
 
 /**
@@ -30,12 +35,16 @@ import "forge-std/Test.sol";
  */
 contract XPGatedLaunchAndTransferFeesTest is Test {
     ELTA public elta;
-    ElataXP public xp;
+    ElataPoints public xp;
     VeELTA public veELTA;
     RewardsDistributor public rewardsDistributor;
     AppRewardsDistributor public appRewardsDistributor;
     AppFeeRouter public appFeeRouter;
     AppFactory public factory;
+    AppRegistry public registry;
+    ContributorSplitFactory public splitFactory;
+    FeeSwapper public feeSwapper;
+    FeeCollector public feeCollector;
 
     address public admin = makeAddr("admin");
     address public treasury = makeAddr("treasury");
@@ -59,9 +68,9 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
     function setUp() public {
         // Deploy core contracts
-        elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 77_000_000 ether);
+        elta = new ELTA(treasury);
 
-        xp = new ElataXP(admin);
+        xp = new ElataPoints(admin);
 
         // Deploy VeELTA
         veELTA = new VeELTA(elta, governance);
@@ -78,8 +87,8 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
             governance
         );
 
-        // Deploy fee router
-        appFeeRouter = new AppFeeRouter(elta, IRewardsDistributor(address(rewardsDistributor)), governance);
+        // Deploy fee router (feeBps config only; no yield distribution)
+        appFeeRouter = new AppFeeRouter(elta, governance);
 
         // Setup mock Uniswap
         _setupMockUniswap();
@@ -92,10 +101,26 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
             IAppFeeRouter(address(appFeeRouter)),
             IAppRewardsDistributor(address(appRewardsDistributor)),
             IRewardsDistributor(address(rewardsDistributor)),
-            IElataXP(address(xp)),
+            IElataPoints(address(xp)),
             governance,
             admin
         );
+
+        // Configure vNext dependencies (required by createApp wrapper).
+        registry = new AppRegistry(governance, address(factory));
+        splitFactory = new ContributorSplitFactory(governance, address(factory));
+        feeSwapper = new FeeSwapper(address(elta), admin, governance, treasury, address(registry));
+
+        vm.startPrank(admin);
+        factory.setAppRegistry(address(registry));
+        factory.setContributorSplitFactory(address(splitFactory));
+        factory.setFeeSwapper(address(feeSwapper));
+        vm.stopPrank();
+
+        // Configure FeeCollector so LP-keyed transfer tax has a valid routing sink.
+        feeCollector = new FeeCollector(address(elta), admin, address(feeSwapper), address(feeSwapper));
+        vm.prank(admin);
+        factory.setFeeCollector(address(feeCollector));
 
         // Grant factory role to the actual factory
         vm.startPrank(governance);
@@ -136,18 +161,22 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("XPGatedApp", "XPG", 0, "", "", "");
+        uint256 appId = factory.createApp("XPGatedApp", "XPG", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
+
+        // Warp past activation delay (1 hour) and activate curve
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
 
         // User with XP can buy immediately
         uint256 purchaseAmount = 1000 ether;
 
         vm.startPrank(xpUser);
         elta.approve(address(curve), purchaseAmount * 101 / 100);
-        uint256 tokensOut = curve.buy(purchaseAmount, 0);
+        uint256 tokensOut = curve.buy(purchaseAmount, 0, address(0));
         vm.stopPrank();
 
         assertGt(tokensOut, 0);
@@ -160,11 +189,15 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("XPGatedApp", "XPG", 0, "", "", "");
+        uint256 appId = factory.createApp("XPGatedApp", "XPG", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
+
+        // Warp past activation delay (1 hour) and activate curve
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
 
         // User without XP cannot buy during early access
         uint256 purchaseAmount = 1000 ether;
@@ -172,7 +205,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
         vm.startPrank(noXpUser);
         elta.approve(address(curve), purchaseAmount * 101 / 100);
         vm.expectRevert(AppBondingCurve.InsufficientXP.selector);
-        curve.buy(purchaseAmount, 0);
+        curve.buy(purchaseAmount, 0, address(0));
         vm.stopPrank();
 
         assertFalse(curve.canUserBuy(noXpUser));
@@ -184,21 +217,22 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("XPGatedApp", "XPG", 0, "", "", "");
+        uint256 appId = factory.createApp("XPGatedApp", "XPG", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
 
-        // Fast forward past early access period (6 hours default)
+        // Fast forward past early access period (6 hours default) - also past activation delay
         vm.warp(block.timestamp + 6 hours + 1);
+        curve.activate();
 
         // Now user without XP can buy
         uint256 purchaseAmount = 1000 ether;
 
         vm.startPrank(noXpUser);
         elta.approve(address(curve), purchaseAmount * 101 / 100);
-        uint256 tokensOut = curve.buy(purchaseAmount, 0);
+        uint256 tokensOut = curve.buy(purchaseAmount, 0, address(0));
         vm.stopPrank();
 
         assertGt(tokensOut, 0);
@@ -211,7 +245,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("XPGatedApp", "XPG", 0, "", "", "");
+        uint256 appId = factory.createApp("XPGatedApp", "XPG", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -237,7 +271,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("XPGatedApp", "XPG", 0, "", "", "");
+        uint256 appId = factory.createApp("XPGatedApp", "XPG", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -249,87 +283,134 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
         curve.setXPGate(200 ether, 12 hours);
     }
 
-    // ===== Fee-on-Transfer Tests =====
+    // ===== Fee-on-Transfer Tests (LP-Keyed) =====
 
-    function test_FoT_TransferFeeAppliedCorrectly() public {
+    function test_FoT_WalletToWalletNoTax() public {
         // Create app
         uint256 totalCost = factory.creationFee() + factory.seedElta();
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "");
+        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
         AppToken token = AppToken(app.token);
         AppBondingCurve curve = AppBondingCurve(app.curve);
+
+        // Activate curve
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
 
         // Buy some tokens
         uint256 purchaseAmount = 1000 ether;
 
         vm.startPrank(xpUser);
         elta.approve(address(curve), purchaseAmount * 101 / 100);
-        uint256 tokensOut = curve.buy(purchaseAmount, 0);
+        uint256 tokensOut = curve.buy(purchaseAmount, 0, address(0));
         vm.stopPrank();
 
-        // Transfer tokens - should apply 1% fee
+        // Wallet-to-wallet transfer - LP-keyed tax means NO fee
         uint256 transferAmount = 1000 ether;
         address recipient = makeAddr("recipient");
 
         vm.prank(xpUser);
         token.transfer(recipient, transferAmount);
 
-        // Recipient should receive 99% (1% fee)
-        uint256 expectedNet = transferAmount * 99 / 100;
-        assertEq(token.balanceOf(recipient), expectedNet);
+        // Recipient should receive FULL amount (no tax for wallet-to-wallet)
+        assertEq(token.balanceOf(recipient), transferAmount);
     }
 
-    function test_FoT_FeesSplitCorrectly() public {
+    function test_FoT_TransferFeeAppliedToLPTransfer() public {
         // Create app
         uint256 totalCost = factory.creationFee() + factory.seedElta();
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "");
+        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
         AppToken token = AppToken(app.token);
         AppBondingCurve curve = AppBondingCurve(app.curve);
 
+        // Activate curve
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
+
+        // Buy some tokens
+        uint256 purchaseAmount = 1000 ether;
+
+        vm.startPrank(xpUser);
+        elta.approve(address(curve), purchaseAmount * 101 / 100);
+        uint256 tokensOut = curve.buy(purchaseAmount, 0, address(0));
+        vm.stopPrank();
+
+        // Set up an LP address
+        address lpAddress = makeAddr("lpAddress");
+        vm.prank(governance); // Governance can set LP addresses
+        token.setLiquidityPool(lpAddress, true);
+
+        // Transfer TO LP - should apply 1% fee
+        uint256 transferAmount = 1000 ether;
+
+        vm.prank(xpUser);
+        token.transfer(lpAddress, transferAmount);
+
+        // LP should receive 99% (1% fee applied)
+        uint256 expectedNet = transferAmount * 99 / 100;
+        assertEq(token.balanceOf(lpAddress), expectedNet);
+
+        // Fee should be deposited into FeeCollector under the protocol transfer tax bucket.
+        uint256 expectedFee = transferAmount - expectedNet;
+        assertEq(feeCollector.pendingAppTokenFees(appId, FeeKind.TRANSFER_TAX, address(token)), expectedFee);
+    }
+
+    function test_FoT_FeesSplitCorrectlyOnLPTransfer() public {
+        // Create app
+        uint256 totalCost = factory.creationFee() + factory.seedElta();
+
+        vm.startPrank(creator);
+        elta.approve(address(factory), totalCost);
+        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "", new address[](0));
+        vm.stopPrank();
+
+        AppFactory.App memory app = factory.getApp(appId);
+        AppToken token = AppToken(app.token);
+        AppBondingCurve curve = AppBondingCurve(app.curve);
+
+        // Activate curve
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
+
         // Buy tokens
         uint256 purchaseAmount = 1000 ether;
 
         vm.startPrank(xpUser);
         elta.approve(address(curve), purchaseAmount * 101 / 100);
-        uint256 tokensOut = curve.buy(purchaseAmount, 0);
+        uint256 tokensOut = curve.buy(purchaseAmount, 0, address(0));
         vm.stopPrank();
 
-        // Get distributor balances before
-        address appRewards = token.appRewardsDistributor();
-        address veRewards = token.rewardsDistributor();
-        address treasuryAddr = token.treasury();
+        // Set up an LP address for LP-keyed tax
+        address lpAddress = makeAddr("lpAddress");
+        vm.prank(governance); // Governance can set LP addresses
+        token.setLiquidityPool(lpAddress, true);
 
-        uint256 appRewardsBefore = token.balanceOf(appRewards);
-        uint256 veRewardsBefore = token.balanceOf(veRewards);
-        uint256 treasuryBefore = token.balanceOf(treasuryAddr);
+        uint256 pendingBefore = feeCollector.pendingAppTokenFees(appId, FeeKind.TRANSFER_TAX, address(token));
+        uint256 collectorBalanceBefore = token.balanceOf(address(feeCollector));
 
-        // Transfer 10000 tokens
+        // Transfer TO LP (LP-keyed tax applies)
         uint256 transferAmount = 10000 ether;
-        address recipient = makeAddr("recipient");
 
         vm.prank(xpUser);
-        token.transfer(recipient, transferAmount);
+        token.transfer(lpAddress, transferAmount);
 
-        // Check fee split: 1% fee = 100 tokens
-        // 70% = 70, 15% = 15, 15% = 15
-        uint256 expectedAppFee = 70 ether;
-        uint256 expectedVeFee = 15 ether;
-        uint256 expectedTreasuryFee = 15 ether;
-
-        assertEq(token.balanceOf(appRewards) - appRewardsBefore, expectedAppFee);
-        assertEq(token.balanceOf(veRewards) - veRewardsBefore, expectedVeFee);
-        assertEq(token.balanceOf(treasuryAddr) - treasuryBefore, expectedTreasuryFee);
+        // New pipeline: LP-keyed transfer tax is deposited into FeeCollector for later sweeping/swapping.
+        uint256 expectedFee = transferAmount / 100; // 1%
+        assertEq(
+            feeCollector.pendingAppTokenFees(appId, FeeKind.TRANSFER_TAX, address(token)) - pendingBefore, expectedFee
+        );
+        assertEq(token.balanceOf(address(feeCollector)) - collectorBalanceBefore, expectedFee);
     }
 
     function test_FoT_ExemptAddressesSkipFee() public {
@@ -338,7 +419,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "");
+        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -361,7 +442,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "");
+        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -384,7 +465,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "");
+        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -402,7 +483,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "");
+        uint256 appId = factory.createApp("FoTApp", "FOT", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -427,7 +508,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("ViewApp", "VIEW", 0, "", "", "");
+        uint256 appId = factory.createApp("ViewApp", "VIEW", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -446,7 +527,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("ViewApp", "VIEW", 0, "", "", "");
+        uint256 appId = factory.createApp("ViewApp", "VIEW", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -465,7 +546,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("StatusApp", "STAT", 0, "", "", "");
+        uint256 appId = factory.createApp("StatusApp", "STAT", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         (bool isInEarlyAccess, uint256 earlyAccessEndsAt, uint256 xpRequired) = factory.getAppLaunchStatus(appId);
@@ -481,7 +562,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("BuyApp", "BUY", 0, "", "", "");
+        uint256 appId = factory.createApp("BuyApp", "BUY", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -501,7 +582,7 @@ contract XPGatedLaunchAndTransferFeesTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("InfoApp", "INFO", 0, "", "", "");
+        uint256 appId = factory.createApp("InfoApp", "INFO", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);

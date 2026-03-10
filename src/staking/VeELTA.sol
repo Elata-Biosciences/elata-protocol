@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {IVeEltaVotes} from "../interfaces/IVeEltaVotes.sol";
 import {Errors} from "../utils/Errors.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -14,22 +13,14 @@ import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
 /**
  * @title VeELTA (Vote-Escrowed ELTA)
  * @author Elata Biosciences
- * @notice Non-transferable ERC20Votes token representing voting power from locked ELTA
- * @dev Snapshot-enabled for on-chain reward distribution and governance
- *
- * Architecture:
- * - Users lock ELTA for a duration (MIN_LOCK to MAX_LOCK)
- * - veELTA minted = principal * boost(duration)
- * - No continuous decay; voting power updates only on user actions
- * - Principal returned 1:1 on unlock (veELTA burned)
- *
- * Features:
- * - lock(): Create new lock position
- * - increaseAmount(): Add more ELTA to existing lock
- * - extendLock(): Extend unlock time
- * - unlock(): Withdraw principal after expiry
- * - ERC20Votes snapshots for governance and rewards
- * - Non-transferable (soulbound to staker)
+ * @custom:security-contact security@elata.bio
+ * @notice Non-transferable token representing time-weighted voting power from locked ELTA.
+ * @dev Users lock ELTA for a duration between MIN_LOCK and MAX_LOCK, receiving veELTA
+ *      proportional to principal multiplied by a duration-based boost factor. Voting power
+ *      does not decay continuously; it updates only on explicit user actions. The principal
+ *      is returned 1:1 when the lock expires and the user calls unlock(), at which point the
+ *      veELTA is burned. Transfers are disabled, making positions soulbound. Integrates with
+ *      ERC20Votes for governance snapshots and reward distribution calculations.
  */
 contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
     using SafeERC20 for IERC20;
@@ -40,6 +31,7 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
     error LockExpired();
     error InvalidUnlockTime();
     error Insufficient();
+    error AmountOverflow();
 
     IERC20 public immutable ELTA;
 
@@ -91,6 +83,7 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
         Lock memory userLock = locks[msg.sender];
         if (userLock.principal > 0) revert LockExists();
         if (amount == 0) revert Errors.InvalidAmount();
+        if (amount > type(uint128).max) revert AmountOverflow();
         if (unlockTime <= block.timestamp + MIN_LOCK) revert Errors.LockTooShort();
         if (unlockTime > block.timestamp + MAX_LOCK) revert Errors.LockTooLong();
 
@@ -129,6 +122,7 @@ contract VeELTA is ERC20, ERC20Permit, ERC20Votes, AccessControl {
         // Calculate old and new voting power
         uint256 oldVeAmount = (uint256(userLock.principal) * boost) / 1e18;
         uint256 newPrincipal = uint256(userLock.principal) + amount;
+        if (newPrincipal > type(uint128).max) revert AmountOverflow();
         uint256 newVeAmount = (newPrincipal * boost) / 1e18;
 
         locks[msg.sender].principal = uint128(newPrincipal);

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {AppToken} from "../../../src/apps/AppToken.sol";
-import {Tournament} from "../../../src/apps/Tournament.sol";
+import {Tournament, EntryTokenType} from "../../../src/apps/Tournament.sol";
 import "forge-std/Test.sol";
 import {Merkle} from "murky/src/Merkle.sol";
 
@@ -23,18 +23,33 @@ contract TournamentSecurityTest is Test {
     address public attacker = makeAddr("attacker");
     address public admin = makeAddr("admin");
 
+    uint256 public constant APP_ID = 1;
     uint256 public constant ENTRY_FEE = 100 ether;
     uint256 public constant MAX_SUPPLY = 1_000_000_000 ether;
 
     function setUp() public {
         appToken = new AppToken(
-            "TestApp", "TEST", 18, MAX_SUPPLY, owner, admin, address(1), address(1), address(1), address(1)
+            AppToken.InitParams({
+                name: "TestApp",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: MAX_SUPPLY,
+                creator: owner,
+                admin: admin,
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
         );
         merkle = new Merkle();
 
         tournament = new Tournament(
             address(appToken),
+            EntryTokenType.APP,
+            APP_ID,
             owner,
+            address(0),
             treasury,
             ENTRY_FEE,
             0,
@@ -197,9 +212,8 @@ contract TournamentSecurityTest is Test {
         vm.prank(owner);
         tournament.finalize(bytes32(0));
 
-        // Verify fees (account for 1% transfer fee on treasury transfer)
-        uint256 expectedProtocolAfterFee = (expectedProtocol * 99) / 100;
-        assertEq(appToken.balanceOf(treasury), expectedProtocolAfterFee);
+        // LP-keyed tax: no fee for wallet-to-wallet (tournament->treasury)
+        assertEq(appToken.balanceOf(treasury), expectedProtocol);
         assertEq(tournament.pool(), expectedNet);
     }
 
@@ -266,7 +280,10 @@ contract TournamentSecurityTest is Test {
     function test_Security_CannotEnterOutsideWindow() public {
         Tournament timedTourn = new Tournament(
             address(appToken),
+            EntryTokenType.APP,
+            APP_ID,
             owner,
+            address(0),
             treasury,
             ENTRY_FEE,
             uint64(block.timestamp + 100),
@@ -328,16 +345,30 @@ contract TournamentSecurityTest is Test {
         protocolBps = bound(protocolBps, 0, 1000);
         burnBps = bound(burnBps, 0, 1500 - protocolBps); // Ensure total <= 15%
 
-        Tournament fuzzTourn = new Tournament(address(appToken), owner, treasury, 1 ether, 0, 0, protocolBps, burnBps);
+        Tournament fuzzTourn = new Tournament(
+            address(appToken),
+            EntryTokenType.APP,
+            APP_ID,
+            owner,
+            address(0),
+            treasury,
+            1 ether,
+            0,
+            0,
+            protocolBps,
+            burnBps
+        );
 
         // Simulate pool
         vm.prank(admin);
         appToken.mint(address(fuzzTourn), poolAmount);
 
         // Manually set pool (for testing)
+        // Storage layout: _owner(0), _status(1), feeCollector(2), protocolTreasury(3),
+        // protocolFeeBps(4), burnFeeBps(5), winnersRoot(6), finalized+times(7), entryFee(8), pool(9)
         vm.store(
             address(fuzzTourn),
-            bytes32(uint256(8)), // pool storage slot
+            bytes32(uint256(9)), // pool storage slot
             bytes32(poolAmount)
         );
 
@@ -394,7 +425,10 @@ contract TournamentSecurityTest is Test {
     function test_Security_ZeroEntryFeeTournament() public {
         Tournament freeTourn = new Tournament(
             address(appToken),
+            EntryTokenType.APP,
+            APP_ID,
             owner,
+            address(0),
             treasury,
             0, // Zero entry fee
             0,
@@ -465,11 +499,9 @@ contract TournamentSecurityTest is Test {
         tournament.finalize(bytes32(0));
 
         uint256 expectedBurn = (ENTRY_FEE * 100) / 10000;
-        // Account for 1% transfer fee: expectedBurn * 0.99
-        uint256 expectedBurnAfterFee = (expectedBurn * 99) / 100;
 
-        // Verify burn sink received tokens (after transfer fee)
-        assertEq(appToken.balanceOf(burnSink), expectedBurnAfterFee);
+        // LP-keyed tax: no fee for wallet-to-wallet (tournament->burnSink)
+        assertEq(appToken.balanceOf(burnSink), expectedBurn);
 
         // Note: Total supply doesn't decrease with transfer to dead address
         // But tokens are effectively removed from circulation
@@ -482,7 +514,10 @@ contract TournamentSecurityTest is Test {
     function test_Security_ViewFunctionsConsistent() public {
         Tournament fuzzTourn = new Tournament(
             address(appToken),
+            EntryTokenType.APP,
+            APP_ID,
             owner,
+            address(0),
             treasury,
             ENTRY_FEE,
             uint64(block.timestamp + 100),

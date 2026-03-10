@@ -1,0 +1,95 @@
+{
+  "runId": "llm-gossip-provider-2026-02-20T08-08-59-556Z",
+  "scenarioName": "llm-gossip-provider",
+  "seed": 2026,
+  "ticks": 15,
+  "durationMs": 19406,
+  "success": true,
+  "failedAssertions": [],
+  "finalMetrics": {
+    "price_ALPHA": 107.97705771265554,
+    "price_BETA": 46.04801058990299,
+    "totalVolume": 781,
+    "totalAgentValue": 120852.34805001448
+  },
+  "agentStats": [
+    {
+      "id": "RandomTraderAgent-0",
+      "type": "RandomTraderAgent",
+      "actionsAttempted": 6,
+      "actionsSucceeded": 6,
+      "actionsFailed": 0
+    },
+    {
+      "id": "RandomTraderAgent-1",
+      "type": "RandomTraderAgent",
+      "actionsAttempted": 3,
+      "actionsSucceeded": 3,
+      "actionsFailed": 0
+    },
+    {
+      "id": "RandomTraderAgent-2",
+      "type": "RandomTraderAgent",
+      "actionsAttempted": 2,
+      "actionsSucceeded": 2,
+      "actionsFailed": 0
+    },
+    {
+      "id": "RandomTraderAgent-3",
+      "type": "RandomTraderAgent",
+      "actionsAttempted": 6,
+      "actionsSucceeded": 6,
+      "actionsFailed": 0
+    },
+    {
+      "id": "RandomTraderAgent-4",
+      "type": "RandomTraderAgent",
+      "actionsAttempted": 7,
+      "actionsSucceeded": 7,
+      "actionsFailed": 0
+    },
+    {
+      "id": "MomentumAgent-5",
+      "type": "MomentumAgent",
+      "actionsAttempted": 10,
+      "actionsSucceeded": 10,
+      "actionsFailed": 0
+    },
+    {
+      "id": "MomentumAgent-6",
+      "type": "MomentumAgent",
+      "actionsAttempted": 10,
+      "actionsSucceeded": 10,
+      "actionsFailed": 0
+    },
+    {
+      "id": "HolderAgent-7",
+      "type": "HolderAgent",
+      "actionsAttempted": 0,
+      "actionsSucceeded": 0,
+      "actionsFailed": 0
+    },
+    {
+      "id": "HolderAgent-8",
+      "type": "HolderAgent",
+      "actionsAttempted": 0,
+      "actionsSucceeded": 0,
+      "actionsFailed": 0
+    },
+    {
+      "id": "ProviderBackedGossipAgent-9",
+      "type": "ProviderBackedGossipAgent",
+      "actionsAttempted": 0,
+      "actionsSucceeded": 0,
+      "actionsFailed": 0
+    },
+    {
+      "id": "ProviderBackedGossipAgent-10",
+      "type": "ProviderBackedGossipAgent",
+      "actionsAttempted": 0,
+      "actionsSucceeded": 0,
+      "actionsFailed": 0
+    }
+  ],
+  "timestamp": "2026-02-20T08:09:18.962Z"
+}

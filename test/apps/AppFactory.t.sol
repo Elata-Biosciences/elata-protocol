@@ -5,18 +5,21 @@ import {AppBondingCurve} from "../../src/apps/AppBondingCurve.sol";
 import {AppFactory} from "../../src/apps/AppFactory.sol";
 import {AppFactoryViews} from "../../src/apps/AppFactoryViews.sol";
 import {AppToken} from "../../src/apps/AppToken.sol";
+import {AppRegistry} from "../../src/registry/AppRegistry.sol";
+import {ContributorSplitFactory} from "../../src/contributors/ContributorSplitFactory.sol";
 import {IAppFeeRouter} from "../../src/interfaces/IAppFeeRouter.sol";
 import {IAppRewardsDistributor} from "../../src/interfaces/IAppRewardsDistributor.sol";
-import {IElataXP} from "../../src/interfaces/IElataXP.sol";
+import {IContributorSplit} from "../../src/interfaces/IContributorSplit.sol";
+import {IElataPoints} from "../../src/interfaces/IElataPoints.sol";
 import {IRewardsDistributor} from "../../src/interfaces/IRewardsDistributor.sol";
 import {IUniswapV2Router02} from "../../src/interfaces/IUniswapV2Router02.sol";
-import {ELTA} from "../../src/token/ELTA.sol";
+import {ELTA} from "elta/ELTA.sol";
 import {MockAppFeeRouter, MockAppRewardsDistributor} from "../mocks/MockContracts.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "forge-std/Test.sol";
 
-// Mock ElataXP
-contract MockElataXP is IElataXP {
+// Mock ElataPoints
+contract MockElataPoints is IElataPoints {
     mapping(address => uint256) public balances;
 
     function balanceOf(address account) external view override returns (uint256) {
@@ -51,16 +54,20 @@ contract AppFactoryTest is Test {
     MockAppFeeRouter public mockFeeRouter;
     MockAppRewardsDistributor public mockAppRewards;
     MockRewardsDistributor public mockRewards;
-    MockElataXP public mockXP;
+    MockElataPoints public mockXP;
+
+    AppRegistry public appRegistry;
+    ContributorSplitFactory public splitFactory;
+    address public mockFeeSwapper = makeAddr("mockFeeSwapper");
 
     function setUp() public {
-        elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 77_000_000 ether);
+        elta = new ELTA(treasury);
 
         // Deploy mocks
         mockFeeRouter = new MockAppFeeRouter();
         mockAppRewards = new MockAppRewardsDistributor();
         mockRewards = new MockRewardsDistributor();
-        mockXP = new MockElataXP();
+        mockXP = new MockElataPoints();
 
         // For testing, we'll use a mock router address
         // In production, this would be the actual Uniswap router
@@ -78,6 +85,16 @@ contract AppFactoryTest is Test {
             admin
         );
 
+        // Configure vNext dependencies required by createApp/createAppWithoutToken
+        appRegistry = new AppRegistry(governance, address(factory));
+        splitFactory = new ContributorSplitFactory(governance, address(factory));
+
+        vm.startPrank(admin);
+        factory.setAppRegistry(address(appRegistry));
+        factory.setContributorSplitFactory(address(splitFactory));
+        factory.setFeeSwapper(mockFeeSwapper);
+        vm.stopPrank();
+
         // Deploy views contract for complex queries
         views = new AppFactoryViews(address(factory));
 
@@ -92,7 +109,7 @@ contract AppFactoryTest is Test {
         assertEq(factory.treasury(), treasury);
         assertEq(factory.seedElta(), 100 ether);
         assertEq(factory.targetRaisedElta(), 42_000 ether);
-        assertEq(factory.defaultSupply(), 1_000_000_000 ether);
+        assertEq(factory.defaultSupply(), 10_000_000 ether);
         assertEq(factory.appCount(), 0);
         assertFalse(factory.paused());
     }
@@ -109,7 +126,8 @@ contract AppFactoryTest is Test {
             0, // Use default supply
             "A revolutionary EEG-based game",
             "ipfs://QmHash...",
-            "https://neurogame.com"
+            "https://neurogame.com",
+            new address[](0)
         );
         vm.stopPrank();
 
@@ -146,21 +164,21 @@ contract AppFactoryTest is Test {
 
         vm.expectRevert(AppFactory.Paused.selector);
         vm.prank(creator);
-        factory.createApp("Test", "TEST", 0, "", "", "");
+        factory.createApp("Test", "TEST", 0, "", "", "", new address[](0));
     }
 
     function test_RevertWhen_CreateAppInsufficientFunds() public {
         // Creator doesn't have enough ELTA
         vm.expectRevert();
         vm.prank(creator);
-        factory.createApp("Test", "TEST", 0, "", "", "");
+        factory.createApp("Test", "TEST", 0, "", "", "", new address[](0));
     }
 
     // Parameters are now immutable (constants) for contract size optimization
     function test_ParametersAreImmutable() public view {
         assertEq(factory.seedElta(), 100 ether);
         assertEq(factory.targetRaisedElta(), 42_000 ether);
-        assertEq(factory.defaultSupply(), 1_000_000_000 ether);
+        assertEq(factory.defaultSupply(), 10_000_000 ether);
         assertEq(factory.lpLockDuration(), 365 days * 2);
         assertEq(factory.defaultDecimals(), 18);
         // Removed protocolFeeRate check - legacy fee removed in favor of unified 70/15/15 split
@@ -181,7 +199,7 @@ contract AppFactoryTest is Test {
         uint256 totalCost = factory.creationFee() + factory.seedElta();
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        factory.createApp("Test", "TEST", 0, "", "", "");
+        factory.createApp("Test", "TEST", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         // Check stats updated
@@ -195,9 +213,9 @@ contract AppFactoryTest is Test {
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost * 3);
 
-        uint256 appId1 = factory.createApp("Game1", "GAME1", 0, "", "", "");
-        uint256 appId2 = factory.createApp("Game2", "GAME2", 0, "", "", "");
-        uint256 appId3 = factory.createApp("Game3", "GAME3", 0, "", "", "");
+        uint256 appId1 = factory.createApp("Game1", "GAME1", 0, "", "", "", new address[](0));
+        uint256 appId2 = factory.createApp("Game2", "GAME2", 0, "", "", "", new address[](0));
+        uint256 appId3 = factory.createApp("Game3", "GAME3", 0, "", "", "", new address[](0));
 
         vm.stopPrank();
 
@@ -212,5 +230,26 @@ contract AppFactoryTest is Test {
         assertEq(creatorApps[0], 0);
         assertEq(creatorApps[1], 1);
         assertEq(creatorApps[2], 2);
+    }
+
+    function test_SetProtocolConfig() public {
+        address mockConfig = makeAddr("protocolConfig");
+
+        // Initially should be zero
+        assertEq(factory.protocolConfig(), address(0));
+
+        // Set config
+        vm.prank(admin);
+        factory.setProtocolConfig(mockConfig);
+
+        assertEq(factory.protocolConfig(), mockConfig);
+    }
+
+    function test_RevertWhen_SetProtocolConfigUnauthorized() public {
+        address mockConfig = makeAddr("protocolConfig");
+
+        vm.expectRevert();
+        vm.prank(user1);
+        factory.setProtocolConfig(mockConfig);
     }
 }

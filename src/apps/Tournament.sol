@@ -1,35 +1,58 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import {FeeKind} from "../fees/FeeKind.sol";
+
+/// @notice Interface for FeeCollector
+interface IFeeCollector {
+    function depositElta(uint256 appId, FeeKind kind, uint256 amount) external;
+    function depositAppToken(uint256 appId, FeeKind kind, address token, uint256 amount) external;
+}
+
+/// @notice Supported entry token types
+enum EntryTokenType {
+    APP, // App token (default)
+    ELTA, // ELTA token
+    USDC // USDC stablecoin
+}
 
 /**
  * @title Tournament
- * @author Elata Protocol
- * @notice Entry-fee tournaments with protocol & burn fees, Merkle-claim winners
- * @dev On-chain paid competitions with transparent payouts
- *
- * Key Features:
- * - Entry fee pool accumulation
- * - Protocol fee to treasury
- * - Burn fee for deflationary pressure
- * - Merkle proof winner claims
- * - One-time finalization
- *
- * Tournament Flow:
- * 1. Deploy tournament with parameters
- * 2. Users enter during time window (pay entry fee)
- * 3. Owner finalizes with Merkle root of winners
- * 4. Winners claim rewards with proofs
+ * @author Elata Biosciences
+ * @custom:security-contact security@elata.bio
+ * @notice Entry-fee tournament contract with multi-currency support and Merkle-based payouts.
+ * @dev Users pay an entry fee in app tokens, ELTA, or USDC during a defined time window. Entry fees
+ *      accumulate in a pool; a configurable portion routes to FeeCollector as protocol revenue. After
+ *      the competition ends, the owner finalizes by publishing a Merkle root of winners. Winners claim
+ *      their share by submitting a valid proof. Finalization is one-time and irreversible.
  */
-contract Tournament is Ownable, ReentrancyGuard {
-    /// @notice App token used for entry fees and prizes
-    IERC20 public immutable APP;
+contract Tournament is AccessControl, ReentrancyGuard {
+    using SafeERC20 for IERC20;
 
-    /// @notice Protocol treasury address for fees
+    /// @notice Module admin role - can manage settings and withdraw
+    bytes32 public constant MODULE_ADMIN_ROLE = keccak256("MODULE_ADMIN_ROLE");
+
+    /// @notice Module operator role - can manage day-to-day operations
+    bytes32 public constant MODULE_OPERATOR_ROLE = keccak256("MODULE_OPERATOR_ROLE");
+
+    /// @notice Entry token (APP, ELTA, or USDC)
+    IERC20 public immutable entryToken;
+
+    /// @notice Type of entry token
+    EntryTokenType public immutable entryTokenType;
+
+    /// @notice App ID for fee routing
+    uint256 public immutable appId;
+
+    /// @notice FeeCollector for routing protocol fees
+    address public feeCollector;
+
+    /// @notice Legacy: Protocol treasury address (fallback or USDC direct)
     address public protocolTreasury;
 
     /// @notice Burn sink address (dead address)
@@ -87,9 +110,12 @@ contract Tournament is Ownable, ReentrancyGuard {
 
     /**
      * @notice Initialize tournament
-     * @param appToken App token address
-     * @param owner_ Tournament owner
-     * @param protocolTreasury_ Protocol treasury address
+     * @param token_ Entry token address
+     * @param tokenType_ Entry token type (APP, ELTA, USDC)
+     * @param appId_ App ID for fee routing
+     * @param admin_ Tournament admin (receives MODULE_ADMIN_ROLE and MODULE_OPERATOR_ROLE)
+     * @param feeCollector_ FeeCollector address (can be address(0) for legacy)
+     * @param protocolTreasury_ Protocol treasury address (fallback or USDC direct)
      * @param entryFee_ Entry fee amount
      * @param start_ Start time (0 = immediate)
      * @param end_ End time (0 = no end)
@@ -97,22 +123,33 @@ contract Tournament is Ownable, ReentrancyGuard {
      * @param burnFeeBps_ Burn fee in bps
      */
     constructor(
-        address appToken,
-        address owner_,
+        address token_,
+        EntryTokenType tokenType_,
+        uint256 appId_,
+        address admin_,
+        address feeCollector_,
         address protocolTreasury_,
         uint256 entryFee_,
         uint64 start_,
         uint64 end_,
         uint256 protocolFeeBps_,
         uint256 burnFeeBps_
-    ) Ownable(owner_) {
+    ) {
         if (end_ != 0 && end_ <= start_) revert InvalidWindow();
 
-        APP = IERC20(appToken);
+        entryToken = IERC20(token_);
+        entryTokenType = tokenType_;
+        appId = appId_;
+        feeCollector = feeCollector_;
         protocolTreasury = protocolTreasury_;
         entryFee = entryFee_;
         startTime = start_;
         endTime = end_;
+
+        // Grant roles to admin
+        _grantRole(DEFAULT_ADMIN_ROLE, admin_);
+        _grantRole(MODULE_ADMIN_ROLE, admin_);
+        _grantRole(MODULE_OPERATOR_ROLE, admin_);
 
         _setFees(protocolFeeBps_, burnFeeBps_);
     }
@@ -126,7 +163,7 @@ contract Tournament is Ownable, ReentrancyGuard {
      * @param protocolBps Protocol fee in basis points
      * @param burnBps Burn fee in basis points
      */
-    function setFees(uint256 protocolBps, uint256 burnBps) external onlyOwner {
+    function setFees(uint256 protocolBps, uint256 burnBps) external onlyRole(MODULE_OPERATOR_ROLE) {
         if (finalized) revert AlreadyFinalized();
         _setFees(protocolBps, burnBps);
     }
@@ -143,7 +180,7 @@ contract Tournament is Ownable, ReentrancyGuard {
      * @param start_ Start time
      * @param end_ End time
      */
-    function setWindow(uint64 start_, uint64 end_) external onlyOwner {
+    function setWindow(uint64 start_, uint64 end_) external onlyRole(MODULE_OPERATOR_ROLE) {
         if (finalized) revert AlreadyFinalized();
         if (end_ != 0 && end_ <= start_) revert InvalidWindow();
         startTime = start_;
@@ -155,10 +192,19 @@ contract Tournament is Ownable, ReentrancyGuard {
      * @notice Set entry fee
      * @param fee New entry fee
      */
-    function setEntryFee(uint256 fee) external onlyOwner {
+    function setEntryFee(uint256 fee) external onlyRole(MODULE_OPERATOR_ROLE) {
         if (finalized) revert AlreadyFinalized();
         entryFee = fee;
         emit EntryFeeSet(fee);
+    }
+
+    /**
+     * @notice Set fee collector address
+     * @param feeCollector_ New fee collector address
+     */
+    function setFeeCollector(address feeCollector_) external onlyRole(MODULE_ADMIN_ROLE) {
+        if (finalized) revert AlreadyFinalized();
+        feeCollector = feeCollector_;
     }
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -167,7 +213,7 @@ contract Tournament is Ownable, ReentrancyGuard {
 
     /**
      * @notice Enter tournament by paying entry fee
-     * @dev User must approve this contract for APP tokens first
+     * @dev User must approve this contract for entry tokens first
      */
     function enter() external nonReentrant {
         if (entered[msg.sender]) revert AlreadyEntered();
@@ -175,7 +221,7 @@ contract Tournament is Ownable, ReentrancyGuard {
         if (endTime != 0 && block.timestamp > endTime) revert TournamentEnded();
 
         entered[msg.sender] = true;
-        APP.transferFrom(msg.sender, address(this), entryFee);
+        entryToken.safeTransferFrom(msg.sender, address(this), entryFee);
         pool += entryFee;
 
         emit Entered(msg.sender, entryFee);
@@ -183,10 +229,10 @@ contract Tournament is Ownable, ReentrancyGuard {
 
     /**
      * @notice Finalize tournament with winners Merkle root
-     * @dev Applies protocol and burn fees, sets net pool
+     * @dev Applies protocol and burn fees, routes fees to FeeCollector
      * @param winnersRoot_ Merkle root of (address, amount) pairs
      */
-    function finalize(bytes32 winnersRoot_) external onlyOwner nonReentrant {
+    function finalize(bytes32 winnersRoot_) external onlyRole(MODULE_OPERATOR_ROLE) nonReentrant {
         if (finalized) revert AlreadyFinalized();
         finalized = true;
 
@@ -194,14 +240,42 @@ contract Tournament is Ownable, ReentrancyGuard {
         uint256 burnAmt = (pool * burnFeeBps) / BPS;
         uint256 netPool = pool - protocolFee - burnAmt;
 
-        // Transfer fees
-        if (protocolFee > 0) APP.transfer(protocolTreasury, protocolFee);
-        if (burnAmt > 0) APP.transfer(burnSink, burnAmt);
+        // Route protocol fees based on token type
+        if (protocolFee > 0) {
+            _routeProtocolFees(protocolFee);
+        }
+
+        // Burn tokens (all token types support burn sink)
+        if (burnAmt > 0) {
+            entryToken.safeTransfer(burnSink, burnAmt);
+        }
 
         winnersRoot = winnersRoot_;
         pool = netPool;
 
         emit Finalized(winnersRoot_, netPool, protocolFee, burnAmt);
+    }
+
+    /**
+     * @dev Route protocol fees to FeeCollector or treasury
+     */
+    function _routeProtocolFees(uint256 amount) internal {
+        if (feeCollector != address(0)) {
+            // Route to FeeCollector based on token type
+            entryToken.approve(feeCollector, amount);
+
+            if (entryTokenType == EntryTokenType.ELTA) {
+                IFeeCollector(feeCollector).depositElta(appId, FeeKind.TOURNAMENT_FEE, amount);
+            } else if (entryTokenType == EntryTokenType.APP) {
+                IFeeCollector(feeCollector).depositAppToken(appId, FeeKind.TOURNAMENT_FEE, address(entryToken), amount);
+            } else {
+                // USDC goes directly to treasury
+                entryToken.safeTransfer(protocolTreasury, amount);
+            }
+        } else {
+            // Fallback: send directly to treasury
+            entryToken.safeTransfer(protocolTreasury, amount);
+        }
     }
 
     /**
@@ -217,7 +291,7 @@ contract Tournament is Ownable, ReentrancyGuard {
         if (!MerkleProof.verify(proof, winnersRoot, leaf)) revert InvalidProof();
 
         claimed[msg.sender] = true;
-        APP.transfer(msg.sender, amount);
+        entryToken.safeTransfer(msg.sender, amount);
 
         emit Claimed(msg.sender, amount);
     }

@@ -1,0 +1,335 @@
+name: Simulation Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'sim/**'
+      - 'src/**'
+      - 'script/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'sim/**'
+      - 'src/**'
+      - 'script/**'
+  workflow_dispatch:
+
+env:
+  FOUNDRY_PROFILE: ci
+
+jobs:
+  protocol-fast:
+    name: Protocol Fast Lane
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: |
+            sim/pnpm-lock.yaml
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+          cache: true
+
+      - name: Cache Foundry build
+        uses: actions/cache@v4
+        with:
+          path: |
+            cache/
+            out/
+          key: foundry-smoke-${{ hashFiles('foundry.toml', 'src/**/*.sol', 'lib/**') }}
+          restore-keys: |
+            foundry-smoke-
+
+      - name: Install simulation dependencies
+        run: pnpm -C sim install
+
+      - name: Build contracts
+        run: forge build src/ --sizes
+        env:
+          FOUNDRY_PROFILE: default
+
+      - name: Run fast lane protocol suite
+        run: pnpm -C sim run protocol:fast
+        continue-on-error: true
+
+      - name: Validate fast lane summaries
+        run: pnpm -C sim run results:validate:fast
+        continue-on-error: true
+
+      - name: Upload smoke test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: protocol-fast-results
+          path: sim/results/
+          retention-days: 7
+
+  protocol-deep:
+    name: Protocol Deep Lane
+    runs-on: ubuntu-latest
+    needs: protocol-fast
+    timeout-minutes: 180
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/vNext'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: |
+            sim/pnpm-lock.yaml
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+          cache: true
+
+      - name: Cache Foundry build
+        uses: actions/cache@v4
+        with:
+          path: |
+            cache/
+            out/
+          key: foundry-integration-${{ hashFiles('foundry.toml', 'src/**/*.sol', 'lib/**') }}
+          restore-keys: |
+            foundry-integration-
+            foundry-smoke-
+
+      - name: Install simulation dependencies
+        run: pnpm -C sim install
+
+      - name: Build contracts
+        run: forge build src/ --sizes
+        env:
+          FOUNDRY_PROFILE: default
+
+      - name: Run deep lane protocol suite
+        run: pnpm -C sim run protocol:deep
+
+      - name: Validate deep lane summaries
+        run: pnpm -C sim run results:validate:deep
+
+      - name: Upload integration test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: protocol-deep-results
+          path: sim/results/
+          retention-days: 14
+
+  protocol-balanced:
+    name: Protocol Balanced Lane
+    runs-on: ubuntu-latest
+    needs: protocol-fast
+    timeout-minutes: 120
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/vNext'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: |
+            sim/pnpm-lock.yaml
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+          cache: true
+
+      - name: Cache Foundry build
+        uses: actions/cache@v4
+        with:
+          path: |
+            cache/
+            out/
+          key: foundry-balanced-${{ hashFiles('foundry.toml', 'src/**/*.sol', 'lib/**') }}
+          restore-keys: |
+            foundry-balanced-
+            foundry-integration-
+            foundry-smoke-
+
+      - name: Install simulation dependencies
+        run: pnpm -C sim install
+
+      - name: Build contracts
+        run: forge build src/ --sizes
+        env:
+          FOUNDRY_PROFILE: default
+
+      - name: Run balanced lane protocol suite
+        run: pnpm -C sim run protocol:balanced
+
+      - name: Validate balanced lane summaries
+        run: pnpm -C sim run results:validate:balanced
+
+      - name: Upload balanced test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: protocol-balanced-results
+          path: sim/results/
+          retention-days: 14
+
+  typecheck:
+    name: Typecheck Simulation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: |
+            sim/pnpm-lock.yaml
+
+      - name: Install simulation dependencies
+        run: pnpm -C sim install
+
+      - name: Run typecheck
+        run: pnpm -C sim run typecheck
+        continue-on-error: true
+
+  lint:
+    name: Lint Simulation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: |
+            sim/pnpm-lock.yaml
+
+      - name: Install simulation dependencies
+        run: pnpm -C sim install
+
+      - name: Run lint
+        run: pnpm -C sim run lint || echo "Lint warnings found (non-blocking)"
+
+  full-ecosystem:
+    name: Full Ecosystem Simulation
+    runs-on: ubuntu-latest
+    needs: protocol-fast
+    timeout-minutes: 60
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: |
+            sim/pnpm-lock.yaml
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Install simulation dependencies
+        run: pnpm -C sim install
+
+      - name: Build contracts
+        run: forge build --sizes
+
+      - name: Run full ecosystem simulation
+        run: pnpm -C sim exec tsx scenarios/full-ecosystem.ts
+        timeout-minutes: 45
+
+      - name: Generate simulation report
+        run: pnpm -C sim exec tsx scripts/generate-simulation-report.ts ./simulation-results/full-ecosystem/metrics.json ./simulation-results/full-ecosystem/reports
+
+      - name: Upload simulation results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: full-ecosystem-results
+          path: |
+            sim/simulation-results/full-ecosystem/
+          retention-days: 30
+
+      - name: Upload simulation report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: simulation-report
+          path: |
+            sim/simulation-results/full-ecosystem/reports/
+          retention-days: 90

@@ -6,7 +6,7 @@ import {IVeEltaVotes} from "../../src/interfaces/IVeEltaVotes.sol";
 import {AppRewardsDistributor} from "../../src/rewards/AppRewardsDistributor.sol";
 import {RewardsDistributor} from "../../src/rewards/RewardsDistributor.sol";
 import {VeELTA} from "../../src/staking/VeELTA.sol";
-import {ELTA} from "../../src/token/ELTA.sol";
+import {ELTA} from "elta/ELTA.sol";
 import {Errors} from "../../src/utils/Errors.sol";
 import "forge-std/Test.sol";
 
@@ -39,7 +39,7 @@ contract RewardsDistributorTest is Test {
         vm.startPrank(admin);
 
         // Deploy ELTA
-        elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 0);
+        elta = new ELTA(treasury);
 
         // Deploy veELTA
         veElta = new VeELTA(elta, admin);

@@ -25,16 +25,30 @@ jobs:
         with:
           version: v1.4.2
 
+      - name: Cache Foundry build
+        uses: actions/cache@v4
+        with:
+          path: |
+            cache/
+            out/
+          key: foundry-build-${{ hashFiles('foundry.toml', 'src/**/*.sol', 'test/**/*.sol', 'lib/**') }}
+          restore-keys: |
+            foundry-build-
+
       - name: Show Forge version
         run: |
           forge --version
 
       - name: Run Forge build
         run: |
-          forge build
+          forge build src/ --sizes
+        env:
+          FOUNDRY_PROFILE: default
         id: build
 
       - name: Run Forge tests
         run: |
-          forge test -vvv
+          forge test -vvv --no-match-contract "Differential|Simulation"
+        env:
+          FOUNDRY_PROFILE: ci
         id: test

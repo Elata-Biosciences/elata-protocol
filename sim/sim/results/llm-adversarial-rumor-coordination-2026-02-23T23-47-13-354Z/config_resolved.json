@@ -1,0 +1,262 @@
+{
+  "scenario": {
+    "name": "llm-adversarial-rumor-coordination",
+    "seed": 8601,
+    "ticks": 10,
+    "tickSeconds": 1800,
+    "packName": "elata-protocol",
+    "agentCount": 15,
+    "agentTypes": [
+      {
+        "type": "RegimeNoiseTraderAgent",
+        "count": 4
+      },
+      {
+        "type": "OpportunisticAttackerAgent",
+        "count": 3
+      },
+      {
+        "type": "LiquidityDefenderAgent",
+        "count": 2
+      },
+      {
+        "type": "BadActorPersonaAgent",
+        "count": 1
+      },
+      {
+        "type": "SaboteurPersonaAgent",
+        "count": 1
+      },
+      {
+        "type": "HackerPersonaAgent",
+        "count": 1
+      },
+      {
+        "type": "EconomicPersonaAgent",
+        "count": 1
+      },
+      {
+        "type": "LlmGossipCoordinatorAgent",
+        "count": 2
+      }
+    ],
+    "metrics": {
+      "sampleEveryTicks": 1,
+      "track": [
+        "fees_collected_total",
+        "gas_total",
+        "app_count",
+        "elta_total_supply"
+      ]
+    },
+    "assertions": [
+      {
+        "type": "gte",
+        "metric": "fees_collected_total",
+        "value": 1
+      },
+      {
+        "type": "gte",
+        "metric": "elta_total_supply",
+        "value": 1
+      }
+    ],
+    "mode": "deterministic",
+    "studio": {
+      "report": {
+        "v": "v1",
+        "blocks": [
+          {
+            "kind": "markdown",
+            "title": "Experiment Notes",
+            "markdown": "# LLM Gossip: Adversarial Rumor Coordination\n\n## Experiment Notes\nStress-tests whether attacker/defender dynamics remain observable when LLM-based coordinators emit potentially noisy risk narratives over gossip.\n\n## Hypotheses\n- Exploration runs should create message diversity and richer gossip traces.\n- Protocol should maintain positive fees and supply despite rumor noise.\n\n## Success Criteria\n- Scenario passes core invariants.\n- Gossip and inspector history are available for post-run review.\n"
+          },
+          {
+            "kind": "dataset",
+            "as": "metrics_core",
+            "title": "Core Metrics",
+            "table": "metrics",
+            "spec": {
+              "v": "v1",
+              "select": [
+                "tick",
+                "timestamp",
+                "fees_collected_total",
+                "gas_total",
+                "app_count",
+                "elta_total_supply"
+              ],
+              "sort": {
+                "field": "tick",
+                "dir": "asc"
+              },
+              "limit": 5000
+            }
+          },
+          {
+            "kind": "transform",
+            "as": "metrics_primary_roll",
+            "title": "Rolling mean: fees_collected_total",
+            "from": "metrics_core",
+            "steps": [
+              {
+                "kind": "select",
+                "fields": [
+                  "tick",
+                  "fees_collected_total"
+                ]
+              },
+              {
+                "kind": "rolling",
+                "as": "fees_collected_total_roll_mean_10",
+                "field": "fees_collected_total",
+                "op": "mean",
+                "window": 10
+              }
+            ]
+          },
+          {
+            "kind": "transform",
+            "as": "metrics_primary_cum",
+            "title": "Cumulative: fees_collected_total",
+            "from": "metrics_core",
+            "steps": [
+              {
+                "kind": "select",
+                "fields": [
+                  "tick",
+                  "fees_collected_total"
+                ]
+              },
+              {
+                "kind": "cumulative",
+                "as": "fees_collected_total_cum_sum",
+                "field": "fees_collected_total",
+                "op": "sum"
+              }
+            ]
+          },
+          {
+            "kind": "chart",
+            "title": "fees_collected_total (raw)",
+            "chartType": "line",
+            "dataset": "metrics_core",
+            "xField": "tick",
+            "yField": "fees_collected_total"
+          },
+          {
+            "kind": "chart",
+            "title": "fees_collected_total (rolling mean)",
+            "chartType": "line",
+            "dataset": "metrics_primary_roll",
+            "xField": "tick",
+            "yField": "fees_collected_total_roll_mean_10"
+          },
+          {
+            "kind": "ml",
+            "as": "ml_linear_primary",
+            "title": "Linear regression: fees_collected_total ~ tick + gas_total + fees_collected_total",
+            "request": {
+              "kind": "linear_regression",
+              "runId": "RUN_ID",
+              "table": "metrics",
+              "x": [
+                "tick",
+                "gas_total",
+                "fees_collected_total"
+              ],
+              "y": "fees_collected_total",
+              "limit": 5000
+            }
+          },
+          {
+            "kind": "chart",
+            "title": "Linear fit vs actual",
+            "chartType": "line",
+            "dataset": "ml_linear_primary.predictions_long",
+            "xField": "index",
+            "yField": "value",
+            "seriesField": "series"
+          },
+          {
+            "kind": "ml",
+            "as": "ml_anomaly_primary",
+            "title": "Anomaly detection (z-score): fees_collected_total",
+            "request": {
+              "kind": "anomaly_zscore",
+              "runId": "RUN_ID",
+              "table": "metrics",
+              "field": "fees_collected_total",
+              "threshold": 3,
+              "limit": 5000
+            }
+          },
+          {
+            "kind": "chart",
+            "title": "Anomalies: fees_collected_total",
+            "chartType": "scatter",
+            "dataset": "ml_anomaly_primary.anomalies",
+            "xField": "index",
+            "yField": "value"
+          },
+          {
+            "kind": "table",
+            "title": "Metrics Table",
+            "dataset": "metrics_core",
+            "limit": 5000
+          },
+          {
+            "kind": "dataset",
+            "as": "persona_actions",
+            "title": "Persona Action Trace",
+            "table": "actions",
+            "spec": {
+              "v": "v1",
+              "select": [
+                "tick",
+                "agentId",
+                "action.name",
+                "action.metadata.personaId",
+                "action.metadata.intentTag",
+                "action.metadata.rationale",
+                "result.ok",
+                "result.error"
+              ],
+              "sort": {
+                "field": "tick",
+                "dir": "asc"
+              },
+              "limit": 2000
+            }
+          },
+          {
+            "kind": "table",
+            "title": "Persona Trace Table",
+            "dataset": "persona_actions",
+            "limit": 2000
+          },
+          {
+            "kind": "markdown",
+            "title": "Persona Quality Artifact",
+            "markdown": "Persona usefulness scores are generated post-run into `persona_quality.json` (see run artifacts). Use this together with Persona Trace Table for auditability."
+          },
+          {
+            "kind": "markdown",
+            "title": "Results Commentary",
+            "markdown": "## Results Commentary\nFill in after reviewing this run in Studio.\n\n## How to Read This\nUse the charts for trends, then validate with tables and ML diagnostics.\n"
+          }
+        ]
+      }
+    }
+  },
+  "options": {
+    "outDir": "sim/results",
+    "ci": false,
+    "verbose": false,
+    "memoryCapture": {
+      "enabled": true,
+      "sampleEveryTicks": 1,
+      "maxBytesPerRecord": 262144
+    }
+  }
+}

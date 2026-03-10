@@ -7,15 +7,18 @@ import {AppFactoryViews} from "../../src/apps/AppFactoryViews.sol";
 import {AppStakingVault} from "../../src/apps/AppStakingVault.sol";
 import {AppToken} from "../../src/apps/AppToken.sol";
 import {LpLocker} from "../../src/apps/LpLocker.sol";
+import {AppRegistry} from "../../src/registry/AppRegistry.sol";
+import {ContributorSplitFactory} from "../../src/contributors/ContributorSplitFactory.sol";
+import {FeeSwapper} from "../../src/fees/FeeSwapper.sol";
 import {IAppFeeRouter} from "../../src/interfaces/IAppFeeRouter.sol";
 import {IAppRewardsDistributor} from "../../src/interfaces/IAppRewardsDistributor.sol";
 import {IRewardsDistributor} from "../../src/interfaces/IRewardsDistributor.sol";
 import {IUniswapV2Router02} from "../../src/interfaces/IUniswapV2Router02.sol";
-import {ELTA} from "../../src/token/ELTA.sol";
+import {ELTA} from "elta/ELTA.sol";
 import {
     MockAppFeeRouter,
     MockAppRewardsDistributor,
-    MockElataXP,
+    MockElataPoints,
     MockRewardsDistributor
 } from "../mocks/MockContracts.sol";
 import "forge-std/Test.sol";
@@ -29,6 +32,9 @@ contract AppLaunchIntegrationTest is Test {
     ELTA public elta;
     AppFactory public factory;
     AppFactoryViews public views;
+    AppRegistry public registry;
+    ContributorSplitFactory public splitFactory;
+    FeeSwapper public feeSwapper;
 
     address public admin = makeAddr("admin");
     address public treasury = makeAddr("treasury");
@@ -44,7 +50,7 @@ contract AppLaunchIntegrationTest is Test {
     address public mockPair = makeAddr("mockPair");
 
     function setUp() public {
-        elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 77_000_000 ether);
+        elta = new ELTA(treasury);
 
         // Setup mock Uniswap
         _setupMockUniswap();
@@ -53,7 +59,7 @@ contract AppLaunchIntegrationTest is Test {
         MockAppFeeRouter mockFeeRouter = new MockAppFeeRouter();
         MockAppRewardsDistributor mockAppRewards = new MockAppRewardsDistributor();
         MockRewardsDistributor mockRewards = new MockRewardsDistributor();
-        MockElataXP mockXP = new MockElataXP();
+        MockElataPoints mockXP = new MockElataPoints();
 
         factory = new AppFactory(
             elta,
@@ -66,6 +72,17 @@ contract AppLaunchIntegrationTest is Test {
             governance,
             admin
         );
+
+        // Configure vNext dependencies (required by createApp wrapper).
+        registry = new AppRegistry(governance, address(factory));
+        splitFactory = new ContributorSplitFactory(governance, address(factory));
+        feeSwapper = new FeeSwapper(address(elta), admin, governance, treasury, address(registry));
+
+        vm.startPrank(admin);
+        factory.setAppRegistry(address(registry));
+        factory.setContributorSplitFactory(address(splitFactory));
+        factory.setFeeSwapper(address(feeSwapper));
+        vm.stopPrank();
 
         // Deploy views contract for complex queries
         views = new AppFactoryViews(address(factory));
@@ -128,7 +145,8 @@ contract AppLaunchIntegrationTest is Test {
             0, // Use default supply
             "High-speed EEG racing game",
             "ipfs://QmRaceGame",
-            "https://neurorace.game"
+            "https://neurorace.game",
+            new address[](0) // No operators
         );
         vm.stopPrank();
 
@@ -144,17 +162,18 @@ contract AppLaunchIntegrationTest is Test {
         // Verify token details
         AppToken token = AppToken(app.token);
         uint256 defaultSupply = factory.defaultSupply();
-        uint256 creatorStaked = defaultSupply / 2; // 50% auto-staked to creator
-        uint256 curveSupply = defaultSupply - creatorStaked; // 50% to curve
+        uint256 curveSupply = defaultSupply / 2; // 50% to curve
+        uint256 teamSupply = defaultSupply / 4; // 25% to vesting
+        uint256 ecosystemSupply = defaultSupply - curveSupply - teamSupply; // 25% to ecosystem
 
         assertEq(token.name(), "NeuroRacing");
         assertEq(token.symbol(), "RACE");
         assertEq(token.totalSupply(), defaultSupply);
 
-        // V2: Creator's 50% is auto-staked in vault (not liquid)
-        AppStakingVault vault = AppStakingVault(app.vault);
-        assertEq(vault.balanceOf(creator1), creatorStaked); // Creator has 50% staked
+        // V3: 50/25/25 split - curve, vesting wallet, ecosystem vault
         assertEq(token.balanceOf(app.curve), curveSupply); // Curve has 50%
+        assertEq(token.balanceOf(app.vestingWallet), teamSupply); // Vesting has 25%
+        assertEq(token.balanceOf(app.ecosystemVault), ecosystemSupply); // Ecosystem has 25%
 
         console2.log("[OK] App created successfully");
     }
@@ -163,6 +182,10 @@ contract AppLaunchIntegrationTest is Test {
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
         AppToken token = AppToken(app.token);
+
+        // Activate curve (warp past activation delay)
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
 
         // Test multiple purchases with different amounts
         uint256[] memory purchaseAmounts = new uint256[](3);
@@ -188,7 +211,7 @@ contract AppLaunchIntegrationTest is Test {
             vm.startPrank(buyer);
             // Approve amount + 1% trading fee (fee paid ON TOP)
             elta.approve(address(curve), amount * 101 / 100);
-            uint256 tokensOut = curve.buy(amount, expectedTokens);
+            uint256 tokensOut = curve.buy(amount, expectedTokens, address(0));
             vm.stopPrank();
 
             uint256 priceAfter = curve.getCurrentPrice();
@@ -209,7 +232,7 @@ contract AppLaunchIntegrationTest is Test {
         (uint256 eltaReserve, uint256 tokenReserve,,,, uint256 progress) = curve.getCurveState();
 
         uint256 defaultSupply = factory.defaultSupply();
-        uint256 curveSupply = defaultSupply / 2; // V2: 50% to curve, 50% auto-staked
+        uint256 curveSupply = defaultSupply / 2; // V3: 50% to curve, 25% vesting, 25% ecosystem
 
         assertGt(eltaReserve, factory.seedElta()); // Should have more than seed
         assertEq(tokenReserve, curveSupply - totalTokensPurchased);
@@ -229,8 +252,8 @@ contract AppLaunchIntegrationTest is Test {
         vm.startPrank(creator1);
         elta.approve(address(factory), totalCost * 2);
 
-        uint256 appId1 = factory.createApp("Game1", "GAME1", 0, "First game", "", "");
-        uint256 appId2 = factory.createApp("Game2", "GAME2", 0, "Second game", "", "");
+        uint256 appId1 = factory.createApp("Game1", "GAME1", 0, "First game", "", "", new address[](0));
+        uint256 appId2 = factory.createApp("Game2", "GAME2", 0, "Second game", "", "", new address[](0));
 
         vm.stopPrank();
 
@@ -238,7 +261,7 @@ contract AppLaunchIntegrationTest is Test {
         vm.startPrank(creator2);
         elta.approve(address(factory), totalCost);
 
-        uint256 appId3 = factory.createApp("Meditate", "ZEN", 0, "Meditation app", "", "");
+        uint256 appId3 = factory.createApp("Meditate", "ZEN", 0, "Meditation app", "", "", new address[](0));
 
         vm.stopPrank();
 
@@ -265,14 +288,19 @@ contract AppLaunchIntegrationTest is Test {
         AppBondingCurve curve1 = AppBondingCurve(app1.curve);
         AppBondingCurve curve2 = AppBondingCurve(app2.curve);
 
+        // Activate both curves
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve1.activate();
+        curve2.activate();
+
         // Investors can buy from different curves simultaneously
         vm.startPrank(investor1);
         // Approve with 1% fee on top
         elta.approve(address(curve1), 500 ether * 101 / 100);
         elta.approve(address(curve2), 500 ether * 101 / 100);
 
-        uint256 tokens1 = curve1.buy(500 ether, 0);
-        uint256 tokens2 = curve2.buy(500 ether, 0);
+        uint256 tokens1 = curve1.buy(500 ether, 0, address(0));
+        uint256 tokens2 = curve2.buy(500 ether, 0, address(0));
 
         vm.stopPrank();
 
@@ -295,7 +323,7 @@ contract AppLaunchIntegrationTest is Test {
 
         vm.startPrank(creator1);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("EconTest", "ECON", 0, "", "", "");
+        uint256 appId = factory.createApp("EconTest", "ECON", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         uint256 treasuryAfterCreation = elta.balanceOf(treasury);
@@ -307,12 +335,16 @@ contract AppLaunchIntegrationTest is Test {
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
 
+        // Activate curve
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
+
         uint256 purchaseAmount = 1000 ether;
 
         vm.startPrank(investor1);
         // Approve with 1% trading fee
         elta.approve(address(curve), purchaseAmount * 101 / 100);
-        curve.buy(purchaseAmount, 0);
+        curve.buy(purchaseAmount, 0, address(0));
         vm.stopPrank();
 
         // Trading fees now route through RewardsDistributor (70/15/15 split)
@@ -329,7 +361,7 @@ contract AppLaunchIntegrationTest is Test {
 
         vm.startPrank(creator1);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("NewParams", "NEW", 0, "", "", "");
+        uint256 appId = factory.createApp("NewParams", "NEW", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -357,13 +389,13 @@ contract AppLaunchIntegrationTest is Test {
 
         vm.startPrank(creator1);
         elta.approve(address(factory), totalCost * 2);
-        uint256 appId1 = factory.createApp("App1", "APP1", 0, "", "", "");
-        uint256 appId2 = factory.createApp("App2", "APP2", 0, "", "", "");
+        uint256 appId1 = factory.createApp("App1", "APP1", 0, "", "", "", new address[](0));
+        uint256 appId2 = factory.createApp("App2", "APP2", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         vm.startPrank(creator2);
         elta.approve(address(factory), totalCost);
-        uint256 appId3 = factory.createApp("App3", "APP3", 0, "", "", "");
+        uint256 appId3 = factory.createApp("App3", "APP3", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         // Test registry queries
@@ -395,7 +427,7 @@ contract AppLaunchIntegrationTest is Test {
 
         vm.expectRevert(AppFactory.Paused.selector);
         vm.prank(creator1);
-        factory.createApp("Paused", "PAUSE", 0, "", "", "");
+        factory.createApp("Paused", "PAUSE", 0, "", "", "", new address[](0));
 
         // Unpause and verify works
         vm.prank(admin);
@@ -404,7 +436,7 @@ contract AppLaunchIntegrationTest is Test {
         uint256 totalCost = factory.creationFee() + factory.seedElta();
         vm.startPrank(creator1);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("Unpaused", "UNPAUSE", 0, "", "", "");
+        uint256 appId = factory.createApp("Unpaused", "UNPAUSE", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         assertEq(appId, 0);
@@ -426,7 +458,7 @@ contract AppLaunchIntegrationTest is Test {
         elta.approve(address(factory), totalCost);
 
         uint256 gasBefore = gasleft();
-        uint256 appId = factory.createApp("GasTest", "GAS", 0, "", "", "");
+        uint256 appId = factory.createApp("GasTest", "GAS", 0, "", "", "", new address[](0));
         uint256 gasAfter = gasleft();
 
         vm.stopPrank();
@@ -434,20 +466,25 @@ contract AppLaunchIntegrationTest is Test {
         uint256 creationGas = gasBefore - gasAfter;
         console2.log("App creation gas:", creationGas);
 
-        // V3: Gas increased due to transfer fee logic and additional setup
-        // Threshold updated to 7.5M to account for transfer fee calculations
-        assertLt(creationGas, 7_500_000);
+        // VNext: Gas includes app registry registration + per-app contributor split clone,
+        // in addition to token/curve/vault/vesting/ecosystem deployments.
+        // Keep this as a coarse regression guard, not a tight ceiling.
+        assertLt(creationGas, 10_500_000);
 
         // Test purchase gas costs
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
+
+        // Activate curve
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
 
         vm.startPrank(investor1);
         // Approve with 1% fee
         elta.approve(address(curve), 100 ether * 101 / 100);
 
         gasBefore = gasleft();
-        curve.buy(100 ether, 0);
+        curve.buy(100 ether, 0, address(0));
         gasAfter = gasleft();
 
         vm.stopPrank();
@@ -467,16 +504,25 @@ contract AppLaunchIntegrationTest is Test {
 
         vm.startPrank(creator1);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("EdgeTest", "EDGE", 0, "", "", "");
+        uint256 appId = factory.createApp("EdgeTest", "EDGE", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
 
+        // Test buying when curve is not active
+        vm.expectRevert(AppBondingCurve.NotActive.selector);
+        vm.prank(makeAddr("poorUser"));
+        curve.buy(1000 ether, 0, address(0));
+
+        // Activate curve
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
+
         // Test buying with insufficient balance
         vm.expectRevert();
         vm.prank(makeAddr("poorUser"));
-        curve.buy(1000 ether, 0);
+        curve.buy(1000 ether, 0, address(0));
 
         // Test buying with insufficient approval
         vm.startPrank(investor1);
@@ -484,7 +530,7 @@ contract AppLaunchIntegrationTest is Test {
         elta.approve(address(curve), 50 ether);
 
         vm.expectRevert();
-        curve.buy(100 ether, 0); // Tries to spend more than approved
+        curve.buy(100 ether, 0, address(0)); // Tries to spend more than approved
 
         vm.stopPrank();
 
@@ -497,7 +543,7 @@ contract AppLaunchIntegrationTest is Test {
         elta.approve(address(curve), eltaIn * 101 / 100);
 
         vm.expectRevert(AppBondingCurve.InsufficientOutput.selector);
-        curve.buy(eltaIn, expectedTokens + 1); // Set minimum too high
+        curve.buy(eltaIn, expectedTokens + 1, address(0)); // Set minimum too high
 
         vm.stopPrank();
 
@@ -522,23 +568,28 @@ contract AppLaunchIntegrationTest is Test {
 
         vm.startPrank(creator1);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("FuzzApp", "FUZZ", supply, "", "", "");
+        uint256 appId = factory.createApp("FuzzApp", "FUZZ", supply, "", "", "", new address[](0));
         vm.stopPrank();
 
         // Verify app created correctly
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
         AppToken token = AppToken(app.token);
-        AppStakingVault vault = AppStakingVault(app.vault);
 
-        uint256 creatorStaked = supply / 2; // 50% auto-staked
-        uint256 curveSupply = supply - creatorStaked;
+        uint256 curveSupply = supply / 2; // 50% to curve
+        uint256 teamSupply = supply / 4; // 25% to vesting
+        uint256 ecosystemSupply = supply - curveSupply - teamSupply; // 25% to ecosystem
 
         assertEq(token.maxSupply(), supply);
-        assertEq(vault.balanceOf(creator1), creatorStaked); // Creator has 50% staked
+        assertEq(token.balanceOf(app.vestingWallet), teamSupply); // Vesting has 25%
+        assertEq(token.balanceOf(app.ecosystemVault), ecosystemSupply); // Ecosystem has 25%
         assertEq(curve.targetRaisedElta(), targetAmount);
         assertEq(curve.reserveElta(), seedAmount);
         assertEq(curve.reserveToken(), curveSupply); // Curve has 50%
+
+        // Activate curve
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
 
         // Test purchase with fuzzed amount
         vm.prank(treasury);
@@ -547,7 +598,7 @@ contract AppLaunchIntegrationTest is Test {
         vm.startPrank(investor1);
         // Approve with 1% fee
         elta.approve(address(curve), purchaseAmount * 101 / 100);
-        uint256 tokensOut = curve.buy(purchaseAmount, 0);
+        uint256 tokensOut = curve.buy(purchaseAmount, 0, address(0));
         vm.stopPrank();
 
         assertGt(tokensOut, 0);

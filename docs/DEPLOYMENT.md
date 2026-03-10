@@ -79,7 +79,7 @@ The script will:
 - Compile contracts
 - Deploy in the correct order
 - Set up role permissions
-- Mint initial ELTA to treasury
+- Deploy ELTA and mint fixed supply (`77,000,000`) to treasury
 - Output addresses to `deployments/sepolia.json`
 
 ### Step 4: Verify Contracts
@@ -87,7 +87,7 @@ The script will:
 Verification usually happens automatically during deployment. If it fails:
 
 ```bash
-forge verify-contract <ADDRESS> src/token/ELTA.sol:ELTA \
+forge verify-contract <ADDRESS> lib/ELTA/src/ELTA.sol:ELTA \
   --chain sepolia \
   --etherscan-api-key $ETHERSCAN_API_KEY \
   --constructor-args $(cast abi-encode "constructor(string,string,address,address,uint256,uint256)" "ELTA" "ELTA" "0x..." "0x..." 10000000000000000000000000 77000000000000000000000000)
@@ -174,7 +174,7 @@ You'll approve each transaction on the device.
 After deploying, verify:
 
 - [ ] All contracts deployed and verified on block explorer
-- [ ] Initial ELTA supply minted to treasury
+- [ ] ELTA fixed supply (`77,000,000`) minted to treasury
 - [ ] Admin roles assigned to multisig
 - [ ] Deployer wallet has no remaining admin roles
 - [ ] Timelock configured with correct delays
@@ -203,23 +203,12 @@ cast send $TIMELOCK_ADDRESS \
 
 These should be executed from the multisig via Gnosis Safe.
 
-## Updating Frontend
+## Frontend Configuration
 
-After deployment, update the App Store environment variables.
+After deployment, contract addresses should be configured in your frontend application.
+The deployment script outputs addresses to `deployments/<network>.json`.
 
-For Vercel (production):
-1. Go to elata-appstore project → Settings → Environment Variables
-2. Add variables for the new network:
-
-```
-NEXT_PUBLIC_ELTA_ADDRESS_BASE_SEPOLIA=0x...
-NEXT_PUBLIC_APP_FACTORY_ADDRESS_BASE_SEPOLIA=0x...
-NEXT_PUBLIC_VE_ELTA_ADDRESS_BASE_SEPOLIA=0x...
-NEXT_PUBLIC_ELATA_XP_ADDRESS_BASE_SEPOLIA=0x...
-NEXT_PUBLIC_REWARDS_DISTRIBUTOR_ADDRESS_BASE_SEPOLIA=0x...
-```
-
-For local development, the deploy script generates these automatically.
+See the frontend repository documentation for environment variable configuration.
 
 ## Mainnet Deployment
 
@@ -239,11 +228,10 @@ At 20 gwei on Ethereum mainnet:
 |----------|-----|------|
 | ELTA | 2.3M | ~$46 |
 | VeELTA | 3.0M | ~$60 |
-| ElataXP | 1.8M | ~$36 |
-| LotPool | 1.1M | ~$22 |
+| ElataPoints | 1.8M | ~$36 |
 | AppFactory | 2.9M | ~$58 |
 | Other contracts | ~4M | ~$80 |
-| **Total** | ~15M | ~$300 |
+| **Total** | ~14M | ~$280 |
 
 On Base mainnet, expect costs 50-100x lower.
 

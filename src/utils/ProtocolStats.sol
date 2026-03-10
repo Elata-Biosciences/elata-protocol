@@ -1,28 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {ElataXP} from "../experience/ElataXP.sol";
-import {LotPool} from "../governance/LotPool.sol";
+import {ElataPoints} from "../experience/ElataPoints.sol";
 import {RewardsDistributor} from "../rewards/RewardsDistributor.sol";
 import {VeELTA} from "../staking/VeELTA.sol";
-import {ELTA} from "../token/ELTA.sol";
+import {ELTA} from "elta/ELTA.sol";
 
 /**
  * @title ProtocolStats
  * @author Elata Biosciences
- * @notice Comprehensive statistics and data aggregation for frontend integration
- * @dev Provides batch queries and aggregated data for efficient frontend loading
+ * @custom:security-contact security@elata.bio
+ * @notice Aggregates protocol statistics for frontend integration.
+ * @dev Provides batch queries across ELTA, veELTA, XP, and rewards contracts for efficient loading.
  */
 contract ProtocolStats {
     ELTA public immutable elta;
     VeELTA public immutable staking;
-    ElataXP public immutable xp;
-    LotPool public immutable funding;
+    ElataPoints public immutable xp;
     RewardsDistributor public immutable rewards;
 
     struct UserSummary {
         uint256 eltaBalance;
-        uint256 eltaVotingPower;
+        uint256 veEltaVotingPower; // Voting power from veELTA (locked ELTA)
         uint256 xpBalance;
         uint256 stakingPositions;
         uint256 totalStaked;
@@ -49,15 +48,12 @@ contract ProtocolStats {
         uint256 totalActivePositions;
         uint256 averageLockDuration;
         uint256 totalRewardsDistributed;
-        uint256 currentFundingRound;
-        uint256 totalFundingAllocated;
     }
 
-    constructor(ELTA _elta, VeELTA _staking, ElataXP _xp, LotPool _funding, RewardsDistributor _rewards) {
+    constructor(ELTA _elta, VeELTA _staking, ElataPoints _xp, RewardsDistributor _rewards) {
         elta = _elta;
         staking = _staking;
         xp = _xp;
-        funding = _funding;
         rewards = _rewards;
     }
 
@@ -69,7 +65,7 @@ contract ProtocolStats {
     function getUserSummary(address user) external view returns (UserSummary memory) {
         return UserSummary({
             eltaBalance: elta.balanceOf(user),
-            eltaVotingPower: elta.getVotes(user),
+            veEltaVotingPower: staking.getVotes(user), // Voting power comes from veELTA, not ELTA
             xpBalance: xp.balanceOf(user),
             stakingPositions: staking.balanceOf(user),
             totalStaked: _getTotalStaked(user),
@@ -117,60 +113,8 @@ contract ProtocolStats {
             totalXPIssued: xp.totalSupply(),
             totalActivePositions: staking.totalSupply(),
             averageLockDuration: _calculateAverageLockDuration(),
-            totalRewardsDistributed: _getTotalRewardsDistributed(),
-            currentFundingRound: funding.currentRoundId(),
-            totalFundingAllocated: _getTotalFundingAllocated()
+            totalRewardsDistributed: _getTotalRewardsDistributed()
         });
-    }
-
-    /**
-     * @notice Gets active funding round information
-     * @param roundId Round ID to query
-     * @param snapshotBlock Block number for XP snapshot
-     * @param startTime Round start time
-     * @param endTime Round end time
-     * @param finalized Whether round is finalized
-     * @param options Array of voting options
-     */
-    function getCurrentFundingRound()
-        external
-        view
-        returns (
-            uint256 roundId,
-            uint256 snapshotBlock,
-            uint64 startTime,
-            uint64 endTime,
-            bool finalized,
-            bytes32[] memory options
-        )
-    {
-        uint256 currentRound = funding.currentRoundId();
-        if (currentRound > 0) {
-            (snapshotBlock, startTime, endTime, finalized, options) = funding.getRound(currentRound - 1);
-            roundId = currentRound - 1;
-        } else {
-            return (0, 0, 0, 0, false, new bytes32[](0));
-        }
-    }
-
-    /**
-     * @notice Gets user's voting status for a specific round
-     * @param user User address
-     * @param roundId Round ID
-     * @return userXP XP available for voting
-     * @return usedXP XP already used in voting
-     * @return remainingXP XP still available
-     */
-    function getUserVotingStatus(address user, uint256 roundId)
-        external
-        view
-        returns (uint256 userXP, uint256 usedXP, uint256 remainingXP)
-    {
-        (uint256 snapshotBlock,,,,) = funding.getRound(roundId);
-        userXP = xp.getPastXP(user, snapshotBlock);
-        // Note: usedXP would need to be tracked in LotPool - see enhancement below
-        usedXP = 0; // Placeholder
-        remainingXP = userXP - usedXP;
     }
 
     /**
@@ -199,9 +143,51 @@ contract ProtocolStats {
         return balances;
     }
 
+    /**
+     * @notice Batch query for multiple user veELTA voting power
+     * @param users Array of user addresses
+     * @return Array of veELTA voting power
+     */
+    function getBatchVotingPower(address[] calldata users) external view returns (uint256[] memory) {
+        uint256[] memory power = new uint256[](users.length);
+        for (uint256 i = 0; i < users.length; i++) {
+            power[i] = staking.getVotes(users[i]);
+        }
+        return power;
+    }
+
+    /**
+     * @notice Get epoch information for claiming rewards
+     * @return currentEpoch Current epoch index
+     * @return totalEpochs Total number of epochs
+     * @return latestRewardAmount Amount in latest epoch
+     */
+    function getEpochInfo()
+        external
+        view
+        returns (uint256 currentEpoch, uint256 totalEpochs, uint256 latestRewardAmount)
+    {
+        totalEpochs = rewards.getEpochCount();
+        if (totalEpochs > 0) {
+            currentEpoch = totalEpochs - 1;
+            (, latestRewardAmount) = rewards.getEpoch(currentEpoch);
+        }
+    }
+
+    /**
+     * @notice Check if a user has any pending rewards to claim
+     * @param user User address
+     * @return hasPending Whether user has unclaimed rewards
+     * @return estimatedAmount Estimated pending amount
+     */
+    function getUserRewardStatus(address user) external view returns (bool hasPending, uint256 estimatedAmount) {
+        estimatedAmount = rewards.estimatePendingVeRewards(user);
+        hasPending = estimatedAmount > 0;
+    }
+
     // Internal helper functions
 
-    function _getPositionSummary(uint256 tokenId) internal view returns (PositionSummary memory) {
+    function _getPositionSummary(uint256 tokenId) internal pure returns (PositionSummary memory) {
         // Not used (kept for interface compatibility, always returns empty)
         return PositionSummary({
             tokenId: tokenId,
@@ -228,7 +214,7 @@ contract ProtocolStats {
         return elta.balanceOf(address(staking));
     }
 
-    function _calculateAverageLockDuration() internal view returns (uint256) {
+    function _calculateAverageLockDuration() internal pure returns (uint256) {
         // Placeholder - would require tracking lock durations
         return 52 weeks; // Default assumption
     }
@@ -244,10 +230,5 @@ contract ProtocolStats {
         }
 
         return totalDistributed;
-    }
-
-    function _getTotalFundingAllocated() internal view returns (uint256) {
-        // This would need to be tracked via events or additional state
-        return elta.balanceOf(address(funding));
     }
 }

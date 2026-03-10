@@ -5,15 +5,18 @@ import {AppBondingCurve} from "../../src/apps/AppBondingCurve.sol";
 import {AppFactory} from "../../src/apps/AppFactory.sol";
 import {AppToken} from "../../src/apps/AppToken.sol";
 import {LpLocker} from "../../src/apps/LpLocker.sol";
+import {AppRegistry} from "../../src/registry/AppRegistry.sol";
+import {ContributorSplitFactory} from "../../src/contributors/ContributorSplitFactory.sol";
+import {FeeSwapper} from "../../src/fees/FeeSwapper.sol";
 import {IAppFeeRouter} from "../../src/interfaces/IAppFeeRouter.sol";
 import {IAppRewardsDistributor} from "../../src/interfaces/IAppRewardsDistributor.sol";
 import {IRewardsDistributor} from "../../src/interfaces/IRewardsDistributor.sol";
 import {IUniswapV2Router02} from "../../src/interfaces/IUniswapV2Router02.sol";
-import {ELTA} from "../../src/token/ELTA.sol";
+import {ELTA} from "elta/ELTA.sol";
 import {
     MockAppFeeRouter,
     MockAppRewardsDistributor,
-    MockElataXP,
+    MockElataPoints,
     MockRewardsDistributor
 } from "../mocks/MockContracts.sol";
 import "forge-std/Test.sol";
@@ -26,6 +29,9 @@ import "forge-std/Test.sol";
 contract AppLaunchSecurityTest is Test {
     ELTA public elta;
     AppFactory public factory;
+    AppRegistry public registry;
+    ContributorSplitFactory public splitFactory;
+    FeeSwapper public feeSwapper;
 
     address public admin = makeAddr("admin");
     address public treasury = makeAddr("treasury");
@@ -37,7 +43,7 @@ contract AppLaunchSecurityTest is Test {
     address public mockRouter = makeAddr("mockRouter");
 
     function setUp() public {
-        elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 77_000_000 ether);
+        elta = new ELTA(treasury);
 
         vm.mockCall(mockRouter, abi.encodeWithSignature("factory()"), abi.encode(makeAddr("mockFactory")));
 
@@ -45,7 +51,7 @@ contract AppLaunchSecurityTest is Test {
         MockAppFeeRouter mockFeeRouter = new MockAppFeeRouter();
         MockAppRewardsDistributor mockAppRewards = new MockAppRewardsDistributor();
         MockRewardsDistributor mockRewards = new MockRewardsDistributor();
-        MockElataXP mockXP = new MockElataXP();
+        MockElataPoints mockXP = new MockElataPoints();
 
         factory = new AppFactory(
             elta,
@@ -59,6 +65,17 @@ contract AppLaunchSecurityTest is Test {
             admin
         );
 
+        // Configure vNext dependencies (required by createApp wrapper).
+        registry = new AppRegistry(governance, address(factory));
+        splitFactory = new ContributorSplitFactory(governance, address(factory));
+        feeSwapper = new FeeSwapper(address(elta), admin, governance, treasury, address(registry));
+
+        vm.startPrank(admin);
+        factory.setAppRegistry(address(registry));
+        factory.setContributorSplitFactory(address(splitFactory));
+        factory.setFeeSwapper(address(feeSwapper));
+        vm.stopPrank();
+
         // Distribute ELTA
         vm.startPrank(treasury);
         elta.transfer(creator, 10_000 ether);
@@ -71,7 +88,7 @@ contract AppLaunchSecurityTest is Test {
         // Attacker without enough ELTA cannot create app
         vm.expectRevert();
         vm.prank(attacker);
-        factory.createApp("Malicious", "MAL", 0, "", "", "");
+        factory.createApp("Malicious", "MAL", 0, "", "", "", new address[](0));
 
         // Verify no app was created
         assertEq(factory.appCount(), 0);
@@ -93,7 +110,7 @@ contract AppLaunchSecurityTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("SupplyTest", "SUPPLY", 1000 ether, "", "", "");
+        uint256 appId = factory.createApp("SupplyTest", "SUPPLY", 1000 ether, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -117,17 +134,21 @@ contract AppLaunchSecurityTest is Test {
         uint256 totalCost = factory.creationFee() + factory.seedElta();
 
         // Give users XP to pass XP gating
-        MockElataXP mockXP = MockElataXP(address(factory.elataXP()));
+        MockElataPoints mockXP = MockElataPoints(address(factory.elataPoints()));
         mockXP.setBalance(creator, 1000 ether);
         mockXP.setBalance(user1, 1000 ether);
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("ReentrancyTest", "REEN", 0, "", "", "");
+        uint256 appId = factory.createApp("ReentrancyTest", "REEN", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
+
+        // Activate curve
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
 
         // Verify reentrancy protection exists
         // The ReentrancyGuard should prevent multiple entries
@@ -135,7 +156,7 @@ contract AppLaunchSecurityTest is Test {
         vm.startPrank(user1);
         // Approve with 1% trading fee
         elta.approve(address(curve), 1000 ether * 101 / 100);
-        uint256 tokensOut = curve.buy(1000 ether, 0);
+        uint256 tokensOut = curve.buy(1000 ether, 0, address(0));
         vm.stopPrank();
 
         // Purchase should succeed normally
@@ -170,24 +191,28 @@ contract AppLaunchSecurityTest is Test {
         uint256 totalCost = factory.creationFee() + factory.seedElta();
 
         // Give users XP to pass XP gating
-        MockElataXP mockXP = MockElataXP(address(factory.elataXP()));
+        MockElataPoints mockXP = MockElataPoints(address(factory.elataPoints()));
         mockXP.setBalance(creator, 1000 ether);
         mockXP.setBalance(user1, 1000 ether);
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("FeeTest", "FEE", 0, "", "", "");
+        uint256 appId = factory.createApp("FeeTest", "FEE", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
+
+        // Activate curve
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
 
         uint256 purchaseAmount = 1000 ether;
 
         vm.startPrank(user1);
         // Approve with 1% trading fee
         elta.approve(address(curve), purchaseAmount * 101 / 100);
-        curve.buy(purchaseAmount, 0);
+        curve.buy(purchaseAmount, 0, address(0));
         vm.stopPrank();
 
         // Attacker cannot redirect fees
@@ -203,7 +228,7 @@ contract AppLaunchSecurityTest is Test {
         // App creation should be blocked
         vm.expectRevert(AppFactory.Paused.selector);
         vm.prank(creator);
-        factory.createApp("PausedApp", "PAUSE", 0, "", "", "");
+        factory.createApp("PausedApp", "PAUSE", 0, "", "", "", new address[](0));
 
         // Verify no app was created
         assertEq(factory.appCount(), 0);
@@ -221,7 +246,7 @@ contract AppLaunchSecurityTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("UnpausedApp", "UNPAUSE", 0, "", "", "");
+        uint256 appId = factory.createApp("UnpausedApp", "UNPAUSE", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         assertEq(appId, 0);
@@ -234,7 +259,7 @@ contract AppLaunchSecurityTest is Test {
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("MetaTest", "META", 0, "", "", "");
+        uint256 appId = factory.createApp("MetaTest", "META", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -258,13 +283,13 @@ contract AppLaunchSecurityTest is Test {
         uint256 totalCost = factory.creationFee() + factory.seedElta();
 
         // Give users XP to pass XP gating
-        MockElataXP mockXP = MockElataXP(address(factory.elataXP()));
+        MockElataPoints mockXP = MockElataPoints(address(factory.elataPoints()));
         mockXP.setBalance(creator, 1000 ether);
         mockXP.setBalance(user1, 1000 ether);
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("CurveTest", "CURVE", 0, "", "", "");
+        uint256 appId = factory.createApp("CurveTest", "CURVE", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
@@ -275,6 +300,10 @@ contract AppLaunchSecurityTest is Test {
         vm.prank(attacker);
         curve.initializeCurve(1000 ether, 1_000_000 ether);
 
+        // Activate curve
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
+
         // Curve math should be deterministic and manipulation-resistant
         uint256 eltaIn = 1000 ether;
         uint256 expectedTokens = curve.getTokensOut(eltaIn);
@@ -282,7 +311,7 @@ contract AppLaunchSecurityTest is Test {
         vm.startPrank(user1);
         // Approve with 1% fee
         elta.approve(address(curve), eltaIn * 101 / 100);
-        uint256 actualTokens = curve.buy(eltaIn, expectedTokens);
+        uint256 actualTokens = curve.buy(eltaIn, expectedTokens, address(0));
         vm.stopPrank();
 
         assertEq(actualTokens, expectedTokens);
@@ -295,7 +324,7 @@ contract AppLaunchSecurityTest is Test {
         MockAppFeeRouter mockFee = new MockAppFeeRouter();
         MockAppRewardsDistributor mockRewards = new MockAppRewardsDistributor();
 
-        MockElataXP mockXP = new MockElataXP();
+        MockElataPoints mockXP = new MockElataPoints();
         MockRewardsDistributor mockRewards2 = new MockRewardsDistributor();
 
         vm.expectRevert("Zero address");
@@ -312,7 +341,20 @@ contract AppLaunchSecurityTest is Test {
         );
 
         vm.expectRevert("Zero address");
-        new AppToken("Test", "TEST", 18, 1000 ether, address(0), admin, governance, address(1), address(1), treasury);
+        new AppToken(
+            AppToken.InitParams({
+                name: "Test",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: 1000 ether,
+                creator: address(0),
+                admin: admin,
+                governance: governance,
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: treasury
+            })
+        );
 
         vm.expectRevert("Zero LP token");
         new LpLocker(1, address(0), treasury, block.timestamp + 365 days);
@@ -334,24 +376,28 @@ contract AppLaunchSecurityTest is Test {
         uint256 totalCost = factory.creationFee() + factory.seedElta();
 
         // Give users XP to pass XP gating
-        MockElataXP mockXP = MockElataXP(address(factory.elataXP()));
+        MockElataPoints mockXP = MockElataPoints(address(factory.elataPoints()));
         mockXP.setBalance(creator, 1000 ether);
         mockXP.setBalance(user1, 1000 ether);
 
         vm.startPrank(creator);
         elta.approve(address(factory), totalCost);
-        uint256 appId = factory.createApp("TransferTest", "TRANS", 0, "", "", "");
+        uint256 appId = factory.createApp("TransferTest", "TRANS", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         AppFactory.App memory app = factory.getApp(appId);
         AppBondingCurve curve = AppBondingCurve(app.curve);
         AppToken token = AppToken(app.token);
 
+        // Activate curve
+        vm.warp(block.timestamp + 1 hours + 1);
+        curve.activate();
+
         // Buy tokens
         vm.startPrank(user1);
         // Approve with 1% trading fee
         elta.approve(address(curve), 1000 ether * 101 / 100);
-        uint256 tokensOut = curve.buy(1000 ether, 0);
+        uint256 tokensOut = curve.buy(1000 ether, 0, address(0));
         vm.stopPrank();
 
         // Tokens should be transferable
@@ -359,12 +405,12 @@ contract AppLaunchSecurityTest is Test {
         vm.prank(user1);
         token.transfer(attacker, transferAmount);
 
-        // Account for 1% transfer fee - use actual balances instead of calculated
+        // LP-keyed tax: wallet-to-wallet transfers have NO fee
         uint256 actualReceived = token.balanceOf(attacker);
         uint256 actualRemaining = token.balanceOf(user1);
 
-        // Verify attacker received less than transfer amount due to fee
-        assertLt(actualReceived, transferAmount);
+        // Verify attacker received FULL transfer amount (no fee for wallet-to-wallet)
+        assertEq(actualReceived, transferAmount);
         // Verify user1's remaining balance is correct
         assertEq(actualRemaining, tokensOut - transferAmount);
     }
@@ -377,12 +423,12 @@ contract AppLaunchSecurityTest is Test {
         // Attacker with insufficient ELTA cannot create
         vm.expectRevert();
         vm.prank(attacker);
-        factory.createApp("InsufficientStake", "INSUF", 0, "", "", "");
+        factory.createApp("InsufficientStake", "INSUF", 0, "", "", "", new address[](0));
 
         // Creator with sufficient ELTA can create
         vm.startPrank(creator);
         elta.approve(address(factory), requiredStake);
-        uint256 appId = factory.createApp("ValidStake", "VALID", 0, "", "", "");
+        uint256 appId = factory.createApp("ValidStake", "VALID", 0, "", "", "", new address[](0));
         vm.stopPrank();
 
         assertEq(appId, 0);

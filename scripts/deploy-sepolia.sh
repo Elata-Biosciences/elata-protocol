@@ -1,12 +1,12 @@
 #!/bin/bash
-# Base Sepolia Deployment Script
-# Deploys Elata Protocol to Base Sepolia testnet
+# Ethereum Sepolia Deployment Script
+# Deploys Elata Protocol to Ethereum Sepolia testnet
 # Supports both Ledger and private key deployment
 
 set -e
 
 echo "=================================================="
-echo "  Elata Protocol - Base Sepolia Deployment"
+echo "  Elata Protocol - Ethereum Sepolia Deployment"
 echo "=================================================="
 echo ""
 
@@ -70,10 +70,14 @@ if [ -f .env.sepolia ]; then
     set +a  # Unmark
 fi
 
+# Resolve network/explorer variables (prefer Ethereum Sepolia names; keep Base fallback for compatibility)
+RPC_URL="${SEPOLIA_RPC_URL:-$BASE_SEPOLIA_RPC_URL}"
+EXPLORER_API_KEY="${ETHERSCAN_API_KEY:-$BASESCAN_API_KEY}"
+
 # Check required environment variables
-if [ -z "$BASE_SEPOLIA_RPC_URL" ]; then
-    echo -e "${RED}Error: BASE_SEPOLIA_RPC_URL not set${NC}"
-    echo "Please set it in .env.sepolia or export it"
+if [ -z "$RPC_URL" ]; then
+    echo -e "${RED}Error: SEPOLIA_RPC_URL not set${NC}"
+    echo "Please set SEPOLIA_RPC_URL in .env.sepolia or export it"
     exit 1
 fi
 
@@ -93,7 +97,7 @@ if [ "$USE_LEDGER" = true ]; then
     echo "  1. Connect your Ledger device"
     echo "  2. Open the Ethereum app"
     echo "  3. Enable 'Blind signing' in app settings"
-    echo "  4. Ensure Ledger address has Base Sepolia ETH"
+    echo "  4. Ensure Ledger address has Sepolia ETH"
     echo ""
     
     # Prompt for Ledger address if not provided
@@ -132,15 +136,15 @@ fi
 
 echo ""
 echo "Deployment Configuration:"
-echo "  Network: Base Sepolia (84532)"
-echo "  RPC URL: $BASE_SEPOLIA_RPC_URL"
+echo "  Network: Ethereum Sepolia (11155111)"
+echo "  RPC URL: $RPC_URL"
 echo "  Deployment Method: $([ "$USE_LEDGER" = true ] && echo "Ledger" || echo "Private Key")"
 if [ "$USE_LEDGER" = true ]; then
     echo "  Deployer: $LEDGER_ADDRESS"
 fi
 echo "  Admin Multisig: ${ADMIN_MSIG:-"Using deployer"}"
 echo "  Treasury: ${INITIAL_TREASURY:-"Using admin"}"
-echo "  Router: ${UNISWAP_V2_ROUTER:-"Will deploy mock router"}"
+echo "  Router: from script/config/NetworkConfig.sol"
 echo ""
 
 # Confirm deployment
@@ -158,20 +162,31 @@ if [ "$USE_LEDGER" = true ]; then
 fi
 echo ""
 
+# Tag this deployment so Deploy.sol writes a uniquely-named artifact.
+# This prevents fork simulations from overwriting the file the appstore ingests.
+if [ -z "$ELATA_DEPLOYMENT_TAG" ]; then
+    # Best-effort: include a short git sha if available.
+    GIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "nogit")
+    ELATA_DEPLOYMENT_TAG="$(date +%Y%m%d-%H%M)-$GIT_SHA"
+    export ELATA_DEPLOYMENT_TAG
+fi
+echo "  Deployment tag: $ELATA_DEPLOYMENT_TAG"
+echo ""
+
 # Deploy contracts
-if [ -n "$BASESCAN_API_KEY" ]; then
+if [ -n "$EXPLORER_API_KEY" ]; then
     echo "Deploying with contract verification..."
     forge script script/Deploy.sol:Deploy \
-        --rpc-url "$BASE_SEPOLIA_RPC_URL" \
+        --rpc-url "$RPC_URL" \
         $DEPLOY_FLAGS \
         --broadcast \
         --verify \
-        --etherscan-api-key "$BASESCAN_API_KEY" \
+        --etherscan-api-key "$EXPLORER_API_KEY" \
         -vvv
 else
-    echo -e "${YELLOW}Warning: BASESCAN_API_KEY not set, deploying without verification${NC}"
+    echo -e "${YELLOW}Warning: ETHERSCAN_API_KEY not set, deploying without verification${NC}"
     forge script script/Deploy.sol:Deploy \
-        --rpc-url "$BASE_SEPOLIA_RPC_URL" \
+        --rpc-url "$RPC_URL" \
         $DEPLOY_FLAGS \
         --broadcast \
         -vvv
@@ -183,8 +198,8 @@ echo "  Deployment Complete!"
 echo "==================================================${NC}"
 echo ""
 echo "Next steps:"
-echo "  1. Check deployments/base-sepolia-deployment.json for addresses"
-echo "  2. Verify all contracts on BaseScan"
+echo "  1. Check deployments/sepolia-deployment.json for addresses"
+echo "  2. Verify all contracts on Etherscan (Sepolia)"
 echo "  3. Run verification script: bash scripts/verify-sepolia.sh"
 echo "  4. Update Vercel environment variables with contract addresses"
 echo ""

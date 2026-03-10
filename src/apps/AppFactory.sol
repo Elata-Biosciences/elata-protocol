@@ -3,39 +3,55 @@ pragma solidity ^0.8.24;
 
 import {IAppFeeRouter} from "../interfaces/IAppFeeRouter.sol";
 import {IAppRewardsDistributor} from "../interfaces/IAppRewardsDistributor.sol";
-import {IElataXP} from "../interfaces/IElataXP.sol";
+import {IElataPoints} from "../interfaces/IElataPoints.sol";
 import {IRewardsDistributor} from "../interfaces/IRewardsDistributor.sol";
 import {IUniswapV2Router02} from "../interfaces/IUniswapV2Router02.sol";
 import {AppBondingCurve, IAppFactory} from "./AppBondingCurve.sol";
 import {AppStakingVault} from "./AppStakingVault.sol";
 import {AppToken} from "./AppToken.sol";
 import {AppDeploymentLib} from "./libraries/AppDeploymentLib.sol";
+import {FeeKind} from "../fees/FeeKind.sol";
+import {IAppRegistry} from "../interfaces/IAppRegistry.sol";
+import {IContributorSplit} from "../interfaces/IContributorSplit.sol";
+import {AppVestingWallet} from "../vesting/AppVestingWallet.sol";
+import {AppEcosystemVault} from "../vesting/AppEcosystemVault.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+interface IFeeManager {
+    function setAppCreator(uint256 appId, address creator) external;
+}
+
+interface IFeeCollector {
+    function depositElta(uint256 appId, FeeKind kind, uint256 amount) external;
+}
+
+interface IContributorSplitFactory {
+    function createSplit(
+        uint256 appId,
+        address ownerSafe,
+        address feeSwapper,
+        IContributorSplit.Contributor[] calldata initialContributors
+    ) external returns (address split);
+}
+
+interface IProtocolConfig {
+    function activationDelay() external view returns (uint256);
+    function maxCurveDuration() external view returns (uint256);
+}
+
 /**
  * @title AppFactory
  * @author Elata Biosciences
- * @notice Permissionless factory for launching app tokens with auto-staked creator shares
- * @dev Central registry and launch mechanism for the Elata app ecosystem
- *
- * Features:
- * - Permissionless app token creation
- * - Standardized bonding curve launches
- * - Auto-staked creator alignment (50% of supply)
- * - Snapshot-enabled vault for rewards
- * - Protocol fee collection via router
- * - Emergency pause mechanism
- *
- * Economics:
- * - Creators stake ELTA to launch apps
- * - Creator receives 50% of supply as staked position (not liquid)
- * - 50% goes to bonding curve for public sale
- * - Protocol collects trading fees (forwarded to rewards)
- * - Automated liquidity provision on graduation
- * - LP token locking for security
+ * @custom:security-contact security@elata.bio
+ * @notice Permissionless factory for launching app tokens with integrated vesting and ecosystem allocations.
+ * @dev Deploys an AppToken, AppBondingCurve, AppStakingVault, AppVestingWallet, and AppEcosystemVault
+ *      for each new app. Token supply is split 50/25/25: half to the bonding curve for public sale,
+ *      a quarter to a cliff-then-linear vesting wallet for the team, and a quarter to an ecosystem
+ *      vault for airdrops. The factory collects a creation fee and registers the app in an on-chain
+ *      registry. An emergency pause mechanism halts new launches if needed.
  */
 contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
     using SafeERC20 for IERC20;
@@ -46,26 +62,44 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
     IUniswapV2Router02 public immutable router;
     address public immutable treasury;
     IAppFeeRouter public immutable appFeeRouter;
-    IAppRewardsDistributor public immutable appRewardsDistributor;
-    IRewardsDistributor public immutable rewardsDistributor;
-    IElataXP public immutable elataXP;
+    IElataPoints public immutable elataPoints;
     address public immutable governance;
 
     // Launch parameters (immutable for size optimization)
     uint256 public constant seedElta = 100 ether;
     uint256 public constant targetRaisedElta = 42_000 ether;
-    uint256 public constant defaultSupply = 1_000_000_000 ether;
+    uint256 public constant defaultSupply = 10_000_000 ether;
     uint256 public constant lpLockDuration = 365 days * 2;
     uint8 public constant defaultDecimals = 18;
     uint256 public constant creationFee = 10 ether;
 
     bool public paused;
 
+    /// @notice FeeManager for creator registration
+    address public feeManager;
+
+    /// @notice FeeCollector for routing creation fees through fee pipeline
+    address public feeCollector;
+
+    /// @notice ProtocolConfig for reading protocol parameters
+    address public protocolConfig;
+
+    /// @notice AppRegistry for app ownership + split lookup
+    address public appRegistry;
+
+    /// @notice ContributorSplitFactory for per-app split clones
+    address public contributorSplitFactory;
+
+    /// @notice FeeSwapper (v2 router) used by ContributorSplit instances
+    address public feeSwapper;
+
     struct App {
         address creator;
         address token;
-        address vault; // NEW: staking vault
+        address vault; // Staking vault (optional, for compatibility)
         address curve;
+        address vestingWallet; // Team vesting wallet (25%)
+        address ecosystemVault; // Ecosystem vault for airdrops (25%)
         address pair; // Set after graduation
         address locker; // Set after graduation
         uint64 createdAt;
@@ -73,11 +107,30 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         bool graduated;
         uint256 totalRaised; // Total ELTA raised
         uint256 finalSupply; // Final circulating supply
+
+        // vNext lifecycle (token optional)
+        bool tokenLaunched;
+        address ownerSafe;
+        address contributorSplit;
+        string metadataURI;
     }
+
+    // Vesting defaults
+    uint64 public constant DEFAULT_VESTING_CLIFF = 90 days; // 3 months
+    uint64 public constant DEFAULT_VESTING_DURATION = 730 days; // 2 years
 
     uint256 public appCount;
     mapping(uint256 => App) public apps;
     mapping(address => uint256) public tokenToAppId;
+
+    /// @dev Internal struct to reduce stack depth during app creation
+    struct DeploymentAddresses {
+        address token;
+        address vault;
+        address curve;
+        address vestingWallet;
+        address ecosystemVault;
+    }
 
     // Events
     event AppCreated(
@@ -86,7 +139,9 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         address indexed token,
         address vault,
         address curve,
-        uint256 creatorStaked
+        address vestingWallet,
+        address ecosystemVault,
+        uint256 curveShare
     );
 
     event AppGraduated(
@@ -103,6 +158,8 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
     error ZeroAddress();
     error InvalidParameters();
     error AppNotFound();
+    error OnlyOwnerSafe();
+    error TokenAlreadyLaunched();
 
     /**
      * @notice Initialize factory
@@ -110,9 +167,9 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
      * @param _router Uniswap V2 router address
      * @param _treasury Treasury address
      * @param _appFeeRouter Fee router for trading fees
-     * @param _appRewardsDistributor App rewards distributor
-     * @param _rewardsDistributor Main rewards distributor
-     * @param _elataXP ElataXP token address
+     * @param _appRewardsDistributor Legacy (unused) app rewards distributor
+     * @param _rewardsDistributor Legacy (unused) rewards distributor
+     * @param _elataPoints ElataPoints token address
      * @param _governance Governance address
      * @param _admin Admin address for roles
      */
@@ -123,14 +180,18 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         IAppFeeRouter _appFeeRouter,
         IAppRewardsDistributor _appRewardsDistributor,
         IRewardsDistributor _rewardsDistributor,
-        IElataXP _elataXP,
+        IElataPoints _elataPoints,
         address _governance,
         address _admin
     ) {
+        // Legacy constructor args kept for backwards compatibility with older tests/scripts.
+        // No fee value is routed to these contracts in the current design.
+        _appRewardsDistributor = _appRewardsDistributor;
+        _rewardsDistributor = _rewardsDistributor;
+
         require(
             address(_elta) != address(0) && address(_router) != address(0) && _treasury != address(0)
-                && address(_appFeeRouter) != address(0) && address(_appRewardsDistributor) != address(0)
-                && address(_rewardsDistributor) != address(0) && address(_elataXP) != address(0)
+                && address(_appFeeRouter) != address(0) && address(_elataPoints) != address(0)
                 && _governance != address(0) && _admin != address(0),
             "Zero address"
         );
@@ -139,9 +200,7 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
         router = _router;
         treasury = _treasury;
         appFeeRouter = _appFeeRouter;
-        appRewardsDistributor = _appRewardsDistributor;
-        rewardsDistributor = _rewardsDistributor;
-        elataXP = _elataXP;
+        elataPoints = _elataPoints;
         governance = _governance;
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
@@ -157,120 +216,365 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
     }
 
     /**
+     * @notice Set FeeManager for creator registration
+     * @param _feeManager FeeManager address
+     */
+    function setFeeManager(address _feeManager) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        feeManager = _feeManager;
+    }
+
+    /**
+     * @notice Set FeeCollector for routing creation fees through fee pipeline
+     * @param _feeCollector FeeCollector address
+     */
+    function setFeeCollector(address _feeCollector) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        feeCollector = _feeCollector;
+    }
+
+    /**
+     * @notice Set ProtocolConfig for reading protocol parameters
+     * @param _protocolConfig ProtocolConfig address
+     */
+    function setProtocolConfig(address _protocolConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        protocolConfig = _protocolConfig;
+    }
+
+    /**
+     * @notice Set AppRegistry address
+     */
+    function setAppRegistry(address _appRegistry) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        appRegistry = _appRegistry;
+    }
+
+    /**
+     * @notice Set ContributorSplitFactory address
+     */
+    function setContributorSplitFactory(address _factory) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        contributorSplitFactory = _factory;
+    }
+
+    /**
+     * @notice Set FeeRouterV2 address used by ContributorSplits
+     */
+    function setFeeSwapper(address _feeSwapper) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        feeSwapper = _feeSwapper;
+    }
+
+    /**
      * @notice Create new app with auto-staked creator share
      * @param name App token name
      * @param symbol App token symbol
      * @param supply Total token supply (0 = use default)
-     * @param description App description
-     * @param imageURI App image URI
-     * @param website App website
+     * @param operators Array of operator addresses to grant granular roles
      * @return appId ID of created app
+     * @dev description, imageURI, website params are reserved for future use.
+     *      Set via AppToken.updateMetadata() after creation.
      */
+    /// @notice Input parameters for createApp to reduce stack depth
+    struct CreateAppParams {
+        string name;
+        string symbol;
+        uint256 supply;
+        address[] operators;
+    }
+
     function createApp(
         string calldata name,
         string calldata symbol,
         uint256 supply,
-        string calldata description,
-        string calldata imageURI,
-        string calldata website
+        string calldata, // description - set via AppToken.updateMetadata() after creation
+        string calldata, // imageURI - set via AppToken.updateMetadata() after creation
+        string calldata, // website - set via AppToken.updateMetadata() after creation
+        address[] calldata operators
     ) external nonReentrant returns (uint256 appId) {
+        // Create params struct on the stack to reduce param count
+        CreateAppParams memory p;
+        p.name = name;
+        p.symbol = symbol;
+        p.supply = supply;
+        p.operators = operators;
+        return _createAppInternal(p);
+    }
+
+    function _createAppInternal(CreateAppParams memory p) internal returns (uint256 appId) {
         if (paused) revert Paused();
-        uint256 tokenSupply = supply == 0 ? defaultSupply : supply;
+        uint256 tokenSupply = p.supply == 0 ? defaultSupply : p.supply;
         require(tokenSupply > 0, "Invalid supply");
 
-        // Collect creation fees
-        require(ELTA.transferFrom(msg.sender, address(this), creationFee + seedElta), "Transfer failed");
-        if (creationFee > 0) require(ELTA.transfer(treasury, creationFee), "Transfer failed");
+        // Phase A: register app without token (ownerSafe defaults to msg.sender)
+        (appId,) = _createAppWithoutTokenInternal(msg.sender, "", new IContributorSplit.Contributor[](0));
 
-        // Deploy contracts via library (reduces AppFactory size)
-        address tokenAddr = AppDeploymentLib.deployToken(
-            name,
-            symbol,
-            defaultDecimals,
-            tokenSupply,
-            msg.sender,
-            address(this),
-            governance,
-            address(appRewardsDistributor),
-            address(rewardsDistributor),
-            treasury
-        );
-        address vaultAddr = AppDeploymentLib.deployVault(name, symbol, tokenAddr, address(this));
-        address curveAddr = AppDeploymentLib.deployCurve(
-            appCount,
-            address(this),
-            ELTA,
-            tokenAddr,
-            router,
-            targetRaisedElta,
-            lpLockDuration,
-            msg.sender,
-            treasury,
-            appFeeRouter,
-            elataXP,
-            governance
-        );
+        // Phase B: legacy wrapper does an immediate token launch, so it must also
+        // collect the seed ELTA used to initialize the bonding curve reserves.
+        _collectSeedEltaOnly();
 
-        // Configure token & curve
-        uint256 creatorShare = tokenSupply / 2;
-        uint256 curveShare = tokenSupply - creatorShare;
+        // Phase B: launch token immediately (backwards-compatible wrapper)
+        _launchTokenForAppInternal(appId, p.name, p.symbol, tokenSupply, p.operators);
+    }
 
-        AppToken token = AppToken(tokenAddr);
+    /// @dev Collect creation fee (protocol fee) from caller
+    function _collectCreationFeeOnly() internal {
+        if (creationFee == 0) return;
+        require(ELTA.transferFrom(msg.sender, address(this), creationFee), "Transfer failed");
 
-        // Set vault address on token (for fee exemptions)
-        token.setVault(vaultAddr);
+        if (feeCollector != address(0)) {
+            ELTA.approve(feeCollector, creationFee);
+            IFeeCollector(feeCollector).depositElta(0, FeeKind.LAUNCH_FEE, creationFee);
+        } else {
+            require(ELTA.transfer(treasury, creationFee), "Transfer failed");
+        }
+    }
 
-        // Mark bonding curve as exempt from transfer fees
-        token.setTransferFeeExempt(curveAddr, true);
+    /// @dev Collect seed ELTA used to initialize the bonding curve reserves
+    function _collectSeedEltaOnly() internal {
+        require(ELTA.transferFrom(msg.sender, address(this), seedElta), "Transfer failed");
+    }
 
-        token.mint(address(this), creatorShare);
-        token.mint(curveAddr, curveShare);
-        token.revokeMinter(address(this));
-        token.grantRole(token.DEFAULT_ADMIN_ROLE(), msg.sender);
-        token.revokeRole(token.DEFAULT_ADMIN_ROLE(), address(this));
+    /**
+     * @notice Phase A: register an app without launching a token
+     * @dev Caller pays the protocol creation fee. App ownership is attributed to ownerSafe.
+     */
+    function createAppWithoutToken(
+        address ownerSafe,
+        string calldata metadataURI,
+        IContributorSplit.Contributor[] calldata initialContributors
+    ) external nonReentrant returns (uint256 appId, address contributorSplit) {
+        if (paused) revert Paused();
+        return _createAppWithoutTokenInternal(ownerSafe, metadataURI, initialContributors);
+    }
 
-        require(ELTA.transfer(curveAddr, seedElta), "Transfer failed");
-        AppBondingCurve(curveAddr).initializeCurve(seedElta, curveShare);
+    function _createAppWithoutTokenInternal(
+        address ownerSafe,
+        string memory metadataURI,
+        IContributorSplit.Contributor[] memory initialContributors
+    ) internal returns (uint256 appId, address contributorSplit) {
+        if (ownerSafe == address(0)) revert ZeroAddress();
+        if (appRegistry == address(0) || contributorSplitFactory == address(0) || feeSwapper == address(0)) {
+            revert InvalidParameters();
+        }
 
-        // Auto-stake creator share (50% of supply)
-        AppStakingVault vault = AppStakingVault(vaultAddr);
+        // Collect protocol creation fee (no seed ELTA yet)
+        _collectCreationFeeOnly();
 
-        // Approve vault to pull tokens from factory
-        token.approve(vaultAddr, creatorShare);
-
-        // Stake on behalf of creator (factory is still owner at this point)
-        vault.stakeFor(msg.sender, creatorShare);
-
-        // Transfer vault ownership to creator AFTER auto-staking
-        vault.transferOwnership(msg.sender);
-
-        // Register vault in rewards distributor with token mapping
-        appRewardsDistributor.registerApp(vaultAddr, tokenAddr);
-
-        // Register app
         appId = appCount++;
+
+        // Deploy per-app ContributorSplit clone
+        contributorSplit = IContributorSplitFactory(contributorSplitFactory)
+            .createSplit(appId, ownerSafe, feeSwapper, initialContributors);
+
+        // Register app in canonical registry
+        IAppRegistry(appRegistry).registerApp(appId, ownerSafe, contributorSplit, metadataURI);
+
+        // Populate local app record (token/curve/etc remain zero until Phase B)
         apps[appId] = App({
-            creator: msg.sender,
-            token: tokenAddr,
-            vault: vaultAddr,
-            curve: curveAddr,
+            creator: ownerSafe,
+            token: address(0),
+            vault: address(0),
+            curve: address(0),
+            vestingWallet: address(0),
+            ecosystemVault: address(0),
             pair: address(0),
             locker: address(0),
             createdAt: uint64(block.timestamp),
             graduatedAt: 0,
             graduated: false,
             totalRaised: 0,
-            finalSupply: 0
+            finalSupply: 0,
+            tokenLaunched: false,
+            ownerSafe: ownerSafe,
+            contributorSplit: contributorSplit,
+            metadataURI: metadataURI
         });
+    }
 
-        tokenToAppId[tokenAddr] = appId;
+    /**
+     * @notice Phase B: launch token for an already-registered appId
+     * @dev Must be called by the app ownerSafe (Safe smart account).
+     */
+    function launchTokenForApp(
+        uint256 appId,
+        string calldata name,
+        string calldata symbol,
+        uint256 supply,
+        address[] calldata operators
+    ) external nonReentrant returns (address token, address curve) {
+        App storage app = apps[appId];
+        if (app.ownerSafe == address(0)) revert AppNotFound();
+        if (msg.sender != app.ownerSafe) revert OnlyOwnerSafe();
+        if (app.tokenLaunched) revert TokenAlreadyLaunched();
 
-        emit AppCreated(appId, msg.sender, tokenAddr, vaultAddr, curveAddr, creatorShare);
+        uint256 tokenSupply = supply == 0 ? defaultSupply : supply;
+        require(tokenSupply > 0, "Invalid supply");
 
-        // NOTE: Metadata must be set by creator in separate transaction
-        // token.updateMetadata() requires msg.sender == appCreator
-        // Creator can call AppToken(tokenAddr).updateMetadata(description, imageURI, website) after
-        // launch
+        // Collect seed ELTA used for curve initialization
+        _collectSeedEltaOnly();
+
+        (token, curve) = _launchTokenForAppInternal(appId, name, symbol, tokenSupply, operators);
+    }
+
+    /// @dev Deploy all contracts for new app
+    function _deployContracts(
+        uint256 appId,
+        address ownerSafe,
+        string memory name,
+        string memory symbol,
+        uint256 tokenSupply
+    ) internal returns (DeploymentAddresses memory addrs) {
+        addrs.token = AppDeploymentLib.deployToken(
+            AppToken.InitParams({
+                name: name,
+                symbol: symbol,
+                decimals: defaultDecimals,
+                maxSupply: tokenSupply,
+                creator: ownerSafe,
+                admin: address(this),
+                governance: governance,
+                appRewardsDistributor: address(0),
+                rewardsDistributor: address(0),
+                treasury: treasury
+            })
+        );
+        addrs.vault = AppDeploymentLib.deployVault(name, symbol, addrs.token, address(this));
+
+        // Read protocol config with fallbacks
+        uint256 _activationDelay =
+            protocolConfig != address(0) ? IProtocolConfig(protocolConfig).activationDelay() : 1 hours;
+        uint256 _maxDuration =
+            protocolConfig != address(0) ? IProtocolConfig(protocolConfig).maxCurveDuration() : 30 days;
+
+        addrs.curve = AppDeploymentLib.deployCurve(
+            AppBondingCurve.InitParams({
+                appId: appId,
+                factory: address(this),
+                elta: ELTA,
+                token: AppToken(addrs.token),
+                router: router,
+                targetRaisedElta: targetRaisedElta,
+                lpLockDuration: lpLockDuration,
+                lpBeneficiary: ownerSafe,
+                treasury: treasury,
+                appFeeRouter: appFeeRouter,
+                elataPoints: elataPoints,
+                governance: governance,
+                activationDelay: _activationDelay,
+                maxDuration: _maxDuration,
+                creator: ownerSafe,
+                feeCollector: feeCollector,
+                referralRegistry: address(0)
+            })
+        );
+
+        // Deploy vesting and ecosystem vaults
+        addrs.vestingWallet = address(
+            new AppVestingWallet(
+                appId,
+                addrs.token,
+                ownerSafe,
+                uint64(block.timestamp),
+                DEFAULT_VESTING_CLIFF,
+                DEFAULT_VESTING_DURATION,
+                ownerSafe
+            )
+        );
+        addrs.ecosystemVault = address(new AppEcosystemVault(appId, addrs.token, ownerSafe));
+    }
+
+    /// @dev Configure token, mint allocations, and set up roles
+    function _configureApp(
+        uint256 appId,
+        address ownerSafe,
+        DeploymentAddresses memory addrs,
+        uint256 tokenSupply,
+        address[] memory operators
+    ) internal {
+        uint256 curveShare = tokenSupply / 2;
+        uint256 teamShare = tokenSupply / 4;
+        uint256 ecosystemShare = tokenSupply - curveShare - teamShare;
+
+        AppToken token = AppToken(addrs.token);
+
+        // Configure token
+        token.setVault(addrs.vault);
+        token.setTransferFeeExempt(addrs.curve, true);
+        token.setTransferFeeExempt(addrs.vestingWallet, true);
+        token.setTransferFeeExempt(addrs.ecosystemVault, true);
+        if (feeCollector != address(0)) {
+            // Ensure LP-keyed transfer tax routes into the unified fee pipeline.
+            token.setFeeCollector(feeCollector, appId);
+        }
+
+        // Mint tokens
+        token.mint(addrs.curve, curveShare);
+        token.mint(addrs.vestingWallet, teamShare);
+        token.mint(addrs.ecosystemVault, ecosystemShare);
+        token.revokeMinter(address(this));
+
+        // Grant roles
+        _grantOperatorRoles(token, operators);
+        token.grantRole(token.DEFAULT_ADMIN_ROLE(), ownerSafe);
+        token.revokeRole(token.DEFAULT_ADMIN_ROLE(), address(this));
+
+        // Initialize curve and transfer ownership
+        require(ELTA.transfer(addrs.curve, seedElta), "Transfer failed");
+        AppBondingCurve(addrs.curve).initializeCurve(seedElta, curveShare);
+        AppStakingVault(addrs.vault).transferOwnership(ownerSafe);
+    }
+
+    /// @dev Grant operator roles to addresses
+    function _grantOperatorRoles(AppToken token, address[] memory operators) internal {
+        for (uint256 i = 0; i < operators.length; i++) {
+            if (operators[i] != address(0)) {
+                token.grantRole(token.APP_OPERATOR_ROLE(), operators[i]);
+                token.grantRole(token.LP_MANAGER_ROLE(), operators[i]);
+                token.grantRole(token.FEE_EXEMPT_MANAGER_ROLE(), operators[i]);
+            }
+        }
+    }
+
+    /// @dev Register app and emit event
+    function _launchTokenForAppInternal(
+        uint256 appId,
+        string memory name,
+        string memory symbol,
+        uint256 tokenSupply,
+        address[] memory operators
+    ) internal returns (address token, address curve) {
+        App storage app = apps[appId];
+        address ownerSafe = app.ownerSafe;
+
+        // Deploy and configure
+        DeploymentAddresses memory addrs = _deployContracts(appId, ownerSafe, name, symbol, tokenSupply);
+        _configureApp(appId, ownerSafe, addrs, tokenSupply, operators);
+
+        // Persist to local record
+        app.token = addrs.token;
+        app.vault = addrs.vault;
+        app.curve = addrs.curve;
+        app.vestingWallet = addrs.vestingWallet;
+        app.ecosystemVault = addrs.ecosystemVault;
+        app.tokenLaunched = true;
+
+        tokenToAppId[addrs.token] = appId;
+
+        // Update canonical registry
+        IAppRegistry(appRegistry).setTokenAndCurve(appId, addrs.token, addrs.curve);
+
+        emit AppCreated(
+            appId,
+            ownerSafe,
+            addrs.token,
+            addrs.vault,
+            addrs.curve,
+            addrs.vestingWallet,
+            addrs.ecosystemVault,
+            tokenSupply / 2
+        );
+
+        if (feeManager != address(0)) {
+            IFeeManager(feeManager).setAppCreator(appId, ownerSafe);
+        }
+
+        return (addrs.token, addrs.curve);
     }
 
     /**
@@ -344,6 +648,7 @@ contract AppFactory is AccessControl, ReentrancyGuard, IAppFactory {
     {
         require(appId < appCount, "Invalid app");
         App storage app = apps[appId];
+        if (!app.tokenLaunched || app.curve == address(0)) return (false, 0, 0);
         AppBondingCurve curve = AppBondingCurve(app.curve);
 
         uint256 launchTime = curve.launchTimestamp();

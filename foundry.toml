@@ -9,8 +9,8 @@ evm_version = "paris"
 via_ir = true
 bytecode_hash = "ipfs"
 fs_permissions = [{ access = "read", path = "deployments" }, { access = "write", path = "deployments" }]
-# Note: Some contracts (AppModuleFactory, AppDeploymentLib) exceed EIP-170 24KB limit
-# This is acceptable for L2 deployment (Base, Arbitrum, Optimism) and testnets
+ffi = true  # Enable FFI for differential testing
+extra_output = ["storageLayout"]  # Enable storage-aware fuzzing
 
 [profile.local]
 src = "src"
@@ -23,8 +23,6 @@ evm_version = "paris"
 via_ir = true
 bytecode_hash = "ipfs"
 fs_permissions = [{ access = "read-write", path = "./" }]
-# Note: AppFactory is ~26KB (over EIP-170 limit) but Anvil deploys it anyway
-# This is fine for local dev - optimize before mainnet deployment
 
 [profile.ci]
 src = "src"
@@ -32,11 +30,12 @@ out = "out"
 libs = ["lib"]
 solc_version = "0.8.24"
 optimizer = true
-optimizer_runs = 500
+optimizer_runs = 200
 evm_version = "paris"
 via_ir = true
 bytecode_hash = "ipfs"
-# CI profile: optimize for gas efficiency and size constraints
+ffi = true
+# CI profile: same as default, uses via_ir for stack-deep contracts
 
 [profile.ci.fmt]
 # Ignore external/vendor and build artifacts from CI formatting scope
@@ -60,3 +59,45 @@ mainnet = { key = "${ETHERSCAN_API_KEY}" }
 sepolia = { key = "${ETHERSCAN_API_KEY}" }
 base = { key = "${BASESCAN_API_KEY}" }
 base_sepolia = { key = "${BASESCAN_API_KEY}" }
+
+# Advanced Fuzz Testing Configuration
+[fuzz]
+runs = 1000                         # Increase from default 256 for more coverage
+seed = "0x3e8"                      # Reproducible results (1000 in hex)
+dictionary_weight = 60              # Higher weight for interesting boundary values
+include_storage = true              # Include storage values in dictionary
+failure_persist_dir = "cache/fuzz"  # Persist failures for replay
+corpus_dir = "corpus/fuzz"          # Enable coverage-guided fuzzing
+
+# Advanced Invariant Testing Configuration
+[invariant]
+runs = 500                              # Number of test runs
+depth = 100                             # Calls per run
+fail_on_revert = false                  # Allow reverts (bounded handlers handle this)
+dictionary_weight = 80                  # Higher weight for contract-specific values
+shrink_run_limit = 5000                 # Attempts to shrink failing sequences
+corpus_dir = "corpus/invariant"         # Enable coverage-guided fuzzing
+show_metrics = true                     # Display fuzzed selector metrics
+
+# Lint Configuration
+# NOTE: Production code (src/) should NOT have suppressions - fix issues properly!
+# These suppressions ONLY apply to test/script files where lint issues are acceptable
+[lint]
+exclude_lints = [
+  # Test-specific suppressions (test code runs in controlled environments)
+  "erc20-unchecked-transfer",       # Test transfers don't need SafeERC20
+  "unsafe-typecast",                 # Test casts are bounded by test setup
+  "unsafe-cheatcode",               # Cheatcodes are intentional in tests
+  
+  # Style/naming suppressions (informational, not bugs)
+  "screaming-snake-case-immutable", # Existing naming conventions maintained
+  "screaming-snake-case-const",     # Existing naming conventions maintained
+  "unaliased-plain-import",         # Existing import style maintained
+  "mixed-case-variable",            # Variable naming follows existing patterns
+  "mixed-case-function",            # Function naming (e.g. sol_getTokensOut for differential tests)
+  "unwrapped-modifier-logic",       # Modifier patterns are intentional
+  "asm-keccak256",                  # Assembly keccak256 for gas optimization
+  "unused-import"                   # Common in evolving test files
+]
+# Only suppress in test/script/lib - production code must be clean
+ignore = ["test/**", "script/**", "lib/**"]

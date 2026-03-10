@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, vNext]
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, vNext]
 
 env:
   FOUNDRY_PROFILE: ci
@@ -22,14 +22,27 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: v1.4.2
+          cache: true
+
+      - name: Cache Foundry build
+        uses: actions/cache@v4
+        with:
+          path: |
+            cache/
+            out/
+          key: foundry-build-${{ hashFiles('foundry.toml', 'src/**/*.sol', 'test/**/*.sol', 'lib/**') }}
+          restore-keys: |
+            foundry-build-
 
       - name: Show Foundry version
         run: forge --version
 
-      - name: Run Forge build
+      - name: Run Forge build (source only)
         run: |
           forge --version
-          forge build
+          forge build src/ --sizes
+        env:
+          FOUNDRY_PROFILE: default
 
       - name: Run Forge tests
         run: |
@@ -38,20 +51,6 @@ jobs:
       - name: Run security tests
         run: |
           forge test --match-contract CoreSecurityVerification
-
-  lint:
-    name: Code Quality
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: v1.4.2
-
-      - name: Run gas report
-        run: forge test --gas-report
 
   coverage:
     name: Test Coverage
@@ -78,4 +77,32 @@ jobs:
           flags: foundry
           token: ${{ secrets.CODECOV_TOKEN }}
         continue-on-error: true
-        if: success() || failure()
+
+  snapshot:
+    name: Gas Snapshot
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.4.2
+
+      - name: Generate gas snapshot
+        run: forge snapshot
+
+      - name: Compare gas snapshot (PR only)
+        if: github.event_name == 'pull_request'
+        run: forge snapshot --check
+        continue-on-error: true
+
+      - name: Upload snapshot artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gas-snapshot
+          path: .gas-snapshot
+          retention-days: 30

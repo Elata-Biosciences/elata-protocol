@@ -22,7 +22,18 @@ contract AppTokenTest is Test {
 
     function setUp() public {
         token = new AppToken(
-            "TestApp Token", "TEST", 18, MAX_SUPPLY, creator, admin, address(1), address(1), address(1), address(1)
+            AppToken.InitParams({
+                name: "TestApp Token",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: MAX_SUPPLY,
+                creator: creator,
+                admin: admin,
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
         );
     }
 
@@ -40,17 +51,54 @@ contract AppTokenTest is Test {
 
     function test_RevertWhen_DeploymentZeroAddress() public {
         vm.expectRevert("Zero address");
-        new AppToken("Test", "TEST", 18, MAX_SUPPLY, address(0), admin, address(1), address(1), address(1), address(1));
+        new AppToken(
+            AppToken.InitParams({
+                name: "Test",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: MAX_SUPPLY,
+                creator: address(0),
+                admin: admin,
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
+        );
 
         vm.expectRevert("Zero address");
         new AppToken(
-            "Test", "TEST", 18, MAX_SUPPLY, creator, address(0), address(1), address(1), address(1), address(1)
+            AppToken.InitParams({
+                name: "Test",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: MAX_SUPPLY,
+                creator: creator,
+                admin: address(0),
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
         );
     }
 
     function test_RevertWhen_DeploymentInvalidSupply() public {
         vm.expectRevert("Invalid supply");
-        new AppToken("Test", "TEST", 18, 0, creator, admin, address(1), address(1), address(1), address(1));
+        new AppToken(
+            AppToken.InitParams({
+                name: "Test",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: 0,
+                creator: creator,
+                admin: admin,
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
+        );
     }
 
     function test_Mint() public {
@@ -154,25 +202,24 @@ contract AppTokenTest is Test {
         token.mint(user2, 500 ether);
         vm.stopPrank();
 
-        // Test transfer
+        // Test transfer (LP-keyed tax: wallet-to-wallet has NO fee)
         vm.prank(user1);
         token.transfer(user2, 200 ether);
 
-        // Account for 1% transfer fee
-        assertEq(token.balanceOf(user1), 800 ether); // Sender pays full amount
-        assertEq(token.balanceOf(user2), 500 ether + 198 ether); // 500 + 198 (99% of 200)
+        // No fee for wallet-to-wallet transfer
+        assertEq(token.balanceOf(user1), 800 ether);
+        assertEq(token.balanceOf(user2), 500 ether + 200 ether); // Full amount
 
-        // Test approval and transferFrom
+        // Test approval and transferFrom (also no fee for wallet-to-wallet)
         vm.prank(user1);
         token.approve(user2, 300 ether);
 
         vm.prank(user2);
         token.transferFrom(user1, user2, 300 ether);
 
-        // Account for 1% transfer fee on transferFrom
-        assertEq(token.balanceOf(user1), 500 ether); // Sender pays full amount
-        assertEq(token.balanceOf(user2), 500 ether + 198 ether + 297 ether); // 500 + 198 + 297 (99%
-        // of 300)
+        // No fee for wallet-to-wallet transferFrom
+        assertEq(token.balanceOf(user1), 500 ether);
+        assertEq(token.balanceOf(user2), 500 ether + 200 ether + 300 ether); // Full amounts
     }
 
     function test_BurnFrom() public {

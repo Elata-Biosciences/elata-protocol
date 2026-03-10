@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {VeELTA} from "../../src/staking/VeELTA.sol";
-import {ELTA} from "../../src/token/ELTA.sol";
+import {ELTA} from "elta/ELTA.sol";
 import {Errors} from "../../src/utils/Errors.sol";
 import "forge-std/Test.sol";
 
@@ -30,7 +30,7 @@ contract VeELTATest is Test {
     event Unlocked(address indexed user, uint256 principal, uint256 veELTABurned);
 
     function setUp() public {
-        elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 0);
+        elta = new ELTA(treasury);
         veElta = new VeELTA(elta, admin);
 
         // Fund users

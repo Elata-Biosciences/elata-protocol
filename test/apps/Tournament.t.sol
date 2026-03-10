@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {AppToken} from "../../src/apps/AppToken.sol";
-import {Tournament} from "../../src/apps/Tournament.sol";
+import {Tournament, EntryTokenType} from "../../src/apps/Tournament.sol";
 import "forge-std/Test.sol";
 import {Merkle} from "murky/src/Merkle.sol";
 
@@ -13,11 +13,13 @@ contract TournamentTest is Test {
 
     address public owner = makeAddr("owner");
     address public treasury = makeAddr("treasury");
+    address public feeCollector = makeAddr("feeCollector");
     address public user1 = makeAddr("user1");
     address public user2 = makeAddr("user2");
     address public user3 = makeAddr("user3");
     address public admin = makeAddr("admin");
 
+    uint256 public constant APP_ID = 1;
     uint256 public constant ENTRY_FEE = 100 ether;
     uint256 public constant PROTOCOL_FEE_BPS = 250; // 2.5%
     uint256 public constant BURN_FEE_BPS = 100; // 1%
@@ -29,13 +31,28 @@ contract TournamentTest is Test {
 
     function setUp() public {
         appToken = new AppToken(
-            "TestApp", "TEST", 18, MAX_SUPPLY, owner, admin, address(1), address(1), address(1), address(1)
+            AppToken.InitParams({
+                name: "TestApp",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: MAX_SUPPLY,
+                creator: owner,
+                admin: admin,
+                governance: address(1),
+                appRewardsDistributor: address(1),
+                rewardsDistributor: address(1),
+                treasury: address(1)
+            })
         );
         merkle = new Merkle();
 
+        // Create tournament with APP token type (legacy behavior for tests)
         tournament = new Tournament(
             address(appToken),
+            EntryTokenType.APP,
+            APP_ID,
             owner,
+            address(0), // No fee collector (legacy mode)
             treasury,
             ENTRY_FEE,
             0, // start immediately
@@ -57,8 +74,11 @@ contract TournamentTest is Test {
     // ────────────────────────────────────────────────────────────────────────────
 
     function test_Deployment() public {
-        assertEq(address(tournament.APP()), address(appToken));
-        assertEq(tournament.owner(), owner);
+        assertEq(address(tournament.entryToken()), address(appToken));
+        assertEq(uint256(tournament.entryTokenType()), uint256(EntryTokenType.APP));
+        assertEq(tournament.appId(), APP_ID);
+        assertTrue(tournament.hasRole(tournament.MODULE_ADMIN_ROLE(), owner));
+        assertTrue(tournament.hasRole(tournament.MODULE_OPERATOR_ROLE(), owner));
         assertEq(tournament.protocolTreasury(), treasury);
         assertEq(tournament.entryFee(), ENTRY_FEE);
         assertEq(tournament.protocolFeeBps(), PROTOCOL_FEE_BPS);
@@ -70,7 +90,10 @@ contract TournamentTest is Test {
         vm.expectRevert(Tournament.InvalidWindow.selector);
         new Tournament(
             address(appToken),
+            EntryTokenType.APP,
+            APP_ID,
             owner,
+            address(0),
             treasury,
             ENTRY_FEE,
             100, // start
@@ -133,7 +156,10 @@ contract TournamentTest is Test {
     function test_RevertWhen_EnterBeforeStart() public {
         Tournament futureTourn = new Tournament(
             address(appToken),
+            EntryTokenType.APP,
+            APP_ID,
             owner,
+            address(0),
             treasury,
             ENTRY_FEE,
             uint64(block.timestamp + 1000),
@@ -153,7 +179,10 @@ contract TournamentTest is Test {
     function test_RevertWhen_EnterAfterEnd() public {
         Tournament pastTourn = new Tournament(
             address(appToken),
+            EntryTokenType.APP,
+            APP_ID,
             owner,
+            address(0),
             treasury,
             ENTRY_FEE,
             0,
@@ -213,9 +242,8 @@ contract TournamentTest is Test {
         assertTrue(tournament.finalized());
         assertEq(tournament.winnersRoot(), root);
         assertEq(tournament.pool(), netPool);
-        // Account for 1% transfer fee on treasury transfer
-        uint256 expectedTreasuryBalance = (protocolFee * 99) / 100;
-        assertEq(appToken.balanceOf(treasury), expectedTreasuryBalance);
+        // LP-keyed tax: no fee for wallet-to-wallet (tournament->treasury)
+        assertEq(appToken.balanceOf(treasury), protocolFee);
     }
 
     function test_RevertWhen_FinalizeUnauthorized() public {
@@ -273,9 +301,8 @@ contract TournamentTest is Test {
         vm.prank(user1);
         tournament.claim(proof, user1Prize);
 
-        // Account for 1% transfer fee
-        uint256 expectedReceived = (user1Prize * 99) / 100;
-        assertEq(appToken.balanceOf(user1), initialBalance + expectedReceived);
+        // LP-keyed tax: no fee for wallet-to-wallet (tournament->winner)
+        assertEq(appToken.balanceOf(user1), initialBalance + user1Prize);
         assertTrue(tournament.claimed(user1));
     }
 

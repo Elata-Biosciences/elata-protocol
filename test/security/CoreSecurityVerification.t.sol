@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {ElataXP} from "../../src/experience/ElataXP.sol";
-import {LotPool} from "../../src/governance/LotPool.sol";
+import {ElataPoints} from "../../src/experience/ElataPoints.sol";
 import {VeELTA} from "../../src/staking/VeELTA.sol";
-import {ELTA} from "../../src/token/ELTA.sol";
+import {ELTA} from "elta/ELTA.sol";
 import {Errors} from "../../src/utils/Errors.sol";
 import "forge-std/Test.sol";
 
@@ -16,8 +15,7 @@ import "forge-std/Test.sol";
 contract CoreSecurityVerificationTest is Test {
     ELTA public elta;
     VeELTA public staking;
-    ElataXP public xp;
-    LotPool public funding;
+    ElataPoints public xp;
 
     address public admin = makeAddr("admin");
     address public treasury = makeAddr("treasury");
@@ -25,17 +23,16 @@ contract CoreSecurityVerificationTest is Test {
     address public user1 = makeAddr("user1");
 
     function setUp() public {
-        elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 77_000_000 ether);
-        xp = new ElataXP(admin);
+        elta = new ELTA(treasury);
+        xp = new ElataPoints(admin);
         staking = new VeELTA(elta, admin);
-        funding = new LotPool(elta, xp, admin);
     }
 
     function test_Critical_UnauthorizedMinting() public {
         // Verify attacker cannot mint ELTA
         vm.expectRevert();
         vm.prank(attacker);
-        elta.mint(attacker, 1_000_000 ether);
+        elta.transfer(attacker, 1_000_000 ether);
 
         // Verify balance is still zero
         assertEq(elta.balanceOf(attacker), 0);
@@ -49,24 +46,13 @@ contract CoreSecurityVerificationTest is Test {
         assertEq(xp.balanceOf(attacker), 0);
     }
 
-    function test_Critical_SupplyCapEnforcement() public {
+    function test_Critical_SupplyCapEnforcement() public view {
         uint256 maxSupply = elta.MAX_SUPPLY();
         uint256 currentSupply = elta.totalSupply();
-        uint256 remainingMintable = maxSupply - currentSupply;
 
-        // Admin mints up to cap - should work
-        vm.prank(admin);
-        elta.mint(user1, remainingMintable);
-
-        assertEq(elta.totalSupply(), maxSupply);
-
-        // Try to mint beyond cap - should fail
-        vm.expectRevert(Errors.CapExceeded.selector);
-        vm.prank(admin);
-        elta.mint(user1, 1);
-
-        // Total supply should remain at cap
-        assertEq(elta.totalSupply(), maxSupply);
+        // All 77M tokens are minted at deployment
+        assertEq(currentSupply, maxSupply, "All supply should be minted at deployment");
+        assertEq(maxSupply, 77_000_000 ether, "Max supply should be 77M");
     }
 
     function test_Critical_NonTransferableXP() public {
@@ -111,45 +97,6 @@ contract CoreSecurityVerificationTest is Test {
         assertEq(staking.balanceOf(user1), user1Balance);
     }
 
-    function test_Critical_VotingDoubleSpending() public {
-        // Give user XP
-        vm.prank(admin);
-        xp.award(user1, 1000 ether);
-
-        // Fund the pool
-        vm.startPrank(treasury);
-        elta.approve(address(funding), 50_000 ether);
-        funding.fund(50_000 ether);
-        vm.stopPrank();
-
-        // Start round
-        vm.roll(block.number + 1);
-
-        bytes32[] memory options = new bytes32[](2);
-        options[0] = keccak256("OPTION_A");
-        options[1] = keccak256("OPTION_B");
-
-        address[] memory recipients = new address[](2);
-        recipients[0] = user1;
-        recipients[1] = attacker;
-
-        vm.prank(admin);
-        (uint256 roundId,) = funding.startRound(options, recipients, 7 days);
-
-        // User votes with all XP on option A
-        vm.prank(user1);
-        funding.vote(roundId, options[0], 1000 ether);
-
-        // Try to vote again - should fail
-        vm.expectRevert(Errors.InsufficientXP.selector);
-        vm.prank(user1);
-        funding.vote(roundId, options[1], 1 ether);
-
-        // Verify only first vote counted
-        assertEq(funding.votesFor(roundId, options[0]), 1000 ether);
-        assertEq(funding.votesFor(roundId, options[1]), 0);
-    }
-
     function test_Critical_TimeLockEnforcement() public {
         // Give user ELTA and create position
         vm.prank(treasury);
@@ -179,11 +126,11 @@ contract CoreSecurityVerificationTest is Test {
     }
 
     function test_Critical_AdminFunctionsWork() public {
-        // Verify admin can perform authorized operations
+        // Verify authorized operations work correctly
 
-        // Admin can mint ELTA
-        vm.prank(admin);
-        elta.mint(user1, 1000 ether);
+        // Treasury (who holds all ELTA) can transfer tokens
+        vm.prank(treasury);
+        elta.transfer(user1, 1000 ether);
         assertEq(elta.balanceOf(user1), 1000 ether);
 
         // Admin can award XP
@@ -191,18 +138,8 @@ contract CoreSecurityVerificationTest is Test {
         xp.award(user1, 1000 ether);
         assertEq(xp.balanceOf(user1), 1000 ether);
 
-        // Admin can start funding rounds
-        bytes32[] memory options = new bytes32[](1);
-        options[0] = keccak256("ADMIN_PROPOSAL");
-
-        address[] memory recipients = new address[](1);
-        recipients[0] = user1;
-
-        vm.roll(block.number + 1);
-        vm.prank(admin);
-        (uint256 roundId,) = funding.startRound(options, recipients, 7 days);
-
-        assertGt(roundId, 0);
+        // Admin can manage VeELTA roles
+        assertTrue(staking.hasRole(staking.DEFAULT_ADMIN_ROLE(), admin));
     }
 
     function test_Critical_VotingPowerCalculation() public {

@@ -4,13 +4,13 @@ pragma solidity ^0.8.24;
 import {AppBondingCurve} from "../../src/apps/AppBondingCurve.sol";
 import {AppToken} from "../../src/apps/AppToken.sol";
 import {IAppFeeRouter} from "../../src/interfaces/IAppFeeRouter.sol";
-import {IElataXP} from "../../src/interfaces/IElataXP.sol";
+import {IElataPoints} from "../../src/interfaces/IElataPoints.sol";
 import {IUniswapV2Router02} from "../../src/interfaces/IUniswapV2Router02.sol";
-import {ELTA} from "../../src/token/ELTA.sol";
+import {ELTA} from "elta/ELTA.sol";
 import "forge-std/Test.sol";
 
 // Mock XP token
-contract MockElataXP is IElataXP {
+contract MockElataPoints is IElataPoints {
     mapping(address => uint256) public balances;
 
     function balanceOf(address account) external view override returns (uint256) {
@@ -26,7 +26,7 @@ contract AppBondingCurveTest is Test {
     ELTA public elta;
     AppToken public appToken;
     AppBondingCurve public curve;
-    MockElataXP public mockXP;
+    MockElataPoints public mockXP;
 
     address public admin = makeAddr("admin");
     address public treasury = makeAddr("treasury");
@@ -45,29 +45,47 @@ contract AppBondingCurveTest is Test {
     uint256 public constant TOKEN_SUPPLY = 1_000_000_000 ether;
 
     function setUp() public {
-        elta = new ELTA("ELTA", "ELTA", admin, treasury, 10_000_000 ether, 77_000_000 ether);
-        mockXP = new MockElataXP();
+        elta = new ELTA(treasury);
+        mockXP = new MockElataPoints();
 
         appToken = new AppToken(
-            "TestApp", "TEST", 18, TOKEN_SUPPLY, creator, factory, governance, mockAppRewards, mockRewards, treasury
+            AppToken.InitParams({
+                name: "TestApp",
+                symbol: "TEST",
+                decimals: 18,
+                maxSupply: TOKEN_SUPPLY,
+                creator: creator,
+                admin: factory,
+                governance: governance,
+                appRewardsDistributor: mockAppRewards,
+                rewardsDistributor: mockRewards,
+                treasury: treasury
+            })
         );
 
         // Mock router calls
         vm.mockCall(mockRouter, abi.encodeWithSignature("factory()"), abi.encode(makeAddr("mockFactory")));
 
         curve = new AppBondingCurve(
-            0, // appId
-            factory,
-            elta,
-            appToken,
-            IUniswapV2Router02(mockRouter),
-            TARGET_RAISED,
-            365 days, // lpLockDuration
-            treasury, // lpBeneficiary
-            treasury, // treasury
-            IAppFeeRouter(address(0)), // No fee router in tests
-            mockXP,
-            governance
+            AppBondingCurve.InitParams({
+                appId: 0,
+                factory: factory,
+                elta: elta,
+                token: appToken,
+                router: IUniswapV2Router02(mockRouter),
+                targetRaisedElta: TARGET_RAISED,
+                lpLockDuration: 365 days,
+                lpBeneficiary: treasury,
+                treasury: treasury,
+                appFeeRouter: IAppFeeRouter(address(0)),
+                elataPoints: mockXP,
+                governance: governance,
+                activationDelay: 0,
+                maxDuration: 30 days,
+                creator: creator,
+                feeCollector: address(0),
+                referralRegistry: address(0)
+            })
         );
 
         // Setup: mint tokens to curve and initialize
@@ -81,6 +99,9 @@ contract AppBondingCurveTest is Test {
 
         vm.prank(factory);
         curve.initializeCurve(SEED_ELTA, TOKEN_SUPPLY);
+
+        // Activate the curve (activationDelay is 0, so we can activate immediately)
+        curve.activate();
 
         // Give buyers some ELTA
         vm.startPrank(treasury);
@@ -121,18 +142,16 @@ contract AppBondingCurveTest is Test {
         elta.approve(address(curve), eltaIn);
 
         uint256 tokensBefore = appToken.balanceOf(buyer1);
-        uint256 tokensOut = curve.buy(eltaIn, expectedTokens);
+        uint256 tokensOut = curve.buy(eltaIn, expectedTokens, address(0));
         uint256 tokensAfter = appToken.balanceOf(buyer1);
 
         vm.stopPrank();
 
         assertEq(tokensOut, expectedTokens);
-        // Account for 1% transfer fee - buyer receives 99% of tokens
+        // LP-keyed tax: curve->buyer is wallet-to-wallet, NO fee
         uint256 actualReceived = tokensAfter - tokensBefore;
-        uint256 expectedReceived = (expectedTokens * 99) / 100;
+        assertEq(actualReceived, expectedTokens); // Full amount received
 
-        // Allow for small rounding differences
-        assertApproxEqRel(actualReceived, expectedReceived, 0.01e18); // 0.01% tolerance
         // No protocol fee deducted - all ELTA goes to reserves
         assertEq(curve.reserveElta(), SEED_ELTA + eltaIn);
     }
@@ -145,7 +164,7 @@ contract AppBondingCurveTest is Test {
         elta.approve(address(curve), eltaIn);
 
         vm.expectRevert(AppBondingCurve.InsufficientOutput.selector);
-        curve.buy(eltaIn, minTokensOut);
+        curve.buy(eltaIn, minTokensOut, address(0));
 
         vm.stopPrank();
     }
@@ -157,7 +176,7 @@ contract AppBondingCurveTest is Test {
         // Buy some tokens
         vm.startPrank(buyer1);
         elta.approve(address(curve), 5000 ether);
-        curve.buy(5000 ether, 0);
+        curve.buy(5000 ether, 0, address(0));
         vm.stopPrank();
 
         // Price should increase
@@ -190,7 +209,7 @@ contract AppBondingCurveTest is Test {
         // For now, test that buying zero amount fails
         vm.expectRevert(AppBondingCurve.ZeroInput.selector);
         vm.prank(buyer1);
-        curve.buy(0, 0);
+        curve.buy(0, 0, address(0));
     }
 
     // Removed test_ProtocolFeeCollection - legacy protocol fee removed in favor of unified 70/15/15
@@ -208,7 +227,7 @@ contract AppBondingCurveTest is Test {
 
         vm.startPrank(buyer1);
         elta.approve(address(curve), eltaAmount);
-        uint256 tokensOut = curve.buy(eltaAmount, 0);
+        uint256 tokensOut = curve.buy(eltaAmount, 0, address(0));
         vm.stopPrank();
 
         assertEq(tokensOut, expectedTokens);

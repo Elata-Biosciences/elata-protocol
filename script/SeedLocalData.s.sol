@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {AppAccess1155} from "../src/apps/AppAccess1155.sol";
+import {InAppContent721} from "../src/apps/InAppContent721.sol";
+import {ContentStore, PaymentTokenType} from "../src/apps/ContentStore.sol";
 import {AppFactory} from "../src/apps/AppFactory.sol";
-import {AppModuleFactory} from "../src/apps/AppModuleFactory.sol";
+import {InAppContent721Factory} from "../src/apps/InAppContent721Factory.sol";
+import {ContentStoreFactory} from "../src/apps/ContentStoreFactory.sol";
 import {AppStakingVault} from "../src/apps/AppStakingVault.sol";
 import {AppToken} from "../src/apps/AppToken.sol";
-import {ElataXP} from "../src/experience/ElataXP.sol";
-import {LotPool} from "../src/governance/LotPool.sol";
+import {ElataPoints} from "../src/experience/ElataPoints.sol";
 import {VeELTA} from "../src/staking/VeELTA.sol";
-import {ELTA} from "../src/token/ELTA.sol";
+import {ELTA} from "elta/ELTA.sol";
 import {Script, console2} from "forge-std/Script.sol";
 import {stdJson} from "forge-std/StdJson.sol";
 
@@ -24,7 +25,8 @@ contract SeedLocalData is Script {
     struct TestApp {
         uint256 appId;
         address token;
-        address access1155;
+        address content721;
+        address contentStore;
         address stakingVault;
         string name;
         string symbol;
@@ -34,9 +36,9 @@ contract SeedLocalData is Script {
     address ELTA_ADDRESS;
     address XP_ADDRESS;
     address STAKING_ADDRESS;
-    address FUNDING_ADDRESS;
     address APP_FACTORY_ADDRESS;
-    address APP_MODULE_FACTORY_ADDRESS;
+    address CONTENT721_FACTORY_ADDRESS;
+    address CONTENTSTORE_FACTORY_ADDRESS;
 
     function run() external {
         // Use Anvil account #0
@@ -52,24 +54,20 @@ contract SeedLocalData is Script {
         _loadAddresses();
 
         // Step 1: Award XP to test users
-        console2.log("[1/5] Awarding XP to test users...");
+        console2.log("[1/4] Awarding XP to test users...");
         _awardTestXP();
 
         // Step 2: Create staking positions
-        console2.log("[2/5] Creating test staking positions...");
+        console2.log("[2/4] Creating test staking positions...");
         _createStakingPositions();
 
         // Step 3: Create test apps
-        console2.log("[3/5] Creating test apps...");
+        console2.log("[3/4] Creating test apps...");
         TestApp[] memory apps = _createTestApps();
 
         // Step 4: Configure app economies
-        console2.log("[4/5] Configuring app economies...");
+        console2.log("[4/4] Configuring app economies...");
         _configureAppEconomies(apps);
-
-        // Step 5: Start a funding round
-        console2.log("[5/5] Starting initial funding round...");
-        _startFundingRound();
 
         vm.stopBroadcast();
 
@@ -87,17 +85,17 @@ contract SeedLocalData is Script {
 
         // Read required addresses
         ELTA_ADDRESS = stdJson.readAddress(json, ".contracts.ELTA");
-        XP_ADDRESS = stdJson.readAddress(json, ".contracts.ElataXP");
+        XP_ADDRESS = stdJson.readAddress(json, ".contracts.ElataPoints");
         STAKING_ADDRESS = stdJson.readAddress(json, ".contracts.VeELTA");
-        FUNDING_ADDRESS = stdJson.readAddress(json, ".contracts.LotPool");
         APP_FACTORY_ADDRESS = stdJson.readAddress(json, ".contracts.AppFactory");
-        APP_MODULE_FACTORY_ADDRESS = stdJson.readAddress(json, ".contracts.AppModuleFactory");
+        CONTENT721_FACTORY_ADDRESS = stdJson.readAddress(json, ".contracts.InAppContent721Factory");
+        CONTENTSTORE_FACTORY_ADDRESS = stdJson.readAddress(json, ".contracts.ContentStoreFactory");
 
         require(ELTA_ADDRESS != address(0), "ELTA address missing");
         require(XP_ADDRESS != address(0), "XP address missing");
         require(STAKING_ADDRESS != address(0), "VeELTA address missing");
-        require(FUNDING_ADDRESS != address(0), "LotPool address missing");
-        require(APP_MODULE_FACTORY_ADDRESS != address(0), "AppModuleFactory address missing");
+        require(CONTENT721_FACTORY_ADDRESS != address(0), "InAppContent721Factory address missing");
+        require(CONTENTSTORE_FACTORY_ADDRESS != address(0), "ContentStoreFactory address missing");
 
         // AppFactory is required for creating apps; allow zero to skip app creation
         if (APP_FACTORY_ADDRESS == address(0)) {
@@ -106,7 +104,7 @@ contract SeedLocalData is Script {
     }
 
     function _awardTestXP() internal {
-        ElataXP xp = ElataXP(XP_ADDRESS);
+        ElataPoints xp = ElataPoints(XP_ADDRESS);
 
         console2.log("       XP contract at:", address(xp));
         console2.log("       Sender:", msg.sender);
@@ -156,7 +154,8 @@ contract SeedLocalData is Script {
             return new TestApp[](0);
         }
         AppFactory factory = AppFactory(APP_FACTORY_ADDRESS);
-        AppModuleFactory moduleFactory = AppModuleFactory(APP_MODULE_FACTORY_ADDRESS);
+        InAppContent721Factory content721Factory = InAppContent721Factory(CONTENT721_FACTORY_ADDRESS);
+        ContentStoreFactory contentStoreFactory = ContentStoreFactory(CONTENTSTORE_FACTORY_ADDRESS);
 
         TestApp[] memory apps = new TestApp[](3);
 
@@ -164,7 +163,8 @@ contract SeedLocalData is Script {
         apps[0] = _createSingleApp(
             elta,
             factory,
-            moduleFactory,
+            content721Factory,
+            contentStoreFactory,
             "NeuroPong Token",
             "NPONG",
             "EEG-controlled Pong game with competitive multiplayer",
@@ -175,7 +175,8 @@ contract SeedLocalData is Script {
         apps[1] = _createSingleApp(
             elta,
             factory,
-            moduleFactory,
+            content721Factory,
+            contentStoreFactory,
             "MindfulBreath Token",
             "BREATH",
             "Meditation and breathing exercises with EEG feedback",
@@ -186,7 +187,8 @@ contract SeedLocalData is Script {
         apps[2] = _createSingleApp(
             elta,
             factory,
-            moduleFactory,
+            content721Factory,
+            contentStoreFactory,
             "FocusTrainer Token",
             "FOCUS",
             "Attention training with real-time neurofeedback",
@@ -199,7 +201,8 @@ contract SeedLocalData is Script {
     function _createSingleApp(
         ELTA elta,
         AppFactory factory,
-        AppModuleFactory moduleFactory,
+        InAppContent721Factory content721Factory,
+        ContentStoreFactory contentStoreFactory,
         string memory name,
         string memory symbol,
         string memory description,
@@ -216,139 +219,104 @@ contract SeedLocalData is Script {
             0, // Use default supply
             description,
             imageURI,
-            "https://app.elata.bio"
+            "https://app.elata.bio",
+            new address[](0)
         );
 
-        // Get app token address (apps mapping returns the full struct as tuple)
-        // App struct: creator, token, vault, curve, pair, locker, createdAt, graduatedAt,
-        // graduated, totalRaised, finalSupply
-        (, app.token,,,,,,,,,) = factory.apps(app.appId);
+        // Read app record (avoid tuple destructuring drift as the struct evolves)
+        AppFactory.App memory appRecord = factory.getApp(app.appId);
+        app.token = appRecord.token;
         app.name = name;
         app.symbol = symbol;
 
         console2.log("       Created app:", name, "at", app.token);
 
-        // Deploy utility modules
-        elta.approve(address(moduleFactory), 0); // No fee for now
-
         // Note: vault is already deployed by AppFactory, get it from the app struct
-        (,, address vaultAddr,,,,,,,,) = AppFactory(APP_FACTORY_ADDRESS).apps(app.appId);
-        address access1155 = moduleFactory.deployModules(
-            app.token, vaultAddr, string.concat("https://metadata.elata.bio/", symbol, "/")
+        address vaultAddr = appRecord.vault;
+
+        // Deploy utility modules via separate factories
+        // Step 1: Deploy NFT collection
+        address content721 = content721Factory.deployContent721(
+            app.appId,
+            app.token,
+            string.concat(app.name, " Content"),
+            string.concat(symbol, "-CNT"),
+            string.concat("ipfs://", symbol, "/contract")
         );
-        app.access1155 = access1155;
+
+        // Step 2: Deploy content store (links to NFT and sets minter)
+        address contentStore = contentStoreFactory.deployContentStore(app.appId, app.token, content721);
+
+        app.content721 = content721;
+        app.contentStore = contentStore;
         app.stakingVault = vaultAddr;
 
-        console2.log("       Deployed module: AppAccess1155");
+        console2.log("       Deployed modules: InAppContent721 + ContentStore");
 
         return app;
     }
 
     function _configureAppEconomies(TestApp[] memory apps) internal {
-        // Configure each app with items, prices, etc.
+        // Configure each app with content listings
         for (uint256 i = 0; i < apps.length; i++) {
             _configureSingleApp(apps[i]);
         }
     }
 
     function _configureSingleApp(TestApp memory app) internal {
-        AppAccess1155 access = AppAccess1155(app.access1155);
+        ContentStore store = ContentStore(payable(app.contentStore));
 
-        // Create tiered items for each app
+        // Create tiered content listings for each app
 
-        // Item 1: Basic Pass
-        access.setItem(
-            1,
+        // Content 1: Basic Pass
+        store.listContent(
+            string.concat("ipfs://", app.symbol, "/basic-pass"),
             10 ether, // price: 10 tokens
-            false, // not soulbound
-            true, // active
-            0, // no start time
-            0, // no end time
             10000, // max supply
-            string.concat("ipfs://", app.symbol, "/basic-pass")
+            PaymentTokenType.APP
         );
 
-        // Item 2: Premium Pass (soulbound)
-        access.setItem(
-            2,
+        // Content 2: Premium Pass
+        store.listContent(
+            string.concat("ipfs://", app.symbol, "/premium-pass"),
             50 ether, // price: 50 tokens
-            true, // soulbound
-            true, // active
-            0,
-            0,
             1000, // limited supply
-            string.concat("ipfs://", app.symbol, "/premium-pass")
+            PaymentTokenType.APP
         );
 
-        // Item 3: Legendary Pass (very rare, soulbound)
-        access.setItem(
-            3,
+        // Content 3: Legendary Pass (very rare)
+        store.listContent(
+            string.concat("ipfs://", app.symbol, "/legendary-pass"),
             200 ether, // price: 200 tokens
-            true, // soulbound
-            true, // active
-            0,
-            0,
             100, // very limited
-            string.concat("ipfs://", app.symbol, "/legendary-pass")
+            PaymentTokenType.APP
         );
 
-        console2.log("       Configured 3 items for", app.name);
+        console2.log("       Listed 3 content items for", app.name);
 
-        // Set up a feature gate (premium feature requires Item 2 OR 100 tokens staked)
-        access.setFeatureGate(
-            "premium_features",
-            AppAccess1155.FeatureGate({
-                minStake: 100 ether, // OR 100 tokens staked
-                requiredItem: 2, // OR premium pass
-                requireBoth: false, // Either one works
-                active: true
-            })
+        // Set up a feature gate (premium feature requires 100 tokens staked OR content ID 1)
+        store.setFeatureGate(
+            keccak256("premium_features"),
+            100 ether, // minStake: 100 tokens
+            1, // requiredContentId: content ID 1 (Basic Pass)
+            false, // requireBoth: false (either one works)
+            true // active
         );
 
         console2.log("       Configured feature gate for", app.name);
-    }
-
-    function _startFundingRound() internal {
-        LotPool funding = LotPool(FUNDING_ADDRESS);
-        ELTA elta = ELTA(ELTA_ADDRESS);
-
-        // Create a funding round with 3 options
-        bytes32[] memory options = new bytes32[](3);
-        options[0] = keccak256("PTSD_RESEARCH");
-        options[1] = keccak256("DEPRESSION_STUDY");
-        options[2] = keccak256("FOCUS_ENHANCEMENT");
-
-        address[] memory recipients = new address[](3);
-        recipients[0] = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8; // Test recipient 1
-        recipients[1] = 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC; // Test recipient 2
-        recipients[2] = 0x90F79bf6EB2c4f870365E785982E1f101E93b906; // Test recipient 3
-
-        // Start 7-day round
-        (uint256 roundId,) = funding.startRound(options, recipients, 7 days);
-
-        console2.log("       Started funding round #", roundId);
-        console2.log("       Options: PTSD Research, Depression Study, Focus Enhancement");
-        console2.log("       Duration: 7 days");
-
-        // Fund the pool with some ELTA for distribution
-        uint256 fundingAmount = 10000 ether; // 10K ELTA
-        elta.approve(address(funding), fundingAmount);
-        elta.transfer(address(funding), fundingAmount);
-        console2.log("       Funded pool with", fundingAmount / 1 ether, "ELTA");
     }
 
     function _printSeedSummary(TestApp[] memory apps) internal pure {
         console2.log("SUMMARY:");
         console2.log("--------");
         console2.log("- 5 test users with XP (300-5000 XP)");
-        console2.log("- 3 staking positions (2.5K-10K ELTA)");
+        console2.log("- 1 staking position (10K ELTA)");
         console2.log("- 3 test apps with full economies:");
 
         for (uint256 i = 0; i < apps.length; i++) {
             console2.log("  ", string.concat(vm.toString(i + 1), ". ", apps[i].name, " (", apps[i].symbol, ")"));
         }
 
-        console2.log("- 1 active funding round with 3 options");
         console2.log("");
         console2.log("Ready for development! Start the App Store frontend:");
         console2.log("  cd ../elata-appstore && npm run local:full");

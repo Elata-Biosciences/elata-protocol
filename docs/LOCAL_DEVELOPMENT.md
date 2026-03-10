@@ -17,14 +17,7 @@ Before starting, install:
    node --version  # Should be 18+
    ```
 
-3. **Docker Desktop** (required for App Store database)
-   ```bash
-   docker --version
-   docker compose version
-   ```
-   Make sure Docker Desktop is running before starting the App Store.
-
-4. **Git**
+3. **Git**
 
 ## Starting the Environment
 
@@ -38,7 +31,7 @@ This script:
 - Starts Anvil on port 8545
 - Deploys all protocol contracts
 - Seeds test data (users, XP, apps, funding rounds)
-- Generates the App Store's `.env.local` configuration
+- Generates frontend configuration (if frontend repo exists)
 - Funds test accounts with ELTA
 
 ### Alternative: npm Command
@@ -66,22 +59,6 @@ npm run dev:seed
 # Terminal 4: Generate frontend config
 npm run dev:config
 ```
-
-## Running the App Store
-
-In a separate terminal:
-
-```bash
-cd ../elata-appstore
-npm run local:full
-```
-
-This starts:
-- Next.js dev server on port 3000 or 3001
-- PostgreSQL via Docker Compose
-- Prisma database sync
-
-The frontend reads contract addresses from the generated `.env.local` file.
 
 ## Test Accounts
 
@@ -155,9 +132,6 @@ elata-protocol/
 ├── deployments/local.json      # Contract addresses
 ├── anvil.log                   # Blockchain logs
 └── .anvil.pid                  # Process ID
-
-elata-appstore/
-└── .env.local                  # Frontend configuration
 ```
 
 **deployments/local.json** contains all contract addresses:
@@ -168,7 +142,7 @@ elata-appstore/
   "chainId": 31337,
   "contracts": {
     "ELTA": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
-    "ElataXP": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+    "ElataPoints": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
     "VeELTA": "0x...",
     ...
   }
@@ -243,21 +217,6 @@ MetaMask → Settings → Advanced → Clear activity tab data
 
 Then hard-refresh the browser (Cmd+Shift+R or Ctrl+Shift+R).
 
-### Frontend can't find contracts
-
-Regenerate the configuration:
-
-```bash
-npm run config:appstore
-```
-
-Then restart the App Store:
-
-```bash
-cd ../elata-appstore
-npm run local:full
-```
-
 ### Contracts compile but deployment fails
 
 Clean build artifacts and retry:
@@ -291,8 +250,6 @@ npm run dev:config
 # Or restart everything
 npm run local:restart
 ```
-
-The frontend will pick up new contract addresses automatically on page refresh.
 
 ## State Persistence
 

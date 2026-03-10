@@ -1,8 +1,34 @@
 # Elata Protocol
 
-Smart contracts for token economics, staking, reputation, and research funding governance. This repository contains the on-chain infrastructure that coordinates participants in the Elata ecosystem—developers building neurotech applications, researchers conducting studies, and community members contributing data and governance input.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![CI](https://github.com/Elata-Biosciences/elata-protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/Elata-Biosciences/elata-protocol/actions)
+[![Simulation](https://github.com/Elata-Biosciences/elata-protocol/actions/workflows/simulation-ci.yml/badge.svg)](https://github.com/Elata-Biosciences/elata-protocol/actions)
+[![Docs](https://img.shields.io/badge/docs-architecture-green)](docs/ARCHITECTURE.md)
 
-> **Scope**: Token economics, staking, XP reputation, and funding governance. Experiment data contracts (ZORP) live in a separate repository.
+Smart contracts for app-token launches, bonding-curve distribution, fee routing, staking, and governance in Elata.
+
+> Scope: on-chain protocol contracts only. Product/frontend docs live in the separate `docs` and app repositories.
+
+## Mechanism Primitives
+
+The current system is organized around these primitives:
+
+**ELTA Token**  
+Fixed-supply ERC20 (`77,000,000`) minted once at deployment to treasury.
+
+**veELTA Staking**  
+Vote-escrow token from locking ELTA (`7` to `730` days) with linear boost from `1x` to `2x`.
+
+**App Launch + Bonding Curve**  
+`AppFactory` launches app stacks. Each launch costs `110 ELTA` (`100` curve seed + `10` launch fee). App token supply is `10,000,000` split `50/25/25` across curve/vesting/ecosystem. Curve graduation target is `42,000 ELTA`.
+
+**Fee Pipeline (V2)**  
+`FeeCollector` accounts by `(appId, feeKind, asset)`, and `FeeSwapper` routes:
+- `LAUNCH_FEE` -> `100%` treasury
+- App revenue kinds (`TRADING_FEE`, `TRANSFER_TAX`, etc.) -> contributors + treasury (default `80/20`)
+- Paused app -> `100%` treasury
+
+For formal specifications and equations, see [docs/PROTOCOL_SUMMARY.md](./docs/PROTOCOL_SUMMARY.md).
 
 ## Quick Start
 
@@ -22,13 +48,6 @@ npm run local:up
 
 ### Next Steps
 
-Start the frontend (in a separate terminal):
-
-   ```bash
-   cd ../elata-appstore
-   npm run local:full
-   ```
-
 View deployed contract addresses:
 
    ```bash
@@ -45,39 +64,40 @@ See [QUICKSTART.md](./QUICKSTART.md) for the complete setup guide.
 
 ```
 src/
-├── token/          # ELTA governance token
+├── apps/           # AppFactory, AppToken, AppBondingCurve, modules
+├── contributors/   # ContributorSplit contracts
+├── core/           # Protocol configuration
+├── experience/     # ElataPoints reputation system
+├── fees/           # FeeCollector, FeeSwapper, FeeManager, TreasuryUSDCVault
+├── governance/     # Governor, Timelock
+├── registry/       # AppRegistry
 ├── staking/        # veELTA time-locked staking
-├── experience/     # ElataXP reputation system
-├── governance/     # Governor, Timelock, LotPool funding
-├── rewards/        # Fee distribution contracts
-├── fees/           # Fee routing infrastructure
-├── apps/           # App token launch framework
-└── utils/          # Shared utilities
+├── vesting/        # App vesting and ecosystem vaults
+└── utils/          # Shared utilities/errors
+
+lib/ELTA/           # ELTA token (external dependency)
 ```
 
 ## Core Contracts
 
 | Contract | Purpose | Source |
 |----------|---------|--------|
-| ELTA | ERC20 governance token with 77M supply cap | [src/token/ELTA.sol](src/token/ELTA.sol) |
+| ELTA | Fixed-supply ERC20 (`77M`) | [lib/ELTA/src/ELTA.sol](lib/ELTA/src/ELTA.sol) |
 | VeELTA | Vote-escrowed staking (7 days to 2 years) | [src/staking/VeELTA.sol](src/staking/VeELTA.sol) |
-| ElataXP | Non-transferable reputation points | [src/experience/ElataXP.sol](src/experience/ElataXP.sol) |
-| LotPool | XP-weighted funding rounds | [src/governance/LotPool.sol](src/governance/LotPool.sol) |
-| RewardsDistributor | Protocol fee distribution (70/15/15 split) | [src/rewards/RewardsDistributor.sol](src/rewards/RewardsDistributor.sol) |
-| ElataGovernor | On-chain governance with 4% quorum | [src/governance/ElataGovernor.sol](src/governance/ElataGovernor.sol) |
-| AppFactory | Permissionless app token launches | [src/apps/AppFactory.sol](src/apps/AppFactory.sol) |
+| ElataPoints | Non-transferable reputation points | [src/experience/ElataPoints.sol](src/experience/ElataPoints.sol) |
+| AppFactory | App registration + token launch lifecycle | [src/apps/AppFactory.sol](src/apps/AppFactory.sol) |
+| AppBondingCurve | Constant-product launch curve + graduation | [src/apps/AppBondingCurve.sol](src/apps/AppBondingCurve.sol) |
+| FeeCollector | Fee accounting + permissionless sweeping | [src/fees/FeeCollector.sol](src/fees/FeeCollector.sol) |
+| FeeSwapper | Final fee routing and optional swaps | [src/fees/FeeSwapper.sol](src/fees/FeeSwapper.sol) |
+| AppRegistry | Canonical app ownership and split registry | [src/registry/AppRegistry.sol](src/registry/AppRegistry.sol) |
 
 ## How It Works
 
-The protocol coordinates three activities:
-
-**Staking**: Users lock ELTA tokens to receive veELTA, which grants voting power and a share of protocol revenue. Longer locks (up to 2 years) earn up to 2x boost on voting power.
-
-**Reputation**: Users earn XP through protocol participation—playing apps, submitting data, engaging in governance. XP is non-transferable and determines voting weight in funding decisions.
-
-**Funding**: Each week, the community votes (weighted by XP) to allocate protocol funds to research proposals and development grants. Winners receive ELTA from the treasury.
-
-Protocol revenue flows from app store fees, trading fees, and tournament rake. The RewardsDistributor splits incoming fees: 70% to app token stakers, 15% to veELTA holders, 15% to treasury.
+1. **Register app** in `AppRegistry` and deploy `ContributorSplit`.
+2. **Launch token** for that app: deploy token, curve, vesting, ecosystem vault.
+3. **Sell on curve** while active (`x*y=k`) until graduation target/deadline.
+4. **Graduate to Uniswap V2** and lock LP.
+5. **Route fees through V2 pipeline** (`FeeCollector -> FeeSwapper`) using explicit `FeeKind`.
 
 ## Development
 
@@ -85,7 +105,6 @@ Protocol revenue flows from app store fees, trading fees, and tournament rake. T
 
 - [Foundry](https://book.getfoundry.sh/) (forge, anvil, cast)
 - Node.js v18+
-- Docker Desktop (for the App Store's Postgres database)
 
 ### Commands
 
@@ -99,6 +118,13 @@ make build
 # Run tests
 make test
 
+# Run invariant/fuzz suites (targeted)
+forge test --match-path "test/invariants/*.t.sol" -vvv
+
+# Run key recent-change suites (targeted)
+forge test --match-path "test/apps/AppFactoryTwoPhase.t.sol" -vvv
+forge test --match-path "test/apps/AppRegistry.t.sol" -vvv
+
 # Run tests with gas report
 make gas-report
 
@@ -109,9 +135,11 @@ make fmt
 make ci
 ```
 
-### Testing
+### Testing and Validation
 
-The test suite includes unit tests, integration tests, and fuzz tests:
+The protocol includes comprehensive testing at multiple levels:
+
+**Foundry Test Suite**: Unit tests, integration tests, fuzz tests, and invariant tests covering all contract functionality.
 
 ```bash
 # Run all tests
@@ -120,9 +148,46 @@ forge test
 # Run specific contract tests
 forge test --match-contract ELTATest
 
+# Run invariant tests
+forge test --match-path "test/invariants/*"
+
 # Run with verbose output
 forge test -vvv
 ```
+
+**Agent-Based Simulation**: Multi-actor economic simulations powered by AgentForge, running against real contracts deployed on Anvil. Simulations validate fee flows, bonding curve behavior, staking dynamics, and adversarial scenarios.
+
+```bash
+# Build linked AgentForge + install sim deps
+pnpm -C ../agentforge build
+cd sim && pnpm install
+
+# Run protocol fast lane (recommended PR validation)
+pnpm run protocol:fast
+pnpm run results:validate:fast
+
+# Run balanced lane (broad protocol behavior validation)
+pnpm run protocol:balanced
+pnpm run results:validate:balanced
+
+# Open Studio UI against existing simulation runs
+pnpm run sim:studio:open
+
+# LLM gossip exploration (uses OPENAI_API_KEY from env by default)
+export OPENAI_API_KEY="..."
+export OPENAI_MODEL="gpt-4o-mini"
+pnpm run sim:llm:adversarial-rumor
+
+# Run economic scenarios
+pnpm run economic:fee-timing
+
+# Full ecosystem simulation with report
+pnpm run sim:run
+```
+
+Simulation artifacts are uploaded by CI—see [.github/workflows/simulation-ci.yml](.github/workflows/simulation-ci.yml). For detailed simulation documentation, see [sim/README.md](./sim/README.md).
+
+Simulation runs now include notebook-style Studio reports with markdown narrative, transforms, ML blocks, and charts/tables. To edit user-facing explanations for a scenario, update its `studio.report` markdown content (typically via `createNotebookReport` in `sim/lib/studio-report.ts`).
 
 ### Deploying to Testnet
 
@@ -144,6 +209,7 @@ See [SEPOLIA_DEPLOYMENT_GUIDE.md](./SEPOLIA_DEPLOYMENT_GUIDE.md) for detailed de
 | Document | Description |
 |----------|-------------|
 | [QUICKSTART.md](./QUICKSTART.md) | Local development setup |
+| [docs/PROTOCOL_SUMMARY.md](./docs/PROTOCOL_SUMMARY.md) | Protocol summaries and system of equations |
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | System design and contract relationships |
 | [docs/TOKENOMICS.md](./docs/TOKENOMICS.md) | ELTA token mechanics and economics |
 | [docs/APP_LAUNCH_GUIDE.md](./docs/APP_LAUNCH_GUIDE.md) | Building apps on the protocol |
@@ -157,14 +223,19 @@ See [SEPOLIA_DEPLOYMENT_GUIDE.md](./SEPOLIA_DEPLOYMENT_GUIDE.md) for detailed de
 
 ```
 ELTA Supply Cap:     77,000,000 tokens
+App Launch Cost:     110 ELTA (100 seed + 10 launch fee)
+App Token Supply:    10,000,000 tokens
+Launch Allocation:   50% curve / 25% vesting / 25% ecosystem
+Graduation Target:   42,000 ELTA
+LP Lock Duration:    730 days
 Staking Lock Range:  7 days to 730 days (2 years)
 Staking Boost:       1x (min lock) to 2x (max lock)
 Governance Quorum:   4% of total supply
 Proposal Threshold:  0.1% of total supply (~77,000 ELTA)
 Voting Delay:        1 day
 Voting Period:       7 days (3 days for emergency proposals)
-Trading Fee:         1% (routed to RewardsDistributor)
-Revenue Split:       70% app stakers / 15% veELTA / 15% treasury
+Trade Fee Baseline:  1% (`AppFeeRouter.feeBps`, configurable)
+V2 Fee Routing:      LAUNCH_FEE -> 100% treasury; app revenue -> default 80/20 contributors/treasury
 ```
 
 ## Security
@@ -173,11 +244,24 @@ The contracts are designed with these principles:
 
 - **Non-upgradeable**: All contracts are immutable after deployment
 - **Role-based access**: Admin functions require multisig approval
-- **Supply cap enforcement**: ELTA cannot exceed 77M tokens
+- **Supply cap enforcement**: ELTA is fixed-supply and minted once
 - **Time-locked governance**: 48-hour delay on governance execution
-- **No transfer fees on ELTA**: Compatible with standard DeFi infrastructure
+- **LP lock on graduation**: liquidity is locked per app on graduation
 
 Security audit status: Pending external audit before mainnet deployment.
+
+For vulnerability reports, see [SECURITY.md](./SECURITY.md).
+
+## Branches and Releases
+
+| Branch | Purpose | Audit Status |
+|--------|---------|--------------|
+| `main` | Stable release | Pending external audit |
+| `vNext` | Active development | Not audited |
+
+**Deployment tags**: Correspond to on-chain deployments. See `deployments/` for addresses.
+
+**Versioning**: Follows [Semantic Versioning](https://semver.org/). Breaking changes increment major version.
 
 ## Contributing
 

@@ -55,7 +55,26 @@
     "xp:publish": "npx tsx scripts/xp/xp-publish-root.ts --rpc $RPC --key $OPERATOR_PK --contract $XP_ADDR --json ../elata-appstore/public/xp-distribution.json",
     "xp:grant-ops": "npx tsx scripts/xp/xp-grant-operators.ts --rpc $RPC --key $ADMIN_PK --contract $XP_ADDR --ops $OPS",
     "faucet": "node scripts/faucet.js",
-    "faucet:eth": "node scripts/faucet-eth.js"
+    "faucet:eth": "node scripts/faucet-eth.js",
+
+    "sim:smoke": "pnpm -C sim run smoke:all",
+    "sim:smoke:usdc": "pnpm -C sim run smoke:usdc-revenue",
+    "sim:protocol:fast": "pnpm -C sim run protocol:fast && pnpm -C sim run results:validate:fast",
+    "sim:protocol:deep": "pnpm -C sim run protocol:deep && pnpm -C sim run results:validate:deep",
+    "sim:protocol:balanced": "pnpm -C sim run protocol:balanced && pnpm -C sim run results:validate:balanced",
+    "sim:studio": "pnpm -C sim run studio",
+    "sim:studio:8790": "pnpm -C sim run studio:8790",
+    "sim:studio:open": "pnpm -C sim run studio:open",
+    "sim:studio:check": "pnpm -C sim run studio:check",
+    "sim:dashboard:open": "pnpm -C sim run dashboard:open",
+    "sim:llm": "pnpm -C sim run llm:all",
+    "sim:llm:governance-gossip": "pnpm -C sim run llm:governance-gossip",
+    "sim:llm:adversarial-rumor": "pnpm -C sim run llm:adversarial-rumor",
+    "sim:llm:persona-matrix": "pnpm -C sim run llm:persona-matrix",
+    "sim:validate:gossip": "pnpm -C sim run results:validate:gossip",
+    "sim:full": "npx tsx sim/scenarios/full-ecosystem.ts",
+    "sim:report": "npx tsx sim/scripts/generate-simulation-report.ts",
+    "sim:all": "npm run sim:full && npm run sim:report"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
