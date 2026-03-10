@@ -52,21 +52,6 @@ jobs:
         run: |
           forge test --match-contract CoreSecurityVerification
 
-  lint:
-    name: Code Quality
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: v1.4.2
-
-      - name: Run gas report
-        run: forge test --gas-report
-
   coverage:
     name: Test Coverage
     runs-on: ubuntu-latest
