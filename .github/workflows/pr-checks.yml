@@ -73,7 +73,7 @@ jobs:
           version: v1.4.2
 
       - name: Generate gas report
-        run: forge test --gas-report
+        run: forge test --gas-report --no-match-path "test/invariants/*"
 
       - name: Post gas report as comment
         uses: actions/github-script@v7
@@ -81,7 +81,7 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const gasReport = await exec.getExecOutput('forge test --gas-report');
+            const gasReport = await exec.getExecOutput('forge test --gas-report --no-match-path "test/invariants/*"');
             
             github.rest.issues.createComment({
               issue_number: context.issue.number,
