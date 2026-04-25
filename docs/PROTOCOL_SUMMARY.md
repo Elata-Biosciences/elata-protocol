@@ -8,147 +8,123 @@ Elata is a permissionless app-launch protocol where app tokens are sold on a con
 
 ## One-Paragraph Summary
 
-An app launch costs `110 ELTA` (`100` seed + `10` launch fee). `AppFactory` deploys an app stack (`AppToken`, `AppBondingCurve`, `AppStakingVault`, `AppVestingWallet`, `AppEcosystemVault`) and mints exactly `10,000,000` app tokens split `50%` curve, `25%` vesting wallet, `25%` ecosystem vault. The curve follows `x*y=k`, supports buys while active, and graduates at `42,000 ELTA` (or can be force-graduated at deadline), creating a Uniswap V2 pair with LP locked for `730 days`. Trading and LP-keyed transfer taxes flow through `FeeCollector` and `FeeSwapper`: `LAUNCH_FEE` routes `100%` to treasury, while app-revenue fee kinds route to contributor split + treasury (default `80/20`, governance-configurable). ELTA has a fixed `77,000,000` supply cap minted at deployment, veELTA lock boost ranges from `1x` to `2x`, and XP gates early buys by default (`100 XP` for first `6 hours`).
+An app launch costs `110 ELTA` (`100` seed + `10` launch fee). `AppFactory` deploys an app stack (`AppToken`, `AppBondingCurve`, `AppStakingVault`, `AppVestingWallet`, `AppEcosystemVault`) and mints exactly `10,000,000` app tokens split `50%` curve, `25%` vesting wallet, `25%` ecosystem vault. The curve follows $x\,y=k$, supports buys while active, and graduates at `42,000 ELTA` (or can be force-graduated at deadline), creating a Uniswap V2 pair with LP locked for `730 days`. Trading and LP-keyed transfer taxes flow through `FeeCollector` and `FeeSwapper`: `LAUNCH_FEE` routes `100%` to treasury, while app-revenue fee kinds route to contributor split + treasury (default `80/20`, governance-configurable). ELTA has a fixed `77,000,000` supply cap minted at deployment, veELTA lock boost ranges from `1x` to `2x`, and XP gates early buys by default (`100 XP` for first `6 hours`).
 
 ---
 
 ## System of Equations
 
+Display math below uses [GitHub–flavored LaTeX](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/writing-mathematical-expressions) (`$…$` inline, `$$…$$` block). In PDF or other TeX pipelines, the same expressions compile as usual.
+
 ### 1. Bonding Curve
 
-Invariant:
+Constant product invariant (reserves $x$ for ELTA, $y$ for the app token):
 
-```
-k = reserveElta * reserveToken
-```
+$$k = x\,y = r_{\text{ELTA}}\,r_{\text{APP}}.$$
 
-Initialization defaults:
+Default initialization:
 
-```
-reserveElta0 = 100 ELTA
-reserveToken0 = 5,000,000 APP
-k0 = reserveElta0 * reserveToken0
-```
+$$
+r_{\text{ELTA},0} = 100\,\text{ELTA},\qquad
+r_{\text{APP},0} = 5{,}000{,}000\,\text{APP},\qquad
+k_0 = r_{\text{ELTA},0}\,r_{\text{APP},0}.
+$$
 
-Buy path:
+One buy: user sends $e$ ELTA in (before fees; see §2 for fee-on-top). New reserves and token output:
 
-```
-newReserveElta = reserveElta + eltaIn
-newReserveToken = k / newReserveElta
-tokensOut = reserveToken - newReserveToken
-```
+$$
+\begin{aligned}
+r'_{\text{ELTA}} &= r_{\text{ELTA}} + e, \\
+r'_{\text{APP}} &= \frac{k}{r'_{\text{ELTA}}}, \\
+\Delta_{\text{APP}} &= r_{\text{APP}} - r'_{\text{APP}}.
+\end{aligned}
+$$
 
-Spot price approximation:
+Spot price in ELTA per APP (continuous approximation):
 
-```
-price ~= reserveElta / reserveToken
-```
+$$\text{price} \approx \frac{r_{\text{ELTA}}}{r_{\text{APP}}}.$$
 
 ### 2. Bonding-Curve Trading Fee
 
-Base trade fee from `AppFeeRouter.feeBps()` (default `100 bps`):
+Base trade fee with basis points $b$ from `AppFeeRouter.feeBps()` (default $b=100$):
 
-```
-tradingFee = actualEltaIn * feeBps / 10_000
-buyerPays = actualEltaIn + tradingFee
-```
+$$
+f = \frac{e\,b}{10{,}000},
+\qquad
+C = e + f,
+$$
 
-Optional sniper add-on (default disabled):
+where $e=\texttt{actualEltaIn}$, $f=\texttt{tradingFee}$, and $C=\texttt{buyerPays}$.
 
-```
-if sniperFeeEnabled and now < activationTime + sniperFeeDuration:
-    effectiveFeeBps = feeBps + sniperFeeBps
-```
+Optional sniper add-on (default off): if enabled and the block time is still inside the sniper window, the effective bps is $b' = b + b_{\text{sniper}}$.
 
 ### 3. Token Supply and Launch Allocation
 
-Per-app supply:
+Per-app total supply $S$ and default allocation (by share of $S$):
 
-```
-totalSupply = 10,000,000 APP
-curveShare = 50%
-teamVestingShare = 25%
-ecosystemShare = 25%
-```
+$$S = 10{,}000{,}000\,\text{APP}, \quad w_{\text{curve}} = \tfrac{1}{2}, \quad w_{\text{vest}} = w_{\text{eco}} = \tfrac{1}{4}.$$
 
-Conservation:
+Conservation of the split:
 
-```
-curveShare + teamVestingShare + ecosystemShare = totalSupply
-```
+$$w_{\text{curve}} + w_{\text{vest}} + w_{\text{eco}} = 1, \qquad
+w_{\text{curve}}S + w_{\text{vest}}S + w_{\text{eco}}S = S.$$
 
 ### 4. Graduation Rules
 
-Target graduation:
+Target graduation (nominal reserve threshold):
 
-```
-graduate when reserveElta >= 42,000 ELTA
-```
+$$r_{\text{ELTA}} \ge 42{,}000\,\text{ELTA} \quad\Rightarrow\quad \text{graduate}.$$
 
-Forced graduation:
+Forced graduation when the curve is past the maximum duration and not already finished:
 
-```
-deadline = activationTime + maxCurveDuration
-if now >= deadline and state not in {GRADUATED, CANCELLED}:
-    forceGraduate()
-```
+$$
+T_{\text{deadline}} = t_{\text{activation}} + T_{\text{maxCurve}}, \qquad
+\text{if } t \ge T_{\text{deadline}} \text{ and state} \notin \{\text{GRADUATED}, \text{CANCELLED}\} \text{ then force-graduate}.
+$$
 
-LP lock:
+LP lock (default) after graduation at $t_{\text{grad}}$:
 
-```
-lpUnlockAt = graduationTimestamp + 730 days   // default
-```
+$$t_{\text{LP unlock}} = t_{\text{grad}} + 730\,\text{days}.$$
 
 ### 5. veELTA Voting Power
 
 Lock window:
 
-```
-minLock = 7 days
-maxLock = 730 days
-```
+$$T_{\min} = 7\,\text{days}, \qquad T_{\max} = 730\,\text{days}.$$
 
-Boost:
+Boost and voting power for locked amount $L$ and lock duration $\tau$ (with $\tau \le T_{\max}$):
 
-```
-boost = 1 + duration / maxLockDuration
-votingPower = lockedAmount * boost
-boost range: [1x, 2x]
-```
+$$
+\beta = 1 + \frac{\tau}{T_{\max}},
+\qquad
+V = L\,\beta,
+\qquad
+\beta \in [1,\,2].
+$$
 
 ### 6. Fee Routing Policy (Current V2 Pipeline)
 
-`FeeCollector` tracks pending balances by `(appId, feeKind, asset)` and sweeps to `FeeSwapper`.
+`FeeCollector` tracks pending balances by `(appId, feeKind, asset)` and sweeps to `FeeSwapper`. Let $A$ be the amount swept for a given route, and $p$ the treasury take in bps (`treasuryTakeBps`, default $2000$). Policy:
 
-Routing policy:
+$$
+\text{treasury} =
+\begin{cases}
+A & \text{if app paused or } \text{kind} = \text{LAUNCH\_FEE}, \\[0.4em]
+A \cdot \dfrac{p}{10{,}000} & \text{otherwise},
+\end{cases}
+\qquad
+\text{contributors} = A - \text{treasury} \quad \text{(non-launch, unpaused).}
+$$
 
-```
-if appPaused:
-    100% treasury
-else if kind == LAUNCH_FEE:
-    100% treasury
-else:
-    treasury = amount * treasuryTakeBps / 10_000      // default 2000 bps
-    contributors = amount - treasury                  // default 8000 bps
-```
-
-Where `contributors` is forwarded to the app's `ContributorSplit`.
+The contributor leg is sent to the app’s `ContributorSplit`.
 
 ### 7. XP Early Access Gate
 
-Defaults:
+Default parameters: minimum XP $X_{\min} = 100$ and early window $T_{\text{early}} = 6\,\text{h}$ after launch. Gate:
 
-```
-xpMinForEarlyBuy = 100 XP
-earlyBuyDuration = 6 hours
-```
-
-Constraint:
-
-```
-if now < launchTimestamp + earlyBuyDuration:
-    require(userXP >= xpMinForEarlyBuy)
-```
+$$
+\text{if } t < t_{\text{launch}} + T_{\text{early}} \text{, require } \text{XP}(u) \ge X_{\min}.
+$$
 
 ---
 
@@ -159,7 +135,7 @@ if now < launchTimestamp + earlyBuyDuration:
 1. Developer registers app and launches token via `AppFactory`.
 2. Pays `10 ELTA` launch fee + `100 ELTA` curve seed.
 3. App token (`10,000,000`) is minted as `50/25/25` curve/vesting/ecosystem.
-4. Buyers purchase from active bonding curve (`x*y=k`).
+4. Buyers purchase from active bonding curve ($x\,y=k$).
 5. Trading fees and LP-keyed transfer taxes accumulate and are swept to `FeeCollector`.
 6. `FeeSwapper` routes by fee kind:
    - `LAUNCH_FEE`: `100%` treasury
@@ -182,7 +158,7 @@ if now < launchTimestamp + earlyBuyDuration:
 
 ### Invariants To Preserve
 
-- `k = x*y` for curve math (within integer rounding behavior).
+- $k = x\,y$ for curve math (within integer rounding behavior).
 - Curve lifecycle is monotonic: `PENDING -> ACTIVE -> GRADUATED` or `PENDING -> CANCELLED`.
 - `AppToken.transferFeeBps <= 200 bps`.
 - Fee routing never exceeds incoming amount.
