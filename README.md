@@ -210,6 +210,7 @@ See [SEPOLIA_DEPLOYMENT_GUIDE.md](./SEPOLIA_DEPLOYMENT_GUIDE.md) for detailed de
 |----------|-------------|
 | [QUICKSTART.md](./QUICKSTART.md) | Local development setup |
 | [docs/PROTOCOL_SUMMARY.md](./docs/PROTOCOL_SUMMARY.md) | Protocol summaries and system of equations |
+| [docs/APP_DEVELOPER_GUIDE.md](./docs/APP_DEVELOPER_GUIDE.md) | Progressive protocol guide for app developers |
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | System design and contract relationships |
 | [docs/TOKENOMICS.md](./docs/TOKENOMICS.md) | ELTA token mechanics and economics |
 | [docs/APP_LAUNCH_GUIDE.md](./docs/APP_LAUNCH_GUIDE.md) | Building apps on the protocol |
