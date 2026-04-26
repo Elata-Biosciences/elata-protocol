@@ -283,3 +283,11 @@ MIT License. See [LICENSE](./LICENSE).
 ---
 
 For questions, open a GitHub issue or join the community Discord.
+
+## 💰 Bounty Contribution
+
+- **Task:** Pre-contest audit triage — governance access control patterns
+- **Reward:** $1500
+- **Source:** GitHub-Bounty
+- **Date:** 2026-04-27
+
