@@ -106,7 +106,7 @@ $$
 $$
 T(A) =
 \begin{cases}
-A & \text{paused or } \mathrm{kind} = \texttt{LAUNCH\\_FEE}, \\
+A & \text{paused or } \mathrm{kind} = \texttt{LAUNCH\_FEE}, \\
 A \cdot \dfrac{p}{10{,}000} & \text{otherwise (active app revenue),}
 \end{cases}
 $$
