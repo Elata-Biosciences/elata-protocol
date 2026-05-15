@@ -106,7 +106,7 @@ $$
 $$
 T(A) =
 \begin{cases}
-A & \text{paused or } \mathrm{kind} = \texttt{LAUNCH\_FEE}, \\[0.4em]
+A & \text{paused or } \mathrm{kind} = \texttt{LAUNCH\\_FEE}, \\[0.4em]
 A \cdot \dfrac{p}{10{,}000} & \text{otherwise (active app revenue),}
 \end{cases}
 $$
@@ -189,7 +189,7 @@ Virtuals Protocol is the closest structural analogue to Elata. The two share a c
 |---|---|---|
 | **Base token** | ELTA (77M fixed, no burn) | VIRTUAL (~1B, deflationary via buyback-burn) |
 | **Launch cost** | 110 ELTA (100 seed + 10 fee) | 100 VIRTUAL |
-| **Curve type** | Constant-product $xy=k$ | Constant-product $xy=k$ |
+| **Curve type** | Constant-product (xy=k) | Constant-product (xy=k) |
 | **Graduation threshold** | 42,000 ELTA | 42,000 VIRTUAL |
 | **App/agent token supply** | 10,000,000 | 1,000,000,000 |
 | **Token allocation** | 50% curve / 25% vesting / 25% eco vault | All minted at graduation into LP |
