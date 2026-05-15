@@ -181,4 +181,33 @@ The fee is forwarded to `FeeCollector` and enters the standard V2 routing pipeli
 
 ---
 
+## Comparison: Elata vs. Virtuals Protocol
+
+Virtuals Protocol is the closest structural analogue to Elata. The two share a constant-product bonding curve, the same 42,000-token graduation threshold, and a veToken governance model — but diverge meaningfully in economics and scope.
+
+| | **Elata** | **Virtuals** |
+|---|---|---|
+| **Base token** | ELTA (77M fixed, no burn) | VIRTUAL (~1B, deflationary via buyback-burn) |
+| **Launch cost** | 110 ELTA (100 seed + 10 fee) | 100 VIRTUAL |
+| **Curve type** | Constant-product $xy=k$ | Constant-product $xy=k$ |
+| **Graduation threshold** | 42,000 ELTA | 42,000 VIRTUAL |
+| **App/agent token supply** | 10,000,000 | 1,000,000,000 |
+| **Token allocation** | 50% curve / 25% vesting / 25% eco vault | All minted at graduation into LP |
+| **LP lock** | 730 days (2 yr) | 10 years |
+| **veToken governance** | veELTA, 7–730 day lock, 1×–2× boost | veVIRTUAL |
+| **Revenue routing** | 80% contributors / 20% treasury | Protocol revenue → buyback & burn |
+| **Early-access gate** | XP gate (100 XP, first 6 h) | None |
+| **Transfer tax** | LP-keyed, max 200 bps | Not present |
+| **Focus** | Permissionless app tokens | AI agent tokenization |
+
+**Key differences:**
+
+- **Revenue model:** Elata routes app revenue to creators (80/20 contributor/treasury split); Virtuals uses protocol revenue to deflate VIRTUAL supply via buyback-and-burn.
+- **Pre-graduation allocation:** Elata allocates tokens at launch (vesting wallet + ecosystem vault); Virtuals mints the full agent supply only at graduation.
+- **LP lock:** Virtuals locks LP for 10 years; Elata uses 2 years.
+- **Supply policy:** ELTA is fixed with no burn mechanism; VIRTUAL is actively deflationary.
+- **Access control:** Elata adds an XP-gated early-buy window; Virtuals has no equivalent gate.
+
+---
+
 For deeper contract mapping, see [ARCHITECTURE.md](./ARCHITECTURE.md) and [TOKENOMICS.md](./TOKENOMICS.md).
