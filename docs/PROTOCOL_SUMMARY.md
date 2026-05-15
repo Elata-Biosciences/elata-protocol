@@ -14,8 +14,6 @@ An app launch costs `110 ELTA` (`100` seed + `10` launch fee). `AppFactory` depl
 
 ## System of Equations
 
-Display math below uses [GitHub–flavored LaTeX](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/writing-mathematical-expressions) (`$…$` inline, `$$…$$` block). In PDF or other TeX pipelines, the same expressions compile as usual.
-
 ### 1. Bonding Curve
 
 Constant product invariant (reserves $x$ for ELTA, $y$ for the app token):
@@ -77,10 +75,9 @@ $$r_{\text{ELTA}} \ge 42{,}000\,\text{ELTA} \quad\Rightarrow\quad \text{graduate
 
 Forced graduation when the curve is past the maximum duration and not already finished:
 
-$$
-T_{\text{deadline}} = t_{\text{activation}} + T_{\text{maxCurve}}, \qquad
-\text{if } t \ge T_{\text{deadline}} \text{ and state} \notin \{\text{GRADUATED}, \text{CANCELLED}\} \text{ then force-graduate}.
-$$
+$$T_{\text{deadline}} = t_{\text{activation}} + T_{\text{maxCurve}}.$$
+
+$$t \ge T_{\text{deadline}} \;\land\; \text{state} \notin \{\text{GRADUATED},\,\text{CANCELLED}\} \;\Rightarrow\; \text{force-graduate}.$$
 
 LP lock (default) after graduation at $t_{\text{grad}}$:
 
@@ -107,14 +104,14 @@ $$
 `FeeCollector` tracks pending balances by `(appId, feeKind, asset)` and sweeps to `FeeSwapper`. Let $A$ be the amount swept for a given route, and $p$ the treasury take in bps (`treasuryTakeBps`, default $2000$). Policy:
 
 $$
-\text{treasury} =
+T(A) =
 \begin{cases}
-A & \text{if app paused or } \text{kind} = \text{LAUNCH\_FEE}, \\[0.4em]
-A \cdot \dfrac{p}{10{,}000} & \text{otherwise},
+A & \text{paused or } \mathrm{kind} = \texttt{LAUNCH\_FEE}, \\[0.4em]
+A \cdot \dfrac{p}{10{,}000} & \text{otherwise (active app revenue),}
 \end{cases}
-\qquad
-\text{contributors} = A - \text{treasury} \quad \text{(non-launch, unpaused).}
 $$
+
+$$C(A) = A - T(A) \quad \text{(contributor leg, non-launch unpaused only).}$$
 
 The contributor leg is sent to the app’s `ContributorSplit`.
 
@@ -126,9 +123,27 @@ $$
 \text{if } t < t_{\text{launch}} + T_{\text{early}} \text{, require } \text{XP}(u) \ge X_{\min}.
 $$
 
+### 8. LP Transfer Tax
+
+App tokens charge a transfer tax only when one side of the transfer is an allowlisted liquidity pool address (wallet-to-wallet transfers are exempt). For transfer amount $a$ and tax rate $b_{\text{transfer}}$ (default $100$ bps, max $200$ bps):
+
+$$
+\text{fee} = \frac{a \cdot b_{\text{transfer}}}{10{,}000}, \qquad b_{\text{transfer}} \in [0,\,200].
+$$
+
+The fee is forwarded to `FeeCollector` and enters the standard V2 routing pipeline (§6).
+
 ---
 
 ## One-Pager
+
+### Tokens
+
+| Token | Role |
+|---|---|
+| **ELTA** | Protocol base token; fixed supply of `77,000,000`; used to seed and buy from bonding curves, pay launch fees, and lock for governance. |
+| **veELTA** | Non-transferable vote-escrowed ELTA; granted by locking ELTA for `7`–`730 days`; boosts voting power `1×`–`2×`. |
+| **AppToken** | Per-app ERC-20 minted at launch (`10,000,000` total); sold via the bonding curve, vested to contributors, and held in the ecosystem vault. |
 
 ### Core Flow
 
@@ -156,13 +171,13 @@ $$
 | XP early gate | `100 XP`, first `6h` |
 | Base trade fee | `1%` (`100 bps`) |
 
-### Invariants To Preserve
+### Protocol Invariants
 
-- $k = x\,y$ for curve math (within integer rounding behavior).
-- Curve lifecycle is monotonic: `PENDING -> ACTIVE -> GRADUATED` or `PENDING -> CANCELLED`.
-- `AppToken.transferFeeBps <= 200 bps`.
-- Fee routing never exceeds incoming amount.
-- ELTA total supply remains fixed at `77,000,000`.
+- **Curve math:** $k = x\,y$ is preserved on every trade (within integer rounding).
+- **State monotonicity:** `PENDING → ACTIVE → GRADUATED` or `PENDING → CANCELLED`; no backward transitions.
+- **Transfer tax cap:** $b_{\text{transfer}} \le 200\,\text{bps}$, enforced on-chain.
+- **Fee conservation:** $T(A) + C(A) = A$ for any swept amount; routing never creates tokens.
+- **ELTA supply:** fixed at $77{,}000{,}000$; no minting after deployment.
 
 ---
 
